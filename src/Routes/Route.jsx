@@ -32,6 +32,11 @@ import GenerateDCForm from "../Features/PurchaseBookingHKMaterial/GenerateDCForm
 import VendorDCPage from "../Features/PurchaseBookingHKMaterial/VendorDCPage"
 import DCUpload from "../Features/PurchaseBookingHKMaterial/DCUpload"
 import VendorInvoiceUpload from "../Features/PurchaseBookingHKMaterial/VendorInvoiceUpload"
+import MyInvoiceUpload from "../Features/PurchaseBookingHKMaterial/MyInvoiceUpload"
+import PHInvoiceReview from "../Features/PurchaseBookingHKMaterial/PHInvoiceReview"
+import AEDashboard from "../Roles/AE/Pages/AEDashboard"
+import AEHome from "../Roles/AE/Components/AEHome"
+import AEInvoiceReviewPage from "../Features/PurchaseBookingHKMaterial/AEInvoiceReviewPage"
 
 
 export const router=createBrowserRouter([
@@ -174,6 +179,10 @@ export const router=createBrowserRouter([
             {
                 path:"po-form",
                 element:<PurchaseOrderForm/>
+            },
+            {
+                path:"invoice-review",
+                element:<PHInvoiceReview/>
             }
         ]
     },
@@ -208,6 +217,29 @@ export const router=createBrowserRouter([
             {
                 path:"invoice-upload",
                 element:<VendorInvoiceUpload/>
+            },
+            {
+                path:"my-invoices",
+                element:<MyInvoiceUpload/>
+            }
+        ]
+    },
+    // ****************************************AE************************************************************
+    {
+        path:"dashboard/ae",
+        element:(
+            <ProtectedRoute allowedRoles={["ae"]}>
+                <AEDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+            {
+                index:true,
+                element:<AEHome/>
+            },
+            {
+                path:"invoice-review",
+                element:<AEInvoiceReviewPage/>
             }
         ]
     }

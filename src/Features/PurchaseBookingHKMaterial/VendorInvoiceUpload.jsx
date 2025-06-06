@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom';
 
 const VendorInvoiceUpload = () => {
     const availablePOs=[
@@ -17,6 +18,7 @@ const VendorInvoiceUpload = () => {
 
   const [errors,setErrors]=useState({})
   const [successMsg,setSuccessMsg]=useState("")
+  const navigate=useNavigate()
 
   //Handle Change Function
   const handleChange=(e)=>{
@@ -80,6 +82,14 @@ const handleSubmit=(e)=>{
 
   return (
     <div className='max-w-4xl mx-auto p-6 bg-white rounded shadow-md mt-6'>
+        <div className='flex justify-end'>
+        <button className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow cursor-pointer 
+         "
+         onClick={()=>navigate("/dashboard/vendor/my-invoices")}
+         >
+            My Invoices
+        </button>
+        </div>
         <h2 className='text-2xl font-bold mb-6 text-green-700'>Upload Invoice</h2>
          {successMsg && <div className="mb-4 text-green-600 font-medium">{successMsg}</div>}
         <form className='space-y-6' onSubmit={handleSubmit}>
