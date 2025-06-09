@@ -1,5 +1,8 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import InvoiceVerifyModal from "./INvoiceVerifyModal";
+import { useNavigate } from "react-router-dom";
+import AEInvoiceApproval from "./AEInvoiceApproval";
 
 
 const dummyInvoices = [
@@ -25,10 +28,12 @@ const InvoiceReviewPage = () => {
     const [invoices,setInvoices]=useState(dummyInvoices)
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
   const openModal = (invoice) => {
     setSelectedInvoice(invoice);
     setIsModalOpen(true);
   };
+  const navigate=useNavigate()
 
   const closeModal = () => {
     setSelectedInvoice(null);
@@ -65,7 +70,22 @@ const InvoiceReviewPage = () => {
                 <td className="p-3 border">{inv.invoiceNumber}</td>
                 <td className="p-3 border">{inv.vendorName}</td>
                 <td className="p-3 border">₹{inv.totalAmount.toLocaleString()}</td>
-                <td className="p-3 border">{inv.status}</td>
+                <td className="p-3 border">
+                      {
+                        inv.status==="Approved" ? (
+                          <div className="flex items-center justify-evenly">
+                          <span className="p-3 bg-green-200 rounded-full px-2 py-1 ">{inv.status}</span>
+                                                  <button
+                                                  className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"
+                                                  onClick={() => navigate(`/dashboard/ae/invoice-purchase-entry/${inv.id}`, { state: { invoice: inv } }) }
+                                                  >Purchase Entry</button>
+                      </div>
+                                                    )
+                                                   :(
+                                                    inv.status
+                                                   ) 
+                      }
+                </td>
                 <td className="p-3 border text-center">
                  <button
                     onClick={() => openModal(inv)}
@@ -94,6 +114,8 @@ const InvoiceReviewPage = () => {
                 handleUpdateInvoice={handleUpdateInvoice}
             />
             )}
+
+        
 
     </div>
   );

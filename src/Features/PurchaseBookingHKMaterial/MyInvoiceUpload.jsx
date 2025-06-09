@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
+import { IoEye } from "react-icons/io5"; // Optional, or use any icon
 
 export default function MyInvoiceUploads() {
   const [invoices, setInvoices] = useState([]);
-   const [filter, setFilter] = useState({
+  const [filter, setFilter] = useState({
     poNumber: "",
     invoiceNumber: "",
     status: ""
   });
 
+  const [selectedReason, setSelectedReason] = useState(null);
+
   useEffect(() => {
-    // Mock data; in production, replace this with API call
+    // Mock data with PH/AE approval and rejection remarks
     const mockData = [
       {
         id: 1,
@@ -20,8 +23,9 @@ export default function MyInvoiceUploads() {
         posCovered: ["PO-101", "PO-102"],
         status: "Pending",
         poNumber: "PO-101",
-        
-        
+        phApproval: "Approved",
+        aeApproval: "Rejected",
+        rejectionReason: "Invoice amount doesn't match PO terms."
       },
       {
         id: 2,
@@ -32,7 +36,9 @@ export default function MyInvoiceUploads() {
         posCovered: ["PO-103"],
         status: "Approved",
         poNumber: "PO-103",
-       
+        phApproval: "Approved",
+        aeApproval: "Approved",
+        rejectionReason: ""
       }
     ];
 
@@ -51,12 +57,12 @@ export default function MyInvoiceUploads() {
       dc.status.toLowerCase().includes(filter.status.toLowerCase())
     );
   });
-  
 
   return (
     <div className="max-w-7xl mx-auto p-4 bg-white shadow-md rounded-lg">
       <h2 className="text-2xl font-bold text-center mb-6 text-green-700">My Invoice Uploads</h2>
 
+      {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <input
           name="poNumber"
@@ -84,6 +90,7 @@ export default function MyInvoiceUploads() {
         />
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full border text-sm text-left">
           <thead>
@@ -95,12 +102,14 @@ export default function MyInvoiceUploads() {
               <th className="border p-2">POs Covered</th>
               <th className="border p-2">Total Amount</th>
               <th className="border p-2">Status</th>
+              <th className="border p-2">PH Approval</th>
+              <th className="border p-2">AE Approval</th>
             </tr>
           </thead>
           <tbody>
             {filteredDCs.length === 0 ? (
               <tr>
-                <td colSpan="7" className="text-center py-6">No invoices uploaded yet.</td>
+                <td colSpan="9" className="text-center py-6">No invoices uploaded yet.</td>
               </tr>
             ) : (
               filteredDCs.map((invoice, index) => (
@@ -115,10 +124,24 @@ export default function MyInvoiceUploads() {
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       invoice.status === "Approved"
                         ? "bg-green-100 text-green-800"
+                        : invoice.status === "Rejected"
+                        ? "bg-red-100 text-red-800"
                         : "bg-yellow-100 text-yellow-800"
                     }`}>
                       {invoice.status}
                     </span>
+                  </td>
+                  <td className="border p-2">{invoice.phApproval}</td>
+                  <td className="border p-2 flex items-center gap-2">
+                    <span>{invoice.aeApproval}</span>
+                    {invoice.aeApproval === "Rejected" && invoice.rejectionReason && (
+                      <button
+                        className="text-blue-600 hover:text-blue-800"
+                        onClick={() => setSelectedReason(invoice.rejectionReason)}
+                      >
+                        <IoEye className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -126,6 +149,22 @@ export default function MyInvoiceUploads() {
           </tbody>
         </table>
       </div>
+
+      {/* Rejection Reason Modal */}
+      {selectedReason && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Rejection Reason</h3>
+            <p className="text-gray-700">{selectedReason}</p>
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
+              onClick={() => setSelectedReason(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -37,6 +37,8 @@ import PHInvoiceReview from "../Features/PurchaseBookingHKMaterial/PHInvoiceRevi
 import AEDashboard from "../Roles/AE/Pages/AEDashboard"
 import AEHome from "../Roles/AE/Components/AEHome"
 import AEInvoiceReviewPage from "../Features/PurchaseBookingHKMaterial/AEInvoiceReviewPage"
+import AEInvoiceApproval from "../Features/PurchaseBookingHKMaterial/AEInvoiceApproval"
+import VendorCreationForm from "../Features/Vendor Creation Process/VendorCreationForm"
 
 
 export const router=createBrowserRouter([
@@ -221,7 +223,8 @@ export const router=createBrowserRouter([
             {
                 path:"my-invoices",
                 element:<MyInvoiceUpload/>
-            }
+            },
+            
         ]
     },
     // ****************************************AE************************************************************
@@ -240,6 +243,14 @@ export const router=createBrowserRouter([
             {
                 path:"invoice-review",
                 element:<AEInvoiceReviewPage/>
+            },
+            {
+                path:"invoice-purchase-entry/:id",
+                element:<AEInvoiceApproval/>
+            },
+            {
+                path:"vendor-creation",
+                element:<VendorCreationForm/>
             }
         ]
     }

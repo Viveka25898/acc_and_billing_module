@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
 const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) => {
   const [gstRate, setGstRate] = useState("");
@@ -20,15 +21,17 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
   const handleApprove = () => {
     handleUpdateInvoice(invoice.id, "Approved");
     onClose();
+    toast.success("Invoice approved successfully!");
   };
 
   const handleReject = () => {
     if (!remarks.trim()) {
-      alert("Please enter remarks before rejecting.");
+      toast.warn("Please provide rejection remarks.");
       return;
     }
      handleUpdateInvoice(invoice.id, "Rejected", remarks);
     onClose();
+    toast.error("Invoice rejected successfully!");
   };
 
   return (
