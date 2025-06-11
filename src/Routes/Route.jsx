@@ -39,6 +39,7 @@ import AEHome from "../Roles/AE/Components/AEHome"
 import AEInvoiceReviewPage from "../Features/PurchaseBookingHKMaterial/AEInvoiceReviewPage"
 import AEInvoiceApproval from "../Features/PurchaseBookingHKMaterial/AEInvoiceApproval"
 import VendorCreationForm from "../Features/Vendor Creation Process/VendorCreationForm"
+import VendorTable from "../Features/Vendor Creation Process/VendorsTable"
 
 
 export const router=createBrowserRouter([
@@ -251,6 +252,10 @@ export const router=createBrowserRouter([
             {
                 path:"vendor-creation",
                 element:<VendorCreationForm/>
+            },
+            {
+                path:"vendor-list",
+                element:<VendorTable/>
             }
         ]
     }

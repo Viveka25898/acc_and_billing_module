@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import Input from './UIComponents/Input'
 import Select from './UIComponents/Select'
+import { useNavigate } from 'react-router-dom'
 
 const VendorCreationForm = () => {
     const [formData,setFormData]=useState({
@@ -20,6 +21,7 @@ const VendorCreationForm = () => {
     const[submitted,setSubmitted]=useState(null)
 
     const allowedVendorTypes = ['General Services', 'Consulting', 'Other'];
+    const navigate=useNavigate()
 
     //Error Handling Function
     const validateForm=()=>{
@@ -80,6 +82,9 @@ const VendorCreationForm = () => {
     AE can only Create a Vendors Other than Materials and Uniforms. It will be Created By Procurement Team.
    </div>
    <div className='max-w-4xl mx-auto p-6 bg-white shadow-md rounded-xl mt-6'>
+    <button
+    onClick={()=>navigate("/dashboard/ae/vendor-list")}
+    >Vendors List</button>
         <h2 className='text-2xl font-bold mb-4 text-green-600'>Vendor Creation Form</h2>
         <form className='grid gird-cols-1 md:grid-cols-2 gap-6' onSubmit={handleSubmit}>
             <Input name="vendorName" label="Vendor Name" value={formData.vendorName} onChange={handleChange} error={errors.vendorName}/>
