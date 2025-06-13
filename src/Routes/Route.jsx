@@ -40,6 +40,12 @@ import AEInvoiceReviewPage from "../Features/PurchaseBookingHKMaterial/AEInvoice
 import AEInvoiceApproval from "../Features/PurchaseBookingHKMaterial/AEInvoiceApproval"
 import VendorCreationForm from "../Features/Vendor Creation Process/VendorCreationForm"
 import VendorTable from "../Features/Vendor Creation Process/VendorsTable"
+import ProcessPaymentPage from "../Features/Process For Payments/ProcessPaymentPage"
+import VendorLedgerPage from "../Features/Process For Payments/VendorLedgerPage"
+import ExpenseBookingPage from "../Features/Process of Auto JV/Pages/ExpenseBookingPage"
+import TDSMappingPage from "../Features/Process of Auto JV/Pages/TDSMappingPage"
+import  VendorLedgerPagee  from "../Features/Process of Auto JV/Pages/VendorLedgerPage"
+import IncomeTaxDetailsPage from "../Features/Process of Auto JV/Pages/IncomeTaxDetailsPage"
 
 
 export const router=createBrowserRouter([
@@ -256,6 +262,30 @@ export const router=createBrowserRouter([
             {
                 path:"vendor-list",
                 element:<VendorTable/>
+            },
+            {
+                path:"process-payments",
+                element:<ProcessPaymentPage/>
+            },
+            {
+                path:"vendor-ledger",
+                element:<VendorLedgerPage/>
+            },
+            {
+                path:"auto-tds-booking",
+                element:<ExpenseBookingPage/>
+            },
+            {
+                path:"vendor-tax-mapping",
+                element:<TDSMappingPage/>
+            },
+            {
+                path:"vendor-ledger-page",
+                element:<VendorLedgerPagee/>
+            },
+            {
+                path:"income-tax-details",
+                element:<IncomeTaxDetailsPage/>
             }
         ]
     }

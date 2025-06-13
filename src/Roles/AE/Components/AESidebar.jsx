@@ -51,6 +51,34 @@ const AESidebar = () => {
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/ae/process-payments">
+               Process for Payments
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/ae/vendor-ledger">
+              Vendor Ledger
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/ae/auto-tds-booking">
+              Auto TDS Booking
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/ae/vendor-tax-mapping">
+              Vendor and Tax Mapping
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
         
          
         </ul>
