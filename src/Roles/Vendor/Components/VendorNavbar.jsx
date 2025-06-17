@@ -5,7 +5,7 @@ import { logout } from "../../../Auth/authSlice";
 import { toast } from "react-toastify";
 import ProfileImage from "../../../Auth/assets/profile-picture.jpg"
 
-const VendorNavbar = () => {
+const PHNavbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const navigate=useNavigate()
@@ -27,7 +27,7 @@ const VendorNavbar = () => {
 
 
   return (
-    <nav className="bg-green-600 text-white h-14 flex items-center justify-between px-4 md:px-8 shadow-md ">
+    <nav className="bg-green-600 text-white h-14 flex items-center justify-between px-4 md:px-8 shadow-md z-50 ">
     
       {/* Left: Role Name */}
       <div className="w-1/3"></div>
@@ -39,7 +39,7 @@ const VendorNavbar = () => {
       </div>
 
       {/* Right: Profile Image + Dropdown */}
-      <div className="relative">
+      <div className="relative z-50">
         <div
           className="flex items-center cursor-pointer"
           onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -56,7 +56,7 @@ const VendorNavbar = () => {
 
         {/* Dropdown Menu */}
         {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-40 bg-white text-black shadow-lg rounded-md">
+            <div className="absolute right-0 mt-2 w-40 bg-white text-black shadow-lg rounded-md z-50">
                     <ul className="py-1">
                             <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer">Profile</li>
                             <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer">Settings</li>
@@ -69,4 +69,4 @@ const VendorNavbar = () => {
   );
 };
 
-export default VendorNavbar;
+export default PHNavbar;

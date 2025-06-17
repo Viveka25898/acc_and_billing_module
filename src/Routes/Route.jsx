@@ -42,10 +42,12 @@ import VendorCreationForm from "../Features/Vendor Creation Process/VendorCreati
 import VendorTable from "../Features/Vendor Creation Process/VendorsTable"
 import ProcessPaymentPage from "../Features/Process For Payments/ProcessPaymentPage"
 import VendorLedgerPage from "../Features/Process For Payments/VendorLedgerPage"
-import ExpenseBookingPage from "../Features/Process of Auto JV/Pages/ExpenseBookingPage"
-import TDSMappingPage from "../Features/Process of Auto JV/Pages/TDSMappingPage"
-import  VendorLedgerPagee  from "../Features/Process of Auto JV/Pages/VendorLedgerPage"
-import IncomeTaxDetailsPage from "../Features/Process of Auto JV/Pages/IncomeTaxDetailsPage"
+import TDSMapping from "../Features/Process of Auto JV for TDS Booking/Pages/TDSMapping"
+import StatutorySetup from "../Features/Process of Auto JV for TDS Booking/Pages/StatutorySetup"
+import ExpenseBookingPage from "../Features/Process of Auto JV for TDS Booking/Pages/ExpenseBooking"
+import VendorLedger from "../Features/Process of Auto JV for TDS Booking/Pages/VendorLedger"
+import FixedAssetPOsTable from "../Features/Process for Fixed Assets/Pages/FixedAssetsPOsTable"
+import PHInvoiceHistory from "../Features/PurchaseBookingHKMaterial/PHInvoiceHistory"
 
 
 export const router=createBrowserRouter([
@@ -151,6 +153,7 @@ export const router=createBrowserRouter([
             }
         ]
     },
+    // *************************************Manager********************************************
     {
         path:"/dashboard/manager",
         element:(
@@ -166,9 +169,14 @@ export const router=createBrowserRouter([
             {
                 path:"material-request-approval",
                 element:<MaterialRequestApprovalTable/>
+            },
+            {
+                path:"create-statutory-details",
+                element:<StatutorySetup/>
             }
         ]
     },
+    // *************************************Project Head********************************************
     {
         path:"/dashboard/ph",
         element:(
@@ -192,9 +200,14 @@ export const router=createBrowserRouter([
             {
                 path:"invoice-review",
                 element:<PHInvoiceReview/>
+            },
+            {
+                path:"invoice-history",
+                element:<PHInvoiceHistory/>
             }
         ]
     },
+    // *************************************Vendor********************************************
     {
         path:"/dashboard/vendor",
         element:(
@@ -231,6 +244,10 @@ export const router=createBrowserRouter([
                 path:"my-invoices",
                 element:<MyInvoiceUpload/>
             },
+            {
+                path:"fixed-assets-purchase-orders",
+                element:<FixedAssetPOsTable/>
+            }
             
         ]
     },
@@ -272,20 +289,16 @@ export const router=createBrowserRouter([
                 element:<VendorLedgerPage/>
             },
             {
-                path:"auto-tds-booking",
+                path:"map-tds",
+                element:<TDSMapping/>
+            },
+            {
+                path:"expense-booking",
                 element:<ExpenseBookingPage/>
             },
             {
-                path:"vendor-tax-mapping",
-                element:<TDSMappingPage/>
-            },
-            {
                 path:"vendor-ledger-page",
-                element:<VendorLedgerPagee/>
-            },
-            {
-                path:"income-tax-details",
-                element:<IncomeTaxDetailsPage/>
+                element:<VendorLedger/>
             }
         ]
     }

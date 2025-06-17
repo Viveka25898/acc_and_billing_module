@@ -83,6 +83,31 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
             ></textarea>
           </div>
 
+          {/* **************Fixed Assets*************** */}
+          {invoice.type === "Fixed Asset" && invoice.assetDetails && (
+  <div className="border-t pt-4">
+    <h3 className="font-semibold text-base mb-2 text-blue-800">Fixed Asset Details</h3>
+    <div className="grid md:grid-cols-2 gap-4 text-sm">
+      <div>
+        <label className="block font-medium">Asset Name</label>
+        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.assetName || "-"}</div>
+      </div>
+      <div>
+        <label className="block font-medium">Asset Category</label>
+        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.assetCategory || "-"}</div>
+      </div>
+      <div>
+        <label className="block font-medium">Serial Number</label>
+        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.serialNumber || "-"}</div>
+      </div>
+      <div>
+        <label className="block font-medium">Location</label>
+        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.location || "-"}</div>
+      </div>
+    </div>
+  </div>
+)}
+
           {/* 📄 Document Preview */}
           {invoice.documentUrl && (
             <div className="mt-4">

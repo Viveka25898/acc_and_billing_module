@@ -1,14 +1,16 @@
-
 import { useRef, useState } from "react";
-import {NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 const GenerateDCForm = () => {
+  const [dcNumber] = useState(`DC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+
   const [dcDetails, setDcDetails] = useState({
     poNumber: "",
     dcDate: "",
     fromLocation: "",
     toLocation: "",
     remarks: "",
+    vendorName: "", // ✅ Added vendor/site name field
   });
 
   const [items, setItems] = useState([
@@ -44,7 +46,7 @@ const GenerateDCForm = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setShowDownloadOptions(true);
-    console.log("Generated DC Payload:", { ...dcDetails, items });
+    console.log("Generated DC Payload:", { dcNumber, ...dcDetails, items });
   };
 
   const handlePrint = () => {
@@ -54,26 +56,37 @@ const GenerateDCForm = () => {
     document.body.innerHTML = printContent.innerHTML;
     window.print();
     document.body.innerHTML = originalContents;
-    window.location.reload(); // reload to rehydrate React
+    window.location.reload();
   };
-
-
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 bg-white shadow-md">
       <div className="text-right">
-      <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold">
-        <NavLink to={"/dashboard/vendor/my-dc"} >
-           My DC
-        </NavLink>
-       
-      </button>
-</div>
+        <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold">
+          <NavLink to={"/dashboard/vendor/my-dc"}>
+            My DC
+          </NavLink>
+        </button>
+      </div>
 
       <h2 className="text-2xl text-green-600 font-semibold mb-6">Generate Delivery Challan (DC)</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div ref={formRef} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* ✅ Optional Vendor/Site Name Field */}
+          <div>
+            <label className="block mb-1 font-medium">Site Name</label>
+            <input
+              type="text"
+              name="vendorName"
+              value={dcDetails.vendorName}
+              onChange={handleDcChange}
+              placeholder="e.g. ABC Pvt Ltd"
+              className="input input-bordered w-full p-2 border border-gray-300 rounded"
+            />
+          </div>
+
+          {/* Main Input Fields */}
           {[
             { label: "PO Reference Number", name: "poNumber", type: "text", placeholder: "PO Reference Number" },
             { label: "DC Date", name: "dcDate", type: "date" },
@@ -95,6 +108,7 @@ const GenerateDCForm = () => {
           ))}
         </div>
 
+        {/* Items Section */}
         <div>
           <label className="block font-medium mb-2">Items</label>
           {items.map((item, index) => (
@@ -140,6 +154,7 @@ const GenerateDCForm = () => {
           </button>
         </div>
 
+        {/* Remarks */}
         <div>
           <label className="block font-medium mb-2">Remarks</label>
           <textarea
@@ -152,11 +167,13 @@ const GenerateDCForm = () => {
           ></textarea>
         </div>
 
+        {/* Submit */}
         <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 w-full sm:w-auto">
           Generate DC
         </button>
       </form>
 
+      {/* Print Button */}
       {showDownloadOptions && (
         <div className="flex justify-end gap-4 mt-4">
           <button
@@ -165,14 +182,15 @@ const GenerateDCForm = () => {
           >
             🖨️ Print DC
           </button>
-          
         </div>
       )}
 
       {/* ✅ Hidden Print Section */}
       <div ref={printRef} className="hidden print:block p-6 text-black font-sans">
         <h2 className="text-xl font-bold mb-4 text-center">Delivery Challan</h2>
+        <p><strong>DC Number:</strong> {dcNumber}</p>
         <p><strong>PO Number:</strong> {dcDetails.poNumber}</p>
+        <p><strong>Vendor / Site:</strong> {dcDetails.vendorName}</p>
         <p><strong>DC Date:</strong> {dcDetails.dcDate}</p>
         <p><strong>From:</strong> {dcDetails.fromLocation}</p>
         <p><strong>To:</strong> {dcDetails.toLocation}</p>
