@@ -48,6 +48,7 @@ import ExpenseBookingPage from "../Features/Process of Auto JV for TDS Booking/P
 import VendorLedger from "../Features/Process of Auto JV for TDS Booking/Pages/VendorLedger"
 import FixedAssetPOsTable from "../Features/Process for Fixed Assets/Pages/FixedAssetsPOsTable"
 import PHInvoiceHistory from "../Features/PurchaseBookingHKMaterial/PHInvoiceHistory"
+import FixedAssetEntryPage from "../Features/Process for Fixed Assets/Pages/FixedAssetEntryPage"
 
 
 export const router=createBrowserRouter([
@@ -299,6 +300,10 @@ export const router=createBrowserRouter([
             {
                 path:"vendor-ledger-page",
                 element:<VendorLedger/>
+            },
+            {
+                path:"fixed-asset-entry/:invoiceId",
+                element:<FixedAssetEntryPage/>
             }
         ]
     }

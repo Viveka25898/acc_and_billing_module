@@ -13,7 +13,7 @@ export default function ProcessPaymentPage() {
   const [editableData, setEditableData] = useState([]);
 
   const handleFileUpload = async (file) => {
-    debugger;
+    
     const data = await parseExcelFile(file);
     setParsedData(data);
     setIsModalOpen(true);
@@ -21,14 +21,14 @@ export default function ProcessPaymentPage() {
   };
 
   const handleCloseModal = () => {
-    debugger;
+    
     setIsModalOpen(false);
     setEditMode(false);
     setParsedData([]);
   };
 
   const handleRequestChanges = (data) => {
-    debugger;
+    
     setEditableData(data);       // ✅ correct value
     setEditMode(true);
     setIsModalOpen(false);

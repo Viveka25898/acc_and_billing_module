@@ -6,7 +6,7 @@ export default function UploadPaymentFile({ onFileUpload }) {
   const fileInputRef = useRef(null);
 
   const handleChange = (e) => {
-    debugger;
+    
     const file = e.target.files[0];
     if (file && file.name.endsWith(".xlsx")) {
       onFileUpload(file);
