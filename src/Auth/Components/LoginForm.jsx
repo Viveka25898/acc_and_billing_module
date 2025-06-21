@@ -46,6 +46,8 @@ const LoginForm=(props)=>{
                       else if(role==="ph") navigate("/dashboard/ph")
                         else if(role==="vendor") navigate("/dashboard/vendor")
                           else if(role==="ae") navigate("/dashboard/ae")
+                            else if(role==="compliance-team") navigate("/dashboard/compliance-team")
+                              else if(role==="compliance-manager") navigate("/dashboard/compliance-manager")
                   //For Toaster
                   localStorage.setItem("showLoginToast", "true");
 
@@ -104,6 +106,8 @@ const LoginForm=(props)=>{
                             <option value="ph" className="font-mulish">PH</option>
                             <option value="vendor" className="font-mulish">Vendor</option>
                             <option value="ae" className="font-mulish">Account Executive</option>
+                            <option value="compliance-team" className="font-mulish">Compliance Team</option>
+                             <option value="compliance-manager" className="font-mulish">Compliance Manager</option>
                            
 
                             

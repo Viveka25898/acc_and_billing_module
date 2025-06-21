@@ -49,6 +49,15 @@ import VendorLedger from "../Features/Process of Auto JV for TDS Booking/Pages/V
 import FixedAssetPOsTable from "../Features/Process for Fixed Assets/Pages/FixedAssetsPOsTable"
 import PHInvoiceHistory from "../Features/PurchaseBookingHKMaterial/PHInvoiceHistory"
 import FixedAssetEntryPage from "../Features/Process for Fixed Assets/Pages/FixedAssetEntryPage"
+import ComplianceTeamDashboard from "../Roles/Compliance Team/Pages/ComplianceTeamDashboard"
+import ComplianceTeamHome from "../Roles/Compliance Team/Components/ComplianceTeamHome"
+import ComplianceEntryPage from "../Features/Payment Entry For Statutory Compliances/Pages/ComplianceEntryPage"
+import ComplianceTeamSubmittedEntries from "../Features/Payment Entry For Statutory Compliances/Pages/ComplianceTeamSubmittedEntries"
+import ComplianceManagerHome from "../Roles/Compliance Manager/Components/ComplianceManagerHome"
+import ComplianceManagerDashboard from "../Roles/Compliance Manager/Pages/ComplianceManagerDashboard"
+import ComplianceManagerApprovalPage from "../Features/Payment Entry For Statutory Compliances/Pages/ComplianceManagerAprovalPage"
+import AEPendingCompliancePage from "../Features/Payment Entry For Statutory Compliances/Pages/AEPendingCompliancePage"
+import AEPaidCompliancePage from "../Features/Payment Entry For Statutory Compliances/Pages/AEPaidCompliancePage"
 
 
 export const router=createBrowserRouter([
@@ -304,7 +313,64 @@ export const router=createBrowserRouter([
             {
                 path:"fixed-asset-entry/:invoiceId",
                 element:<FixedAssetEntryPage/>
+            },
+            {
+                path:"pending-compliance-requests",
+                element:<AEPendingCompliancePage/>
+            },
+            {
+                path:"paid-compliance-page",
+                element:<AEPaidCompliancePage/>
             }
         ]
+    },
+
+// *********************************************Compliance Team*********************************
+
+    {
+        path:"dashboard/compliance-team",
+        element:(
+            <ProtectedRoute allowedRoles={["compliance-team"]}>
+                <ComplianceTeamDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+                {
+                    index:true,
+                    element:<ComplianceTeamHome/>
+                },
+                {
+                    path:"compliance-entry-form",
+                    element:<ComplianceEntryPage/>
+                },
+                {
+                    path:"submitted-entries",
+                    element:<ComplianceTeamSubmittedEntries/>
+                }
+        ]
+
+    },
+
+    // *************************************Compliance Manager******************************************
+
+     {
+        path:"dashboard/compliance-manager",
+        element:(
+            <ProtectedRoute allowedRoles={["compliance-manager"]}>
+                <ComplianceManagerDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+                {
+                    index:true,
+                    element:<ComplianceManagerHome/>
+                },
+                {
+                    path:"statutory-compliances-requests",
+                    element:<ComplianceManagerApprovalPage/>
+                }
+               
+        ]
+
     }
 ])
