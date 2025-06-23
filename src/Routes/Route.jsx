@@ -58,6 +58,11 @@ import ComplianceManagerDashboard from "../Roles/Compliance Manager/Pages/Compli
 import ComplianceManagerApprovalPage from "../Features/Payment Entry For Statutory Compliances/Pages/ComplianceManagerAprovalPage"
 import AEPendingCompliancePage from "../Features/Payment Entry For Statutory Compliances/Pages/AEPendingCompliancePage"
 import AEPaidCompliancePage from "../Features/Payment Entry For Statutory Compliances/Pages/AEPaidCompliancePage"
+import PayrollTeamDashboard from "../Roles/Payroll Team/Pages/PayrollTeamDashboard"
+import PayrollTeamHome from "../Roles/Payroll Team/Components/PayrollTeamHome"
+import PayrollPaymentEntryPage from "../Features/Payment Entry for Salaries/Pages/PayrollPaymentEntryPage"
+import PayrollTeamSubmittedEntriesPage from "../Features/Payment Entry for Salaries/Components/PayrollTeamSubmittedEntriesPage"
+import AEPendingRequestsPage from "../Features/Payment Entry for Salaries/Pages/AEPendingRequestPage"
 
 
 export const router=createBrowserRouter([
@@ -321,6 +326,10 @@ export const router=createBrowserRouter([
             {
                 path:"paid-compliance-page",
                 element:<AEPaidCompliancePage/>
+            },
+            {
+                path:"salaries-pending-approvals",
+                element:<AEPendingRequestsPage/>
             }
         ]
     },
@@ -372,5 +381,28 @@ export const router=createBrowserRouter([
                
         ]
 
+    },
+    // ******************************************Payroll Team***********************************************
+    {
+        path:"dashboard/payroll-team",
+        element:(
+            <ProtectedRoute allowedRoles={["payroll-team"]}>
+                <PayrollTeamDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+            {
+                index:true,
+                element:<PayrollTeamHome/>
+            },
+            {
+                path:"payroll-payment-entry",
+                element:<PayrollPaymentEntryPage/>
+            },
+            {
+                path:"my-entries",
+                element:<PayrollTeamSubmittedEntriesPage/>
+            }
+        ]
     }
 ])
