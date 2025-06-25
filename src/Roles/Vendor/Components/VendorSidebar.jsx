@@ -63,6 +63,13 @@ const VendorSidebar = () => {
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/vendor/onetime-expense-professional-fees-po">
+                OneTime Expense/Professional Fees Po's
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
        
         </ul>
       </div>

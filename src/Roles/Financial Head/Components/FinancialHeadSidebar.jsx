@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 import { useState } from "react";
-import { FaBars, FaTimes } from "react-icons/fa";
+import { FaBars, FaChevronDown, FaChevronUp, FaTimes } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 
 
-const ManagerSidebar = () => {
+const FinancialHeadSidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -24,51 +24,34 @@ const ManagerSidebar = () => {
         } transition-transform lg:translate-x-0 lg:w-48 lg:block`}
       >
         {/* Sidebar Header */}
-        <div className="p-4 text-xl font-semibold bg-green-800 text-center">   
-         Manager
+        <div className="p-4 text-xl font-semibold bg-green-800 text-center">
+         
+        Financial Head
         </div>
 
         {/* Sidebar Menu */}
         <ul className="mt-6">
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/manager">
+              <NavLink to="/dashboard/financial-head">
                 Dashboard
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
 
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/manager/material-request-approval">
-                Requests For Material
+              <NavLink to="/dashboard/financial-head/invoice-approval">
+                Invoice Approval
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
 
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/manager/create-statutory-details">
-                Create Income Tax Statutory Details
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/manager/generate-po">
-               Geneerate PO for One-time Expense or Professional fees
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/manager/invoice-verification">
-               Verify Invoices
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-       
+        
+        
+         
         </ul>
       </div>
     </>
   );
 };
 
-export default ManagerSidebar;
+export default FinancialHeadSidebar;

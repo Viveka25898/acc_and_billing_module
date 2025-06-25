@@ -63,6 +63,15 @@ import PayrollTeamHome from "../Roles/Payroll Team/Components/PayrollTeamHome"
 import PayrollPaymentEntryPage from "../Features/Payment Entry for Salaries/Pages/PayrollPaymentEntryPage"
 import PayrollTeamSubmittedEntriesPage from "../Features/Payment Entry for Salaries/Components/PayrollTeamSubmittedEntriesPage"
 import AEPendingRequestsPage from "../Features/Payment Entry for Salaries/Pages/AEPendingRequestPage"
+import GeneratePOPage from "../Features/Expense Booking other than Uniform and Materials/Pages/GeneratePOPage"
+import MyPOsList from "../Features/Expense Booking other than Uniform and Materials/Pages/MyPOList"
+import VendorUploadInvoicePage from "../Features/Expense Booking other than Uniform and Materials/Pages/VendorUploadInvoicePage"
+import VendorPOListPage from "../Features/Expense Booking other than Uniform and Materials/Pages/VendorPoListPage"
+import VendorMyInvoicesPage from "../Features/Expense Booking other than Uniform and Materials/Pages/VendorMyInvoicePage"
+import InvoiceVerificationPage from "../Features/Expense Booking other than Uniform and Materials/Pages/InvoiceVerificationPage"
+import FinancialHeadDashboard from "../Roles/Financial Head/Pages/FinancialHeadDashboard"
+import FinancialHeadHome from "../Roles/Financial Head/Components/FinancialHeadHome"
+import FinancialHeadInvoiceApprovalPage from "../Features/Expense Booking other than Uniform and Materials/Pages/FinancialHeadInvoiceApprovalPage"
 
 
 export const router=createBrowserRouter([
@@ -188,6 +197,18 @@ export const router=createBrowserRouter([
             {
                 path:"create-statutory-details",
                 element:<StatutorySetup/>
+            },
+            {
+                path:"generate-po",
+                element:<GeneratePOPage/>
+            },
+            {
+                path:"my-po",
+                element:<MyPOsList/>
+            },
+            {
+                path:"invoice-verification",
+                element:<InvoiceVerificationPage/>
             }
         ]
     },
@@ -262,6 +283,18 @@ export const router=createBrowserRouter([
             {
                 path:"fixed-assets-purchase-orders",
                 element:<FixedAssetPOsTable/>
+            },
+            {
+                path:"onetime-expense-professional-fees-po",
+                element:<VendorPOListPage/>
+            },
+            {
+                path:"onetime-expense-professional-fees-upload-invoice",
+                element:<VendorUploadInvoicePage/>
+            },
+            {
+                path:"my-invoice-page",
+                element:<VendorMyInvoicesPage/>
             }
             
         ]
@@ -402,6 +435,25 @@ export const router=createBrowserRouter([
             {
                 path:"my-entries",
                 element:<PayrollTeamSubmittedEntriesPage/>
+            }
+        ]
+    },
+    // ****************************************Financial Head*********************************************
+    {
+        path:"dashboard/financial-head",
+        element:(
+            <ProtectedRoute allowedRoles={["financial-head"]}>
+                <FinancialHeadDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+            {
+                index:true,
+                element:<FinancialHeadHome/>
+            },
+            {
+                path:"invoice-approval",
+                element:<FinancialHeadInvoiceApprovalPage/>
             }
         ]
     }
