@@ -72,6 +72,13 @@ import InvoiceVerificationPage from "../Features/Expense Booking other than Unif
 import FinancialHeadDashboard from "../Roles/Financial Head/Pages/FinancialHeadDashboard"
 import FinancialHeadHome from "../Roles/Financial Head/Components/FinancialHeadHome"
 import FinancialHeadInvoiceApprovalPage from "../Features/Expense Booking other than Uniform and Materials/Pages/FinancialHeadInvoiceApprovalPage"
+import SubmitConveyancePage from "../Features/Process For Conveyance Booking/Pages/SubmitConveyancePage"
+import MyConveyanceRequestsPage from "../Features/Process For Conveyance Booking/Pages/MyConveyanceRequestPage"
+import ManagerConveyanceApprovalsPage from "../Features/Process For Conveyance Booking/Pages/ConveyanceApprovalPage"
+import LinemanagerConveyanceFormPage from "../Features/Process For Conveyance Booking/Pages/LineManagerConveyanceFormPage"
+import VPOperationsConveyanceApprovalPage from "../Features/Process For Conveyance Booking/Pages/VPOperationsConveyanceApprovalPage"
+import VPConveyanceFormPage from "../Features/Process For Conveyance Booking/Pages/VPConveyanceFormPage"
+import AEConveyanceApprovalPage from "../Features/Process For Conveyance Booking/Pages/AEConveyanceApprovalPage"
 
 
 export const router=createBrowserRouter([
@@ -112,6 +119,14 @@ export const router=createBrowserRouter([
             {
                 path:"my-settelment-requests",
                 element:<MySettlements/>
+            },
+            {
+                path:"conveyance-form",
+                element:<SubmitConveyancePage/>
+            },
+            {
+                path:"my-conveyance-requests",
+                element:<MyConveyanceRequestsPage/>
             }
         ]
     },
@@ -136,6 +151,18 @@ export const router=createBrowserRouter([
             {
                 path:"advance-settelment",
                 element:<ExpenseRequestsPage/>
+            },
+            {
+                path:"conveyance-approval",
+                element:<ManagerConveyanceApprovalsPage/>
+            },
+            {
+                path:"conveyance-form",
+                element:<LinemanagerConveyanceFormPage/>
+            },
+            {
+                path:"my-conveyance-requests",
+                element:<MyConveyanceRequestsPage/>
             }
         ]
     },
@@ -155,6 +182,18 @@ export const router=createBrowserRouter([
             {
                 path:"vp-advance-approval",
                 element:<VPApproval/>
+            },
+            {
+                path:"vp-conveyance-approval",
+                element:<VPOperationsConveyanceApprovalPage/>
+            },
+            {
+                path:"conveyance-form",
+                element:<VPConveyanceFormPage/>
+            },
+             {
+                path:"my-conveyance-requests",
+                element:<MyConveyanceRequestsPage/>
             }
         ]
     },
@@ -363,6 +402,10 @@ export const router=createBrowserRouter([
             {
                 path:"salaries-pending-approvals",
                 element:<AEPendingRequestsPage/>
+            },
+            {
+                path:"conveyance-approval",
+                element:<AEConveyanceApprovalPage/>
             }
         ]
     },

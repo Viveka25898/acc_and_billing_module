@@ -31,7 +31,7 @@ const VPSidebar = () => {
         {/* Sidebar Menu */}
         <ul className="mt-6">
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager">
+              <NavLink to="/dashboard/vp-operations">
                 Dashboard
               </NavLink>
         </li>
@@ -40,6 +40,13 @@ const VPSidebar = () => {
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
               <NavLink to="/dashboard/vp-operations/vp-advance-approval">
                 Employee Advance Approval
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/vp-operations/vp-conveyance-approval">
+                Conveyance Approval
               </NavLink>
         </li>
         <hr className="border-white mx-4" />

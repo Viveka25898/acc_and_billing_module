@@ -50,6 +50,13 @@ const LineManagerSidebar = () => {
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/line-manager/conveyance-approval">
+                Conveyance Approval
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
        
         </ul>
       </div>
