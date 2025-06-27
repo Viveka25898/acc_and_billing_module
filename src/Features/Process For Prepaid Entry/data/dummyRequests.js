@@ -1,0 +1,86 @@
+// File: src/features/prepaidEntry/constants/dummyData.js
+
+const dummyRequests = [
+  {
+    id: 1,
+    site: "Mumbai Central",
+    uniformType: "Winter Jacket",
+    quantity: 50,
+    cost: 25000,
+    status: "Pending",
+  },
+  {
+    id: 2,
+    site: "Delhi South",
+    uniformType: "Reflective Vest",
+    quantity: 120,
+    cost: 18000,
+    status: "Pending",
+  },
+  {
+    id: 3,
+    site: "Bangalore North",
+    uniformType: "Raincoat",
+    quantity: 75,
+    cost: 22500,
+    status: "Approved",
+  },
+  {
+    id: 4,
+    site: "Pune Industrial",
+    uniformType: "Helmet",
+    quantity: 100,
+    cost: 20000,
+    status: "Rejected",
+  },
+  {
+    id: 5,
+    site: "Hyderabad Zone A",
+    uniformType: "Boots",
+    quantity: 60,
+    cost: 30000,
+    status: "Pending",
+  },
+  {
+    id: 6,
+    site: "Chennai Dock",
+    uniformType: "T-Shirt",
+    quantity: 200,
+    cost: 40000,
+    status: "Approved",
+  },
+  {
+    id: 7,
+    site: "Ahmedabad Yard",
+    uniformType: "Cap",
+    quantity: 90,
+    cost: 13500,
+    status: "Rejected",
+  },
+  {
+    id: 8,
+    site: "Kolkata East",
+    uniformType: "Safety Belt",
+    quantity: 110,
+    cost: 27500,
+    status: "Pending",
+  },
+  {
+    id: 9,
+    site: "Jaipur City",
+    uniformType: "Gloves",
+    quantity: 150,
+    cost: 15000,
+    status: "Approved",
+  },
+  {
+    id: 10,
+    site: "Nagpur HQ",
+    uniformType: "Full Uniform Set",
+    quantity: 80,
+    cost: 80000,
+    status: "Pending",
+  },
+];
+
+export default dummyRequests;

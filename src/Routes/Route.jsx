@@ -79,6 +79,16 @@ import LinemanagerConveyanceFormPage from "../Features/Process For Conveyance Bo
 import VPOperationsConveyanceApprovalPage from "../Features/Process For Conveyance Booking/Pages/VPOperationsConveyanceApprovalPage"
 import VPConveyanceFormPage from "../Features/Process For Conveyance Booking/Pages/VPConveyanceFormPage"
 import AEConveyanceApprovalPage from "../Features/Process For Conveyance Booking/Pages/AEConveyanceApprovalPage"
+import PHRequestApprovalPage from "../Features/Process For Prepaid Entry/Pages/PH/PHRequestsAprovalPage"
+import POForm from "../Features/Process For Prepaid Entry/Pages/PH/POForm"
+import PHGeneratePOPage from "../Features/Process For Prepaid Entry/Pages/PH/PhGeneratePOPage"
+import InvoiceUploadForm from "../Features/Process For Prepaid Entry/Pages/Vendor/InvoiceUploadForm"
+import VendorRequestsPage from "../Features/Process For Prepaid Entry/Pages/Vendor/VendorRequestsPage"
+import VendorGenerateDCPage from "../Features/Process For Prepaid Entry/Pages/Vendor/VendorGenerateDCPage"
+import DCPreviewPage from "../Features/Process For Prepaid Entry/Pages/Vendor/DCPreviewPage"
+import POSummary from "../Features/Process For Prepaid Entry/Pages/PH/PoSummery"
+import PInvoiceUploadForm from "../Features/Process For Prepaid Entry/Pages/Vendor/InvoiceUploadForm"
+import VendorInvoiceForm from "../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoiceForm"
 
 
 export const router=createBrowserRouter([
@@ -279,6 +289,14 @@ export const router=createBrowserRouter([
             {
                 path:"invoice-history",
                 element:<PHInvoiceHistory/>
+            },
+            {
+                path:"procurement-approval-requests",
+                element:<PHRequestApprovalPage/>
+            },
+            {
+                path:"procurement-po-form",
+                element:<PHGeneratePOPage/>
             }
         ]
     },
@@ -334,6 +352,30 @@ export const router=createBrowserRouter([
             {
                 path:"my-invoice-page",
                 element:<VendorMyInvoicesPage/>
+            },
+            {
+                path:"procurement-po",
+                element:<VendorRequestsPage/>
+            },
+            {
+                path:"generate-dc-procurement",
+                element:<VendorGenerateDCPage/>
+            },
+            {
+                path:"dc-preview-page",
+                element:<DCPreviewPage/>
+            },
+            {
+                path:"po-preview",
+                element:<POSummary/>
+            },
+            {
+                path:"procurement-my-dc",
+                element:<VendorDCPage/>
+            },
+            {
+                path:"invoice-upload-form",
+                element:<VendorInvoiceForm/>
             }
             
         ]
