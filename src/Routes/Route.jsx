@@ -88,7 +88,14 @@ import VendorGenerateDCPage from "../Features/Process For Prepaid Entry/Pages/Ve
 import DCPreviewPage from "../Features/Process For Prepaid Entry/Pages/Vendor/DCPreviewPage"
 import POSummary from "../Features/Process For Prepaid Entry/Pages/PH/PoSummery"
 import PInvoiceUploadForm from "../Features/Process For Prepaid Entry/Pages/Vendor/InvoiceUploadForm"
-import VendorInvoiceForm from "../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoiceForm"
+import VendorInvoiceForm from "../Features/Process For Prepaid Entry/Components/VendorInvoiceForm"
+import VendorInvoicePage from "../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoicePage"
+import VendorInvoicePreviewPage from "../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoicePreviewPage"
+import MyInvoicesPage from "../Features/Process For Prepaid Entry/Pages/Vendor/MyInvoiceTable"
+import PHInvoiceApprovalPage from "../Features/Process For Prepaid Entry/Pages/PH/PHInvoiceApprovalPage"
+import BillingManagerHome from "../Roles/Billing Manager/Components/BillingManagerHome"
+import BillngManagerDashboard from "../Roles/Billing Manager/Pages/BillingManagerDashboard"
+import BillingManagerApprovalPage from "../Features/Process For Prepaid Entry/Pages/Billing Manager/BillingMnagerApprovalPage"
 
 
 export const router=createBrowserRouter([
@@ -297,6 +304,10 @@ export const router=createBrowserRouter([
             {
                 path:"procurement-po-form",
                 element:<PHGeneratePOPage/>
+            },
+            {
+                path:"procurement-invoice-review",
+                element:<PHInvoiceApprovalPage/>
             }
         ]
     },
@@ -375,7 +386,15 @@ export const router=createBrowserRouter([
             },
             {
                 path:"invoice-upload-form",
-                element:<VendorInvoiceForm/>
+                element:<VendorInvoicePage/>
+            },
+            {
+                path:"vendor-invoice-preview",
+                element:<VendorInvoicePreviewPage/>
+            },
+            {
+                path:"procurement-my-invoiice-table",
+                element:<MyInvoicesPage/>
             }
             
         ]
@@ -541,5 +560,26 @@ export const router=createBrowserRouter([
                 element:<FinancialHeadInvoiceApprovalPage/>
             }
         ]
+    },
+    // ***********************************Billing Manager**********************************************
+    {
+        path:"dashboard/billing-manager",
+        element:(
+            <ProtectedRoute allowedRoles={["billing-manager"]}>
+                <BillngManagerDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+            {
+                index:true,
+                element:<BillingManagerHome/>
+            },
+            {
+                path:"procurement-invoice-approval",
+                element:<BillingManagerApprovalPage/>
+            }
+           
+        ]
     }
+
 ])

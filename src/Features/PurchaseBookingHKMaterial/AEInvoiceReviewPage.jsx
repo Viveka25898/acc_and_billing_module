@@ -39,7 +39,7 @@ const dummyInvoices = [
   },
   {
     id: 3,
-    type: "Fixed Asset",
+    type: "Procurement",
     invoiceNumber: "INV-003",
     vendorName: "Delta Solutions",
     totalAmount: 230000,
@@ -71,7 +71,7 @@ const dummyInvoices = [
   },
   {
     id: 5,
-    type: "Fixed Asset",
+    type: "Procurement",
     invoiceNumber: "INV-005",
     vendorName: "TechFront Pvt Ltd",
     totalAmount: 158000,
@@ -103,7 +103,7 @@ const dummyInvoices = [
   },
   {
     id: 7,
-    type: "Material",
+    type: "Procurement",
     invoiceNumber: "INV-007",
     vendorName: "Omega Traders",
     totalAmount: 97200,
@@ -135,7 +135,7 @@ const dummyInvoices = [
   },
   {
     id: 9,
-    type: "Material",
+    type: "Procurement",
     invoiceNumber: "INV-009",
     vendorName: "Sunrise Traders",
     totalAmount: 52000,
@@ -165,6 +165,19 @@ const dummyInvoices = [
       location: "HO, Hyderabad",
     },
   },
+  {
+  id: 11,
+  type: "Procurement Material",
+  invoiceNumber: "INV-011",
+  vendorName: "InfraZone Pvt Ltd",
+  totalAmount: 134000,
+  status: "Pending GST Verification",
+  documentUrl: "https://example.com/invoice/inv011.pdf",
+  poDocuments: [
+    { name: "PO-003", url: "https://example.com/po-003.pdf" },
+    { name: "PO-004", url: "https://example.com/po-004.pdf" }
+  ]
+}
 ];
 
 
@@ -193,16 +206,28 @@ const InvoiceReviewPage = () => {
     setSelectedInvoice(null);
     setIsModalOpen(false);
   };
+ 
+  // Handle Update Invoice 
+ const handleUpdateInvoice = (id, status, remark = "") => {
+  const updated = invoices.map((inv) => {
+    if (inv.id === id) {
+      let finalStatus = status;
 
-  const handleUpdateInvoice=(id, status,remark="")=>{
-    const update=invoices.map((inv)=>(
-        inv.id===id ? {...inv,status,remark} : inv
-    ))
-    setInvoices(update)
-    setFilteredInvoices(update);
-    closeModal()
+      // 👉 Special condition for Procurement Material
+      if (inv.type === "Procurement Material" && status === "Approved") {
+        finalStatus = "Forwarded to Billing Manager";
+      }
 
-  }
+      return { ...inv, status: finalStatus, remark };
+    }
+    return inv;
+  });
+
+  setInvoices(updated);
+  setFilteredInvoices(updated);
+  closeModal();
+};
+
 
   //Handle Filter
   const handleFilter = (newFilters) => {
@@ -311,17 +336,24 @@ const InvoiceReviewPage = () => {
                 )}
               </td>
         <td className="p-3 border text-center">
-          <button
+         <button
             onClick={() => openModal(inv)}
             className={`px-4 py-1.5 rounded text-sm ${
-              inv.status === "Approved" || inv.status === "Rejected"
+              inv.status === "Approved" || 
+              inv.status === "Rejected" || 
+              inv.status === "Forwarded to Billing Manager"
                 ? "bg-gray-400 text-white cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
             }`}
-            disabled={inv.status === "Approved" || inv.status === "Rejected"}
+            disabled={
+              inv.status === "Approved" || 
+              inv.status === "Rejected" || 
+              inv.status === "Forwarded to Billing Manager"
+            }
           >
             View & Verify
           </button>
+
         </td>
       </tr>
     ))}

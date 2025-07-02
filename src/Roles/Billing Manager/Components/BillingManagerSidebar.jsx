@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 import { useState } from "react";
-import { FaBars, FaTimes } from "react-icons/fa";
+import { FaBars, FaChevronDown, FaChevronUp, FaTimes } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 
 
-const PHSidebar = () => {
+const BillingManagerSidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -24,52 +24,34 @@ const PHSidebar = () => {
         } transition-transform lg:translate-x-0 lg:w-48 lg:block`}
       >
         {/* Sidebar Header */}
-        <div className="p-4 text-xl font-semibold bg-green-800 text-center">   
-         Project Head
+        <div className="p-4 text-xl font-semibold bg-green-800 text-center">
+         
+        Billing-Manager
         </div>
 
         {/* Sidebar Menu */}
         <ul className="mt-6">
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/ph">
+              <NavLink to="/dashboard/billing-manager">
                 Dashboard
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/ph/material-approval-requests">
-               Material Approval Requests
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
 
          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/ph/procurement-approval-requests">
-               Procurement Approval Requests
+              <NavLink to="/dashboard/billing-manager/procurement-invoice-approval">
+               Procurement Invoices
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/ph/invoice-review">
-              Invoice from Vendor
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/ph/procurement-invoice-review">
-              Procurement Invoice from Vendor
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
 
        
+        
+         
         </ul>
       </div>
     </>
   );
 };
 
-export default PHSidebar;
+export default BillingManagerSidebar;
