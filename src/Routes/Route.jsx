@@ -96,6 +96,9 @@ import PHInvoiceApprovalPage from "../Features/Process For Prepaid Entry/Pages/P
 import BillingManagerHome from "../Roles/Billing Manager/Components/BillingManagerHome"
 import BillngManagerDashboard from "../Roles/Billing Manager/Pages/BillingManagerDashboard"
 import BillingManagerApprovalPage from "../Features/Process For Prepaid Entry/Pages/Billing Manager/BillingMnagerApprovalPage"
+import UploadStatementPage from "../Features/Process For Bank Reconcilation/Pages/UploadStatementPage"
+import ReconciliationHistoryPage from "../Features/Process For Bank Reconcilation/Pages/ReconcilationHistoryPage"
+import ViewReconciliationReportPage from "../Features/Process For Bank Reconcilation/Pages/ViewReconciliationReportPage"
 
 
 export const router=createBrowserRouter([
@@ -577,6 +580,18 @@ export const router=createBrowserRouter([
             {
                 path:"procurement-invoice-approval",
                 element:<BillingManagerApprovalPage/>
+            },
+            {
+                path:"upload-statement-page",
+                element:<UploadStatementPage/>
+            },
+            {
+                path:"reconciliation-history",
+                element:<ReconciliationHistoryPage/>
+            },
+            {
+                path:"reconciliation-report-page/:id",
+                element:<ViewReconciliationReportPage/>
             }
            
         ]

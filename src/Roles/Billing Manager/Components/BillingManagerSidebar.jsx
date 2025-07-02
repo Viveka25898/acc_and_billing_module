@@ -45,6 +45,13 @@ const BillingManagerSidebar = () => {
         </li>
         <hr className="border-white mx-4" />
 
+         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/billing-manager/upload-statement-page">
+               Bank Reconciliation
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
        
         
          
