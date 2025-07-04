@@ -99,6 +99,7 @@ import BillingManagerApprovalPage from "../Features/Process For Prepaid Entry/Pa
 import UploadStatementPage from "../Features/Process For Bank Reconcilation/Pages/UploadStatementPage"
 import ReconciliationHistoryPage from "../Features/Process For Bank Reconcilation/Pages/ReconcilationHistoryPage"
 import ViewReconciliationReportPage from "../Features/Process For Bank Reconcilation/Pages/ViewReconciliationReportPage"
+import RentExpenseBookingPage from "../Features/Process For Rent Expense Booking/Pages/RentExpenseBookingPage"
 
 
 export const router=createBrowserRouter([
@@ -592,6 +593,10 @@ export const router=createBrowserRouter([
             {
                 path:"reconciliation-report-page/:id",
                 element:<ViewReconciliationReportPage/>
+            },
+            {
+                path:"rent-expense-booking",
+                element:<RentExpenseBookingPage/>
             }
            
         ]
