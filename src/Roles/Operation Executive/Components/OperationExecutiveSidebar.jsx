@@ -4,7 +4,7 @@ import { FaBars, FaTimes } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 
 
-const VPSidebar = () => {
+const OperationExecutiveSidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -25,38 +25,26 @@ const VPSidebar = () => {
       >
         {/* Sidebar Header */}
         <div className="p-4 text-xl font-semibold bg-green-800 text-center">   
-         VP Operations
+         Operation Executive
         </div>
 
         {/* Sidebar Menu */}
         <ul className="mt-6">
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/vp-operations">
+              <NavLink to="/dashboard/operation-executive">
                 Dashboard
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
 
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/vp-operations/vp-advance-approval">
-                Employee Advance Approval
+              <NavLink to="/dashboard/operation-executive/oe-reliver-form">
+               Reliever Form
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
 
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/vp-operations/vp-conveyance-approval">
-                Conveyance Approval
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/vp-operations/reliever-approval-vp-operation-page">
-                Reliver Requests Approval
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
+        
        
         </ul>
       </div>
@@ -64,4 +52,4 @@ const VPSidebar = () => {
   );
 };
 
-export default VPSidebar;
+export default OperationExecutiveSidebar;

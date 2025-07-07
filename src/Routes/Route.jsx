@@ -100,6 +100,13 @@ import UploadStatementPage from "../Features/Process For Bank Reconcilation/Page
 import ReconciliationHistoryPage from "../Features/Process For Bank Reconcilation/Pages/ReconcilationHistoryPage"
 import ViewReconciliationReportPage from "../Features/Process For Bank Reconcilation/Pages/ViewReconciliationReportPage"
 import RentExpenseBookingPage from "../Features/Process For Rent Expense Booking/Pages/RentExpenseBookingPage"
+import OperationExecutiveDashboard from "../Roles/Operation Executive/Pages/OperationExecutiveDashboard"
+import OperationExecutiveHome from "../Roles/Operation Executive/Components/OperationExecutiveHome"
+import OperationExecutiveReliverPage from "../Features/Process For Reliver Payments/Pages/OperationExecutiveReliverPage"
+import OperationExecutiveMyRequestsPage from "../Features/Process For Reliver Payments/Pages/OperationExecutiveMyRequestsPage"
+import LineManagerRelieverApprovalPage from "../Features/Process For Reliver Payments/Pages/LineManagerRelieverApprovalPage"
+import VPRelieverApprovalPage from "../Features/Process For Reliver Payments/Pages/VPRelieverApprovalPage"
+import AERelieverApprovalPage from "../Features/Process For Reliver Payments/Pages/AERelieverApprovalPage"
 
 
 export const router=createBrowserRouter([
@@ -184,6 +191,10 @@ export const router=createBrowserRouter([
             {
                 path:"my-conveyance-requests",
                 element:<MyConveyanceRequestsPage/>
+            },
+            {
+                path:"line-manager-reliever-approval",
+                element:<LineManagerRelieverApprovalPage/>
             }
         ]
     },
@@ -215,6 +226,10 @@ export const router=createBrowserRouter([
              {
                 path:"my-conveyance-requests",
                 element:<MyConveyanceRequestsPage/>
+            },
+            {
+                path:"reliever-approval-vp-operation-page",
+                element:<VPRelieverApprovalPage/>
             }
         ]
     },
@@ -471,6 +486,10 @@ export const router=createBrowserRouter([
             {
                 path:"conveyance-approval",
                 element:<AEConveyanceApprovalPage/>
+            },
+            {
+                path:"reliever-approval",
+                element:<AERelieverApprovalPage/>
             }
         ]
     },
@@ -599,6 +618,30 @@ export const router=createBrowserRouter([
                 element:<RentExpenseBookingPage/>
             }
            
+        ]
+    },
+    // ****************************Operation Executive***************************
+    {
+        path:"dashboard/operation-executive",
+        element:(
+            <ProtectedRoute allowedRoles={["operation-executive"]}>
+                <OperationExecutiveDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+            {
+                index:true,
+                element:<OperationExecutiveHome/>
+            },
+            {
+                path:"oe-reliver-form",
+                element:<OperationExecutiveReliverPage/>
+            },
+            {
+                path:"my-requests",
+                element:<OperationExecutiveMyRequestsPage/>
+            },
+            
         ]
     }
 
