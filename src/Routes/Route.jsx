@@ -107,6 +107,9 @@ import OperationExecutiveMyRequestsPage from "../Features/Process For Reliver Pa
 import LineManagerRelieverApprovalPage from "../Features/Process For Reliver Payments/Pages/LineManagerRelieverApprovalPage"
 import VPRelieverApprovalPage from "../Features/Process For Reliver Payments/Pages/VPRelieverApprovalPage"
 import AERelieverApprovalPage from "../Features/Process For Reliver Payments/Pages/AERelieverApprovalPage"
+import GSTR2BRecoPage from "../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BReco"
+import GSTR2BRecoHistoryPage from "../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BHistory"
+import GSTR2BRecoReportPage from "../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BRecoReportPage"
 
 
 export const router=createBrowserRouter([
@@ -616,6 +619,18 @@ export const router=createBrowserRouter([
             {
                 path:"rent-expense-booking",
                 element:<RentExpenseBookingPage/>
+            },
+            {
+                path:"gstr-reco-process",
+                element:<GSTR2BRecoPage/>
+            },
+            {
+                path:"gsr2b-history-page",
+                element:<GSTR2BRecoHistoryPage/>
+            },
+            {
+                path:"gstr2b-report",
+                element:<GSTR2BRecoReportPage/>
             }
            
         ]
