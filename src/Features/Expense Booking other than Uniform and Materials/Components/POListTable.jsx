@@ -16,6 +16,7 @@ export default function POListTable({ pos }) {
             <th className="p-2 border">Expense Type</th>
             <th className="p-2 border">PO Type</th>
             <th className="p-2 border">Amount</th>
+            <th className="p-2 border">Description</th> {/* ✅ Added */}
             <th className="p-2 border">Finance Head Approval</th>
           </tr>
         </thead>
@@ -27,6 +28,7 @@ export default function POListTable({ pos }) {
               <td className="p-2 border capitalize">{po.expenseType}</td>
               <td className="p-2 border capitalize">{po.poType}</td>
               <td className="p-2 border">₹{po.amount}</td>
+              <td className="p-2 border">{po.description}</td> {/* ✅ Added */}
               <td className="p-2 border capitalize">
                 {po.financeApproval === "rejected" ? (
                   <span className="text-red-600 flex items-center gap-1 justify-center">

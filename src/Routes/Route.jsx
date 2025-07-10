@@ -110,6 +110,8 @@ import AERelieverApprovalPage from "../Features/Process For Reliver Payments/Pag
 import GSTR2BRecoPage from "../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BReco"
 import GSTR2BRecoHistoryPage from "../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BHistory"
 import GSTR2BRecoReportPage from "../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BRecoReportPage"
+import ReconciliationStatement from "../Features/Process For Bank Reconcilation/Components/ReconciliationStatement"
+import ReconciliationStatementPage from "../Features/Process For Bank Reconcilation/Pages/ReconciliationStatementPage"
 
 
 export const router=createBrowserRouter([
@@ -631,6 +633,10 @@ export const router=createBrowserRouter([
             {
                 path:"gstr2b-report",
                 element:<GSTR2BRecoReportPage/>
+            },
+            {
+                path:"bank-reconciliation-page",
+                element:<ReconciliationStatementPage/>
             }
            
         ]

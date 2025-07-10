@@ -8,6 +8,7 @@ export default function StatutoryModal({ onClose, onSave, editData = null }) {
       rate: "",
       applicableFrom: "",
       remarks: "",
+      type: "",
     }
   );
   const [error, setError] = useState("");
@@ -36,7 +37,46 @@ export default function StatutoryModal({ onClose, onSave, editData = null }) {
           {editData ? "Edit Statutory Detail" : "Add Statutory Detail"}
         </h2>
         <div className="grid grid-cols-1 gap-3">
-          <input name="section" value={form.section} onChange={handleChange} placeholder="Section" className="border p-2 rounded" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <label className="font-semibold">Type:</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="type"
+                  value="Corporate"
+                  checked={form.type === "Corporate"}
+                  onChange={handleChange}
+                />
+                Corporate
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="type"
+                  value="Non-Corporate"
+                  checked={form.type === "Non-Corporate"}
+                  onChange={handleChange}
+                />
+                Non-Corporate
+              </label>
+            </div>
+          </div>
+
+         <select
+          name="section"
+          value={form.section}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        >
+          <option value="">-- Select Section --</option>
+          <option value="194C">Section 194C - Contractor</option>
+          <option value="194J">Section 194J - Professional Fees</option>
+          <option value="194H">Section 194H - Commission</option>
+          <option value="194I">Section 194I - Rent</option>
+          <option value="194A">Section 194A - Interest</option>
+        </select>
+
           <input name="description" value={form.description} onChange={handleChange} placeholder="Description" className="border p-2 rounded" />
           <input name="rate" value={form.rate} onChange={handleChange} placeholder="Rate (%)" className="border p-2 rounded" />
           <input name="applicableFrom" value={form.applicableFrom} onChange={handleChange} type="date" className="border p-2 rounded" />

@@ -123,7 +123,7 @@ export default function POForm({ onSubmit }) {
               onChange={handleChange}
               required
             />
-            One-time Service
+           Other
           </label>
         </div>
       </div>
