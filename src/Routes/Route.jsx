@@ -112,6 +112,12 @@ import GSTR2BRecoHistoryPage from "../Features/Process for GSTR2B Reconciliation
 import GSTR2BRecoReportPage from "../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BRecoReportPage"
 import ReconciliationStatement from "../Features/Process For Bank Reconcilation/Components/ReconciliationStatement"
 import ReconciliationStatementPage from "../Features/Process For Bank Reconcilation/Pages/ReconciliationStatementPage"
+import AttendanceUpload from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Components/AttendenceUpload"
+import AttendanceUploadPage from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendenceuploadPage"
+import MyUploadedAttendance from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/MyUploadAttendence"
+import AttendencePayrollDashboard from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePayrollDashboard"
+import AttendancePunchingList from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePunchingList"
+import AttendanceDetails from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendenceDetails"
 
 
 export const router=createBrowserRouter([
@@ -567,7 +573,21 @@ export const router=createBrowserRouter([
             {
                 path:"my-entries",
                 element:<PayrollTeamSubmittedEntriesPage/>
+            },
+            {
+                path:"attendence-dashboard",
+                element:<AttendencePayrollDashboard/>
+            },
+            {
+                path:"attendence-puncing-list/:siteId/:month",
+                element:<AttendancePunchingList/>
+            },
+            {
+                path:"punching-list/:siteId/:month",
+                element:<AttendanceDetails/>
             }
+           
+            
         ]
     },
     // ****************************************Financial Head*********************************************
@@ -662,6 +682,14 @@ export const router=createBrowserRouter([
                 path:"my-requests",
                 element:<OperationExecutiveMyRequestsPage/>
             },
+            {
+                path:"attendence-upload",
+                element:<AttendanceUploadPage/>
+            },
+            {
+                path:"my-uploaded-attendence",
+                element:<MyUploadedAttendance/>
+            }
             
         ]
     }
