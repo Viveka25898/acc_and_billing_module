@@ -1,9 +1,7 @@
-// File: /src/modules/advanceRequest/pages/AdvanceRequestForm.jsx
-
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
-const AdvanceRequestForm = () => {
+const ManagerAdvanceRequest = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     employeeName: '',
@@ -49,17 +47,17 @@ const AdvanceRequestForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white shadow rounded-md">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white shadow rounded-md ">
       <div className="w-full max-w-2xl p-6 ">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-green-600">Advance Request Form</h2>
           <button
-            onClick={() => navigate('/dashboard/employee/my-requests')}
+            onClick={() => navigate('/dashboard/line-manager/my-requests')}
             className="text-green-600 border border-green-600 px-4 py-1 rounded hover:bg-green-600 hover:text-white transition"
           >
-           <NavLink to="/dashboard/employee/my-requests">
+           
             My Requests
-           </NavLink>
+          
           </button>
         </div>
 
@@ -155,4 +153,4 @@ const AdvanceRequestForm = () => {
   );
 };
 
-export default AdvanceRequestForm;
+export default ManagerAdvanceRequest;

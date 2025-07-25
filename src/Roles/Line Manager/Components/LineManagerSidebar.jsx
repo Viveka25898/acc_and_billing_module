@@ -37,6 +37,13 @@ const LineManagerSidebar = () => {
         </li>
         <hr className="border-white mx-4" />
 
+         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/line-manager/advance-request">
+                Advance Request
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
               <NavLink to="/dashboard/line-manager/advance-approval">
                 Employee Advance Approval
@@ -57,6 +64,15 @@ const LineManagerSidebar = () => {
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/line-manager/conveyance-form">
+                Conveyance Form
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+        
+
 
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
               <NavLink to="/dashboard/line-manager/line-manager-reliever-approval">
@@ -64,6 +80,8 @@ const LineManagerSidebar = () => {
               </NavLink>
         </li>
         <hr className="border-white mx-4" />
+
+       
        
         </ul>
       </div>

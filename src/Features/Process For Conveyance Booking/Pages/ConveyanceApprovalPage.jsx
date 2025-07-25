@@ -169,13 +169,6 @@ export default function ManagerConveyanceApprovalsPage() {
             <h2 className="text-xl md:text-2xl font-bold text-green-600">
                 Pending Conveyance Approvals
             </h2>
-
-            <button
-                onClick={()=>navigate("/dashboard/line-manager/conveyance-form")}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-fit cursor-pointer"
-            >
-                Conveyance Form
-            </button>
         </div>
 
 

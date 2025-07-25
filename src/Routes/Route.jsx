@@ -118,6 +118,10 @@ import MyUploadedAttendance from "../Features/Billing/ATTENDANCE VERIFICATION AN
 import AttendencePayrollDashboard from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePayrollDashboard"
 import AttendancePunchingList from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePunchingList"
 import AttendanceDetails from "../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendenceDetails"
+import ManagerAdvanceRequest from "../Features/Advance Request/Pages/ManagerAdvanceRequest"
+import ManagerMyRequests from "../Features/Advance Request/Pages/ManagerMyRequests"
+import VPAdvanceRequestForm from "../Features/Advance Request/Pages/VPAdvanceRequestForm"
+import VPMyRequest from "../Features/Advance Request/Pages/VPMyRequest"
 
 
 export const router=createBrowserRouter([
@@ -184,6 +188,14 @@ export const router=createBrowserRouter([
                 element:<LineManagerHome/>
             },
             {
+                path:"advance-request",
+                element:<ManagerAdvanceRequest/>
+            },
+            {
+                path:"my-requests",
+                element:<ManagerMyRequests/>
+            },
+            {
                 path:"advance-approval",
                 element:<ManagerApproval/>
             },
@@ -221,6 +233,14 @@ export const router=createBrowserRouter([
             {
                 index:true,
                 element:<VPHome/>
+            },
+            {
+                path:"advance-request",
+                element:<VPAdvanceRequestForm/>
+            },
+            {
+                path:"my-requests",
+                element:<VPMyRequest/>
             },
             {
                 path:"vp-advance-approval",

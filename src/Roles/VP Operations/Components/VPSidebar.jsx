@@ -38,6 +38,13 @@ const VPSidebar = () => {
         <hr className="border-white mx-4" />
 
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/vp-operations/advance-request">
+                Advance Request
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
               <NavLink to="/dashboard/vp-operations/vp-advance-approval">
                 Employee Advance Approval
               </NavLink>
