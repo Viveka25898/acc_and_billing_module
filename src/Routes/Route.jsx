@@ -1,4 +1,4 @@
-import {createBrowserRouter, Outlet} from "react-router-dom"
+import {createBrowserRouter, Navigate, Outlet} from "react-router-dom"
 import AuthLayout from "../Auth/AuthLayout"
 import Login from "../Auth/Pages/Login"
 import ProtectedRoute from "./ProtectedRoute"
@@ -126,14 +126,18 @@ import VPMyRequest from "../Features/Advance Request/Pages/VPMyRequest"
 
 export const router=createBrowserRouter([
     {
-        path:"/login",
-        element:(
-            <AuthLayout>
-                <Login/>
-            </AuthLayout>
-        ),
-        errorElement: <h1>Page Not Found!</h1>, // Graceful error handling
-    },
+    path: "/",
+    element: <Navigate to="/login" replace />,
+  },
+  {
+    path: "/login",
+    element: (
+      <AuthLayout>
+        <Login />
+      </AuthLayout>
+    ),
+    errorElement: <h1>Page Not Found!</h1>,
+  },
     // ***********************************Employee***************************************************************
     {
         path:"/dashboard/employee",
