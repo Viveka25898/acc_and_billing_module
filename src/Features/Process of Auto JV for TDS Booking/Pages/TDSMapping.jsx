@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useState } from "react";
-import { vendorData } from "../data/vendorDummyData";
 import VendorTDSModal from "../components/mapping/VendorTDSModal";
+import {vendorData} from "../data/VendorDummyData"
 import VendorTDSFilter from "../components/mapping/VendorTDSFilter";
 import { toast } from "react-toastify";
 
