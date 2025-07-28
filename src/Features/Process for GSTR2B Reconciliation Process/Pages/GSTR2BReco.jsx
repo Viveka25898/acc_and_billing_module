@@ -5,7 +5,7 @@ import { matchGSTR2BWithBooks } from "../utils/matchGSTR2BWithBooks";
 import { dummyGSTR2BData } from "../data/dummyGSTR2BData";
 import { dummyBookData } from "../data/dummyBookData";
 import { saveRecoToHistory } from "../utils/recoHistoryService";
-import GSTR2BUploadBox from "../components/GSTR2BUploadBox";
+import GSTR2BUploadBox from "../Components/GSTR2BUploadBox";
 import UnifiedGSTR2BRecoTable from "../Components/UnifiedGSTR2BRecoTable";
 
 export default function GSTR2BRecoPage() {
