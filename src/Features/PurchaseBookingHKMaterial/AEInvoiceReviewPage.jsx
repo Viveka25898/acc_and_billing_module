@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AEInvoiceFilter from "./Components/AEInvoiceFilter";
-import InvoiceVerifyModal from "./INvoiceVerifyModal";
+import InvoiceVerifyModal from "./InvoiceVerifyModal"
 
 const dummyInvoices = [
   {
