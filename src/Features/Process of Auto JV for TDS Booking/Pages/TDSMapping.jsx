@@ -3,7 +3,7 @@ import { useState } from "react";
 import {vendorData} from "../data/VendorDummyData"
 import VendorTDSModal from "../Components/Mapping/VendorTDSModal"
 import { toast } from "react-toastify";
-import VendorTDSFilter from "../components/mapping/VendorTDSFilter";
+import VendorTDSFilter from "../Components/Mapping/VendorTDSFilter";
 
 const ITEMS_PER_PAGE = 5;
 
