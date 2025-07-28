@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars */
 import { useState } from "react";
-import VendorTDSModal from "../components/mapping/VendorTDSModal";
 import {vendorData} from "../data/VendorDummyData"
 import VendorTDSFilter from "../components/mapping/VendorTDSFilter";
+import VendorTDSModal from "../Components/Mapping/VendorTDSModal"
 import { toast } from "react-toastify";
 
 const ITEMS_PER_PAGE = 5;
