@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { ledgerEntries } from "../data/LedgerDummyData";
 import { toast } from "react-toastify";
-import VendorLedgerFilter from "../components/VendorLedgerFilter";
+import VendorLedgerFilter from "../Components/VendorLedgerFilter";
 
 
 const vendorList = [
