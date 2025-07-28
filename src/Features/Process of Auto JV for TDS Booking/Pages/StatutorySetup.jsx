@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { statutoryData } from "../data/statutoryDummyData";
-import StatutoryFilter from "../components/StatutoryFilter";
+import StatutoryFilter from "../Components/StatutoryFilter";
 import StatutoryModal from "../Components/StatutoryModal"
 import { toast } from "react-toastify";
 
