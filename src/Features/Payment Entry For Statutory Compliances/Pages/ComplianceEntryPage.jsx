@@ -1,5 +1,3 @@
-// File: src/features/statutoryPayments/pages/ComplianceEntryPage.jsx
-
 import React from "react";
 import ComplianceEntryForm from "../Components/ComplianceEntryForm";
 import { useNavigate } from "react-router-dom";

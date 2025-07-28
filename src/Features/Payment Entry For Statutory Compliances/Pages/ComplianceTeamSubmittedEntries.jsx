@@ -1,5 +1,3 @@
-// File: src/features/statutoryPayments/pages/SubmittedEntriesPage.jsx
-
 import React, { useState, useEffect } from "react";
 import SubmittedEntriesTable from "../Components/SubmittedEntriesTable";
 

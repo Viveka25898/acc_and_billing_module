@@ -1,8 +1,6 @@
-// File: src/features/statutoryPayments/pages/PaidCompliancePage.jsx
-
 import React, { useEffect, useState } from "react";
-import PaidComplianceTable from "../components/PaidComplianceTable";
-import PaidComplianceFilter from "../components/PaidComplianceFilter";
+import PaidComplianceTable from "../Components/PaidComplianceTable";
+import PaidComplianceFilter from "../Components/PaidComplianceFilter";
 
 const dummyPaidEntries = Array.from({ length: 12 }).map((_, i) => ({
   id: i + 101,

@@ -1,5 +1,3 @@
-// File: src/features/statutoryPayments/pages/AEPendingCompliancePage.jsx
-
 import React, { useEffect, useState } from "react";
 import AEFilter from "../Components/AEFilter";
 import AEPendingTable from "../Components/AEPendingTable";

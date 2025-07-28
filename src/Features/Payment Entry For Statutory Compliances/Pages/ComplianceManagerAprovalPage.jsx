@@ -1,5 +1,3 @@
-// File: src/features/statutoryPayments/pages/ComplianceManagerApprovalPage.jsx
-
 import React, { useEffect, useState } from "react";
 import ManagerApprovalFilter from "../Components/ManagerApprovalFilter";
 import ManagerApprovalTable from "../Components/ManagerApprovalTable";
