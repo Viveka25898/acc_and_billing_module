@@ -134,13 +134,12 @@ const LoginForm=(props)=>{
     //     </>
     // )
 
-    return (
+   return (
   <>
-    {/* Main Container */}
     <div className="flex flex-col lg:flex-row min-h-screen">
 
-      {/* Left Part: Image Section */}
-      <div className="hidden lg:flex lg:w-1/2 h-screen">
+      {/* Left Part: Image Section (visible on all screens) */}
+      <div className="w-full lg:w-1/2 h-64 lg:h-screen">
         <img
           src={iSmartImg}
           alt="Login"
@@ -208,6 +207,7 @@ const LoginForm=(props)=>{
     </div>
   </>
 );
+
 
 }
 export default LoginForm
