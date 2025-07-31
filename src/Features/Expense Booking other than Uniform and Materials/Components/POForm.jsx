@@ -153,13 +153,13 @@ export default function POForm({ onSubmit }) {
       </div>
 
       <div>
-        <label className="block font-medium">Upload Attachment (PDF/Image)</label>
+        <label className="block font-medium ">Upload Attachment (PDF/Image)</label>
         <input
           type="file"
           name="attachment"
           accept="application/pdf,image/*"
           onChange={handleChange}
-          className="w-full"
+          className="w-full border p-2"
           required
         />
       </div>

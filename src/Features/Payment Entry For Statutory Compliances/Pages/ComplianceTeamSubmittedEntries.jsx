@@ -9,7 +9,7 @@ const dummyEntries = Array.from({ length: 20 }).map((_, i) => ({
   challan: new File(["Dummy content"], `challan_${i + 1}.pdf`, { type: "application/pdf" }),
   managerStatus: i % 4 === 0 ? "Rejected" : i % 3 === 0 ? "Approved" : "Pending",
   managerRejection: i % 4 === 0 ? "Incorrect data provided." : "",
-  aeStatus: i % 5 === 0 ? "Rejected" : i % 2 === 0 ? "Approved" : "Pending",
+  aeStatus: i % 5 === 0 ? "Rejected" : i % 2 === 0 ? "Pending" : "Pending",
   aeRejection: i % 5 === 0 ? "Document mismatch." : "",
 }));
 

@@ -122,6 +122,9 @@ import ManagerAdvanceRequest from "../Features/Advance Request/Pages/ManagerAdva
 import ManagerMyRequests from "../Features/Advance Request/Pages/ManagerMyRequests"
 import VPAdvanceRequestForm from "../Features/Advance Request/Pages/VPAdvanceRequestForm"
 import VPMyRequest from "../Features/Advance Request/Pages/VPMyRequest"
+import AEAdvanceApprovalPage from "../Features/Advance Request/Pages/AEAdvanceApprovalPage"
+import VPReview from "../Features/Advance Settlement/Pages/VPReview"
+import AEAdvanceSettlementApproval from "../Features/Advance Settlement/Pages/AEAdvanaceSettlementApprovalPage"
 
 
 export const router=createBrowserRouter([
@@ -241,6 +244,10 @@ export const router=createBrowserRouter([
             {
                 path:"advance-request",
                 element:<VPAdvanceRequestForm/>
+            },
+            {
+                path:"advance-settlement-approval",
+                element:<VPReview/>
             },
             {
                 path:"my-requests",
@@ -465,6 +472,14 @@ export const router=createBrowserRouter([
             {
                 index:true,
                 element:<AEHome/>
+            },
+            {
+                path:"advance-approval-requests",
+                element:<AEAdvanceApprovalPage/>
+            },
+            {
+                path:"advance-settlement-requests",
+                element:<AEAdvanceSettlementApproval/>
             },
             {
                 path:"invoice-review",

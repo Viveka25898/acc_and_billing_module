@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaTimes } from "react-icons/fa";
 
-const dummyPOs = ["PO-001", "PO-002", "PO-003"];
+
 const dummyAccounts = ["Purchase A/c - Raw Material", "Purchase A/c - Services", "Purchase A/c - Others"];
 
 export default function ManualPurchaseEntryModal({ invoice, onClose, onSubmit }) {
+  useEffect(() => {
+  if (invoice && invoice.poDocuments) {
+    const poNames = invoice.poDocuments.map((po) => po.name);
+    setFormData((prev) => ({
+      ...prev,
+      poCovered: poNames,
+    }));
+  }
+}, [invoice]);
+const poOptions = invoice?.poDocuments?.map((po) => po.name) || [];
+
   const [formData, setFormData] = useState({
     vendorName: invoice?.vendorName || "",
     invoiceNumber: invoice?.invoiceNumber || "",
@@ -70,18 +81,27 @@ export default function ManualPurchaseEntryModal({ invoice, onClose, onSubmit })
           </div>
 
           <div>
-            <label className="block font-medium">PO Covered <span className="text-red-500">*</span></label>
-            <select
-              name="poCovered"
-              value={formData.poCovered}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="">Select PO</option>
-              {dummyPOs.map(po => (
-                <option key={po} value={po}>{po}</option>
-              ))}
-            </select>
+           <label className="font-semibold">POs Covered</label>
+              <select
+                name="poCovered"
+                value={formData.poCovered}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    poCovered: Array.from(e.target.selectedOptions, (opt) => opt.value),
+                  }))
+                }
+                className="w-full border rounded px-3 py-2"
+                multiple
+              >
+                {poOptions.map((poName, index) => (
+                  <option key={index} value={poName}>
+                    {poName}
+                  </option>
+                ))}
+              </select>
+
+
             {errors.poCovered && <p className="text-red-500 text-xs mt-1">{errors.poCovered}</p>}
           </div>
 

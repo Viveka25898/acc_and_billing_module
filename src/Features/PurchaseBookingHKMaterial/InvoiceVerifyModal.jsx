@@ -97,10 +97,6 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
         <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.assetCategory || "-"}</div>
       </div>
       <div>
-        <label className="block font-medium">Serial Number</label>
-        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.serialNumber || "-"}</div>
-      </div>
-      <div>
         <label className="block font-medium">Location</label>
         <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.location || "-"}</div>
       </div>

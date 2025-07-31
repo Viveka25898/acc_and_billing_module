@@ -64,12 +64,12 @@ export default function AEPendingTable({ entries, onUpdate }) {
               <td className="p-2 border">
                 {entry.aeStatus === "Pending" && (
                   <div className="flex justify-center gap-2">
-                    <button
-                      onClick={() => onUpdate(entry.id, "AcceptedByAE")}
-                      className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 text-xs cursor-pointer"
-                    >
-                      Accept
-                    </button>
+                   <button
+  onClick={() => onUpdate(entry.id, "AcceptedByAE")}
+  className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 text-xs cursor-pointer"
+>
+  Accept
+</button>
                     <button
                       onClick={() => setRejectId(entry.id)}
                       className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 text-xs cursor-pointer"

@@ -103,6 +103,7 @@ export default function AEPendingRequestsPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [currentRejectId, setCurrentRejectId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
 
 //For Sorting
   const getStatusOrder = (status) => {
@@ -139,13 +140,41 @@ export default function AEPendingRequestsPage() {
     (currentPage - 1) * entriesPerPage,
     currentPage * entriesPerPage
   );
+
+  //Multiple Select and Approve
+  const handleSelect = (id) => {
+  setSelectedIds((prev) =>
+    prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
+  );
+};
+
+const handleSelectAll = () => {
+  const allIds = paginatedEntries.map((entry) => entry.id);
+  const allSelected = allIds.every((id) => selectedIds.includes(id));
+  setSelectedIds(allSelected ? [] : allIds);
+};
+
+const handleBulkApprove = () => {
+  if (selectedIds.length === 0) {
+    toast.warn("Please select at least one entry to approve.");
+    return;
+  }
+  setEntries((prev) =>
+    prev.map((entry) =>
+      selectedIds.includes(entry.id) ? { ...entry, status: "Approved" } : entry
+    )
+  );
+  setSelectedIds([]); // Clear selection
+  toast.success(`${selectedIds.length} entries Accepted and Payment Entry Passed in the System!!`);
+};
+
   const handleApprove = (id) => {
     setEntries((prev) =>
       prev.map((entry) =>
         entry.id === id ? { ...entry, status: "Approved" } : entry
       )
     );
-    toast.success("Entry Acceptes Successfully!")
+    toast.success("Entry Accepted and Payment Entry Passed in the System!")
   };
 
   const openRejectModal = (id) => {
@@ -179,8 +208,18 @@ export default function AEPendingRequestsPage() {
 
       <div className="overflow-x-auto">
         <table className="min-w-full table-auto text-sm border border-gray-300">
-          <thead className="bg-gray-100">
+         <thead className="bg-gray-100">
             <tr>
+              <th className="p-2 border">
+                <input
+                  type="checkbox"
+                  checked={
+                    paginatedEntries.length > 0 &&
+                    paginatedEntries.every((entry) => selectedIds.includes(entry.id))
+                  }
+                  onChange={handleSelectAll}
+                />
+              </th>
               <th className="p-2 border">Emp Code</th>
               <th className="p-2 border">Name</th>
               <th className="p-2 border">Account</th>
@@ -193,40 +232,58 @@ export default function AEPendingRequestsPage() {
           </thead>
           <tbody>
             {paginatedEntries.map((entry) => (
-              <tr key={entry.id} className="border-t">
-                <td className="p-2 border">{entry.code}</td>
-                <td className="p-2 border">{entry.name}</td>
-                <td className="p-2 border">{entry.account}</td>
-                <td className="p-2 border">{entry.ifsc}</td>
-                <td className="p-2 border">₹ {entry.amount}</td>
-                <td className="p-2 border">{entry.remarks}</td>
-                <td className={`p-2 border`}>
-                  {entry.status}
-                </td>
-                <td className="p-2 border">
-                  {entry.status === "Pending" ? (
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => handleApprove(entry.id)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => openRejectModal(entry.id)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
-                      >
-                         Reject
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="text-xs italic text-gray-500">Action taken</span>
-                  )}
-                </td>
-              </tr>
+             <tr key={entry.id} className="border-t">
+              <td className="p-2 border">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(entry.id)}
+                  onChange={() => handleSelect(entry.id)}
+                  disabled={entry.status !== "Pending"}
+                />
+              </td>
+              <td className="p-2 border">{entry.code}</td>
+              <td className="p-2 border">{entry.name}</td>
+              <td className="p-2 border">{entry.account}</td>
+              <td className="p-2 border">{entry.ifsc}</td>
+              <td className="p-2 border">₹ {entry.amount}</td>
+              <td className="p-2 border">{entry.remarks}</td>
+              <td className={`p-2 border`}>{entry.status}</td>
+              <td className="p-2 border">
+                {entry.status === "Pending" ? (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => handleApprove(entry.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => openRejectModal(entry.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs italic text-gray-500">Action taken</span>
+                )}
+              </td>
+            </tr>
+
             ))}
           </tbody>
         </table>
+        {selectedIds.length > 0 && (
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={handleBulkApprove}
+              className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
+            >
+              Approve Selected ({selectedIds.length})
+            </button>
+          </div>
+        )}
+
       </div>
 
       {/* Pagination */}

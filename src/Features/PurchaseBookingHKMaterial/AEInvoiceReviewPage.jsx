@@ -39,7 +39,7 @@ const dummyInvoices = [
   },
   {
     id: 3,
-    type: "Procurement",
+    type: "Procurement Prepaid",
     invoiceNumber: "INV-003",
     vendorName: "Delta Solutions",
     totalAmount: 230000,
@@ -71,7 +71,7 @@ const dummyInvoices = [
   },
   {
     id: 5,
-    type: "Procurement",
+    type: "Procurement Prepaid",
     invoiceNumber: "INV-005",
     vendorName: "TechFront Pvt Ltd",
     totalAmount: 158000,
@@ -103,7 +103,7 @@ const dummyInvoices = [
   },
   {
     id: 7,
-    type: "Procurement",
+    type: "Procurement Prepaid",
     invoiceNumber: "INV-007",
     vendorName: "Omega Traders",
     totalAmount: 97200,
@@ -135,7 +135,7 @@ const dummyInvoices = [
   },
   {
     id: 9,
-    type: "Procurement",
+    type: "Procurement Prepaid",
     invoiceNumber: "INV-009",
     vendorName: "Sunrise Traders",
     totalAmount: 52000,
@@ -167,7 +167,7 @@ const dummyInvoices = [
   },
   {
   id: 11,
-  type: "Procurement Material",
+  type: "Procurement Prepaid",
   invoiceNumber: "INV-011",
   vendorName: "InfraZone Pvt Ltd",
   totalAmount: 134000,

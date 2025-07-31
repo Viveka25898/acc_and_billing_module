@@ -11,7 +11,7 @@ export default function EditPaymentDetails({ data, setData, onCancel }) {
 
   const handleSave = () => {
     localStorage.setItem("paymentEntries", JSON.stringify(data));
-    toast.success("Changes saved successfully.");
+    toast.success("Changes saved successfully. Payment entries accepted and passed in the System.");
     onCancel(); // close editor
   };
 

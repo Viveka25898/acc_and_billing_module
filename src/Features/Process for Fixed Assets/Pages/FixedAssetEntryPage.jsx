@@ -69,19 +69,6 @@ const FixedAssetEntryPage = () => {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Serial Number</label>
-          <input
-            type="text"
-            name="serialNumber"
-            value={assetEntry.serialNumber}
-            onChange={handleChange}
-            placeholder="e.g., SN-XY1234"
-            className="w-full border px-3 py-2 rounded"
-            required
-          />
-        </div>
-
-        <div>
           <label className="block font-medium mb-1">Location</label>
           <input
             type="text"

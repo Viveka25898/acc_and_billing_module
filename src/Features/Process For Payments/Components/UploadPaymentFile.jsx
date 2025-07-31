@@ -17,7 +17,7 @@ export default function UploadPaymentFile({ onFileUpload }) {
   };
 
   return (
-    <div className="bg-white shadow-md rounded-xl p-6 w-full">
+    <div className=" p-6 w-full">
       <div className="text-center space-y-4">
         <p className="text-gray-700 font-medium">
           Upload Excel file with payment details (.xlsx)

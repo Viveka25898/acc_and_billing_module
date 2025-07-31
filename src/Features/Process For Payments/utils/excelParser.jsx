@@ -14,7 +14,7 @@ export const parseExcelFile = async (file) => {
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
         // Optional: Validate required columns
-        const requiredColumns = ["Vendor Name", "Invoice No", "Payment Amount"];
+        const requiredColumns = ["Vendor Name", "Invoice No", "Paid Amount"];
         const missingColumns = requiredColumns.filter(
           (col) => !Object.keys(jsonData[0] || {}).includes(col)
         );

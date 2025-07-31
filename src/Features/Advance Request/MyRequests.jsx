@@ -1,42 +1,44 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import RequestFilter from './RequestFilter';
 import { toast } from 'react-toastify';
 
-const dummyRequests = [
-  {
-    id: 1,
-    employeeId: 'EMP001',
-    employeeName: 'Amit Sharma',
-    amount: '5000',
-    requestDate: '2024-05-01',
-    managerStatus: 'Approved',
-    vpStatus: 'Pending',
-    remarks: '',
-    clarification: '',
-  },
-  {
-    id: 2,
-    employeeId: 'EMP001',
-    employeeName: 'Amit Sharma',
-    amount: '4500',
-    requestDate: '2024-05-05',
-    managerStatus: 'Approved',
-    vpStatus: 'Rejected',
-    remarks: 'Amount not justified',
-    clarification: '',
-  },
-  {
-    id: 3,
-    employeeId: 'EMP001',
-    employeeName: 'Amit Sharma',
-    amount: '6000',
-    requestDate: '2024-05-10',
-    managerStatus: 'Pending',
-    vpStatus: 'Pending',
-    remarks: '',
-    clarification: '',
-  },
-];
+// const dummyRequests = [
+//   {
+//     id: 1,
+//     employeeId: 'EMP001',
+//     employeeName: 'Amit Sharma',
+//     amount: '5000',
+//     requestDate: '2024-05-01',
+//     managerStatus: 'Approved',
+//     vpStatus: 'Pending',
+//     remarks: '',
+//     clarification: '',
+//   },
+//   {
+//     id: 2,
+//     employeeId: 'EMP001',
+//     employeeName: 'Amit Sharma',
+//     amount: '4500',
+//     requestDate: '2024-05-05',
+//     managerStatus: 'Approved',
+//     vpStatus: 'Rejected',
+//     remarks: 'Amount not justified',
+//     clarification: '',
+//   },
+//   {
+//     id: 3,
+//     employeeId: 'EMP001',
+//     employeeName: 'Amit Sharma',
+//     amount: '6000',
+//     requestDate: '2024-05-10',
+//     managerStatus: 'Pending',
+//     vpStatus: 'Pending',
+//     remarks: '',
+//     clarification: '',
+//   },
+// ];
 
 const MyRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -48,11 +50,24 @@ const MyRequests = () => {
 
   const itemsPerPage = 5;
 
+  const auth = useSelector((state) => state.auth);
+  const loggedInUserName = useSelector((state) => state.auth.user);
+  console.log("Name",loggedInUserName);
+
   useEffect(() => {
-    const userId = 'EMP001';
-    const filtered = dummyRequests.filter((r) => r.employeeId === userId);
-    setRequests(filtered);
-  }, []);
+    // Get all requests from localStorage
+    const stored = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+    console.log(stored);
+
+    // Filter only current employee's requests
+    const userRequests = stored
+      .filter((r) => r.employeeId === loggedInUserName)
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) // Sort latest first
+      .slice(0, 5); // Keep only last 5
+      console.log(userRequests);
+
+    setRequests(userRequests);
+  }, [loggedInUserName]);
 
   const getStatusLabel = (m, v) => {
     if (m === 'Pending') return 'Pending from Line Manager';
@@ -106,7 +121,7 @@ const MyRequests = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto border border-green-200 text-sm">
-              <thead className="bg-green-100">
+              <thead className="bg-gray-100">
                 <tr>
                   <th className="border px-4 py-2">Amount</th>
                   <th className="border px-4 py-2">Date</th>

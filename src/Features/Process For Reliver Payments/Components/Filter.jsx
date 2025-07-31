@@ -14,7 +14,7 @@ export default function FilterBar({ onFilter }) {
   };
 
   return (
-    <div className="bg-white p-4 shadow rounded mb-4 flex flex-wrap gap-4">
+    <div className=" p-4 mb-4 flex flex-wrap gap-4">
       <input
         type="text"
         name="name"

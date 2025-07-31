@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from "react";
-
 import { toast } from "react-toastify";
 import relieverDummyData from "../data/relieverDummyData";
 import FilterBar from "../Components/Filter";
-import ReusableRelieverTable from "../Components/ReusableRelieverTable";
+import LineManagerApprovalTable from "../Components/LineManagerApprovalTable";
 
 export default function LineManagerRelieverApprovalPage() {
   const [requests, setRequests] = useState([]);
   const [filtered, setFiltered] = useState([]);
 
   useEffect(() => {
-    const filteredData = relieverDummyData.filter(
+    const pending = relieverDummyData.filter(
       (req) => req.status === "Pending Line Manager Approval"
     );
-    setRequests(filteredData);
-    setFiltered(filteredData);
+    setRequests(pending);
+    setFiltered(pending);
   }, []);
 
   const handleFilter = (filters) => {
@@ -31,32 +30,43 @@ export default function LineManagerRelieverApprovalPage() {
   };
 
   const handleStatusChange = (id, newStatus, reason = null) => {
-    const updated = filtered.map((req) => {
-      if (req.id === id) {
-        return {
-          ...req,
-          status: newStatus,
-          rejectionReason: reason,
-        };
-      }
-      return req;
-    });
-    setFiltered(updated);
-    toast.success(
-      newStatus === "Pending VP Approval"
-        ? "Request Approved"
-        : "Request Rejected"
+    const updated = filtered.map((req) =>
+      req.id === id
+        ? { ...req, status: newStatus, rejectionReason: reason || null }
+        : req
     );
+    setFiltered(updated); 
+    setRequests(updated)
+
+    if (reason) {
+      toast.error(`Request rejected: ${reason}`);
+    } else {
+      toast.success("Request approved successfully!");
+    }
   };
 
+  //Bulk Approve
+  const handleBulkApprove = (ids) => {
+  const updated = filtered.map((req) =>
+    ids.includes(req.id)
+      ? { ...req, status: "Pending VP Operations Approval", rejectionReason: null }
+      : req
+  );
+  setFiltered(updated);
+  setRequests(updated);
+  toast.success(`${ids.length} request(s) approved successfully!`);
+};
+
   return (
-    <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4 text-gray-800">Line Manager - Pending Requests</h1>
+    <div className="max-w-6xl mx-auto p-4 bg-white shadow-md rounded-md">
+      <h1 className="text-2xl font-bold mb-4 text-green-600">Line Manager - Approvals</h1>
       <FilterBar onFilter={handleFilter} />
-      <ReusableRelieverTable
+      <LineManagerApprovalTable
         requests={filtered}
         onStatusChange={handleStatusChange}
+         onBulkApprove={handleBulkApprove} 
         showActions={true}
+        role="lm" 
       />
     </div>
   );

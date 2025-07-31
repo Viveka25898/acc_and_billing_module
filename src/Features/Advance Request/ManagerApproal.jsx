@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react';
 import { FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -47,11 +48,7 @@ const ManagerApproval = () => {
         req.id === id ? { ...req, status: 'Pending AE Approval' } : req
       )
     );
-    toast.success(
-      isBeforeNoon
-        ? 'Request Approved. Payment will be done today.'
-        : 'Approved. Payment will be done tomorrow.'
-    );
+    toast.success("Request Approved");
   };
 
   const handleReject = () => {

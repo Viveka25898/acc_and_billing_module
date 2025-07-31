@@ -1,10 +1,12 @@
 // src/features/salaryPayment/components/UploadPayrollFile.jsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import { toast } from "react-toastify";
 
 export default function UploadPayrollFile() {
   const [data, setData] = useState([]);
   const [error, setError] = useState("");
+  const fileInputRef = useRef(null); // Ref to clear file input
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -28,9 +30,15 @@ export default function UploadPayrollFile() {
       setError("Please upload a valid file before submitting.");
       return;
     }
-    setError("");
+
     console.log("Submitted Excel Data:", data);
-    alert("✅ File submitted to AE (dummy log in console).");
+
+    // ✅ Clear everything after submit
+    setData([]); // Hide table
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Clear file input
+    }
+    toast.success("✅ File submitted to AE successfully!");
   };
 
   return (
@@ -39,6 +47,7 @@ export default function UploadPayrollFile() {
 
       <input
         type="file"
+        ref={fileInputRef}
         accept=".xlsx, .xls, .csv"
         onChange={handleFileUpload}
         className="mb-4 border p-2 rounded-2xl bg-green-400 text-white font-semibold w-56 cursor-pointer"
@@ -47,35 +56,35 @@ export default function UploadPayrollFile() {
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
       {data.length > 0 && (
-        <div className="overflow-x-auto border mt-4 rounded">
-          <table className="min-w-full text-sm text-left border-collapse">
-            <thead className="bg-gray-100">
-              <tr>
-                {Object.keys(data[0]).map((key, idx) => (
-                  <th key={idx} className="p-2 border font-medium">{key}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((row, idx) => (
-                <tr key={idx} className="border-t">
-                  {Object.keys(data[0]).map((key, i) => (
-                    <td key={i} className="p-2 border">{row[key]}</td>
+        <>
+          <div className="overflow-x-auto border mt-4 rounded">
+            <table className="min-w-full text-sm text-left border-collapse">
+              <thead className="bg-gray-100">
+                <tr>
+                  {Object.keys(data[0]).map((key, idx) => (
+                    <th key={idx} className="p-2 border font-medium">{key}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {data.map((row, idx) => (
+                  <tr key={idx} className="border-t">
+                    {Object.keys(data[0]).map((key, i) => (
+                      <td key={i} className="p-2 border">{row[key]}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      {data.length > 0 && (
-        <button
-          onClick={handleSubmit}
-          className="mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
-        >
-          ✅ Submit to Accounts Executive
-        </button>
+          <button
+            onClick={handleSubmit}
+            className="mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+          >
+            ✅ Submit to Accounts Executive
+          </button>
+        </>
       )}
     </div>
   );

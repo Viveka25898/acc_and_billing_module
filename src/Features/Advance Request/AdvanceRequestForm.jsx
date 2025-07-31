@@ -1,5 +1,4 @@
-// File: /src/modules/advanceRequest/pages/AdvanceRequestForm.jsx
-
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
@@ -10,6 +9,7 @@ const AdvanceRequestForm = () => {
     employeeId: '',
     amount: '',
     reason: '',
+    customReason: '',
     requestDate: new Date().toISOString().slice(0, 10),
   });
 
@@ -22,7 +22,15 @@ const AdvanceRequestForm = () => {
   };
 
   const isFormValid = () => {
-    const { employeeName, employeeId, amount, reason } = formData;
+    const { employeeName, employeeId, amount, reason, customReason } = formData;
+    if (reason === 'Other') {
+      return (
+        employeeName.trim() &&
+        employeeId.trim() &&
+        amount.trim() &&
+        customReason.trim()
+      );
+    }
     return employeeName.trim() && employeeId.trim() && amount.trim() && reason.trim();
   };
 
@@ -35,9 +43,12 @@ const AdvanceRequestForm = () => {
       return;
     }
 
+    const finalReason = formData.reason === 'Other' ? formData.customReason : formData.reason;
+
     const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
     const newRequest = {
       ...formData,
+      reason: finalReason,
       status: 'Pending Manager Approval',
       remarks: '',
       submittedAt: new Date().toISOString(),
@@ -50,17 +61,14 @@ const AdvanceRequestForm = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white shadow rounded-md">
-      <div className="w-full max-w-2xl p-6 ">
-        <div className="flex justify-between items-center mb-4">
+      <div className="w-full max-w-2xl p-6">
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
           <h2 className="text-2xl font-bold text-green-600">Advance Request Form</h2>
-          <button
-            onClick={() => navigate('/dashboard/employee/my-requests')}
-            className="text-green-600 border border-green-600 px-4 py-1 rounded hover:bg-green-600 hover:text-white transition"
-          >
-           <NavLink to="/dashboard/employee/my-requests">
-            My Requests
-           </NavLink>
-          </button>
+          <NavLink to="/dashboard/employee/my-requests">
+            <button className=" bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700 hover:text-white transition cursor-pointer">
+              My Requests
+            </button>
+          </NavLink>
         </div>
 
         {submitted ? (
@@ -113,16 +121,37 @@ const AdvanceRequestForm = () => {
 
               <div className="sm:col-span-2">
                 <label className="block mb-1 font-semibold">Reason for Advance</label>
-                <textarea
+                <select
                   name="reason"
                   value={formData.reason}
                   onChange={handleChange}
                   className="w-full border px-3 py-2 rounded focus:outline-none focus:ring focus:ring-blue-300"
-                  placeholder="Mention the purpose of the advance"
-                  rows="3"
                   required
-                ></textarea>
+                >
+                  <option value="">-- Select Reason --</option>
+                  <option value="Visit to Client">Visit to Client</option>
+                  <option value="Purchase of Cleaning Supplies">Purchase of Cleaning Supplies</option>
+                  <option value="Emergency Site Expenses">Emergency Site Expenses</option>
+                  <option value="Medical Assistance">Medical Assistance</option>
+                  <option value="Site Relocation/Travel">Site Relocation/Travel</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
+
+              {formData.reason === 'Other' && (
+                <div className="sm:col-span-2">
+                  <label className="block mb-1 font-semibold">Specify Reason</label>
+                  <input
+                    type="text"
+                    name="customReason"
+                    value={formData.customReason}
+                    onChange={handleChange}
+                    className="w-full border px-3 py-2 rounded focus:outline-none focus:ring focus:ring-blue-300"
+                    placeholder="Enter custom reason"
+                    required
+                  />
+                </div>
+              )}
 
               <div className="sm:col-span-2">
                 <label className="block mb-1 font-semibold">Request Date</label>

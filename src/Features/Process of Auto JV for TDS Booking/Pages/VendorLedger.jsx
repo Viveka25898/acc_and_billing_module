@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ledgerEntries } from "../data/LedgerDummyData";
 import { toast } from "react-toastify";
 import VendorLedgerFilter from "../Components/VendorLedgerFilter";
+import VendorLedgerTable from "../Components/VendorLedgerTable";
 
 
 const vendorList = [

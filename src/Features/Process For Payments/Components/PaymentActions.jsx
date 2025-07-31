@@ -1,5 +1,4 @@
 /* eslint-disable no-unused-vars */
-// src/features/processPayments/components/PaymentActions.jsx
 import React from "react";
 import { toast } from "react-toastify";
 
@@ -9,7 +8,7 @@ export default function PaymentActions({ data, onClose, onRequestChanges }) {
       const existing = JSON.parse(localStorage.getItem("paymentEntries")) || [];
       const updated = [...existing, ...data];
       localStorage.setItem("paymentEntries", JSON.stringify(updated));
-      toast.success("Payment entries accepted and saved.");
+      toast.success("Payment entries accepted and passed in the System.");
       onClose();
     } catch (err) {
       toast.error("Failed to save payment data.");
