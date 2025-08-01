@@ -1,6 +1,4 @@
 /* eslint-disable no-unused-vars */
-// File: src/features/conveyance/components/ConveyanceForm.jsx
-
 import React, { useRef } from "react";
 
 import { toast } from "react-toastify";
@@ -18,27 +16,35 @@ export default function ConveyanceForm({ entries, setEntries, errors, onSubmit }
 
 
 
-  // ✅ Date check - only allow submission if visit is within 7 days after month end
-  const isWithinClaimWindow = (visitDate) => {
-  if (!visitDate) return false;
+  //  Date check - only allow submission if visit is within 7 days after month end
+  const isWithinClaimWindow = (visitDateStr) => {
+  if (!visitDateStr) return false;
 
-  const visit = new Date(visitDate);
-  visit.setHours(0, 0, 0, 0);
+  const visitDate = new Date(visitDateStr);
+  const today = new Date();
 
-  const nextMonthStart = new Date(visit.getFullYear(), visit.getMonth() + 1, 1);
-  const nextMonthEnd = new Date(visit.getFullYear(), visit.getMonth() + 1, 7);
-
-  nextMonthStart.setHours(0, 0, 0, 0);
-  nextMonthEnd.setHours(0, 0, 0, 0);
-
-
-  //For Testing
-  // const today = new Date("2025-07-02");
-    const today = new Date();
+  // Normalize both to midnight
+  visitDate.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
 
-  return today >= nextMonthStart && today <= nextMonthEnd;
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
+
+  // Claim window: 1st to 7th of current month
+  const inClaimWeek = todayDay >= 1 && todayDay <= 7;
+
+  // Visit must have occurred in **previous month or earlier**
+  const visitMonth = visitDate.getMonth();
+  const visitYear = visitDate.getFullYear();
+
+  const visitBeforeCurrentMonth =
+    visitYear < todayYear ||
+    (visitYear === todayYear && visitMonth < todayMonth);
+
+  return inClaimWeek && visitBeforeCurrentMonth;
 };
+
 
 
   const shouldShowReceipt = (transport) => {
@@ -54,14 +60,19 @@ export default function ConveyanceForm({ entries, setEntries, errors, onSubmit }
       transport: "",
       distance: "",
       amount: "",
-      report: null,
+      reports: [null],  
       receipt: null,
       remarks: "",
     },
   ]);
 
   // Clear file inputs manually
-  reportRefs.current.forEach((ref) => ref && (ref.value = ""));
+  reportRefs.current.forEach(group =>
+  group?.forEach(ref => {
+    if (ref) ref.value = "";
+  })
+);
+
   receiptRefs.current.forEach((ref) => ref && (ref.value = ""));
 };
 
@@ -152,17 +163,63 @@ export default function ConveyanceForm({ entries, setEntries, errors, onSubmit }
               {errors[idx]?.amount && <p className="text-red-600 text-sm">{errors[idx].amount}</p>}
             </div>
             <div>
-              <label className="font-medium">Upload Visit Report</label>
-             <input
-              type="file"
-              accept="application/pdf,image/jpeg,image/png"
-              onChange={(e) => handleChange(idx, "report", e.target.files[0])}
-              ref={(el) => (reportRefs.current[idx] = el)}
-              className="w-full border rounded px-4 py-2"
-            />
+              <label className="font-medium">Upload Visit Report(s)</label>
+              {entry.reports.map((file, reportIdx) => (
+                <div key={reportIdx} className="flex items-center gap-2 mb-2">
+                  <input
+                    type="file"
+                    accept="application/pdf,image/jpeg,image/png"
+                    onChange={(e) => {
+                      const updatedReports = [...entry.reports];
+                      updatedReports[reportIdx] = e.target.files[0];
+                      handleChange(idx, "reports", updatedReports);
+                    }}
+                    ref={(el) => {
+                      if (!reportRefs.current[idx]) reportRefs.current[idx] = [];
+                      reportRefs.current[idx][reportIdx] = el;
+                    }}
+                    className="w-full border rounded px-4 py-2"
+                  />
+                  {entry.reports.length > 1 && (
+                    <button
+                      type="button"
+                      className="text-red-600 font-bold"
+                      onClick={() => {
+                        const updatedReports = entry.reports.filter((_, i) => i !== reportIdx);
+                        handleChange(idx, "reports", updatedReports);
+                        // Also clear the file input manually
+                        if (reportRefs.current[idx]?.[reportIdx]) {
+                          reportRefs.current[idx][reportIdx].value = "";
+                        }
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
 
-              {errors[idx]?.report && <p className="text-red-600 text-sm">{errors[idx].report}</p>}
+             {entry.reports.length < 5 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updatedReports = [...entry.reports, null];
+                    handleChange(idx, "reports", updatedReports);
+                  }}
+                  className="text-blue-600 text-sm underline"
+                >
+                  + Add another file
+                </button>
+              ) : (
+                <p className="text-gray-500 text-sm">Maximum 5 files allowed.</p>
+              )}
+
+
+              {errors[idx]?.report && (
+                <p className="text-red-600 text-sm mt-1">{errors[idx].report}</p>
+              )}
             </div>
+
             {shouldShowReceipt(entry.transport) && (
               <div>
                 <label className="font-medium">Upload Ticket/Receipt</label>

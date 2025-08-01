@@ -1,5 +1,3 @@
-// File: src/features/billing/components/POForm.jsx
-
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 
@@ -28,18 +26,22 @@ export default function POForm({ onSubmit }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (
-      !formData.vendorName ||
-      !formData.poType ||
-      !formData.expenseType ||
-      !formData.description ||
-      !formData.amount ||
-      !formData.attachment ||
-      (formData.poType === "yearly" && !formData.startDate)
-    ) {
+
+    const requiredFields = [
+      formData.vendorName,
+      formData.poType,
+      formData.expenseType,
+      formData.description,
+      formData.amount,
+      formData.attachment,
+      formData.startDate,
+    ];
+
+    if (requiredFields.includes("") || requiredFields.includes(null)) {
       toast.warning("Please fill all required fields.");
       return;
     }
+
     onSubmit(formData);
     setFormData(initialFormState);
     e.target.reset(); // reset file input manually
@@ -74,7 +76,8 @@ export default function POForm({ onSubmit }) {
         </select>
       </div>
 
-      {formData.poType === "yearly" && (
+      {/* Show Start and End Date for both types */}
+      {formData.poType && (
         <>
           <div>
             <label className="block font-medium">Start Date <span className="text-red-500">*</span></label>
@@ -123,7 +126,7 @@ export default function POForm({ onSubmit }) {
               onChange={handleChange}
               required
             />
-           Other
+            Other
           </label>
         </div>
       </div>
@@ -153,7 +156,7 @@ export default function POForm({ onSubmit }) {
       </div>
 
       <div>
-        <label className="block font-medium ">Upload Attachment (PDF/Image)</label>
+        <label className="block font-medium">Upload Attachment (PDF/Image)</label>
         <input
           type="file"
           name="attachment"

@@ -130,10 +130,9 @@ const AdvanceRequestForm = () => {
                 >
                   <option value="">-- Select Reason --</option>
                   <option value="Visit to Client">Visit to Client</option>
-                  <option value="Purchase of Cleaning Supplies">Purchase of Cleaning Supplies</option>
-                  <option value="Emergency Site Expenses">Emergency Site Expenses</option>
-                  <option value="Medical Assistance">Medical Assistance</option>
-                  <option value="Site Relocation/Travel">Site Relocation/Travel</option>
+                  <option value="Purchase of Cleaning Supplies">Travelling Allowance</option>
+                  <option value="Emergency Site Expenses">Petrol Expense</option>
+                  <option value="Medical Assistance">Office Expense</option>
                   <option value="Other">Other</option>
                 </select>
               </div>

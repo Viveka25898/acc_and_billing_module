@@ -99,7 +99,7 @@ export default function ComplianceEntryForm() {
         <input
           type="file"
           name="challan"
-          accept=".pdf,.jpg,.png"
+           accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx"
           onChange={handleChange}
           className="w-full border rounded-lg p-2 cursor-pointer"
         />

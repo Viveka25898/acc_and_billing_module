@@ -1,5 +1,3 @@
-// File: src/features/conveyance/pages/Employee/SubmitConveyancePage.jsx
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -13,7 +11,7 @@ const initialEntry = {
   transport: "",
   distance: "",
   amount: "",
-  report: null,
+  reports: [null],  
   remarks: "",
 };
 
@@ -25,22 +23,28 @@ export default function SubmitConveyancePage() {
   const handleSubmit = async () => {
     try {
       const allValid = entries.every((entry, idx) => {
-        const entryErrors = {};
-        if (!entry.date) entryErrors.date = "Date is required";
-        if (!entry.purpose) entryErrors.purpose = "Purpose is required";
-        if (!entry.client) entryErrors.client = "Client is required";
-        if (!entry.transport) entryErrors.transport = "Transport mode is required";
-        if (!entry.distance || isNaN(entry.distance)) entryErrors.distance = "Valid distance required";
-        if (!entry.amount || isNaN(entry.amount)) entryErrors.amount = "Valid amount required";
-        if (!entry.report) entryErrors.report = "Report upload is required";
-        else if (!["application/pdf", "image/jpeg", "image/png"].includes(entry.report.type)) {
-          entryErrors.report = "Only PDF, JPG, PNG allowed";
-        }
-        const updatedErrors = [...errors];
-        updatedErrors[idx] = entryErrors;
-        setErrors(updatedErrors);
-        return Object.keys(entryErrors).length === 0;
-      });
+  const entryErrors = {};
+
+  if (!entry.date) entryErrors.date = "Date is required";
+  if (!entry.purpose) entryErrors.purpose = "Purpose is required";
+  if (!entry.client) entryErrors.client = "Client is required";
+  if (!entry.transport) entryErrors.transport = "Transport mode is required";
+  if (!entry.distance || isNaN(entry.distance)) entryErrors.distance = "Valid distance required";
+  if (!entry.amount || isNaN(entry.amount)) entryErrors.amount = "Valid amount required";
+
+  if (!entry.reports || entry.reports.length === 0 || !entry.reports.some(f => f)) {
+    entryErrors.report = "At least one visit report is required";
+  } else if (!entry.reports.every(f => !f || ["application/pdf", "image/jpeg", "image/png"].includes(f.type))) {
+    entryErrors.report = "Only PDF, JPG, PNG files allowed for reports";
+  }
+
+  const updatedErrors = [...errors];
+  updatedErrors[idx] = entryErrors;
+  setErrors(updatedErrors);
+
+  return Object.keys(entryErrors).length === 0;
+});
+
 
       if (!allValid) {
         toast.error("Please fix form errors before submitting.");

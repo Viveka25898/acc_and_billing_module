@@ -13,8 +13,28 @@ export default function StatutoryModal({ onClose, onSave, editData = null }) {
   );
   const [error, setError] = useState("");
 
+  // Dummy rate data
+  const sectionRateMap = {
+    "194C": "1.00",
+    "194J": "10.00",
+    "194H": "5.00",
+    "194I": "2.00",
+    "194A": "7.50",
+  };
+
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // Auto-fill rate based on section selection
+    if (name === "section") {
+      setForm((prevForm) => ({
+        ...prevForm,
+        [name]: value,
+        rate: sectionRateMap[value] || "",
+      }));
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
   const handleSubmit = () => {
@@ -63,24 +83,48 @@ export default function StatutoryModal({ onClose, onSave, editData = null }) {
             </div>
           </div>
 
-         <select
-          name="section"
-          value={form.section}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        >
-          <option value="">-- Select Section --</option>
-          <option value="194C">Section 194C - Contractor</option>
-          <option value="194J">Section 194J - Professional Fees</option>
-          <option value="194H">Section 194H - Commission</option>
-          <option value="194I">Section 194I - Rent</option>
-          <option value="194A">Section 194A - Interest</option>
-        </select>
+          <select
+            name="section"
+            value={form.section}
+            onChange={handleChange}
+            className="border p-2 rounded"
+          >
+            <option value="">-- Select Section --</option>
+            <option value="194C">Section 194C - Contractor</option>
+            <option value="194J">Section 194J - Professional Fees</option>
+            <option value="194H">Section 194H - Commission</option>
+            <option value="194I">Section 194I - Rent</option>
+            <option value="194A">Section 194A - Interest</option>
+          </select>
 
-          <input name="description" value={form.description} onChange={handleChange} placeholder="Description" className="border p-2 rounded" />
-          <input name="rate" value={form.rate} onChange={handleChange} placeholder="Rate (%)" className="border p-2 rounded" />
-          <input name="applicableFrom" value={form.applicableFrom} onChange={handleChange} type="date" className="border p-2 rounded" />
-          <input name="remarks" value={form.remarks} onChange={handleChange} placeholder="Remarks" className="border p-2 rounded" />
+          <input
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Description"
+            className="border p-2 rounded"
+          />
+          <input
+            name="rate"
+            value={form.rate}
+            onChange={handleChange}
+            placeholder="Rate (%)"
+            className="border p-2 rounded"
+          />
+          <input
+            name="applicableFrom"
+            value={form.applicableFrom}
+            onChange={handleChange}
+            type="date"
+            className="border p-2 rounded"
+          />
+          <input
+            name="remarks"
+            value={form.remarks}
+            onChange={handleChange}
+            placeholder="Remarks"
+            className="border p-2 rounded"
+          />
           {error && <p className="text-red-500">{error}</p>}
         </div>
         <div className="flex justify-end gap-2 mt-4">
