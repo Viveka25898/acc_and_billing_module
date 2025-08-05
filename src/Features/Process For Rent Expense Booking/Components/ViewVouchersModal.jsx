@@ -1,4 +1,3 @@
-// File: src/components/rent/ViewVouchersModal.jsx
 import React from "react";
 
 export default function ViewVouchersModal({ site, agreement, vouchers, onClose }) {
@@ -7,6 +6,8 @@ export default function ViewVouchersModal({ site, agreement, vouchers, onClose }
   const formatDateTime = (iso) => new Date(iso).toLocaleString();
 
   const vouchersInAgreementPeriod = vouchers.filter((v) => {
+    if (!agreement) return true; // Show all if no agreement
+    
     const voucherDate = new Date(v.month + "-01");
     const start = new Date(agreement?.startDate);
     const end = new Date(agreement?.endDate);
@@ -16,10 +17,16 @@ export default function ViewVouchersModal({ site, agreement, vouchers, onClose }
   const monthsBetween = (start, end) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
-    return (
-      (endDate.getFullYear() - startDate.getFullYear()) * 12 +
-      (endDate.getMonth() - startDate.getMonth()) + 1
-    );
+    
+    let months = 0;
+    const current = new Date(startDate);
+    
+    while (current <= endDate) {
+      months++;
+      current.setMonth(current.getMonth() + 1);
+    }
+    
+    return months;
   };
 
   const totalMonths = agreement ? monthsBetween(agreement.startDate, agreement.endDate) : 0;
@@ -41,11 +48,11 @@ export default function ViewVouchersModal({ site, agreement, vouchers, onClose }
         </h2>
 
         {agreement ? (
-          <div className="mb-6">
-            <p className="text-sm text-gray-600">
+          <div className="mb-6 p-4 bg-gray-50 rounded">
+            <p className="text-sm text-gray-600 mb-2">
               <strong>Agreement Period:</strong> {agreement.startDate} to {agreement.endDate}
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 mb-2">
               <strong>Total Months:</strong> {totalMonths}
             </p>
             <p className="text-sm text-gray-600">
@@ -54,29 +61,36 @@ export default function ViewVouchersModal({ site, agreement, vouchers, onClose }
             </p>
           </div>
         ) : (
-          <p className="text-gray-600">No agreement found for this site.</p>
+          <p className="text-gray-600 mb-4">No agreement found for this site.</p>
         )}
 
         {vouchersInAgreementPeriod.length === 0 ? (
-          <p className="text-center text-gray-500 italic">No vouchers found within the agreement period.</p>
+          <p className="text-center text-gray-500 italic">
+            {agreement ? "No vouchers found within the agreement period." : "No vouchers found for this site."}
+          </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {vouchersInAgreementPeriod.map((v, i) => (
               <div
                 key={i}
-                className="border rounded-md p-4 bg-gray-50 shadow-sm hover:shadow-md transition duration-200"
+                className="border rounded-md p-4 bg-white shadow-sm hover:shadow-md transition duration-200"
               >
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 mb-1">
                   <strong>Month:</strong> {v.month}
                 </p>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 mb-1">
                   <strong>Amount:</strong> ₹{v.amount}
                 </p>
-                <p className="text-sm text-gray-700">
+                {v.gstType && (
+                  <p className="text-sm text-gray-700 mb-1">
+                    <strong>GST Type:</strong> {v.gstType}
+                  </p>
+                )}
+                <p className="text-sm text-gray-700 mb-1">
                   <strong>Created By:</strong> {v.createdBy || "Admin"}
                 </p>
                 <p className="text-sm text-gray-700">
-                  <strong>Date:</strong> {formatDateTime(v.createdAt || new Date().toISOString())}
+                  <strong>Created:</strong> {formatDateTime(v.createdAt || new Date().toISOString())}
                 </p>
               </div>
             ))}

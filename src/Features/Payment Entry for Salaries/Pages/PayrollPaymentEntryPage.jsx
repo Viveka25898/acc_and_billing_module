@@ -9,37 +9,101 @@ export default function PayrollPaymentEntryPage() {
 
   // 🔽 Pre-formatted Excel download logic
   const handleDownloadTemplate = () => {
-  const sampleData = [
-    {
-      "TYPE": "NEFT",
-      "DEBIT BANK A/C NO": "1234567890",
-      "DEBIT AMT": 25000,
-      "CUR": "INR",
-      "BENIFICARY A/C NO": "9876543210",
-      "IFSC CODE": "SBIN0000123",
-      "NARRTION/NAME (NOT MORE THAN 20)": "John Doe".slice(0, 20),
-    },
-  ];
+    const sampleData = [
+      {
+        "TYPE": "NEFT",
+        "DEBIT BANK A/C NO": "1234567890",
+        "DEBIT AMT": 25000,
+        "CUR": "INR",
+        "NARRTION/NAME (NOT MORE THAN 20)": "John Doe".slice(0, 20),
+      },
+    ];
 
-  const ws = XLSX.utils.json_to_sheet(sampleData);
-  ws["!cols"] = [
-    { wch: 10 },  // TYPE
-    { wch: 20 },  // DEBIT BANK A/C NO
-    { wch: 12 },  // DEBIT AMT
-    { wch: 8 },   // CUR
-    { wch: 20 },  // BENIFICARY A/C NO
-    { wch: 15 },  // IFSC
-    { wch: 30 },  // NARRATION
-  ];
+    const ws = XLSX.utils.json_to_sheet(sampleData);
+    ws["!cols"] = [
+      { wch: 10 },  // TYPE
+      { wch: 20 },  // DEBIT BANK A/C NO
+      { wch: 12 },  // DEBIT AMT
+      { wch: 8 },   // CUR
+      { wch: 30 },  // NARRATION
+    ];
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "BankPaymentFormat");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BankPaymentFormat");
 
-  const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-  saveAs(file, "Bank_NEF_Payment_Format.xlsx");
-};
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(file, "Bank_NEFT_Payment_Format.xlsx");
+  };
 
+  // 🔥 NEW: Download Sample Employee Data Excel
+  const handleDownloadEmployeeSample = () => {
+    const sampleEmployeeData = [
+      {
+        "TYPE": "NEFT",
+        "DEBIT BANK A/C NO": "1234567890123",
+        "DEBIT AMT": 45000,
+        "CUR": "INR",
+        "BENEFICIARY A/C NO": "9876543210001",
+        "IFSC CODE": "HDFC0001234",
+        "NARRATION/NAME (NOT MORE THAN 20)": "John Doe"
+      },
+      {
+        "TYPE": "NEFT", 
+        "DEBIT BANK A/C NO": "1234567890123",
+        "DEBIT AMT": 52000,
+        "CUR": "INR",
+        "BENEFICIARY A/C NO": "9876543210002", 
+        "IFSC CODE": "ICIC0005678",
+        "NARRATION/NAME (NOT MORE THAN 20)": "Jane Smith"
+      },
+      {
+        "TYPE": "NEFT",
+        "DEBIT BANK A/C NO": "1234567890123", 
+        "DEBIT AMT": 38000,
+        "CUR": "INR",
+        "BENEFICIARY A/C NO": "9876543210003",
+        "IFSC CODE": "SBIN0007890", 
+        "NARRATION/NAME (NOT MORE THAN 20)": "Mike Johnson"
+      },
+      {
+        "TYPE": "NEFT",
+        "DEBIT BANK A/C NO": "1234567890123",
+        "DEBIT AMT": 41000, 
+        "CUR": "INR",
+        "BENEFICIARY A/C NO": "9876543210004",
+        "IFSC CODE": "YESB0004567",
+        "NARRATION/NAME (NOT MORE THAN 20)": "Sarah Wilson"
+      },
+      {
+        "TYPE": "NEFT",
+        "DEBIT BANK A/C NO": "1234567890123",
+        "DEBIT AMT": 47000,
+        "CUR": "INR", 
+        "BENEFICIARY A/C NO": "9876543210005",
+        "IFSC CODE": "AXIS0009876",
+        "NARRATION/NAME (NOT MORE THAN 20)": "David Brown"
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(sampleEmployeeData);
+    ws["!cols"] = [
+      { wch: 10 },  // TYPE
+      { wch: 20 },  // DEBIT BANK A/C NO 
+      { wch: 12 },  // DEBIT AMT
+      { wch: 8 },   // CUR
+      { wch: 20 },  // BENEFICIARY A/C NO
+      { wch: 15 },  // IFSC CODE
+      { wch: 25 },  // NARRATION
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Employee_Salary_Data");
+
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(file, "Sample_Employee_Salary_Data.xlsx");
+  };
 
   return (
     <div className="p-4 max-w-7xl mx-auto bg-white shadow-md rounded-md ">
@@ -63,13 +127,19 @@ export default function PayrollPaymentEntryPage() {
         <PaymentFormTable />
       </div> */}
 
-      {/* 🔽 Download Template Button */}
-      <div className="flex justify-end mt-6">
+      {/* 🔽 Download Template Buttons */}
+      <div className="flex justify-end gap-3 mt-6">
+        <button
+          onClick={handleDownloadEmployeeSample}
+          className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition"
+        >
+          📋 Download Sample Employee Data
+        </button>
         <button
           onClick={handleDownloadTemplate}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
         >
-          Download Pre-Formatted File
+          📄 Download Pre-Formatted File
         </button>
       </div>
     </div>

@@ -46,13 +46,14 @@ const MyRequests = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [showClarifyModal, setShowClarifyModal] = useState(false);
   const [clarificationText, setClarificationText] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+
 
   const itemsPerPage = 5;
 
   const auth = useSelector((state) => state.auth);
   const loggedInUserName = useSelector((state) => state.auth.user);
-  console.log("Name",loggedInUserName);
+
 
   useEffect(() => {
     // Get all requests from localStorage
@@ -69,45 +70,41 @@ const MyRequests = () => {
     setRequests(userRequests);
   }, [loggedInUserName]);
 
-  const getStatusLabel = (m, v) => {
-    if (m === 'Pending') return 'Pending from Line Manager';
-    if (m === 'Rejected') return 'Rejected by Line Manager';
-    if (m === 'Approved' && v === 'Pending') return 'Approved by Line Manager, Pending from VP';
-    if (v === 'Rejected') return 'Rejected by VP Operations';
-    if (m === 'Approved' && v === 'Approved') return 'Approved by Line Manager & VP Operations';
-    return 'Unknown';
-  };
-
-  const getStatusColor = (m, v) => {
-    if (m === 'Rejected' || v === 'Rejected') return 'text-red-600';
-    if (m === 'Pending' || v === 'Pending') return 'text-yellow-600';
-    if (m === 'Approved' && v === 'Approved') return 'text-green-600';
-    return 'text-gray-600';
-  };
-
   const filteredRequests = requests.filter((r) => !dateFilter || r.requestDate === dateFilter);
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const openClarifyModal = (id) => {
-    setSelectedId(id);
-    setClarificationText('');
-    setShowClarifyModal(true);
-  };
+ const openClarifyModal = (req) => {
+  setSelectedRequest(req); // full request object
+  setClarificationText('');
+  setShowClarifyModal(true);
+};
 
   const submitClarification = () => {
-    if (!clarificationText.trim()) {
-      toast.error('Clarification cannot be empty.');
-      return;
-    }
+  if (!clarificationText.trim()) {
+    toast.error('Clarification cannot be empty.');
+    return;
+  }
 
-    const updated = requests.map((r) =>
-      r.id === selectedId ? { ...r, clarification: clarificationText } : r
-    );
-    setRequests(updated);
-    setShowClarifyModal(false);
-    toast.success('Clarification submitted successfully.');
-  };
+  const updated = requests.map((r) =>
+    r.employeeId === selectedRequest.employeeId && r.submittedAt === selectedRequest.submittedAt
+      ? { ...r, clarification: clarificationText }
+      : r
+  );
+  setRequests(updated);
+
+  const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+  const updatedAllRequests = allRequests.map((r) =>
+    r.employeeId === selectedRequest.employeeId && r.submittedAt === selectedRequest.submittedAt
+      ? { ...r, clarification: clarificationText }
+      : r
+  );
+  localStorage.setItem('advanceRequests', JSON.stringify(updatedAllRequests));
+
+  setShowClarifyModal(false);
+  toast.success('Clarification submitted successfully.');
+};
+
 
   return (
     <div className="min-h-screen px-4 py-10 bg-white rounded shadow-md">
@@ -135,14 +132,20 @@ const MyRequests = () => {
                   <tr key={index} className="text-center">
                     <td className="border px-4 py-2">₹{req.amount}</td>
                     <td className="border px-4 py-2">{req.requestDate}</td>
-                    <td className={`border px-4 py-2 font-semibold ${getStatusColor(req.managerStatus, req.vpStatus)}`}>
-                      {getStatusLabel(req.managerStatus, req.vpStatus)}
+                   <td
+                      className={`border px-4 py-2 font-semibold ${
+                        req.status.includes('Rejected') ? 'text-red-600' :
+                        req.status.includes('Pending') ? 'text-yellow-600' :
+                        req.status.includes('Approved') ? 'text-green-600' : 'text-gray-600'
+                      }`}
+                    >
+                      {req.status}
                     </td>
                     <td className="border px-4 py-2">{req.remarks || '-'}</td>
                     <td className="border px-4 py-2">
-                      {req.vpStatus === 'Rejected' && !req.clarification ? (
+                      {req.status.includes('Rejected') && !req.clarification ? (
                         <button
-                          onClick={() => openClarifyModal(req.id)}
+                         onClick={() => openClarifyModal(req)}
                           className="text-blue-600 underline hover:text-blue-800"
                         >
                           Clarification

@@ -31,33 +31,35 @@ export default function VendorTDSModal({ vendor, onClose, updateVendor }) {
   };
 
   const handleSelectionChange = (e) => {
-  const rate = e.target.value;
-  setTdsRate(rate); 
-};
-
+    const rate = e.target.value;
+    setTdsRate(rate); 
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-lg max-w-md w-full">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-start pt-10"
+      style={{ overflow: "visible" }}
+    >
+      <div className="bg-white p-6 rounded-lg max-w-md w-full relative">
         <h2 className="text-lg font-bold mb-2">{vendor.name} - TDS Mapping</h2>
-        
-        <select
-        value={tdsRate}
-        onChange={handleSelectionChange}
-        className="w-full border border-green-400 p-2 rounded mb-2"
-      >
-        <option value="" disabled hidden>
-          -- Select from Ledger --
-        </option>
-        {statutoryOptions.map((item) => (
-          <option key={item.id} value={parseFloat(item.rate)}>
-            {item.section} - {item.description} ({item.rate})
-          </option>
-        ))}
-      </select>
 
+        <select
+          value={tdsRate}
+          onChange={handleSelectionChange}
+          className="w-full border border-green-400 p-2 rounded mb-2 bg-white"
+        >
+          <option value="" disabled hidden>
+            -- Select from Ledger --
+          </option>
+          {statutoryOptions.map((item) => (
+            <option key={item.id} value={parseFloat(item.rate)}>
+              {item.section} - {item.description} ({item.rate})
+            </option>
+          ))}
+        </select>
 
         {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+
         <div className="flex justify-end space-x-2">
           <button
             onClick={onClose}

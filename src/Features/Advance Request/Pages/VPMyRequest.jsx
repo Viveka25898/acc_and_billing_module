@@ -1,42 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import RequestFilter from '../RequestFilter';
 import { toast } from 'react-toastify';
-
-const dummyRequests = [
-  {
-    employeeId: 'EMP001',
-    employeeName: 'Amit Sharma',
-    amount: '5000',
-    requestDate: '2024-05-01',
-    managerStatus: 'Approved',
-    vpStatus: 'Approved',
-    accountStatus: 'Approved',
-    remarks: '',
-    clarification: '',
-  },
-  {
-    employeeId: 'EMP001',
-    employeeName: 'Amit Sharma',
-    amount: '6000',
-    requestDate: '2024-05-10',
-    managerStatus: 'Approved',
-    vpStatus: 'Approved',
-    accountStatus: 'Rejected',
-    remarks: 'Mismatch in supporting documents',
-    clarification: '',
-  },
-  {
-    employeeId: 'EMP001',
-    employeeName: 'Amit Sharma',
-    amount: '5000',
-    requestDate: '2024-05-01',
-    managerStatus: 'Approved',
-    vpStatus: 'Approved',
-    accountStatus: 'Approved',
-    remarks: '',
-    clarification: 'Resubmitted with proper doc',
-  },
-];
 
 const VPMyRequest = () => {
   const [requests, setRequests] = useState([]);
@@ -44,39 +9,51 @@ const VPMyRequest = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [showClarifyModal, setShowClarifyModal] = useState(false);
   const [clarificationText, setClarificationText] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const itemsPerPage = 5;
+  const loggedInUserName = useSelector((state) => state.auth.user);
 
   useEffect(() => {
-    const currentUserId = 'EMP001';
-    const filtered = dummyRequests.filter((r) => r.employeeId === currentUserId);
-    setRequests(filtered);
-  }, []);
+    // Get all requests from localStorage
+    const stored = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+    
+    // Filter only current VP's requests (both as submitter and approver)
+    const vpRequests = stored
+  .filter((r) => r.submittedBy === loggedInUserName)
+  .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
-  const getStatusLabel = (accountStatus) => {
-    if (accountStatus === 'Approved') return 'Approved by Account Executive';
-    if (accountStatus === 'Rejected') return 'Rejected by Account Executive';
-    if (accountStatus === 'Pending') return 'Pending from Account Executive';
-    return '-';
+    setRequests(vpRequests);
+  }, [loggedInUserName]);
+
+  const getStatusLabel = (status) => {
+    if (status === 'Approved') return 'Approved by Account Executive';
+    if (status === 'Rejected by AE') return 'Rejected by Account Executive';
+    if (status === 'Pending AE Approval') return 'Pending from Account Executive';
+    if (status === 'Rejected by VP Operations') return 'Rejected by VP Operations';
+    if (status === 'Pending VP Approval') return 'Pending VP Approval';
+    return status;
   };
 
-  const getStatusColor = (accountStatus) => {
-    if (accountStatus === 'Rejected') return 'text-red-600';
-    if (accountStatus === 'Approved') return 'text-green-600';
+  const getStatusColor = (status) => {
+    if (status.includes('Rejected')) return 'text-red-600';
+    if (status.includes('Approved')) return 'text-green-600';
     return 'text-yellow-600';
   };
 
-  const filteredRequests = requests.filter((req) => {
-    return !dateFilter || req.requestDate === dateFilter;
-  });
+  const filteredRequests = requests.filter((req) => 
+    !dateFilter || req.requestDate === dateFilter
+  );
 
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
-  const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * itemsPerPage, 
+    currentPage * itemsPerPage
+  );
 
-  const openClarifyModal = (id) => {
-    setSelectedId(id);
-    setClarificationText('');
+  const openClarifyModal = (req) => {
+    setSelectedRequest(req);
+    setClarificationText(req.clarification || '');
     setShowClarifyModal(true);
   };
 
@@ -86,10 +63,21 @@ const VPMyRequest = () => {
       return;
     }
 
-    const updated = requests.map((r, index) =>
-      index === selectedId ? { ...r, clarification: clarificationText } : r
+    const updated = requests.map((r) =>
+      r.submittedAt === selectedRequest.submittedAt
+        ? { ...r, clarification: clarificationText }
+        : r
     );
     setRequests(updated);
+
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+    const updatedAllRequests = allRequests.map((r) =>
+      r.submittedAt === selectedRequest.submittedAt
+        ? { ...r, clarification: clarificationText }
+        : r
+    );
+    localStorage.setItem('advanceRequests', JSON.stringify(updatedAllRequests));
+
     setShowClarifyModal(false);
     toast.success('Clarification submitted successfully.');
   };
@@ -106,10 +94,11 @@ const VPMyRequest = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto border border-green-200 text-sm">
-              <thead className="bg-green-100">
+              <thead className="bg-gray-100">
                 <tr>
                   <th className="border px-4 py-2">Amount</th>
                   <th className="border px-4 py-2">Date</th>
+                  <th className="border px-4 py-2">Type</th>
                   <th className="border px-4 py-2">Status</th>
                   <th className="border px-4 py-2">Remarks</th>
                   <th className="border px-4 py-2">Action</th>
@@ -120,14 +109,17 @@ const VPMyRequest = () => {
                   <tr key={index} className="text-center">
                     <td className="border px-4 py-2">₹{req.amount}</td>
                     <td className="border px-4 py-2">{req.requestDate}</td>
-                    <td className={`border px-4 py-2 font-semibold ${getStatusColor(req.accountStatus)}`}>
-                      {getStatusLabel(req.accountStatus)}
+                    <td className="border px-4 py-2">
+                      {req.isVPRequest ? 'VP Request' : 'Employee Request'}
+                    </td>
+                    <td className={`border px-4 py-2 font-semibold ${getStatusColor(req.status)}`}>
+                      {getStatusLabel(req.status)}
                     </td>
                     <td className="border px-4 py-2">{req.remarks || '-'}</td>
                     <td className="border px-4 py-2">
-                      {req.accountStatus === 'Rejected' && !req.clarification ? (
+                      {req.status.includes('Rejected') && !req.clarification ? (
                         <button
-                          onClick={() => openClarifyModal(index)}
+                          onClick={() => openClarifyModal(req)}
                           className="text-blue-600 underline hover:text-blue-800"
                         >
                           Clarification
@@ -152,7 +144,9 @@ const VPMyRequest = () => {
                 key={page}
                 onClick={() => setCurrentPage(page)}
                 className={`px-3 py-1 border rounded font-medium ${
-                  page === currentPage ? 'bg-green-600 text-white' : 'bg-white text-green-700 border-green-300'
+                  page === currentPage
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white text-green-700 border-green-300'
                 }`}
               >
                 {page}

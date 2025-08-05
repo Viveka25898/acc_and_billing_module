@@ -1,13 +1,31 @@
-import React, { useState } from 'react';
+/* eslint-disable no-unused-vars */
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const VPAdvanceRequestForm = () => {
+  // Get the VP name from local storage
+  useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem("user"));
+    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+
+    if (currentUser) {
+      const fullUser = allUsers.find(u => u.username === currentUser.username);
+
+      setFormData((prev) => ({
+        ...prev,
+        employeeName: fullUser?.username || '',
+        employeeId: fullUser?.employeeId || fullUser?.username || '',
+      }));
+    }
+  }, []);
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     employeeName: '',
     employeeId: '',
     amount: '',
     reason: '',
+    customReason: '',
     requestDate: new Date().toISOString().slice(0, 10),
   });
 
@@ -20,7 +38,15 @@ const VPAdvanceRequestForm = () => {
   };
 
   const isFormValid = () => {
-    const { employeeName, employeeId, amount, reason } = formData;
+    const { employeeName, employeeId, amount, reason, customReason } = formData;
+    if (reason === 'Other') {
+      return (
+        employeeName.trim() &&
+        employeeId.trim() &&
+        amount.trim() &&
+        customReason.trim()
+      );
+    }
     return employeeName.trim() && employeeId.trim() && amount.trim() && reason.trim();
   };
 
@@ -33,37 +59,55 @@ const VPAdvanceRequestForm = () => {
       return;
     }
 
-    const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
+    const finalReason = formData.reason === 'Other' ? formData.customReason : formData.reason;
+
+    // Get current user info
+    const currentUser = JSON.parse(localStorage.getItem("user"));
+    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const accountExecutives = allUsers.filter(u => u.role === 'account-executive');
+
+    if (accountExecutives.length === 0) {
+      alert("❌ No Account Executive found in the system.");
+      return;
+    }
+
+    // Assign to first available AE (you might want more sophisticated assignment logic)
+    const assignedTo = accountExecutives[0].username;
+
     const newRequest = {
       ...formData,
-      status: 'Pending Manager Approval',
+      reason: finalReason,
+      status: 'Pending AE Approval', // Directly goes to AE
       remarks: '',
       submittedAt: new Date().toISOString(),
+      assignedTo: assignedTo,
+      submittedBy: currentUser.username,
+      currentLevel: 'account-executive', // Track approval level
+      isVPRequest: true // Flag to identify VP requests
     };
 
+    const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
     existingRequests.push(newRequest);
     localStorage.setItem('advanceRequests', JSON.stringify(existingRequests));
+
     setSubmitted(true);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white shadow rounded-md ">
-      <div className="w-full max-w-2xl p-6 ">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-green-600">Advance Request Form</h2>
-          <button
-            onClick={() => navigate('/dashboard/vp-operations/my-requests')}
-            className="text-green-600 border border-green-600 px-4 py-1 rounded hover:bg-green-600 hover:text-white transition"
-          >
-           
-            My Requests
-          
-          </button>
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white shadow rounded-md">
+      <div className="w-full max-w-2xl p-6">
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
+          <h2 className="text-2xl font-bold text-green-600">VP Advance Request Form</h2>
+          <NavLink to="/dashboard/vp-operations/my-requests">
+            <button className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700 hover:text-white transition cursor-pointer">
+              My Requests
+            </button>
+          </NavLink>
         </div>
 
         {submitted ? (
           <div className="text-green-600 text-center font-medium">
-            ✅ Your advance request has been submitted successfully.
+            ✅ Your advance request has been submitted directly to Account Executive.
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,16 +155,36 @@ const VPAdvanceRequestForm = () => {
 
               <div className="sm:col-span-2">
                 <label className="block mb-1 font-semibold">Reason for Advance</label>
-                <textarea
+                <select
                   name="reason"
                   value={formData.reason}
                   onChange={handleChange}
                   className="w-full border px-3 py-2 rounded focus:outline-none focus:ring focus:ring-blue-300"
-                  placeholder="Mention the purpose of the advance"
-                  rows="3"
                   required
-                ></textarea>
+                >
+                  <option value="">-- Select Reason --</option>
+                  <option value="Visit to Client">Visit to Client</option>
+                  <option value="Travelling Allowance">Travelling Allowance</option>
+                  <option value="Petrol Expense">Petrol Expense</option>
+                  <option value="Office Expense">Office Expense</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
+
+              {formData.reason === 'Other' && (
+                <div className="sm:col-span-2">
+                  <label className="block mb-1 font-semibold">Specify Reason</label>
+                  <input
+                    type="text"
+                    name="customReason"
+                    value={formData.customReason}
+                    onChange={handleChange}
+                    className="w-full border px-3 py-2 rounded focus:outline-none focus:ring focus:ring-blue-300"
+                    placeholder="Enter custom reason"
+                    required
+                  />
+                </div>
+              )}
 
               <div className="sm:col-span-2">
                 <label className="block mb-1 font-semibold">Request Date</label>

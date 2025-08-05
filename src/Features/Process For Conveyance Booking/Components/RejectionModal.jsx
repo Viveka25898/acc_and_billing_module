@@ -1,15 +1,24 @@
-// File: src/features/conveyance/components/RejectReasonModal.jsx
+import React, { useState, useEffect } from "react";
 
-import React, { useState } from "react";
-
-export default function RejectionModal({ onClose, onSubmit }) {
+export default function RejectionModal({ isOpen, onClose, onSubmit, claimId }) {
   const [reason, setReason] = useState("");
 
+  useEffect(() => {
+    if (!isOpen) {
+      setReason("");
+    }
+  }, [isOpen]);
+
   const handleSubmit = () => {
-    if (!reason.trim()) return alert("Please enter a reason for rejection");
-    onSubmit(reason);
-    setReason("");
+    if (!reason.trim()) {
+      alert("Please enter a reason for rejection");
+      return;
+    }
+    onSubmit(claimId, reason); // Pass both claimId and reason
+    onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center px-2">
@@ -31,10 +40,16 @@ export default function RejectionModal({ onClose, onSubmit }) {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="w-full border rounded p-2 focus:outline-none focus:ring"
-          ></textarea>
+          />
         </div>
 
-        <div className="flex justify-end px-4 py-3 border-t">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border rounded hover:bg-gray-50"
+          >
+            Cancel
+          </button>
           <button
             onClick={handleSubmit}
             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"

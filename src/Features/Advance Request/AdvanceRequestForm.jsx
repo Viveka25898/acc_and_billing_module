@@ -1,8 +1,24 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const AdvanceRequestForm = () => {
+
+  //Get the emp name from local storage
+  useEffect(() => {
+  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+
+  if (currentUser) {
+    const fullUser = allUsers.find(u => u.username === currentUser.username);
+
+    setFormData((prev) => ({
+      ...prev,
+      employeeName: fullUser?.username || '',
+      employeeId: fullUser?.employeeId || fullUser?.username || '',
+    }));
+  }
+}, []);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     employeeName: '',
@@ -35,29 +51,45 @@ const AdvanceRequestForm = () => {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
+  e.preventDefault();
+  setError('');
 
-    if (!isFormValid()) {
-      setError('All fields are required.');
-      return;
-    }
+  if (!isFormValid()) {
+    setError('All fields are required.');
+    return;
+  }
 
-    const finalReason = formData.reason === 'Other' ? formData.customReason : formData.reason;
+  const finalReason = formData.reason === 'Other' ? formData.customReason : formData.reason;
 
-    const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
-    const newRequest = {
-      ...formData,
-      reason: finalReason,
-      status: 'Pending Manager Approval',
-      remarks: '',
-      submittedAt: new Date().toISOString(),
-    };
+  // 🔹 Get current user and hierarchy info
+  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
 
-    existingRequests.push(newRequest);
-    localStorage.setItem('advanceRequests', JSON.stringify(existingRequests));
-    setSubmitted(true);
+  const fullUser = allUsers.find(u => u.username === currentUser.username);
+  const assignedTo = fullUser?.reportsTo;
+
+  if (!assignedTo) {
+    alert("❌ No reporting manager assigned to this employee. Please set 'reportsTo' in users.");
+    return;
+  }
+
+  const newRequest = {
+    ...formData,
+    reason: finalReason,
+    status: 'Pending Manager Approval',
+    remarks: '',
+    submittedAt: new Date().toISOString(),
+    assignedTo: assignedTo, // 🔹 Track who should review this request
+    submittedBy: currentUser.username,
+    currentLevel: 'line-manager', // 🔹 used to track approval level
   };
+
+  const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
+  existingRequests.push(newRequest);
+  localStorage.setItem('advanceRequests', JSON.stringify(existingRequests));
+
+  setSubmitted(true);
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white shadow rounded-md">
@@ -130,9 +162,9 @@ const AdvanceRequestForm = () => {
                 >
                   <option value="">-- Select Reason --</option>
                   <option value="Visit to Client">Visit to Client</option>
-                  <option value="Purchase of Cleaning Supplies">Travelling Allowance</option>
-                  <option value="Emergency Site Expenses">Petrol Expense</option>
-                  <option value="Medical Assistance">Office Expense</option>
+                  <option value="Travelling Allowance">Travelling Allowance</option>
+                  <option value="Petrol Expense">Petrol Expense</option>
+                  <option value="Office Expense">Office Expense</option>
                   <option value="Other">Other</option>
                 </select>
               </div>

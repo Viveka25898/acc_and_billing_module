@@ -1,4 +1,3 @@
-// src/features/salaryPayment/components/PaymentFormTable.jsx
 import { useState } from "react";
 import PaymentFormRow from "./PaymentFormRow";
 import SubmitButton from "./SubmitButton";

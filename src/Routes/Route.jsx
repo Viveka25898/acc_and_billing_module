@@ -125,6 +125,22 @@ import VPMyRequest from "../Features/Advance Request/Pages/VPMyRequest"
 import AEAdvanceApprovalPage from "../Features/Advance Request/Pages/AEAdvanceApprovalPage"
 import VPReview from "../Features/Advance Settlement/Pages/VPReview"
 import AEAdvanceSettlementApproval from "../Features/Advance Settlement/Pages/AEAdvanaceSettlementApprovalPage"
+import ManagerAdvanceRequestForm from "../Features/Advance Request/Pages/ManagerAdvanceRequestForm"
+import LineManagerMyRequests from "../Features/Advance Request/Pages/LineManagerMyRequests"
+import ComplianceTeamAdvanceRequestForm from "../Features/Advance Request/Pages/ComplainceTeamAdvanceRequestForm"
+import ComplianceTeamMyRequests from "../Features/Advance Request/Pages/ComplianceTeamMyRequests"
+import ComplianceManagerAdvanceRequestForm from "../Features/Advance Request/Pages/ComplainceManagerAdvanceRquestForm"
+import ComplianceManagerMyRequests from "../Features/Advance Request/Pages/ComplianceManagerMyRequests"
+import PayrollTeamAdvanceRequestForm from "../Features/Advance Request/Pages/PayrollTeamAdvanceRequestform"
+import PayrollTeamMyRequests from "../Features/Advance Request/Pages/PayrollTeamMyRequests"
+import OperationExecutiveAdvanceRequestForm from "../Features/Advance Request/Pages/OperationExecutiveAdvanceRequestForm"
+import OperationExecutiveMyRequests from "../Features/Advance Request/Pages/OperationExecutiveMyRequests"
+import OperationExecutiveMyAdvanceRequests from "../Features/Advance Request/Pages/OperationExecutiveMyRequests"
+import AccountManagerDashboard from "../Roles/Account Manager/Pages/AccountManagerDashboard"
+import AccountManagerHome from "../Roles/Account Manager/Components/AccountManagerHome"
+import AMInvoiceReviewPage from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerInvoiceReviewPage"
+import AMInvoiceApproval from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage"
+import AMFixedAssetEntryPage from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage"
 
 
 export const router=createBrowserRouter([
@@ -200,7 +216,7 @@ export const router=createBrowserRouter([
             },
             {
                 path:"my-requests",
-                element:<ManagerMyRequests/>
+                element:<LineManagerMyRequests/>
             },
             {
                 path:"advance-approval",
@@ -306,6 +322,14 @@ export const router=createBrowserRouter([
             {
                 index:true,
                 element:<ManagerHome/>
+            },
+            {
+                path:"advance-request",
+                element:<ManagerAdvanceRequestForm/>
+            },
+            {
+                path:"my-requests",
+                element:<ManagerMyRequests/>
             },
             {
                 path:"material-request-approval",
@@ -485,10 +509,7 @@ export const router=createBrowserRouter([
                 path:"invoice-review",
                 element:<AEInvoiceReviewPage/>
             },
-            {
-                path:"invoice-purchase-entry/:id",
-                element:<AEInvoiceApproval/>
-            },
+            
             {
                 path:"vendor-creation",
                 element:<VendorCreationForm/>
@@ -517,10 +538,7 @@ export const router=createBrowserRouter([
                 path:"vendor-ledger-page",
                 element:<VendorLedger/>
             },
-            {
-                path:"fixed-asset-entry/:invoiceId",
-                element:<FixedAssetEntryPage/>
-            },
+            
             {
                 path:"pending-compliance-requests",
                 element:<AEPendingCompliancePage/>
@@ -559,6 +577,14 @@ export const router=createBrowserRouter([
                     element:<ComplianceTeamHome/>
                 },
                 {
+                    path:"advance-request",
+                    element:<ComplianceTeamAdvanceRequestForm/>
+                },
+                {
+                    path:"my-requests",
+                    element:<ComplianceTeamMyRequests/>
+                },
+                {
                     path:"compliance-entry-form",
                     element:<ComplianceEntryPage/>
                 },
@@ -585,6 +611,14 @@ export const router=createBrowserRouter([
                     element:<ComplianceManagerHome/>
                 },
                 {
+                    path:"advance-request",
+                    element:<ComplianceManagerAdvanceRequestForm/>
+                },
+                {
+                    path:"my-request",
+                    element:<ComplianceManagerMyRequests/>
+                },
+                {
                     path:"statutory-compliances-requests",
                     element:<ComplianceManagerApprovalPage/>
                 }
@@ -604,6 +638,14 @@ export const router=createBrowserRouter([
             {
                 index:true,
                 element:<PayrollTeamHome/>
+            },
+            {
+                path:"advance-request",
+                element:<PayrollTeamAdvanceRequestForm/>
+            },
+            {
+                path:"my-request",
+                element:<PayrollTeamMyRequests/>
             },
             {
                 path:"payroll-payment-entry",
@@ -714,6 +756,14 @@ export const router=createBrowserRouter([
                 element:<OperationExecutiveHome/>
             },
             {
+                path:"advance-request",
+                element:<OperationExecutiveAdvanceRequestForm/>
+            },
+            {
+                path:"my-request",
+                element:<OperationExecutiveMyAdvanceRequests/>
+            },
+            {
                 path:"oe-reliver-form",
                 element:<OperationExecutiveReliverPage/>
             },
@@ -730,6 +780,33 @@ export const router=createBrowserRouter([
                 element:<MyUploadedAttendance/>
             }
             
+        ]
+    },
+    // *************************Account Manager***************************************
+    {
+         path:"dashboard/account-manager",
+        element:(
+            <ProtectedRoute allowedRoles={["account-manager"]}>
+                <AccountManagerDashboard/>
+            </ProtectedRoute>
+        ),
+        children:[
+            {
+                index:true,
+                element:<AccountManagerHome/>
+            },
+            {
+                path:"invoice-review",
+                element:<AMInvoiceReviewPage/>
+            },
+            {
+                path:"invoice-purchase-entry/:id",
+                element:<AMInvoiceApproval/>
+            },
+            {
+                path:"fixed-asset-entry/:invoiceId",
+                element:<AMFixedAssetEntryPage/>
+            },
         ]
     }
 

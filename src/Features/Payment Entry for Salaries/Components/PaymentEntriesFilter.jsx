@@ -21,28 +21,28 @@ export default function PaymentEntriesFilter({ filters, onChange }) {
         </select>
       </div>
 
-      {/* Employee Name Filter */}
+      {/* Batch Name Filter - Updated label */}
       <div className="w-full">
-        <label className="text-sm font-medium block mb-1">Employee Name</label>
+        <label className="text-sm font-medium block mb-1">Batch Name</label>
         <input
           type="text"
           name="name"
           value={filters.name}
           onChange={handleInputChange}
-          placeholder="Search by name"
+          placeholder="Search by batch name"
           className="border px-3 py-2 rounded text-sm w-full"
         />
       </div>
 
-      {/* Employee Code Filter */}
+      {/* Narration Filter - Updated label */}
       <div className="w-full">
-        <label className="text-sm font-medium block mb-1">Employee Code</label>
+        <label className="text-sm font-medium block mb-1">Narration</label>
         <input
           type="text"
           name="code"
           value={filters.code}
           onChange={handleInputChange}
-          placeholder="Search by code"
+          placeholder="Search by narration"
           className="border px-3 py-2 rounded text-sm w-full"
         />
       </div>

@@ -23,8 +23,8 @@ const mockVendorData = [
     ifscCode: "HDFC0001234",
     narration: "ABC Suppliers Ltd",
     invoices: [
-      { id: 101, invoiceNumber: "INV-2024-001", amount: 15000, documentUrl: "/public/invoice.pdf" },
-      { id: 102, invoiceNumber: "INV-2024-002", amount: 25000, documentUrl: "/public/invoice.pdf" },
+      { id: 101, invoiceNumber: "INV-2024-001", amount: 15000, documentUrl: "/public/DxotBTxfHn.png" },
+      { id: 102, invoiceNumber: "INV-2024-002", amount: 25000, documentUrl: "/public/DxotBTxfHn.png" },
     ]
   },
   {
@@ -37,7 +37,7 @@ const mockVendorData = [
     ifscCode: "ICIC0005678",
     narration: "XYZ Services Pvt Ltd",
     invoices: [
-      { id: 201, invoiceNumber: "INV-2024-003", amount: 45000, documentUrl: "/api/invoices/201/document" },
+      { id: 201, invoiceNumber: "INV-2024-003", amount: 45000, documentUrl: "/public/DxotBTxfHn.png" },
     ]
   },
   {
@@ -50,9 +50,9 @@ const mockVendorData = [
     ifscCode: "SBIN0007890",
     narration: "Tech Solutions Inc",
     invoices: [
-      { id: 301, invoiceNumber: "INV-2024-004", amount: 30000, documentUrl: "/api/invoices/301/document" },
-      { id: 302, invoiceNumber: "INV-2024-005", amount: 18000, documentUrl: "/api/invoices/302/document" },
-      { id: 303, invoiceNumber: "INV-2024-006", amount: 22000, documentUrl: "/api/invoices/303/document" },
+      { id: 301, invoiceNumber: "INV-2024-004", amount: 30000, documentUrl: "/public/DxotBTxfHn.png" },
+      { id: 302, invoiceNumber: "INV-2024-005", amount: 18000, documentUrl: "/public/DxotBTxfHn.png" },
+      { id: 303, invoiceNumber: "INV-2024-006", amount: 22000, documentUrl: "/public/DxotBTxfHn.png" },
     ]
   },
   {
@@ -65,8 +65,8 @@ const mockVendorData = [
     ifscCode: "YESB0004567",
     narration: "Global Enterprises",
     invoices: [
-      { id: 401, invoiceNumber: "INV-2024-007", amount: 55000, documentUrl: "/api/invoices/401/document" },
-      { id: 402, invoiceNumber: "INV-2024-008", amount: 12000, documentUrl: "/api/invoices/402/document" },
+      { id: 401, invoiceNumber: "INV-2024-007", amount: 55000, documentUrl: "/public/DxotBTxfHn.png" },
+      { id: 402, invoiceNumber: "INV-2024-008", amount: 12000, documentUrl: "/public/DxotBTxfHn.png" },
     ]
   },
 ];
@@ -120,59 +120,153 @@ export default function ProcessPaymentPage() {
     }));
   };
 
-  // 🔥 FIXED: Download function now uses approvedInvoices
+  // 🔥 NEW: Generate System Upload File
+  const generateSystemUploadFile = (approvedInvoices) => {
+    // Group approved invoices by vendor
+    const vendorGroups = {};
+    
+    approvedInvoices.forEach(invoice => {
+      if (!vendorGroups[invoice.vendorId]) {
+        vendorGroups[invoice.vendorId] = {
+          vendorName: invoice.vendorName,
+          invoices: []
+        };
+      }
+      vendorGroups[invoice.vendorId].invoices.push(invoice);
+    });
+
+    // Create system upload data
+    const systemUploadData = [];
+    
+    Object.values(vendorGroups).forEach(vendor => {
+      const totalOriginalAmount = vendor.invoices.reduce((sum, inv) => sum + inv.originalAmount, 0);
+      const totalPaidAmount = vendor.invoices.reduce((sum, inv) => sum + inv.paidAmount, 0);
+      const totalRemainingAmount = totalOriginalAmount - totalPaidAmount;
+      
+      const invoiceNumbers = vendor.invoices.map(inv => inv.invoiceNumber).join(', ');
+      
+      systemUploadData.push({
+        'Vendor Name': vendor.vendorName,
+        'Invoice Numbers': invoiceNumbers,
+        'Total Amount': totalOriginalAmount,
+        'Payment Done': totalPaidAmount,
+        'Remaining Payment': totalRemainingAmount,
+        'UTR': ''
+      });
+    });
+
+    return systemUploadData;
+  };
+
+  // 🔥 UPDATED: Download function now generates both files
   const handleDownloadTemplate = () => {
     if (approvedInvoices.length === 0) {
       toast.warning("No approved invoices found. Please approve some invoices first.");
       return;
     }
 
-    // Format data for Excel export
-    const exportData = approvedInvoices.map(invoice => ({
-      'DEBIT BANK A/C NO': invoice.debitBankAccountNumber,
-      'DEBIT AMT': invoice.paidAmount,
-      'CUR': invoice.currency,
-      'BENEFICIARY A/C NO': invoice.beneficiaryAccountNumber,
-      'IFSC CODE': invoice.ifscCode,
-      'NARRATION/NAME': invoice.narration,
-      'UTR': invoice.utr,
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+
+    // 1. Generate Bank Upload File - GROUP BY VENDOR
+    const vendorPaymentGroups = {};
+    
+    // Group approved invoices by vendor for bank file
+    approvedInvoices.forEach(invoice => {
+      const vendorKey = invoice.vendorId;
+      
+      if (!vendorPaymentGroups[vendorKey]) {
+        vendorPaymentGroups[vendorKey] = {
+          debitBankAccountNumber: invoice.debitBankAccountNumber,
+          totalPaidAmount: 0,
+          currency: invoice.currency,
+          beneficiaryAccountNumber: invoice.beneficiaryAccountNumber,
+          ifscCode: invoice.ifscCode,
+          narration: invoice.narration,
+          vendorName: invoice.vendorName
+        };
+      }
+      
+      // Add this invoice's paid amount to vendor total
+      vendorPaymentGroups[vendorKey].totalPaidAmount += invoice.paidAmount;
+    });
+
+    // Convert grouped data to bank upload format
+    const bankUploadData = Object.values(vendorPaymentGroups).map(vendor => ({
+      'DEBIT BANK A/C NO': vendor.debitBankAccountNumber,
+      'DEBIT AMT': vendor.totalPaidAmount,
+      'CUR': vendor.currency,
+      'BENEFICIARY A/C NO': vendor.beneficiaryAccountNumber,
+      'IFSC CODE': vendor.ifscCode,
+      'NARRATION/NAME': vendor.narration,
+      'UTR': "",
     }));
 
-    // Create Excel file
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Bank_Payment_File");
+    // Create Bank Upload Excel file
+    const bankWorksheet = XLSX.utils.json_to_sheet(bankUploadData);
+    const bankWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(bankWorkbook, bankWorksheet, "Bank_Payment_File");
 
-    // Auto-size columns
-    const colWidths = [];
-    const headers = Object.keys(exportData[0] || {});
-    headers.forEach((header, index) => {
+    // Auto-size columns for bank file
+    const bankColWidths = [];
+    const bankHeaders = Object.keys(bankUploadData[0] || {});
+    bankHeaders.forEach((header, index) => {
       const maxLength = Math.max(
         header.length,
-        ...exportData.map(row => String(row[header] || '').length)
+        ...bankUploadData.map(row => String(row[header] || '').length)
       );
-      colWidths[index] = { width: Math.min(maxLength + 2, 30) };
+      bankColWidths[index] = { width: Math.min(maxLength + 2, 30) };
     });
-    worksheet['!cols'] = colWidths;
+    bankWorksheet['!cols'] = bankColWidths;
 
-    const excelBuffer = XLSX.write(workbook, {
+    const bankExcelBuffer = XLSX.write(bankWorkbook, {
       bookType: "xlsx",
       type: "array",
     });
     
-    const blob = new Blob([excelBuffer], {
+    const bankBlob = new Blob([bankExcelBuffer], {
       type: "application/octet-stream",
     });
     
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-    saveAs(blob, `Bank_Payment_File_${timestamp}.xlsx`);
+    saveAs(bankBlob, `Bank_Payment_File_${timestamp}.xlsx`);
+
+    // 2. Generate System Upload File (new functionality)
+    const systemUploadData = generateSystemUploadFile(approvedInvoices);
+
+    // Create System Upload Excel file
+    const systemWorksheet = XLSX.utils.json_to_sheet(systemUploadData);
+    const systemWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(systemWorkbook, systemWorksheet, "System_Upload_File");
+
+    // Auto-size columns for system file
+    const systemColWidths = [];
+    const systemHeaders = Object.keys(systemUploadData[0] || {});
+    systemHeaders.forEach((header, index) => {
+      const maxLength = Math.max(
+        header.length,
+        ...systemUploadData.map(row => String(row[header] || '').length)
+      );
+      systemColWidths[index] = { width: Math.min(maxLength + 2, 40) };
+    });
+    systemWorksheet['!cols'] = systemColWidths;
+
+    const systemExcelBuffer = XLSX.write(systemWorkbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    
+    const systemBlob = new Blob([systemExcelBuffer], {
+      type: "application/octet-stream",
+    });
+    
+    saveAs(systemBlob, `System_Upload_File_${timestamp}.xlsx`);
     
     const downloadedCount = approvedInvoices.length;
+    const vendorCount = Object.keys(vendorPaymentGroups).length; // Use actual vendor count from bank file
     
     // 🔥 CLEAR approved invoices after successful download
     setApprovedInvoices([]);
     
-    toast.success(`${downloadedCount} approved invoice(s) exported for bank processing! Ready for new approvals.`);
+    toast.success(`Both files downloaded successfully! Bank file: ${vendorCount} vendors (${downloadedCount} invoices), System file: ${vendorCount} vendors. Ready for new approvals.`);
     
     console.log("Approved invoices cleared after download");
   };
@@ -308,7 +402,7 @@ export default function ProcessPaymentPage() {
             onClick={handleDownloadTemplate}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors duration-200"
           >
-            ⬇️ Download Pre-Formatted Payment File ({approvedInvoices.length})
+            ⬇️ Download Pre-Formatted Payment Files ({approvedInvoices.length})
           </button>
         </div>
 

@@ -1,221 +1,184 @@
-/* eslint-disable no-unused-vars */
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 import ConveyanceFilter from "../Components/ConveyanceFilter";
 import ManagerConveyanceTable from "../Components/ManagerConveyanceTable";
 import DocumentPreviewModal from "../Components/DocumentPreviewModal";
 import RejectionModal from "../Components/RejectionModal";
-import { useNavigate } from "react-router-dom";
-
-const dummyClaims = [
-  {
-    id: 101,
-    employee: "Ravi Kumar",
-    date: "2025-06-24",
-    purpose: "Client audit",
-    site: "Delhi Zone",
-    client: "ABC Ltd",
-    transport: "Cab",
-    distance: 14,
-    amount: 280,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt1.pdf"
-  },
-  {
-    id: 102,
-    employee: "Neha Verma",
-    date: "2025-06-23",
-    purpose: "Site visit",
-    site: "Mumbai Central",
-    client: "XYZ Pvt Ltd",
-    transport: "Auto",
-    distance: 6,
-    amount: 60,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt2.pdf"
-  },
-  {
-    id: 103,
-    employee: "Ravi Kumar",
-    date: "2025-06-24",
-    purpose: "Client audit",
-    site: "Delhi Zone",
-    client: "ABC Ltd",
-    transport: "Cab",
-    distance: 14,
-    amount: 280,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt1.pdf"
-  },
-  {
-    id: 104,
-    employee: "Neha Verma",
-    date: "2025-06-23",
-    purpose: "Site visit",
-    site: "Mumbai Central",
-    client: "XYZ Pvt Ltd",
-    transport: "Auto",
-    distance: 6,
-    amount: 60,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt2.pdf"
-  },
-  {
-    id: 105,
-    employee: "Ravi Kumar",
-    date: "2025-06-24",
-    purpose: "Client audit",
-    site: "Delhi Zone",
-    client: "ABC Ltd",
-    transport: "Cab",
-    distance: 14,
-    amount: 280,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt1.pdf"
-  },
-  {
-    id: 106,
-    employee: "Neha Verma",
-    date: "2025-06-23",
-    purpose: "Site visit",
-    site: "Mumbai Central",
-    client: "XYZ Pvt Ltd",
-    transport: "Auto",
-    distance: 6,
-    amount: 60,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt2.pdf"
-  },
-  {
-    id: 107,
-    employee: "Ravi Kumar",
-    date: "2025-06-24",
-    purpose: "Client audit",
-    site: "Delhi Zone",
-    client: "ABC Ltd",
-    transport: "Cab",
-    distance: 14,
-    amount: 280,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt1.pdf"
-  },
-  {
-    id: 108,
-    employee: "Neha Verma",
-    date: "2025-06-23",
-    purpose: "Site visit",
-    site: "Mumbai Central",
-    client: "XYZ Pvt Ltd",
-    transport: "Auto",
-    distance: 6,
-    amount: 60,
-    status: "Pending",
-    receiptUrl: "https://example.com/receipt2.pdf"
-  },
-];
 
 export default function VPOperationsConveyanceApprovalPage() {
-  const [claims, setClaims] = useState(dummyClaims);
-  const [filter, setFilter] = useState({ date: "", status: "", client: "" });
-  const [rejection, setRejection] = useState({ show: false, claimId: null });
-  const [viewDocUrl, setViewDocUrl] = useState(null);
-
+  const [claims, setClaims] = useState([]);
+  const [filter, setFilter] = useState({ 
+    date: "", 
+    status: "Pending VP Approval", 
+    employee: "" 
+  });
+  const [rejection, setRejection] = useState({ 
+    show: false, 
+    claimId: null 
+  });
+  const [viewDocs, setViewDocs] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const navigate=useNavigate()
-
   const itemsPerPage = 5;
+  const navigate = useNavigate();
+  const currentUser = JSON.parse(localStorage.getItem("user")) || {};
 
-  const filtered = claims.filter((c) => {
-    return (
-      (filter.client === "" || c.client.toLowerCase().includes(filter.client.toLowerCase())) &&
-      (filter.status === "" || c.status === filter.status) &&
-      (filter.date === "" || c.date === filter.date)
+  // Load only requests pending VP approval and assigned to current VP
+  useEffect(() => {
+  try {
+    const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+    const vpRequests = allRequests.filter(
+      request => request.status === "Pending VP Approval" && 
+                request.assignedTo === currentUser.username
     );
+    setClaims(vpRequests);
+  } catch (error) {
+    toast.error("Failed to load requests");
+    console.error("Loading error:", error);
+  }
+}, [currentUser.username]);
+
+  // Filter claims based on filters
+  const filteredClaims = claims.filter((claim) => {
+    const employeeMatch = filter.employee === '' || 
+      claim.employeeName?.toLowerCase().includes(filter.employee.toLowerCase());
+    const dateMatch = filter.date === '' || 
+      claim.date.split('T')[0] === filter.date;
+    return employeeMatch && dateMatch;
   });
 
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredClaims.length / itemsPerPage));
+  const paginatedClaims = filteredClaims.slice(
+    Math.max(0, (currentPage - 1) * itemsPerPage),
+    Math.min(filteredClaims.length, currentPage * itemsPerPage)
+  );
 
+  // VP Approves the request
   const handleApprove = (id) => {
     try {
-      setClaims((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, status: "Approved" } : c))
+      const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
+        request => request.id === id ? {
+          ...request,
+          status: "Pending AE Approval",
+          assignedTo: "ae1", // Assign to Account Executive
+          vpApprovedAt: new Date().toISOString(),
+          vpApprovedBy: currentUser.username,
+          currentLevel: "ae",
+          approvers: [...(request.approvers || []), {
+            level: "vp",
+            user: currentUser.username,
+            action: "approved",
+            date: new Date().toISOString()
+          }]
+        } : request
       );
-      toast.success("Request Approved");
-    } catch (err) {
+      
+      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
+      
+      setClaims(prev => prev.filter(c => c.id !== id));
+      toast.success("Request approved and sent to Account Executive");
+    } catch (error) {
       toast.error("Approval failed");
+      console.error(error);
     }
   };
 
+  // VP Rejects the request
   const handleReject = (id, reason) => {
   try {
-    setClaims(prev =>
-      prev.map(c =>
-        c.id === id ? { ...c, status: "Rejected", rejectionReason: reason } : c
-      )
+    const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
+      request => request.id === id ? {
+        ...request,
+        status: "Rejected by VP",
+        assignedTo: request.submittedBy,
+        rejectedAt: new Date().toISOString(),
+        rejectedBy: currentUser.username,
+        rejectionReason: reason,
+        currentLevel: "rejected",
+        rejections: [...(request.rejections || []), {
+          level: "vp",
+          user: currentUser.username,
+          reason: reason,
+          date: new Date().toISOString()
+        }]
+      } : request
     );
-    toast.info("Request Rejected");
-  } catch {
+    
+    localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+    
+    // Manually trigger state update
+    setClaims(prev => prev.filter(c => c.id !== id));
+    
+    // Dispatch storage event to sync across tabs
+    window.dispatchEvent(new Event('storage'));
+    
+    toast.warning("Request rejected and returned to employee");
+  } catch (error) {
     toast.error("Rejection failed");
+    console.error(error);
   }
 };
 
-
   return (
     <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-            <h2 className="text-xl md:text-2xl font-bold text-green-600">
-                Pending Conveyance Approvals
-            </h2>
-
-            <button
-                onClick={()=>navigate("/dashboard/vp-operations/conveyance-form")}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-fit cursor-pointer"
-            >
-                Conveyance Form
-            </button>
-        </div>
-
-
-
-      <ConveyanceFilter filter={filter} setFilter={setFilter} />
-
-      <ManagerConveyanceTable
-        claims={paginated}
-        onApprove={handleApprove}
-        onReject={(id) => setRejection({ show: true, claimId: id })}
-        onViewReceipt={(url) => setViewDocUrl(url)}
-      />
-
-      <div className="mt-4 flex justify-center gap-2">
-        {[...Array(totalPages).keys()].map((i) => (
-          <button
-            key={i}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 border rounded ${
-              currentPage === i + 1 ? "bg-blue-600 text-white" : "bg-white"
-            }`}
-          >
-            {i + 1}
-          </button>
-        ))}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-green-600">
+          VP Conveyance Approvals ({filteredClaims.length})
+        </h2>
+        <button
+          onClick={() => navigate("/dashboard/vp-operations/conveyance-form")}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-fit"
+        >
+          Conveyance Form
+        </button>
       </div>
 
-      {rejection.show && (
-        <RejectionModal
-          onClose={() => setRejection({ show: false, claimId: null })}
-          onSubmit={(reason) => {
-            handleReject(rejection.claimId, reason);
-            setRejection({ show: false, claimId: null });
-          }}
-        />
+      <ConveyanceFilter 
+        filter={filter} 
+        setFilter={setFilter}
+        showEmployeeFilter={true}
+      />
+
+      <ManagerConveyanceTable
+        claims={paginatedClaims}
+        onApprove={handleApprove}
+        onReject={(id) => setRejection({ show: true, claimId: id })}
+        onViewDocs={(docs) => setViewDocs(docs)}
+        currentUserRole="vp-operations"
+      />
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-center gap-2">
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`px-3 py-1 rounded ${
+                currentPage === i + 1 
+                  ? "bg-blue-600 text-white" 
+                  : "bg-gray-100 hover:bg-gray-200"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
       )}
 
-      {viewDocUrl && (
-        <DocumentPreviewModal url={viewDocUrl} onClose={() => setViewDocUrl(null)} />
-      )}
+      <RejectionModal
+        isOpen={rejection.show}
+        onClose={() => setRejection({ show: false, claimId: null })}
+        onSubmit={(reason) => handleReject(rejection.claimId, reason)}
+      />
+
+      <DocumentPreviewModal 
+        documents={viewDocs}
+        onClose={() => setViewDocs(null)}
+      />
     </div>
   );
 }

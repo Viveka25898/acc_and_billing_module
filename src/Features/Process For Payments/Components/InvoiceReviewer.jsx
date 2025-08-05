@@ -3,17 +3,40 @@ import React, { useState } from 'react';
 const InvoiceViewer = ({ selectedInvoice }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   React.useEffect(() => {
     if (selectedInvoice) {
       setIsLoading(true);
       setError(null);
+      setImageError(false);
+      setImageLoading(true);
+      
       const timer = setTimeout(() => {
         setIsLoading(false);
-      }, 800);
+      }, 300); // Reduced loading time since we're showing real images
+      
       return () => clearTimeout(timer);
     }
   }, [selectedInvoice]);
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  // Get the image URL - remove '/public' from the path since public folder is served from root
+  const getImageUrl = (documentUrl) => {
+    if (!documentUrl) return null;
+    // Remove '/public' prefix if it exists, since files in public folder are accessible from root
+    return documentUrl.replace('/public/', '/');
+  };
 
   if (!selectedInvoice) {
     return (
@@ -55,78 +78,96 @@ const InvoiceViewer = ({ selectedInvoice }) => {
     );
   }
 
+  const imageUrl = getImageUrl(selectedInvoice.documentUrl);
+
   return (
     <div className="h-full flex flex-col">
-      {/* Invoice Viewer */}
+      {/* Invoice Header */}
+      <div className="p-2 bg-white border-b border-gray-200 flex justify-between items-center">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-800">
+            {selectedInvoice.invoiceNumber}
+          </h3>
+          <p className="text-xs text-gray-600">
+            Amount: ₹{selectedInvoice.amount.toLocaleString()}
+          </p>
+        </div>
+        {imageUrl && (
+          <a 
+            href={imageUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:text-blue-800 underline"
+          >
+            Open Full Size
+          </a>
+        )}
+      </div>
+
+      {/* Invoice Image Viewer */}
       <div className="flex-1 bg-gray-100 relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white shadow-lg rounded-lg w-full max-w-2xl mx-2 h-full max-h-[480px] flex flex-col">
-            {/* PDF Content Area */}
-            <div className="flex-1 p-4 overflow-auto">
-              <div className="bg-white border shadow-sm rounded min-h-full text-xs">
-                <div className="p-4 space-y-4">
-                  <div className="text-center border-b pb-2">
-                    <h2 className="text-xl font-bold text-gray-800 mb-1">INVOICE</h2>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-1 text-sm">Bill To:</h4>
-                      <div className="text-gray-600 space-y-0.5">
-                        <p>Your Company Name</p>
-                        <p>123 Business Street</p>
-                        <p>City, State 12345</p>
-                        <p>contact@company.com</p>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-1 text-sm">Invoice Details:</h4>
-                      <div className="text-gray-600 space-y-0.5">
-                        <p>Date: {new Date().toLocaleDateString()}</p>
-                        <p>Due Date: {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}</p>
-                        <p>Amount: ₹{selectedInvoice.amount.toLocaleString()}</p>
-                        <p>Status: <span className="text-orange-600 font-medium">Pending</span></p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border rounded overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-2 py-2 text-left font-medium text-gray-700">Description</th>
-                          <th className="px-2 py-2 text-right font-medium text-gray-700">Qty</th>
-                          <th className="px-2 py-2 text-right font-medium text-gray-700">Rate</th>
-                          <th className="px-2 py-2 text-right font-medium text-gray-700">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        <tr>
-                          <td className="px-2 py-2 text-gray-800">Professional Services</td>
-                          <td className="px-2 py-2 text-gray-600 text-right">1</td>
-                          <td className="px-2 py-2 text-gray-600 text-right">₹{selectedInvoice.amount.toLocaleString()}</td>
-                          <td className="px-2 py-2 text-gray-800 text-right font-medium">₹{selectedInvoice.amount.toLocaleString()}</td>
-                        </tr>
-                      </tbody>
-                      <tfoot className="bg-gray-50">
-                        <tr>
-                          <td colSpan="3" className="px-2 py-2 font-medium text-gray-800 text-right">Total:</td>
-                          <td className="px-2 py-2 font-bold text-gray-900 text-right">₹{selectedInvoice.amount.toLocaleString()}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  <div className="text-center text-[10px] text-gray-500 border-t pt-2">
-                    <p>Thank you for your business!</p>
-                    <p className="mt-0.5">This is a computer generated invoice.</p>
-                  </div>
-                </div>
+        {!imageUrl ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
+              <h3 className="text-lg font-medium text-gray-600 mb-2">No Document Available</h3>
+              <p className="text-sm text-gray-500">
+                Invoice document not found
+              </p>
             </div>
           </div>
-        </div>
-      </div>      
+        ) : (
+          <div className="absolute inset-0 p-2">
+            {/* Loading state for image */}
+            {imageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <div className="text-gray-600 text-sm">Loading image...</div>
+                </div>
+              </div>
+            )}
+
+            {/* Error state for image */}
+            {imageError && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-red-600 mb-2">Failed to Load Image</h3>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Could not load invoice image
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Path: {selectedInvoice.documentUrl}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Actual Image */}
+            {!imageError && (
+              <div className="w-full h-full flex items-center justify-center">
+                <img
+                  src={imageUrl}
+                  alt={`Invoice ${selectedInvoice.invoiceNumber}`}
+                  className="max-w-full max-h-full object-contain shadow-lg rounded border"
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                  style={{ display: imageLoading ? 'none' : 'block' }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

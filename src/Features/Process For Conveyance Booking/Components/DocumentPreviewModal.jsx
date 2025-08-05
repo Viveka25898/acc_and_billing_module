@@ -1,8 +1,9 @@
-// File: src/features/conveyance/components/DocumentViewerModal.jsx
-
 import React from "react";
 
 export default function DocumentPreviewModal({ url, onClose }) {
+  // Don't render if no URL is provided
+  if (!url) return null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
       <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-lg shadow-lg overflow-hidden flex flex-col">

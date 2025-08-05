@@ -1,64 +1,105 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-export default function MonthlyVoucherGenerator({onSuccess}) {
-  const [voucherData, setVoucherData] = useState({
-    month: "",
-    amount: "",
-    gstApplicable: false,
-  });
+const MonthlyVoucherGenerator = ({ site, agreement, onSuccess }) => {
+  const [month, setMonth] = useState("");
+  const [amount, setAmount] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setVoucherData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
+  // ✅ Fixed: Use monthlyExpense from agreement (calculated in RentAgreementForm)
+  useEffect(() => {
+    if (agreement?.monthlyExpense) {
+      setAmount(agreement.monthlyExpense.toString());
+    }
+  }, [agreement]);
 
-  const handleGenerate = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Voucher to generate:", voucherData);
-    if (onSuccess) onSuccess();
-    // Here you'll send data to backend or update Redux store
+
+    if (!month || !amount) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    const newVoucher = {
+      month,
+      amount: parseFloat(amount),
+      gstType: agreement?.withGST ? "With GST" : "Without GST",
+      createdBy: "Billing Executive",
+      createdAt: new Date().toISOString()
+    };
+
+    onSuccess(newVoucher);
   };
 
   return (
-    <form onSubmit={handleGenerate} className=" p-6 space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800">Generate Monthly Voucher</h2>
-      <div className="space-y-2">
-        <input
-          type="month"
-          name="month"
-          value={voucherData.month}
-          onChange={handleChange}
-          required
-          className="w-full p-2 border rounded"
-        />
-        <input
-          type="number"
-          name="amount"
-          placeholder="Rent Amount"
-          value={voucherData.amount}
-          onChange={handleChange}
-          required
-          className="w-full p-2 border rounded"
-        />
-        <label className="inline-flex items-center gap-2">
+    <div className="p-6">
+      <h2 className="text-2xl font-semibold text-green-700 mb-4">Generate Monthly Voucher</h2>
+
+      {site && (
+        <div className="mb-4 p-3 bg-gray-50 rounded">
+          <p className="text-sm text-gray-600"><strong>Site:</strong> {site.siteName}</p>
+          <p className="text-sm text-gray-600"><strong>Owner:</strong> {site.owner}</p>
+          {agreement && (
+            <p className="text-sm text-gray-600">
+              <strong>Agreement Period:</strong> {agreement.startDate} to {agreement.endDate}
+            </p>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block mb-1 text-sm font-medium text-gray-700">Select Month</label>
           <input
-            type="checkbox"
-            name="gstApplicable"
-            checked={voucherData.gstApplicable}
-            onChange={handleChange}
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            required
           />
-          Apply GST
-        </label>
-      </div>
-      <button
-        type="submit"
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-      >
-        Generate Voucher
-      </button>
-    </form>
+        </div>
+
+        <div>
+          <label className="block mb-1 text-sm font-medium text-gray-700">Monthly Rent Amount</label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            required
+            min="0"
+            step="0.01"
+            placeholder="Monthly rent amount"
+          />
+          {agreement?.monthlyExpense && (
+            <p className="text-xs text-gray-500 mt-1">
+              Calculated from agreement: ₹{agreement.monthlyExpense.toLocaleString()}
+            </p>
+          )}
+        </div>
+
+        <div className="p-3 bg-blue-50 rounded">
+          <p className="text-sm text-gray-600">
+            <strong>GST Type:</strong> {agreement?.withGST ? "With GST (18%)" : "Without GST"}
+            <span className="text-xs text-gray-500 block">(Based on agreement settings)</span>
+          </p>
+          {agreement?.withGST && (
+            <p className="text-xs text-gray-500 mt-1">
+              GST Amount: ₹{Math.round(parseFloat(amount || 0) * 0.18).toLocaleString()}
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end space-x-2 pt-4">
+          <button
+            type="submit"
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            Generate Voucher
+          </button>
+        </div>
+      </form>
+    </div>
   );
-}
+};
+
+export default MonthlyVoucherGenerator;

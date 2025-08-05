@@ -1,6 +1,5 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import SiteTable from "../Components/SiteTable";
 import RentAgreementForm from "../Components/RentAgreementForm";
 import MonthlyVoucherGenerator from "../Components/MonthlyVoucherGenerator"
 import { toast } from "react-toastify";
@@ -40,16 +39,25 @@ const [showVoucherListModal, setShowVoucherListModal] = useState(false);
   const itemsPerPage = 5;
 
   const handleAgreementSubmit = (agreementData) => {
-    const newAgreement = { ...agreementData, siteId: selectedSite.id };
-    setAgreements((prev) => [...prev, newAgreement]);
-    setSelectedSite(null);
-    setShowAgreementModal(false);
-    toast.success("Rent agreement uploaded successfully");
-  };
+  const newAgreement = { ...agreementData, siteId: selectedSite.id };
+  setAgreements((prev) => [...prev, newAgreement]);
+  console.log("Parent",agreements);
 
-  const handleVoucherSubmit = (voucherData) => {
+  // Clear modal + feedback
+  setSelectedSite(null);
+  setShowAgreementModal(false);
+  toast.success("Rent agreement uploaded successfully");
+};
+
+
+   const handleVoucherSubmit = (voucherData) => {
     const newVoucher = { ...voucherData, siteId: selectedSite.id };
     setVouchers((prev) => [...prev, newVoucher]);
+
+    // 👇 Open modal to view newly generated voucher
+    setVoucherViewSite(selectedSite);
+    setShowViewVoucherModal(true);
+
     setSelectedSite(null);
     setShowVoucherModal(false);
     toast.success("Voucher generated successfully");
@@ -234,11 +242,12 @@ const paginatedSites = filteredSites.slice(
             >
               ✕
             </button>
-            <MonthlyVoucherGenerator
-              site={selectedSite}
-              agreement={getAgreementForSite(selectedSite?.id)}
-              onSuccess={handleVoucherSubmit}
-            />
+           <MonthlyVoucherGenerator
+            site={selectedSite}
+            agreement={getAgreementForSite(selectedSite?.id)}
+            onSuccess={handleVoucherSubmit}
+          />
+
           </div>
         </div>
       )}

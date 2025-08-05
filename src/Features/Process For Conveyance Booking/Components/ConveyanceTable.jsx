@@ -1,5 +1,3 @@
-// File: src/features/conveyance/components/ConveyanceTable.jsx
-
 import React from "react";
 import { FaEye } from "react-icons/fa";
 
@@ -36,18 +34,17 @@ export default function ConveyanceTable({ requests, onEyeClick }) {
               <td className="p-2 border">₹{r.amount}</td>
               <td className="p-2 border">
                 <span
-                  className={`px-2  py-1 rounded-full text-xs font-semibold
-                    ${
-                      r.status === "Approved"
-                        ? "bg-green-100"
-                        : r.status === "Rejected"
-                        ? "bg-red-100 "
-                        : "bg-yellow-100 "
-                    }`
-                  }
-                >
-                  {r.status}
-                </span>
+                className={`text-xs px-2 border py-1 rounded-full font-medium
+                  ${r.status === "Approved"
+                    ? "bg-green-100 text-green-700"
+                    : r.status === "Pending VP Approval"
+                    ? "bg-blue-100 text-blue-700"
+                    : r.status.includes("Rejected")
+                    ? "bg-red-100 text-red-700"
+                    : "bg-yellow-100 text-yellow-800"}`}
+              >
+                {r.status}
+              </span>
                 {r.status === "Rejected" && r.rejectionReason && (
                   <button
                     className="ml-2 text-blue-600 hover:text-blue-800"

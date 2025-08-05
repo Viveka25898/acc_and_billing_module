@@ -1,25 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) => {
+const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) => {
   const [gstRate, setGstRate] = useState("");
   const [hsnCode, setHsnCode] = useState("");
   const [hsnSummary, setHsnSummary] = useState("");
   const [isRejecting, setIsRejecting] = useState(false);
   const [remarks, setRemarks] = useState("");
   const [isIframeLoading, setIsIframeLoading] = useState(true);
+
   useEffect(() => {
-  setRemarks(false);
-  setRemarks("");
-  setGstRate("");
-  setHsnCode("");
-  setHsnSummary("");
-}, [invoice]);
+    if (invoice) {
+      setRemarks("");
+      setIsRejecting(false);
+      setGstRate(invoice.gstRate?.toString() || "");
+      setHsnCode(invoice.hsnCode || "");
+      setHsnSummary(invoice.hsnSummary || "");
+    }
+  }, [invoice]);
 
   if (!isOpen || !invoice) return null;
 
   const handleApprove = () => {
-    handleUpdateInvoice(invoice.id, "Approved");
+    const updatedInvoice = {
+      ...invoice,
+      gstRate,
+      hsnCode,
+      hsnSummary,
+    };
+
+    handleUpdateInvoice(updatedInvoice.id, "Approved", null, updatedInvoice);
     onClose();
     toast.success("Invoice approved successfully!");
   };
@@ -29,7 +39,8 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
       toast.warn("Please provide rejection remarks.");
       return;
     }
-     handleUpdateInvoice(invoice.id, "Rejected", remarks);
+
+    handleUpdateInvoice(invoice.id, "Rejected", remarks);
     onClose();
     toast.error("Invoice rejected successfully!");
   };
@@ -37,13 +48,10 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
-        
         {/* Header */}
         <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-semibold">Verify Invoice - {invoice.invoiceNumber}</h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-red-600">
-            X
-          </button>
+          <button onClick={onClose} className="text-gray-600 hover:text-red-600">X</button>
         </div>
 
         {/* Content */}
@@ -59,7 +67,6 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
                 placeholder="e.g., 18"
               />
             </div>
-
             <div>
               <label className="block font-medium mb-1">HSN Code</label>
               <input
@@ -83,35 +90,40 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
             ></textarea>
           </div>
 
-          {/* **************Fixed Assets*************** */}
+          {/* Fixed Asset Info */}
           {invoice.type === "Fixed Asset" && invoice.assetDetails && (
-  <div className="border-t pt-4">
-    <h3 className="font-semibold text-base mb-2 text-blue-800">Fixed Asset Details</h3>
-    <div className="grid md:grid-cols-2 gap-4 text-sm">
-      <div>
-        <label className="block font-medium">Asset Name</label>
-        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.assetName || "-"}</div>
-      </div>
-      <div>
-        <label className="block font-medium">Asset Category</label>
-        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.assetCategory || "-"}</div>
-      </div>
-      <div>
-        <label className="block font-medium">Location</label>
-        <div className="border rounded px-3 py-2 bg-gray-50">{invoice.assetDetails.location || "-"}</div>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-base mb-2 text-blue-800">Fixed Asset Details</h3>
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <label className="block font-medium">Asset Tag</label>
+                  <div className="border rounded px-3 py-2 bg-gray-50">
+                    {invoice.assetDetails.assetTag || "-"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-medium">Serial Number</label>
+                  <div className="border rounded px-3 py-2 bg-gray-50">
+                    {invoice.assetDetails.serialNumber || "-"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-medium">Location</label>
+                  <div className="border rounded px-3 py-2 bg-gray-50">
+                    {invoice.assetDetails.location || "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* 📄 Document Preview */}
+          {/* Invoice Document Preview */}
           {invoice.documentUrl && (
             <div className="mt-4">
               <label className="block font-semibold mb-2">Invoice Document:</label>
               <div className="relative w-full h-96 border rounded overflow-hidden">
                 {isIframeLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-                    {/* <Loader2 className="animate-spin text-blue-600" size={28} /> */}
                     <span className="ml-2 text-gray-600">Loading document...</span>
                   </div>
                 )}
@@ -133,7 +145,7 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice,handleUpdateInvoice }) =>
             </div>
           )}
 
-          {/* Reject Option */}
+          {/* Rejection Remarks */}
           {isRejecting && (
             <div className="mt-4">
               <label className="block font-medium mb-1 text-red-600">Rejection Remarks</label>
