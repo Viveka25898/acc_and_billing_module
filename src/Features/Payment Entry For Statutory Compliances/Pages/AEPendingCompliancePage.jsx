@@ -1,47 +1,89 @@
+// /* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import AEFilter from "../Components/AEFilter";
 import AEPendingTable from "../Components/AEPendingTable";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
-
-const dummyEntries = Array.from({ length: 12 }).map((_, i) => ({
-  id: i + 1,
-  paymentType: i % 2 === 0 ? "PF" : "ESIC",
-  paymentMonth: `2024-${(i % 12 + 1).toString().padStart(2, "0")}`,
-  amount: 10000 + i * 500,
-  challan: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-  remarks: `Compliance for ${i % 2 === 0 ? "PF" : "ESIC"} - ${i + 1}`,
-  managerStatus: "ApprovedByManager",
-  aeStatus: "Pending",
-  aeRejection: "",
-}));
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function AEPendingCompliancePage() {
   const [entries, setEntries] = useState([]);
   const [filters, setFilters] = useState({ type: "", month: "", status: "All" });
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 5;
-  const navigate=useNavigate()
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentUser = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
-    try {
-      setEntries(dummyEntries);
-    } catch (error) {
-      console.error("Failed to load entries:", error);
-    }
-  }, []);
+    const loadEntries = () => {
+      try {
+        const statutoryData = JSON.parse(localStorage.getItem("statutoryPayments")) || { payments: [] };
+        const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+        
+        // Get list of compliance managers who report to this AE
+        const reportingManagers = allUsers
+          .filter(user => user.reportsTo === currentUser.username && user.role === "compliance-manager")
+          .map(user => user.username);
+
+        // Filter entries:
+        // 1. Pending AE approval (status: pending-ae)
+        // 2. Approved by managers who report to this AE
+        const pendingEntries = statutoryData.payments.filter(entry => 
+          entry.status === "pending-ae" &&
+          reportingManagers.includes(entry.history?.find(h => h.action === "Approved by Compliance Manager")?.by)
+        );
+
+        setEntries(pendingEntries);
+      } catch (error) {
+        console.error("Failed to load entries:", error);
+        toast.error("Failed to load compliance payments");
+      }
+    };
+    
+    loadEntries();
+  }, [currentUser?.username, location.key]); // Removed allUsers from dependencies
 
   const handleStatusUpdate = (id, status, rejection = "") => {
     try {
-      const updated = entries.map((entry) =>
-        entry.id === id
-          ? { ...entry, aeStatus: status, aeRejection: rejection }
-          : entry
-      );
-      setEntries(updated);
-      toast.success(`${status}`)
+      const statutoryData = JSON.parse(localStorage.getItem("statutoryPayments")) || { payments: [] };
+      
+      const updatedPayments = statutoryData.payments.map(entry => {
+        if (entry.id === id) {
+          const newStatus = status === "AcceptedByAE" ? "approved" : "rejected";
+          const action = status === "AcceptedByAE" 
+            ? "Approved by Account Executive" 
+            : "Rejected by Account Executive";
+            
+          return {
+            ...entry,
+            status: newStatus,
+            rejectionReason: rejection,
+            history: [
+              ...(entry.history || []),
+              {
+                action,
+                by: currentUser.username,
+                at: new Date().toISOString(),
+                comments: rejection || "Approved"
+              }
+            ]
+          };
+        }
+        return entry;
+      });
+
+      localStorage.setItem("statutoryPayments", JSON.stringify({
+        ...statutoryData,
+        payments: updatedPayments
+      }));
+
+      // Force reload by navigating to the same route with new state
+      navigate(location.pathname, { state: { refresh: Date.now() } });
+
+      toast.success(`Payment ${status.toLowerCase()} successfully!`);
     } catch (error) {
       console.error("Failed to update AE status:", error);
+      toast.error("Failed to update payment status");
     }
   };
 
@@ -50,12 +92,16 @@ export default function AEPendingCompliancePage() {
     setCurrentPage(1);
   };
 
+  const handlePaidCompliancesClick = () => {
+    // Force a fresh load by adding a timestamp to state
+    navigate("/dashboard/ae/paid-compliance-page", { state: { refresh: Date.now() } });
+  };
+
   const filteredEntries = entries.filter(
     (entry) =>
-      entry.managerStatus === "ApprovedByManager" &&
-      (filters.status === "All" || entry.aeStatus === filters.status) &&
-      (!filters.type || entry.paymentType === filters.type) &&
-      (!filters.month || entry.paymentMonth === filters.month)
+      (filters.status === "All" || entry.status === filters.status) &&
+      (!filters.type || entry.type === filters.type) &&
+      (!filters.month || entry.period === filters.month)
   );
 
   const indexOfLastEntry = currentPage * entriesPerPage;
@@ -71,7 +117,7 @@ export default function AEPendingCompliancePage() {
         </h2>
         <div className="flex justify-end mb-4">
           <button
-            onClick={() => navigate("/dashboard/ae/paid-compliance-page")}
+            onClick={handlePaidCompliancesClick}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
           >
             Paid Compliances

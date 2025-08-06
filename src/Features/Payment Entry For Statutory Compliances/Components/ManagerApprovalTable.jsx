@@ -1,12 +1,10 @@
-// File: src/features/statutoryPayments/components/ManagerApprovalTable.jsx
-
+/* eslint-disable no-unused-vars */
+// ManagerApprovalTable.js
 import React, { useState } from "react";
 import { FaEye } from "react-icons/fa";
 import ManagerChallanPreviewModal from "./ManagerChallanPreviewModal";
 import ManagerRejectReasonModal from "./ManagerRejectionReasonModal";
 import { toast } from "react-toastify";
-
-
 
 export default function ManagerApprovalTable({ entries, onUpdate }) {
   const [selectedChallan, setSelectedChallan] = useState(null);
@@ -15,13 +13,11 @@ export default function ManagerApprovalTable({ entries, onUpdate }) {
 
   const handleApprove = (id) => {
     onUpdate(id, "Approved");
-    toast.success("Payment Approved Successfully!")
   };
 
   const handleReject = (id) => {
     setSelectedEntryId(id);
     setShowRejectModal(true);
-    
   };
 
   const handleRejectSubmit = (reason) => {
@@ -30,7 +26,15 @@ export default function ManagerApprovalTable({ entries, onUpdate }) {
     }
     setShowRejectModal(false);
     setSelectedEntryId(null);
-    toast.error("Payment Rejected Successfully!")
+  };
+
+  const getStatusDisplay = (status) => {
+    switch (status) {
+      case "pending-ae": return "Pending AE";
+      case "approved": return "Approved";
+      case "rejected": return "Rejected";
+      default: return status;
+    }
   };
 
   return (
@@ -39,32 +43,34 @@ export default function ManagerApprovalTable({ entries, onUpdate }) {
         <thead className="bg-gray-100">
           <tr>
             <th className="p-2 border">Type</th>
-            <th className="p-2 border">Month</th>
+            <th className="p-2 border">Period</th>
             <th className="p-2 border">Amount</th>
             <th className="p-2 border">Remarks</th>
             <th className="p-2 border">Challan</th>
             <th className="p-2 border text-center">Actions</th>
-            <th className="p-2 border ">AE Status</th>
+            <th className="p-2 border">Status</th>
           </tr>
         </thead>
         <tbody>
           {entries.map((entry) => (
             <tr key={entry.id} className="hover:bg-gray-50">
-              <td className="p-2 border">{entry.paymentType}</td>
-              <td className="p-2 border">{entry.paymentMonth}</td>
+              <td className="p-2 border">{entry.type}</td>
+              <td className="p-2 border">{entry.period}</td>
               <td className="p-2 border">₹{entry.amount}</td>
               <td className="p-2 border">{entry.remarks}</td>
               <td className="p-2 border text-center">
-                <button
-                  onClick={() => setSelectedChallan(entry.challan)}
-                  className="text-blue-600 hover:text-blue-800"
-                  title="View Challan"
-                >
-                  <FaEye />
-                </button>
+                {entry.challanRef && (
+                  <button
+                    onClick={() => setSelectedChallan(entry.challanRef)}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="View Challan"
+                  >
+                    <FaEye />
+                  </button>
+                )}
               </td>
               <td className="p-2 border text-center space-x-2">
-                {entry.managerStatus === "Pending" ? (
+                {entry.status === "pending-compliance-manager" ? (
                   <>
                     <button
                       onClick={() => handleApprove(entry.id)}
@@ -82,16 +88,16 @@ export default function ManagerApprovalTable({ entries, onUpdate }) {
                 ) : (
                   <span
                     className={`px-3 py-1 rounded font-semibold text-white ${
-                      entry.managerStatus === "Approved"
+                      entry.status === "approved"
                         ? "bg-green-500"
                         : "bg-red-500"
                     }`}
                   >
-                    {entry.managerStatus}
+                    {getStatusDisplay(entry.status)}
                   </span>
                 )}
               </td>
-              <td className="p-2 border">{entry.aeStatus}</td>
+              <td className="p-2 border">{getStatusDisplay(entry.status)}</td>
             </tr>
           ))}
         </tbody>

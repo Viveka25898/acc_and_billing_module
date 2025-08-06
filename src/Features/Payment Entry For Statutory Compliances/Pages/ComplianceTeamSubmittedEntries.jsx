@@ -1,27 +1,29 @@
+// SubmittedEntriesPage.js
 import React, { useState, useEffect } from "react";
 import SubmittedEntriesTable from "../Components/SubmittedEntriesTable";
-
-const dummyEntries = Array.from({ length: 20 }).map((_, i) => ({
-  id: i + 1,
-  paymentType: i % 2 === 0 ? "PF" : "ESIC",
-  paymentMonth: `2024-${(i % 12 + 1).toString().padStart(2, "0")}`,
-  amount: (i + 1) * 1000,
-  challan: new File(["Dummy content"], `challan_${i + 1}.pdf`, { type: "application/pdf" }),
-  managerStatus: i % 4 === 0 ? "Rejected" : i % 3 === 0 ? "Approved" : "Pending",
-  managerRejection: i % 4 === 0 ? "Incorrect data provided." : "",
-  aeStatus: i % 5 === 0 ? "Rejected" : i % 2 === 0 ? "Pending" : "Pending",
-  aeRejection: i % 5 === 0 ? "Document mismatch." : "",
-}));
 
 export default function SubmittedEntriesPage() {
   const [entries, setEntries] = useState([]);
   const [filters, setFilters] = useState({ type: "", month: "" });
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 5;
+  const currentUser = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
-    setEntries(dummyEntries);
-  }, []);
+    const loadEntries = () => {
+      try {
+        const statutoryData = JSON.parse(localStorage.getItem("statutoryPayments")) || { payments: [] };
+        // Filter entries created by current user
+        const userEntries = statutoryData.payments.filter(
+          entry => entry.createdBy === currentUser.username
+        );
+        setEntries(userEntries);
+      } catch (error) {
+        console.error("Error loading entries:", error);
+      }
+    };
+    loadEntries();
+  }, [currentUser?.username]);
 
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -30,8 +32,8 @@ export default function SubmittedEntriesPage() {
 
   const filteredEntries = entries.filter((entry) => {
     return (
-      (!filters.type || entry.paymentType === filters.type) &&
-      (!filters.month || entry.paymentMonth === filters.month)
+      (!filters.type || entry.type === filters.type) &&
+      (!filters.month || entry.period === filters.month)
     );
   });
 

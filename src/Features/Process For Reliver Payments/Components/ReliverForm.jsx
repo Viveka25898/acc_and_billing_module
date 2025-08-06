@@ -22,6 +22,7 @@ const initialState = {
 export default function RelieverForm({ onSubmit }) {
   const [formData, setFormData] = useState(initialState);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const idProofRef = useRef();
   const passbookRef = useRef();
 
@@ -49,20 +50,28 @@ export default function RelieverForm({ onSubmit }) {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      setIsSubmitting(false);
       return;
     }
 
-    onSubmit(formData);
-    setFormData(initialState);
-    idProofRef.current.value = null;
-    passbookRef.current.value = null;
+    try {
+      await onSubmit(formData);
+      setFormData(initialState);
+      idProofRef.current.value = null;
+      passbookRef.current.value = null;
+    } catch (error) {
+      console.error("Submission error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
   return (
     <form className="p-6 space-y-4" onSubmit={handleSubmit}>
       <div>
@@ -249,8 +258,9 @@ export default function RelieverForm({ onSubmit }) {
       <button
         type="submit"
         className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
+        disabled={isSubmitting}
       >
-        Submit Request
+        {isSubmitting ? "Submitting..." : "Submit Request"}
       </button>
     </form>
   );

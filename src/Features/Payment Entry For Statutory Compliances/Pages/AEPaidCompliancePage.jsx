@@ -1,27 +1,44 @@
+// AEPaidCompliancePage.js
 import React, { useEffect, useState } from "react";
 import PaidComplianceTable from "../Components/PaidComplianceTable";
 import PaidComplianceFilter from "../Components/PaidComplianceFilter";
-
-const dummyPaidEntries = Array.from({ length: 12 }).map((_, i) => ({
-  id: i + 101,
-  paymentType: i % 2 === 0 ? "PF" : "ESIC",
-  paymentMonth: `2024-${(i % 12 + 1).toString().padStart(2, "0")}`,
-  amount: 12000 + i * 400,
-  challan: "https://www.africau.edu/images/default/sample.pdf",
-  remarks: `Paid entry for ${i % 2 === 0 ? "PF" : "ESIC"} - ${i + 1}`,
-  aeStatus: "AcceptedByAE",
-  paymentDate: new Date().toISOString().split("T")[0],
-}));
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function AEPaidCompliancePage() {
   const [entries, setEntries] = useState([]);
   const [filters, setFilters] = useState({ type: "", month: "" });
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 5;
+  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setEntries(dummyPaidEntries);
-  }, []);
+    const loadPaidEntries = () => {
+      try {
+        const statutoryData = JSON.parse(localStorage.getItem("statutoryPayments")) || { payments: [] };
+        
+        // Get list of compliance managers who report to this AE
+        const reportingManagers = JSON.parse(localStorage.getItem("users"))
+          .filter(user => user.reportsTo === currentUser.username && user.role === "compliance-manager")
+          .map(user => user.username);
+
+        // Filter entries:
+        // 1. Approved by AE (status: approved)
+        // 2. Approved by managers who report to this AE
+        const paidEntries = statutoryData.payments.filter(entry => 
+          entry.status === "approved" &&
+          reportingManagers.includes(entry.history?.find(h => h.action === "Approved by Compliance Manager")?.by)
+        );
+
+        setEntries(paidEntries);
+      } catch (error) {
+        console.error("Failed to load paid entries:", error);
+        toast.error("Failed to load paid compliance entries");
+      }
+    };
+    loadPaidEntries();
+  }, [currentUser?.username]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -30,9 +47,8 @@ export default function AEPaidCompliancePage() {
 
   const filteredEntries = entries.filter(
     (entry) =>
-      entry.aeStatus === "AcceptedByAE" &&
-      (!filters.type || entry.paymentType === filters.type) &&
-      (!filters.month || entry.paymentMonth === filters.month)
+      (!filters.type || entry.type === filters.type) &&
+      (!filters.month || entry.period === filters.month)
   );
 
   const indexOfLastEntry = currentPage * entriesPerPage;
@@ -40,12 +56,25 @@ export default function AEPaidCompliancePage() {
   const currentEntries = filteredEntries.slice(indexOfFirstEntry, indexOfLastEntry);
   const totalPages = Math.ceil(filteredEntries.length / entriesPerPage);
 
+  const handlePendingCompliancesClick = () => {
+  navigate("/dashboard/ae/pending-compliance-requests", { state: { refresh: Date.now() } });
+};
+
   return (
     <div className="p-4 min-h-screen">
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md p-6">
         <h2 className="text-2xl font-bold text-green-700 mb-6">
           Paid Statutory Compliance Entries
         </h2>
+
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handlePendingCompliancesClick}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
+          >
+            Pending Compliances
+          </button>
+        </div>
 
         <PaidComplianceFilter filters={filters} onFilterChange={handleFilterChange} />
 

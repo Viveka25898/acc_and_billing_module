@@ -7,13 +7,14 @@ const ITEMS_PER_PAGE = 5;
 export default function LineManagerApprovalTable({
   requests,
   onStatusChange,
-    onBulkApprove,
+  onBulkApprove,
   showActions = false,
 }) {
-  const [showModal, setShowModal] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRequests, setSelectedRequests] = useState([]);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [rejectionMode, setRejectionMode] = useState("reject");
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginated = requests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -25,16 +26,17 @@ export default function LineManagerApprovalTable({
     }
   };
 
-  const handleRejectClick = (id) => {
+  const handleRejectClick = (id, mode = "reject") => {
     setSelectedId(id);
-    setShowModal(true);
+    setRejectionMode(mode);
+    setShowRejectionModal(true);
   };
 
   const handleRejectConfirm = (reason) => {
     if (selectedId) {
       onStatusChange(selectedId, "Rejected", reason);
     }
-    setShowModal(false);
+    setShowRejectionModal(false);  // Changed from setShowModal
     setSelectedId(null);
   };
 
@@ -47,16 +49,16 @@ export default function LineManagerApprovalTable({
   };
 
   const handleApproveAll = () => {
-  const approvableIds = selectedRequests.filter((id) => {
-    const req = requests.find((r) => r.id === id);
-    return req && req.status === "Pending Line Manager Approval";
-  });
+    const approvableIds = selectedRequests.filter((id) => {
+      const req = requests.find((r) => r.id === id);
+      return req && req.status === "Pending Line Manager Approval";
+    });
 
-  if (approvableIds.length > 0) {
-    onBulkApprove(approvableIds); // ✅ Use the bulk approve
-    setSelectedRequests([]);
-  }
-};
+    if (approvableIds.length > 0) {
+      onBulkApprove(approvableIds);
+      setSelectedRequests([]);
+    }
+  };
 
   return (
     <div className="overflow-x-auto mt-4">
@@ -64,6 +66,7 @@ export default function LineManagerApprovalTable({
         <thead className="bg-gray-100">
           <tr>
             <th className="p-2 border">#</th>
+            <th className="p-2 border">Request ID</th>
             <th className="p-2 border">Name</th>
             <th className="p-2 border">Date</th>
             <th className="p-2 border">Site</th>
@@ -84,6 +87,7 @@ export default function LineManagerApprovalTable({
                   />
                 )}
               </td>
+              <td className="border p-2">{req.id.slice(-6)}</td>
               <td className="border p-2">{req.name}</td>
               <td className="border p-2">{req.date}</td>
               <td className="border p-2">{req.site}</td>
@@ -150,10 +154,13 @@ export default function LineManagerApprovalTable({
       </div>
 
       {/* Rejection Modal */}
-      {showModal && (
+      {showRejectionModal && (  // Changed from showModal
         <RejectionModal
-          onClose={() => setShowModal(false)}
+          isOpen={showRejectionModal}
+          onClose={() => setShowRejectionModal(false)}
           onSubmit={handleRejectConfirm}
+          mode={rejectionMode}
+          existingReason={requests.find(r => r.id === selectedId)?.rejectionReason}
         />
       )}
     </div>

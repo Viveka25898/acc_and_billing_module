@@ -1,4 +1,4 @@
-import React, { useState } from "react"; 
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 
 export default function ComplianceEntryForm() {
@@ -40,17 +40,66 @@ export default function ComplianceEntryForm() {
       return;
     }
 
-    const existing = JSON.parse(localStorage.getItem("statutoryPayments") || "[]");
-    const newEntry = {
-      ...formData,
-      id: Date.now(),
-      status: "PendingApproval",
-    };
-    localStorage.setItem("statutoryPayments", JSON.stringify([...existing, newEntry]));
+    try {
+      // Get current user from localStorage
+      const currentUser = JSON.parse(localStorage.getItem("user"));
+      
+      // Get existing payments or initialize
+      const statutoryData = JSON.parse(localStorage.getItem("statutoryPayments")) || {
+        payments: [],
+        metadata: {
+          lastId: 0,
+          createdAt: new Date().toISOString()
+        }
+      };
 
-    toast.success("Payment entry submitted successfully!");
+      // Create new payment object
+      const newPayment = {
+        id: `STAT-${Date.now()}`,
+        type: formData.paymentType,
+        period: formData.paymentMonth,
+        amount: parseFloat(formData.amount),
+        challanRef: formData.challan.name, // Just store filename in localStorage
+        remarks: formData.remarks,
+        status: "pending-compliance-manager",
+        createdBy: currentUser.username,
+        createdAt: new Date().toISOString(),
+        history: [
+          {
+            action: "Submitted by Compliance Team",
+            by: currentUser.username,
+            at: new Date().toISOString()
+          }
+        ]
+      };
 
-    setFormData({ paymentType: "", paymentMonth: "", amount: "", challan: null, remarks: "" });
+      // Update localStorage
+      const updatedData = {
+        payments: [...statutoryData.payments, newPayment],
+        metadata: {
+          ...statutoryData.metadata,
+          lastId: statutoryData.metadata.lastId + 1,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      localStorage.setItem("statutoryPayments", JSON.stringify(updatedData));
+
+      toast.success("Payment request submitted successfully!");
+      
+      // Reset form
+      setFormData({
+        paymentType: "",
+        paymentMonth: "",
+        amount: "",
+        challan: null,
+        remarks: "",
+      });
+
+    } catch (error) {
+      console.error("Error submitting payment:", error);
+      toast.error("Failed to submit payment request");
+    }
   };
 
   return (
@@ -99,7 +148,7 @@ export default function ComplianceEntryForm() {
         <input
           type="file"
           name="challan"
-           accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx"
+          accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx"
           onChange={handleChange}
           className="w-full border rounded-lg p-2 cursor-pointer"
         />
