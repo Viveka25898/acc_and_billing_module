@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const ExpenseUploadForm = () => {
+const ExpenseUploadForm = ({ onSubmit, onError }) => {
   const [attachments, setAttachments] = useState([{ id: 1, file: null }]);
   const excelRef = useRef(null);
   const attachmentRefs = useRef([]);
@@ -22,28 +22,34 @@ const ExpenseUploadForm = () => {
     setAttachments(updated);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const excelFile = excelRef.current?.files[0];
-    const hasEmptyAttachments = attachments.some((_, i) => !attachmentRefs.current[i]?.files[0]);
+    const attachmentFiles = attachmentRefs.current
+      .map(ref => ref?.files[0])
+      .filter(file => file);
 
-    if (!excelFile || hasEmptyAttachments) {
-      toast.error("❗ Please upload Excel file and all attachments.");
+    if (!excelFile || attachmentFiles.length === 0) {
+      onError('Please upload Excel file and all attachments.');
       return;
     }
 
-    console.log("Excel File:", excelFile);
-    console.log("Attachments:", attachmentRefs.current.map(ref => ref?.files[0]));
-
-    // Clear fields
-    if (excelRef.current) excelRef.current.value = "";
-    attachmentRefs.current.forEach(ref => {
-      if (ref) ref.value = "";
-    });
-    setAttachments([{ id: 1, file: null }]); // Reset to 1 field
-
-    toast.success("✅ Advance settlement submitted successfully");
+    try {
+      const success = await onSubmit(excelFile, attachmentFiles);
+      if (success) {
+        toast.success("✅ Advance settlement submitted successfully");
+        // Clear fields after successful submission
+        if (excelRef.current) excelRef.current.value = "";
+        attachmentRefs.current.forEach(ref => {
+          if (ref) ref.value = "";
+        });
+        setAttachments([{ id: 1, file: null }]);
+      }
+    } catch (error) {
+      onError('Failed to submit settlement. Please try again.');
+      console.error("Submission error:", error);
+    }
   };
 
   return (
@@ -56,6 +62,7 @@ const ExpenseUploadForm = () => {
           accept=".xlsx,.xls"
           ref={excelRef}
           className="w-full border p-2 rounded"
+          required
         />
       </div>
 
@@ -69,6 +76,7 @@ const ExpenseUploadForm = () => {
               ref={(el) => (attachmentRefs.current[index] = el)}
               onChange={(e) => handleAttachmentChange(index, e.target.files[0])}
               className="flex-1 border p-2 rounded"
+              required={index === 0}
             />
             {attachments.length === 1 && attachments.length < 10 && (
               <button

@@ -1,47 +1,6 @@
-/* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AiOutlineEye } from 'react-icons/ai';
 import RejectionReasonModal from './RejectionReasonModal';
-
-const dummyRequests = [
-  {
-    id: 1,
-    date: '2025-05-20',
-    amount: 1500,
-    status: 'Pending',
-    reason: '',
-  },
-  {
-    id: 2,
-    date: '2025-05-18',
-    amount: 2200,
-    status: 'Approved',
-    reason: '',
-  },
-  {
-    id: 3,
-    date: '2025-05-16',
-    amount: 1800,
-    status: 'Rejected by Line Manager',
-    reason: 'Incorrect cost.',
-  },
-  {
-    id: 4,
-    date: '2025-05-21',
-    amount: 2600,
-    status: 'Rejected by VP Operations',
-    reason: 'Incorrect cost.',
-  },
-   {
-    id: 5,
-    date: '2025-05-21',
-    amount: 2600,
-    status: 'Rejected by AE',
-    reason: 'Incorrect cost.',
-  },
-  
-];
-
 
 const statuses = ['All', 'Pending', 'Approved', 'Rejected'];
 
@@ -73,19 +32,38 @@ const FilterBar = ({ selectedStatus, onStatusChange, selectedDate, onDateChange 
   </div>
 );
 
-
-
 const MySettlements = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [settlements, setSettlements] = useState([]);
   const [selectedReason, setSelectedReason] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [clarificationModalOpen, setClarificationModalOpen] = useState(false);
   const [clarificationText, setClarificationText] = useState('');
   const [clarificationId, setClarificationId] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState('All');
-  const [clarificationsSubmitted, setClarificationsSubmitted] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 2;
+  const rowsPerPage = 5;
+
+  // Get current user from localStorage
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const fullUser = allUsers.find(u => u.username === user?.username);
+    setCurrentUser(fullUser);
+  }, []);
+
+  useEffect(() => {
+    // Load settlements from localStorage when currentUser is available
+    if (currentUser) {
+      const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
+      // Filter by current user and sort by date (newest first)
+      const userSettlements = storedSettlements
+        .filter(s => s.employeeName === currentUser.username)
+        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+      setSettlements(userSettlements);
+    }
+  }, [currentUser]);
 
   const openClarificationModal = (id) => {
     setClarificationId(id);
@@ -93,30 +71,118 @@ const MySettlements = () => {
   };
 
   const submitClarification = () => {
-  setClarificationsSubmitted((prev) => [...prev, clarificationId]);
-  setClarificationModalOpen(false);
-  setClarificationText('');
-};
+    if (!clarificationText.trim()) {
+      alert('Please enter clarification details');
+      return;
+    }
 
+    if (!currentUser) return;
+
+    // Update the settlement with clarification
+    const updatedSettlements = settlements.map(settlement => {
+      if (settlement.id === clarificationId) {
+        // Find who to assign the clarification to based on who rejected it
+        const rejectionHistory = settlement.history.find(h => 
+          h.action.includes('rejected') && !h.action.includes('after-clarification')
+        );
+        
+        let assignedTo = null;
+        let currentLevel = '';
+        let status = '';
+
+        // Determine where to send the clarification based on who rejected it
+        if (rejectionHistory?.by) {
+          const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+          const rejector = allUsers.find(u => u.username === rejectionHistory.by);
+          
+          if (rejector?.role === 'line-manager') {
+            assignedTo = rejector.username;
+            currentLevel = 'line-manager';
+            status = 'Clarification Submitted to Line Manager';
+          } else if (rejector?.role === 'vp-operations') {
+            assignedTo = rejector.username;
+            currentLevel = 'vp-operations';
+            status = 'Clarification Submitted to VP Operations';
+          } else if (rejector?.role === 'account-executive') {
+            assignedTo = rejector.username;
+            currentLevel = 'account-executive';
+            status = 'Clarification Submitted to Account Executive';
+          }
+        }
+
+        return {
+          ...settlement,
+          status,
+          assignedTo,
+          currentLevel,
+          clarificationText,
+          clarificationSubmittedAt: new Date().toISOString(),
+          history: [
+            ...settlement.history,
+            {
+              action: 'clarification-submitted',
+              by: currentUser.username,
+              date: new Date().toISOString(),
+              comments: clarificationText
+            }
+          ]
+        };
+      }
+      return settlement;
+    });
+
+    // Update localStorage
+    setSettlements(updatedSettlements);
+    const allSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
+    const updatedAllSettlements = allSettlements.map(settlement => {
+      const updated = updatedSettlements.find(s => s.id === settlement.id);
+      return updated || settlement;
+    });
+    localStorage.setItem('settlements', JSON.stringify(updatedAllSettlements));
+
+    // Close modal and reset
+    setClarificationModalOpen(false);
+    setClarificationText('');
+    setClarificationId(null);
+    
+    alert('Clarification submitted successfully!');
+  };
 
   const openModal = (reason) => {
     setSelectedReason(reason);
     setModalOpen(true);
   };
 
-  const filteredRequests = dummyRequests.filter((req) => {
-  const normalizedStatus = req.status.toLowerCase();
+  const getStatusBadgeClass = (status) => {
+    if (status.includes('Rejected')) return 'bg-red-100 text-red-800';
+    if (status.includes('Approved')) return 'bg-green-100 text-green-800';
+    if (status.includes('Clarification')) return 'bg-purple-100 text-purple-800';
+    return 'bg-yellow-100 text-yellow-800'; // Pending status
+  };
 
-  const matchStatus =
-    selectedStatus === 'All' ||
-    normalizedStatus === selectedStatus.toLowerCase() ||
-    (selectedStatus === 'Rejected' && normalizedStatus.startsWith('rejected'));
+  const canSubmitClarification = (settlement) => {
+    // Can submit clarification if:
+    // 1. Settlement is rejected
+    // 2. No clarification has been submitted yet (no clarificationText exists)
+    // 3. Or if previous clarification was also rejected
+    return settlement.status.includes('Rejected') && 
+           (!settlement.clarificationText || 
+            settlement.status.includes('Rejected After Clarification'));
+  };
 
-  const matchDate = !selectedDate || req.date === selectedDate;
-
-  return matchStatus && matchDate;
-});
-
+  const filteredRequests = settlements.filter((req) => {
+    const normalizedStatus = req.status.toLowerCase();
+    const matchStatus =
+      selectedStatus === 'All' ||
+      normalizedStatus === selectedStatus.toLowerCase() ||
+      (selectedStatus === 'Rejected' && normalizedStatus.includes('rejected')) ||
+      (selectedStatus === 'Pending' && normalizedStatus.includes('pending'));
+    
+    const matchDate = !selectedDate || 
+      new Date(req.submittedAt).toISOString().split('T')[0] === selectedDate;
+    
+    return matchStatus && matchDate;
+  });
 
   const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
   const paginatedData = filteredRequests.slice(
@@ -124,9 +190,22 @@ const MySettlements = () => {
     currentPage * rowsPerPage
   );
 
+  // Calculate total amount for each settlement
+  const calculateTotalAmount = (expenseItems) => {
+    return expenseItems.reduce((sum, item) => {
+      const amount = Number(item['Amount (₹)']) || 0;
+      return sum + amount;
+    }, 0);
+  };
+
+  // Show loading state while currentUser is being fetched
+  if (!currentUser) {
+    return <div className="text-center p-8">Loading...</div>;
+  }
+
   return (
     <div className='bg-white shadow-md rounded-md pb-8'>
-      <h3 className="text-2xl font-bold mb-4 py-4 px-6 text-green-600 ">My Settlement Requests</h3>
+      <h3 className="text-2xl font-bold mb-4 py-4 px-6 text-green-600">My Settlement Requests</h3>
 
       <FilterBar
         selectedStatus={selectedStatus}
@@ -150,43 +229,44 @@ const MySettlements = () => {
             {paginatedData.map((req, idx) => (
               <tr key={req.id}>
                 <td className="p-3 border">{(currentPage - 1) * rowsPerPage + idx + 1}</td>
-                <td className="p-3 border">{req.date}</td>
-                <td className="p-3 border">₹ {req.amount}</td>
                 <td className="p-3 border">
-                  <span
-                    className={`px-2 py-1 rounded text-white text-xs ${
-                      req.status === 'Pending'
-                        ? 'text-yellow-500'
-                        : req.status === 'Approved'
-                        ? 'bg-green-600'
-                        : 'bg-red-600'
-                    }`}
-                  >
+                  {new Date(req.submittedAt).toLocaleDateString()}
+                </td>
+                <td className="p-3 border">
+                  ₹ {calculateTotalAmount(req.expenseItems).toFixed(2)}
+                </td>
+                <td className="p-3 border">
+                  <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
                     {req.status}
                   </span>
                 </td>
                 <td className="p-3 border">
-                  {req.status.startsWith('Rejected') && (
+                  {req.status.includes('Rejected') && (
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => openModal(req.reason)}
+                        onClick={() => openModal(req.rejectionReason || 'No reason provided')}
                         className="text-blue-600 hover:text-blue-800"
                         title="View Rejection Reason"
                       >
                         <AiOutlineEye size={20} />
                       </button>
-                      {clarificationsSubmitted.includes(req.id) ? (
-                        <span className="text-green-600 text-xs font-semibold">Clarification Submitted</span>
-                      ) : (
+                      {req.status.includes('Clarification Submitted') ? (
+                        <span className="text-purple-600 text-xs font-semibold">
+                          Clarification Under Review
+                        </span>
+                      ) : canSubmitClarification(req) ? (
                         <button
                           onClick={() => openClarificationModal(req.id)}
                           className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
                         >
-                          Clarification
+                          Submit Clarification
                         </button>
-                        )}
+                      ) : (
+                        <span className="text-gray-500 text-xs">
+                          No Action Available
+                        </span>
+                      )}
                     </div>
-
                   )}
                 </td>
               </tr>
@@ -195,24 +275,35 @@ const MySettlements = () => {
         </table>
       </div>
 
+      {/* Show message if no settlements found */}
+      {paginatedData.length === 0 && (
+        <div className="text-center p-8 text-gray-500">
+          No settlements found matching your criteria.
+        </div>
+      )}
+
       {/* Pagination Controls */}
-      <div className="flex justify-end mt-6 px-6 gap-2">
-        <button
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <span className="px-3 py-1">Page {currentPage} of {totalPages}</span>
-        <button
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+      {filteredRequests.length > rowsPerPage && (
+        <div className="flex justify-end mt-6 px-6 gap-2">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="px-3 py-1">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       <RejectionReasonModal
         isOpen={modalOpen}
@@ -222,27 +313,37 @@ const MySettlements = () => {
 
       {clarificationModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-[90%] max-w-md">
+          <div className="bg-white p-6 rounded shadow-lg w-[90%] max-w-lg">
             <h2 className="text-lg font-semibold mb-4">Submit Clarification</h2>
-            <textarea
-              className="w-full border border-gray-300 rounded p-2 mb-4"
-              rows="4"
-              placeholder="Enter clarification..."
-              value={clarificationText}
-              onChange={(e) => setClarificationText(e.target.value)}
-            />
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Explain why this expense should be approved or provide additional details:
+              </p>
+              <textarea
+                className="w-full border border-gray-300 rounded p-3 mb-4"
+                rows="5"
+                placeholder="Enter clarification details..."
+                value={clarificationText}
+                onChange={(e) => setClarificationText(e.target.value)}
+              />
+            </div>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setClarificationModalOpen(false)}
+                onClick={() => {
+                  setClarificationModalOpen(false);
+                  setClarificationText('');
+                  setClarificationId(null);
+                }}
                 className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
               >
                 Cancel
               </button>
               <button
                 onClick={submitClarification}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                disabled={!clarificationText.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                Submit
+                Submit Clarification
               </button>
             </div>
           </div>

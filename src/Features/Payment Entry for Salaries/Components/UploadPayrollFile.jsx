@@ -1,45 +1,40 @@
-// src/features/salaryPayment/components/UploadPayrollFile.jsx
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 
 export default function UploadPayrollFile() {
   const [data, setData] = useState([]);
-  const [summaryData, setSummaryData] = useState(null); // 🔥 NEW: Store summary data
+  const [summaryData, setSummaryData] = useState(null);
   const [error, setError] = useState("");
-  const fileInputRef = useRef(null); // Ref to clear file input
+  const fileInputRef = useRef(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // 🔥 NEW: Function to process employee data into summary format
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    setCurrentUser(user);
+  }, []);
+
   const processEmployeeDataToSummary = (employeeData) => {
     if (!employeeData || employeeData.length === 0) return null;
 
-    // Calculate total salary amount
     const totalAmount = employeeData.reduce((sum, employee) => {
-      const amount = Number(employee['DEBIT AMT'] || 0);
-      return sum + amount;
+      return sum + (Number(employee['DEBIT AMT'] || 0));
     }, 0);
 
-    // Get common debit account (assuming all employees have same company account)
-    const debitAccount = employeeData[0]['DEBIT BANK A/C NO'] || '';
-    
-    // Get current month for narration
     const currentDate = new Date();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentMonth = monthNames[currentDate.getMonth()];
     const currentYear = currentDate.getFullYear();
     
-    // Create summary entry
-    const summary = {
-      "TYPE": "NEFT",
-      "DEBIT BANK A/C NO": debitAccount,
-      "DEBIT AMT": totalAmount,
-      "CUR": "INR",
-      "NARRATION/NAME": `${currentMonth} ${currentYear} Salary`
-    };
-
     return {
-      summary: summary,
+      summary: {
+        "TYPE": "NEFT",
+        "DEBIT BANK A/C NO": employeeData[0]['DEBIT BANK A/C NO'] || '',
+        "DEBIT AMT": totalAmount,
+        "CUR": "INR",
+        "NARRATION/NAME": `${currentMonth} ${currentYear} Salary`
+      },
       employeeCount: employeeData.length,
       totalAmount: totalAmount,
       month: `${currentMonth} ${currentYear}`
@@ -59,32 +54,46 @@ export default function UploadPayrollFile() {
       const parsedData = XLSX.utils.sheet_to_json(ws, { defval: "" });
       
       setData(parsedData);
-      
-      // 🔥 NEW: Process data into summary format
-      const processedSummary = processEmployeeDataToSummary(parsedData);
-      setSummaryData(processedSummary);
-      
+      setSummaryData(processEmployeeDataToSummary(parsedData));
       setError("");
     };
     reader.readAsBinaryString(file);
   };
 
   const handleSubmit = () => {
-    if (data.length === 0) {
+    if (!summaryData) {
       setError("Please upload a valid file before submitting.");
       return;
     }
 
-    console.log("Submitted Excel Data:", data);
-    console.log("Summary Data:", summaryData);
+    const newPayment = {
+      id: `sal-${Date.now()}`,
+      paymentDate: new Date().toISOString(),
+      payrollPeriod: summaryData.month,
+      totalAmount: summaryData.totalAmount,
+      employeeCount: summaryData.employeeCount,
+      bankFile: summaryData.summary,
+      employeeDetails: data,
+      status: 'Pending Approval',
+      submittedBy: currentUser?.username || 'payroll1',
+      submittedAt: new Date().toISOString(),
+      assignedTo: 'ae1',
+      history: [{
+        action: 'submitted',
+        by: currentUser?.username || 'payroll1',
+        date: new Date().toISOString(),
+        comments: ''
+      }]
+    };
 
-    // ✅ Clear everything after submit
-    setData([]); // Hide table
-    setSummaryData(null); // Clear summary
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Clear file input
-    }
-    toast.success("✅ File submitted to AE successfully!");
+    const existingPayments = JSON.parse(localStorage.getItem('salaryPayments')) || [];
+    localStorage.setItem('salaryPayments', JSON.stringify([...existingPayments, newPayment]));
+
+    setData([]);
+    setSummaryData(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    
+    toast.success("✅ Salary payment submitted to Account Executive!");
   };
 
   return (
@@ -101,10 +110,8 @@ export default function UploadPayrollFile() {
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
-      {/* 🔥 NEW: Show Summary Table instead of detailed employee data */}
       {summaryData && (
         <>
-          {/* Summary Information */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <h3 className="text-lg font-semibold text-blue-800 mb-2">Payroll Summary</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -127,7 +134,6 @@ export default function UploadPayrollFile() {
             </div>
           </div>
 
-          {/* Summary Table for Bank Processing */}
           <div className="overflow-x-auto border mt-4 rounded">
             <h4 className="text-md font-semibold p-3 bg-gray-100 border-b">Bank Payment Summary</h4>
             <table className="min-w-full text-sm text-left border-collapse">
@@ -152,7 +158,6 @@ export default function UploadPayrollFile() {
             </table>
           </div>
 
-          {/* Original Employee Data (Collapsible) */}
           <details className="mt-4 border rounded">
             <summary className="cursor-pointer p-3 bg-gray-100 font-medium hover:bg-gray-200">
               📋 View Employee Details ({data.length} employees)

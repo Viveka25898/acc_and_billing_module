@@ -11,7 +11,7 @@ function App() {
   useEffect(() => {
     try {
       const existingUsers = localStorage.getItem("users");
-      if (!existingUsers || !JSON.parse(existingUsers).some(user => user.role === "compliance-team")) {
+      if (!existingUsers || !JSON.parse(existingUsers).some(user => user.role === "payroll-team")) {
         const users = [
           // Employees
           { username: "emp1", role: "employee", empId: "1", reportsTo: "lm1" },
@@ -44,7 +44,9 @@ function App() {
           
           // Compliance Managers
           { username: "compliance-manager1", role: "compliance-manager", empId: "18", reportsTo: "ae1" },
-          { username: "compliance-manager2", role: "compliance-manager", empId: "19", reportsTo: "ae1" }
+          { username: "compliance-manager2", role: "compliance-manager", empId: "19", reportsTo: "ae1" },
+           // Add Payroll Team User
+          { username: "payroll1", role: "payroll-team", empId: "20", reportsTo: "ae1" },
         ];
 
         localStorage.setItem("users", JSON.stringify(users));

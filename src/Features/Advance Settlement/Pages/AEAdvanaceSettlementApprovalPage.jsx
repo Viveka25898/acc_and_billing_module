@@ -1,87 +1,199 @@
-/* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
-import { AiOutlineEye } from 'react-icons/ai';
-import ManagerFilter from '../Components/ManagerFilter';
+import React, { useState, useEffect } from 'react';
+import { AiOutlineEye, AiOutlineCheck, AiOutlineClose } from 'react-icons/ai';
 import RemarkModal from '../Components/RemarkModal';
+import ManagerFilter from '../Components/ManagerFilter';
 import ManagerClarificationModal from '../Components/ManagerClarificationModal';
-import JVDisplay from '../Components/JVDisplay'; // Add this line to import JV component
+import EmployeeAdvanceSettlementJV from '../Components/JVDisplay';
 import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-const dummyRequests = [
-  {
-    id: 1,
-    employeeName: 'Rahul Sharma',
-    excelFile: 'excel2.xlsx',
-    attachments: ['bill1.pdf', 'receipt1.jpg'],
-    status: 'Pending',
-    remarks: '',
-    date: '2025-05-20',
-  },
-  {
-    id: 2,
-    employeeName: 'Priya Verma',
-    excelFile: 'excel2.xlsx',
-    attachments: ['bill2.pdf'],
-    status: 'Approved',
-    remarks: '',
-    date: '2025-05-18',
-  },
-  {
-    id: 3,
-    employeeName: 'Ankit Joshi',
-    excelFile: 'excel3.xlsx',
-    attachments: ['receipt3.pdf'],
-    status: 'Rejected',
-    remarks: 'Bill not clear',
-    date: '2025-05-22',
-    clarification: "Bill is Clear.",
-  },
-];
-
-const AEAdvanceSettlementApproalPage = () => {
-  const [requests, setRequests] = useState(dummyRequests);
+const AEAdvanceSettlementApprovalPage = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [settlements, setSettlements] = useState([]);
   const [remarkInput, setRemarkInput] = useState('');
   const [selectedRejectId, setSelectedRejectId] = useState(null);
   const [clarificationData, setClarificationData] = useState(null);
-  const [filter, setFilter] = useState({ employee: '', status: 'All', date: '' });
+  const [filter, setFilter] = useState({
+    employee: '',
+    status: 'All',
+    date: '',
+  });
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 2;
-  const [showJVFor, setShowJVFor] = useState(null); // New state for JV rendering
+  const rowsPerPage = 5;
+  const [showJVFor, setShowJVFor] = useState(null);
+
+  // Get current user from localStorage
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const fullUser = allUsers.find(u => u.username === user?.username);
+    setCurrentUser(fullUser);
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
+      
+      // Filter settlements for Account Executive:
+      // 1. Settlements pending AE approval
+      // 2. Clarification submissions at AE level
+      const aeRequests = storedSettlements.filter(settlement => {
+        const isAssignedToAE = settlement.assignedTo === currentUser.username;
+        const isClarificationAtAELevel = settlement.status.includes('Clarification Submitted') && 
+                                       settlement.currentLevel === 'account-executive';
+        const isPendingAEApproval = settlement.status.includes('Pending Account Executive Approval');
+        
+        return isAssignedToAE || isClarificationAtAELevel || isPendingAEApproval;
+      });
+      
+      setSettlements(aeRequests);
+    }
+  }, [currentUser]);
 
   const handleApprove = (id) => {
-    const updated = requests.map((req) =>
-      req.id === id ? { ...req, status: 'Approved', remarks: '', clarification: '' } : req
-    );
-    setRequests(updated);
+    if (!currentUser) return;
+    
+    const updated = settlements.map(settlement => {
+      if (settlement.id === id) {
+        // Generate JV data before updating status
+        const jvData = generateJVData(settlement);
+        
+        return {
+          ...settlement,
+          status: 'Approved by Account Executive',
+          currentLevel: 'completed',
+          assignedTo: null,
+          rejectionReason: null,
+          jvEntry: jvData, // Store JV data with the settlement
+          history: [
+            ...settlement.history,
+            {
+              action: settlement.status.includes('Clarification') ? 
+                'approved-after-clarification' : 'approved',
+              by: currentUser.username,
+              date: new Date().toISOString(),
+              comments: 'Automatic JV entry passed'
+            }
+          ]
+        };
+      }
+      return settlement;
+    });
+
+    updateSettlements(updated);
+    const approvedRequest = updated.find(req => req.id === id);
+    setShowJVFor(approvedRequest);
     setClarificationData(null);
-    const approvedRequest = updated.find((req) => req.id === id);
-    toast.success("Automatic Settlement Entry Passed in the System through JV.")
-    setShowJVFor(approvedRequest); // Show JV after approval
+    toast.success("Automatic Settlement Entry Passed in the System through JV.");
   };
 
- const handleReject = (id) => {
-  if (!remarkInput.trim()) return alert('Please enter a remark for rejection.');
-  const updated = requests.map((req) =>
-    req.id === id
-      ? { ...req, status: 'Rejected', remarks: remarkInput, clarification: '' } // <-- clear it here
-      : req
-  );
-  setRequests(updated);
-  setSelectedRejectId(null);
-  setRemarkInput('');
+  const generateJVData = (settlement) => {
+  const totalAmount = settlement.expenseItems.reduce((sum, item) => {
+    return sum + (Number(item['Amount (₹)']) || 0);
+  }, 0);
+  
+  return {
+    header: {
+      company: "Ismart",
+      voucherNo: `JV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+      financialYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`,
+      date: new Date().toISOString().split('T')[0],
+      reference: `SETTLEMENT-${settlement.id.slice(-6)}`,
+      preparedBy: "System"
+    },
+    entries: [
+      {
+        particulars: "Employee Advances",
+        gl: "2005",
+        debit: totalAmount,
+        credit: 0
+      },
+      {
+        particulars: "Cash",
+        gl: "1001",
+        debit: 0,
+        credit: totalAmount
+      }
+    ],
+    narration: `Advance settlement for ${settlement.employeeName}`,
+    approvals: {
+      preparer: "System",
+      reviewer: "Pending",
+      approver: "Pending",
+      date: new Date().toISOString().split('T')[0]
+    },
+    totals: {
+      debit: totalAmount,
+      credit: totalAmount
+    }
+  };
 };
 
-  const filtered = requests.filter((req) => {
-    const matchesName = req.employeeName.toLowerCase().includes(filter.employee.toLowerCase());
-    const matchesStatus = filter.status === 'All' || req.status === filter.status;
-    const matchesDate = !filter.date || req.date === filter.date;
+  const handleReject = (id) => {
+    if (!remarkInput.trim()) return alert('Please enter a rejection reason.');
+    if (!currentUser) return;
+
+    const updated = settlements.map(settlement => {
+      if (settlement.id === id) {
+        const isClarification = settlement.status.includes('Clarification');
+        const status = isClarification 
+          ? 'Rejected After Clarification by Account Executive' 
+          : 'Rejected by Account Executive';
+        
+        return {
+          ...settlement,
+          status,
+          rejectionReason: remarkInput,
+          history: [
+            ...settlement.history,
+            {
+              action: isClarification ? 'rejected-after-clarification' : 'rejected',
+              by: currentUser.username,
+              date: new Date().toISOString(),
+              comments: remarkInput
+            }
+          ]
+        };
+      }
+      return settlement;
+    });
+
+    updateSettlements(updated);
+    setSelectedRejectId(null);
+    setRemarkInput('');
+  };
+
+  // Function to handle file viewing
+  const viewFile = (fileData) => {
+    // For demo purposes, we'll just open a new window
+    // In a real app, you would fetch the actual file from your server
+    const fileUrl = URL.createObjectURL(new Blob([fileData], { type: 'application/pdf' }));
+    window.open(fileUrl, '_blank');
+  };
+
+  const updateSettlements = (updatedSettlements) => {
+    setSettlements(updatedSettlements);
+    const allSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
+    const updatedAll = allSettlements.map(settlement => {
+      const updated = updatedSettlements.find(s => s.id === settlement.id);
+      return updated || settlement;
+    });
+    localStorage.setItem('settlements', JSON.stringify(updatedAll));
+  };
+
+  const filtered = settlements.filter(settlement => {
+    const matchesName = settlement.employeeName.toLowerCase().includes(filter.employee.toLowerCase());
+    const matchesStatus = filter.status === 'All' || 
+      settlement.status.toLowerCase().includes(filter.status.toLowerCase());
+    const matchesDate = !filter.date || 
+      new Date(settlement.submittedAt).toISOString().split('T')[0] === filter.date;
     return matchesName && matchesStatus && matchesDate;
   });
 
   const sortedRequests = filtered.sort((a, b) => {
-    if (a.status === 'Pending' && b.status !== 'Pending') return -1;
-    if (a.status !== 'Pending' && b.status === 'Pending') return 1;
-    return 0;
+    if (a.status.includes('Pending') && !b.status.includes('Pending')) return -1;
+    if (!a.status.includes('Pending') && b.status.includes('Pending')) return 1;
+    return new Date(b.submittedAt) - new Date(a.submittedAt);
   });
 
   const paginatedRequests = sortedRequests.slice(
@@ -89,15 +201,39 @@ const AEAdvanceSettlementApproalPage = () => {
     currentPage * rowsPerPage
   );
 
-  const getFileUrl = (filename) => `/dummy-files/${filename}`;
+  const calculateTotalAmount = (expenseItems) => {
+    return expenseItems.reduce((sum, item) => {
+      const amount = Number(item['Amount (₹)']) || 0;
+      return sum + amount;
+    }, 0);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    if (status.includes('Rejected')) return 'bg-red-100 text-red-800';
+    if (status.includes('Approved')) return 'bg-green-100 text-green-800';
+    if (status.includes('Clarification')) return 'bg-purple-100 text-purple-800';
+    return 'bg-yellow-100 text-yellow-800';
+  };
+
+  const shouldShowActions = (settlement) => {
+    return (
+      settlement.status.includes('Pending Account Executive Approval') ||
+      settlement.status.includes('Clarification Submitted')
+    );
+  };
+
+  if (!currentUser) {
+    return <div className="text-center p-8">Loading...</div>;
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6 bg-white shadow-md rounded-md">
-      <h2 className="text-2xl font-bold mb-6 text-green-600">Account Executive Review - (Employee Advance Settlement)</h2>
+      <h2 className="text-2xl font-bold mb-6 text-green-600">
+        Account Executive Review - {currentUser.username}
+      </h2>
 
       <div className="overflow-x-auto">
         <ManagerFilter filter={filter} setFilter={setFilter} />
-
         <table className="min-w-full border text-sm">
           <thead className="bg-gray-100 text-left">
             <tr>
@@ -106,6 +242,7 @@ const AEAdvanceSettlementApproalPage = () => {
               <th className="p-3 border">Date</th>
               <th className="p-3 border">Excel File</th>
               <th className="p-3 border">Attachments</th>
+              <th className="p-3 border">Amount</th>
               <th className="p-3 border">Status</th>
               <th className="p-3 border">Remarks</th>
               <th className="p-3 border">Actions</th>
@@ -116,75 +253,83 @@ const AEAdvanceSettlementApproalPage = () => {
               <tr key={req.id} className="border">
                 <td className="p-3 border">{(currentPage - 1) * rowsPerPage + index + 1}</td>
                 <td className="p-3 border">{req.employeeName}</td>
-                <td className="p-3 border">{req.date}</td>
-                <td className="p-3 border text-blue-600 underline cursor-pointer flex items-center gap-1">
-                  <a href={getFileUrl(req.excelFile)} target="_blank" rel="noopener noreferrer">
-                    {req.excelFile}
-                  </a>
-                  <AiOutlineEye
-                    className="hover:text-blue-800 cursor-pointer"
-                    onClick={() => window.open(getFileUrl(req.excelFile), '_blank')}
-                    title="View Excel file"
-                  />
-                </td>
                 <td className="p-3 border">
-                  <ul className="list-disc list-inside">
-                    {req.attachments.map((file, idx) => (
-                      <li key={idx} className="text-blue-600 underline cursor-pointer flex items-center gap-1">
-                        <a href={getFileUrl(file)} target="_blank" rel="noopener noreferrer">
-                          {file}
-                        </a>
-                        <AiOutlineEye
-                          className="hover:text-blue-800 cursor-pointer"
-                          onClick={() => window.open(getFileUrl(file), '_blank')}
-                          title={`View ${file}`}
+                  {new Date(req.submittedAt).toLocaleDateString()}
+                </td>
+                
+                {/* Excel File Column */}
+                <td className="p-3 border">
+                  <div className="flex items-center gap-1 text-blue-600 cursor-pointer">
+                    <span 
+                      onClick={() => viewFile(req.excelFile)}
+                      className="underline"
+                    >
+                      View Excel
+                    </span>
+                    <AiOutlineEye 
+                      onClick={() => viewFile(req.excelFile)}
+                      className="hover:text-blue-800"
+                      title="View Excel File"
+                    />
+                  </div>
+                </td>
+                
+                {/* Attachments Column */}
+                <td className="p-3 border">
+                  <div className="space-y-1">
+                    {req.attachments?.map((attachment, idx) => (
+                      <div key={idx} className="flex items-center gap-1 text-blue-600 cursor-pointer">
+                        <span 
+                          onClick={() => viewFile(attachment)}
+                          className="underline text-sm"
+                        >
+                          {attachment.name || `Attachment ${idx + 1}`}
+                        </span>
+                        <AiOutlineEye 
+                          onClick={() => viewFile(attachment)}
+                          className="hover:text-blue-800"
+                          title={`View ${attachment.name || 'Attachment'}`}
                         />
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
+                </td>
+                
+                <td className="p-3 border">
+                  ₹{calculateTotalAmount(req.expenseItems).toFixed(2)}
                 </td>
                 <td className="p-3 border">
-                  <span
-                    className={`px-2 py-1 rounded text-white text-xs ${
-                      req.status === 'Pending'
-                        ? 'bg-yellow-500'
-                        : req.status === 'Approved'
-                        ? 'bg-green-600'
-                        : 'bg-red-600'
-                    }`}
-                  >
+                  <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
                     {req.status}
                   </span>
-                  {req.status === 'Rejected' && req.clarification && (
+                  {req.rejectionReason && (
                     <AiOutlineEye
                       className="inline ml-2 text-blue-600 cursor-pointer"
-                      title="View Clarification"
                       onClick={() => setClarificationData(req)}
+                      title="View Details"
                     />
                   )}
                 </td>
-                <td className="p-3 border text-red-600 text-sm">{req.remarks}</td>
+                <td className="p-3 border text-sm">
+                  {req.rejectionReason || '-'}
+                </td>
                 <td className="p-3 border">
-                  {(req.status === 'Pending' || (req.status === 'Rejected' && req.clarification)) && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(req.id)}
-                          className="bg-green-600 text-white px-3 py-1 rounded text-xs cursor-pointer"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() =>
-                            req.status === 'Rejected' && req.clarification
-                              ? setClarificationData(req)
-                              : setSelectedRejectId(req.id)
-                          }
-                          className="bg-red-600 text-white px-3 py-1 rounded text-xs cursor-pointer"
-                        >
-                          Reject
-                        </button>
-                      </div>
+                  {shouldShowActions(req) && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApprove(req.id)}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded text-xs"
+                        title="Approve"
+                      >
+                        <AiOutlineCheck size={14} /> Approve
+                      </button>
+                      <button
+                        onClick={() => setSelectedRejectId(req.id)}
+                        className="flex items-center gap-1 bg-red-600 text-white px-3 py-1 rounded text-xs"
+                        title="Reject"
+                      >
+                        <AiOutlineClose size={14} /> Reject
+                      </button>
                     </div>
                   )}
                 </td>
@@ -193,30 +338,37 @@ const AEAdvanceSettlementApproalPage = () => {
           </tbody>
         </table>
 
-        {/* Pagination */}
-        <div className="flex justify-end items-center mt-4 gap-2">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span>
-            Page {currentPage} of {Math.ceil(sortedRequests.length / rowsPerPage)}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) =>
-                Math.min(prev + 1, Math.ceil(sortedRequests.length / rowsPerPage))
-              )
-            }
-            disabled={currentPage === Math.ceil(sortedRequests.length / rowsPerPage)}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
+        {paginatedRequests.length === 0 && (
+          <div className="text-center p-8 text-gray-500">
+            No settlements found for review.
+          </div>
+        )}
+
+        {filtered.length > rowsPerPage && (
+          <div className="flex justify-end items-center mt-4 gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span>
+              Page {currentPage} of {Math.ceil(filtered.length / rowsPerPage)}
+            </span>
+            <button
+              onClick={() => 
+                setCurrentPage(prev => 
+                  Math.min(prev + 1, Math.ceil(filtered.length / rowsPerPage))
+                )
+              }
+              disabled={currentPage === Math.ceil(filtered.length / rowsPerPage)}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         <RemarkModal
           isOpen={selectedRejectId !== null}
@@ -227,24 +379,39 @@ const AEAdvanceSettlementApproalPage = () => {
           onSubmit={() => handleReject(selectedRejectId)}
           remark={remarkInput}
           setRemark={setRemarkInput}
+          title="Enter Rejection Reason"
         />
 
         <ManagerClarificationModal
-          isOpen={!!clarificationData}
-          onClose={() => setClarificationData(null)}
-          data={clarificationData}
-          onApprove={handleApprove}
-          onReject={(id) => {
-            setSelectedRejectId(id);
-            setClarificationData(null);
-          }}
+        isOpen={!!clarificationData}
+        onClose={() => setClarificationData(null)}
+        data={{
+          ...clarificationData,
+          // Include the rejection history
+          rejectionHistory: clarificationData?.history?.find(h => 
+            h.action.includes('rejected') && !h.action.includes('after-clarification')
+          ),
+          // Include the clarification history if exists
+          clarificationHistory: clarificationData?.history?.find(h => 
+            h.action.includes('clarification')
+          )
+        }}
+        onApprove={() => handleApprove(clarificationData.id)}
+        onReject={() => {
+          setSelectedRejectId(clarificationData.id);
+          setClarificationData(null);
+        }}
+      />
+
+        {showJVFor && (
+          <EmployeeAdvanceSettlementJV 
+          data={showJVFor.jvEntry} 
+          onClose={() => setShowJVFor(null)}
         />
+        )}
       </div>
-
-
-      
     </div>
   );
 };
 
-export default AEAdvanceSettlementApproalPage;
+export default AEAdvanceSettlementApprovalPage;

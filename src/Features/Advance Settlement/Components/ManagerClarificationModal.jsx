@@ -1,40 +1,67 @@
 import React from 'react';
 import { AiOutlineClose } from 'react-icons/ai';
 
-const ManagerClarificationModal = ({ isOpen, onClose, data, onApprove, onReject }) => {
-  if (!isOpen || !data) return null;
+const ManagerClarificationModal = ({ 
+  isOpen, 
+  onClose, 
+  data, 
+  onApprove, 
+  onReject 
+}) => {
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
-        <button onClick={onClose} className="absolute top-2 right-2 text-gray-500 hover:text-red-600">
-          <AiOutlineClose size={18} />
-        </button>
-        <h3 className="text-xl font-semibold mb-4">Clarification from {data.employeeName}</h3>
-
-        <div className="mb-4">
-          <p><strong>Rejection Remark:</strong></p>
-          <p className="text-red-600">{data.remarks}</p>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold">Request Details</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <AiOutlineClose size={20} />
+          </button>
         </div>
 
-        <div className="mb-4">
-          <p><strong>Employee Clarification:</strong></p>
-          <p className="text-gray-700">{data.clarification}</p>
-        </div>
+        <div className="space-y-4">
+          {/* Original Rejection Details */}
+          {data.rejectionHistory && (
+            <div className="border-b pb-4">
+              <h4 className="font-semibold text-red-600 mb-2">Original Rejection</h4>
+              <p><span className="font-medium">By:</span> {data.rejectionHistory.by}</p>
+              <p><span className="font-medium">Date:</span> {new Date(data.rejectionHistory.date).toLocaleString()}</p>
+              <p><span className="font-medium">Reason:</span> {data.rejectionHistory.comments || data.rejectionReason}</p>
+            </div>
+          )}
 
-        <div className="flex gap-2 justify-end">
-          <button
-            onClick={() => onApprove(data.id)}
-            className="bg-green-600 text-white px-4 py-1 rounded text-sm"
-          >
-            Approve
-          </button>
-          <button
-            onClick={() => onReject(data.id)}
-            className="bg-red-600 text-white px-4 py-1 rounded text-sm"
-          >
-            Reject
-          </button>
+          {/* Clarification Details */}
+          {data.clarificationHistory && (
+            <div className="border-b pb-4">
+              <h4 className="font-semibold text-purple-600 mb-2">Clarification Submitted</h4>
+              <p><span className="font-medium">By:</span> {data.clarificationHistory.by}</p>
+              <p><span className="font-medium">Date:</span> {new Date(data.clarificationHistory.date).toLocaleString()}</p>
+              <p><span className="font-medium">Comments:</span> {data.clarificationHistory.comments}</p>
+            </div>
+          )}
+
+          {/* Current Status */}
+          <div>
+            <h4 className="font-semibold mb-2">Current Status</h4>
+            <p>{data.status}</p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={onReject}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+              Reject Again
+            </button>
+            <button
+              onClick={onApprove}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Approve
+            </button>
+          </div>
         </div>
       </div>
     </div>
