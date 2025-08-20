@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import InvoiceFilters from "../Components/InvoiceFilter";
 import InvoiceTable from "../Components/InvoiceTable";
-import ViewInvoiceModal from "../Components/ViewInvoiceModal";
 import RejectInvoiceModal from "../Components/RejectInvoiceModal";
+import VerifyInvoiceModal from "../Components/ViewInvoiceModal";
 
 const dummyInvoices = [
   {
@@ -13,7 +13,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   },
   {
@@ -24,7 +24,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   },
   {
@@ -35,7 +35,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   },
   {
@@ -46,7 +46,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   },
   {
@@ -57,7 +57,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   },
   {
@@ -68,7 +68,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   },
   {
@@ -79,7 +79,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   },
   {
@@ -90,7 +90,7 @@ const dummyInvoices = [
     gstin: "29AAACX1111Q1ZP",
     amount: 50000,
     status: "pending",
-    documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    documentUrl: "/public/DxotBTxfHn.png",
     financialHeadStatus:"pending"
   }
 ];
@@ -185,9 +185,10 @@ export default function InvoiceVerificationPage() {
 
       {/*  View Modal */}
       {selectedInvoiceForView && (
-        <ViewInvoiceModal
-          invoice={selectedInvoiceForView}
-          onClose={() => setSelectedInvoiceForView(null)}
+        <VerifyInvoiceModal
+         isOpen={!!selectedInvoiceForView}
+    onClose={() => setSelectedInvoiceForView(null)}
+    invoice={selectedInvoiceForView}
         />
       )}
 

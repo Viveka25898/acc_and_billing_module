@@ -1,29 +1,61 @@
-// AEFilter.jsx
 import React from 'react';
 
-export default function AEFilter({ filter, setFilter }) {
+const AEFilter = ({ filter, setFilter }) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFilter((prev) => ({ ...prev, [name]: value }));
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <input
-        type="text"
-        placeholder="Filter by Name"
-        value={filter.name}
-        onChange={(e) => setFilter(prev => ({ ...prev, name: e.target.value }))}
-        className="border rounded px-3 py-2 w-full"
-      />
-      <input
-        type="text"
-        placeholder="Filter by Employee ID"
-        value={filter.empId}
-        onChange={(e) => setFilter(prev => ({ ...prev, empId: e.target.value }))}
-        className="border rounded px-3 py-2 w-full"
-      />
-      <input
-        type="date"
-        value={filter.date}
-        onChange={(e) => setFilter(prev => ({ ...prev, date: e.target.value }))}
-        className="border rounded px-3 py-2 w-full"
-      />
+    <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+      <div className="w-full sm:w-1/4">
+        <label className="block mb-1 text-sm font-semibold text-gray-700">Request ID</label>
+        <input
+          type="text"
+          name="requestId"
+          value={filter.requestId}
+          onChange={handleChange}
+          placeholder="Search by Request ID"
+          className="w-full px-3 py-2 border rounded text-sm focus:outline-none"
+        />
+      </div>
+
+      <div className="w-full sm:w-1/4">
+        <label className="block mb-1 text-sm font-semibold text-gray-700">Employee Name</label>
+        <input
+          type="text"
+          name="name"
+          value={filter.name}
+          onChange={handleChange}
+          placeholder="Search by name"
+          className="w-full px-3 py-2 border rounded text-sm focus:outline-none"
+        />
+      </div>
+
+      <div className="w-full sm:w-1/4">
+        <label className="block mb-1 text-sm font-semibold text-gray-700">Employee ID</label>
+        <input
+          type="text"
+          name="empId"
+          value={filter.empId}
+          onChange={handleChange}
+          placeholder="Search by ID"
+          className="w-full px-3 py-2 border rounded text-sm focus:outline-none"
+        />
+      </div>
+
+      <div className="w-full sm:w-1/4">
+        <label className="block mb-1 text-sm font-semibold text-gray-700">Request Date</label>
+        <input
+          type="date"
+          name="date"
+          value={filter.date}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border rounded text-sm focus:outline-none"
+        />
+      </div>
     </div>
   );
-}
+};
+
+export default AEFilter;

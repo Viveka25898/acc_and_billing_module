@@ -24,7 +24,7 @@ const AdvanceRequestForm = () => {
     employeeName: '',
     employeeId: '',
     amount: '',
-    reason: '',
+    reason: [],  // Changed to array for multiple selections
     customReason: '',
     requestDate: new Date().toISOString().slice(0, 10),
   });
@@ -32,22 +32,62 @@ const AdvanceRequestForm = () => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
+  // Function to generate unique request ID
+  const generateRequestId = () => {
+    const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
+    const currentDate = new Date();
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const nextNumber = existingRequests.length + 1;
+    return `ADV-${year}${month}-${String(nextNumber).padStart(4, '0')}`;
+  };
+
+  // Available reason options
+  const reasonOptions = [
+    'Visit to Client',
+    'Travelling Allowance',
+    'Petrol Expense',
+    'Office Expense',
+    'Other'
+  ];
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
+  // Handle reason selection
+  const handleReasonSelect = (selectedReason) => {
+    if (!formData.reason.includes(selectedReason)) {
+      setFormData({
+        ...formData,
+        reason: [...formData.reason, selectedReason]
+      });
+    }
+  };
+
+  // Handle reason removal
+  const handleReasonRemove = (reasonToRemove) => {
+    setFormData({
+      ...formData,
+      reason: formData.reason.filter(reason => reason !== reasonToRemove)
+    });
+  };
+
   const isFormValid = () => {
     const { employeeName, employeeId, amount, reason, customReason } = formData;
-    if (reason === 'Other') {
+    const hasOtherReason = reason.includes('Other');
+    
+    if (hasOtherReason) {
       return (
         employeeName.trim() &&
         employeeId.trim() &&
         amount.trim() &&
+        reason.length > 0 &&
         customReason.trim()
       );
     }
-    return employeeName.trim() && employeeId.trim() && amount.trim() && reason.trim();
+    return employeeName.trim() && employeeId.trim() && amount.trim() && reason.length > 0;
   };
 
   const handleSubmit = (e) => {
@@ -59,7 +99,13 @@ const AdvanceRequestForm = () => {
     return;
   }
 
-  const finalReason = formData.reason === 'Other' ? formData.customReason : formData.reason;
+  // Combine selected reasons with custom reason if "Other" is selected
+  let finalReasons = [...formData.reason];
+  if (formData.reason.includes('Other') && formData.customReason.trim()) {
+    finalReasons = finalReasons.map(reason => 
+      reason === 'Other' ? formData.customReason : reason
+    );
+  }
 
   // 🔹 Get current user and hierarchy info
   const currentUser = JSON.parse(localStorage.getItem("user"));
@@ -74,8 +120,9 @@ const AdvanceRequestForm = () => {
   }
 
   const newRequest = {
+    requestId: generateRequestId(), // Add unique request ID
     ...formData,
-    reason: finalReason,
+    reason: finalReasons, // Store as array of reasons
     status: 'Pending Manager Approval',
     remarks: '',
     submittedAt: new Date().toISOString(),
@@ -87,6 +134,9 @@ const AdvanceRequestForm = () => {
   const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
   existingRequests.push(newRequest);
   localStorage.setItem('advanceRequests', JSON.stringify(existingRequests));
+
+  // Store the request ID in form data to show in success message
+  setFormData(prev => ({ ...prev, requestId: newRequest.requestId }));
 
   setSubmitted(true);
 };
@@ -106,6 +156,9 @@ const AdvanceRequestForm = () => {
         {submitted ? (
           <div className="text-green-600 text-center font-medium">
             ✅ Your advance request has been submitted successfully.
+            <div className="mt-2 text-sm text-gray-600">
+              Request ID: <span className="font-semibold text-green-700">{formData.requestId}</span>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -153,23 +206,53 @@ const AdvanceRequestForm = () => {
 
               <div className="sm:col-span-2">
                 <label className="block mb-1 font-semibold">Reason for Advance</label>
+                
+                {/* Selected Reasons Display Box */}
+                {formData.reason.length > 0 && (
+                  <div className="mb-3 p-3 border rounded bg-gray-50 min-h-[60px]">
+                    <div className="text-sm text-gray-600 mb-2">Selected Reasons:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.reason.map((reason, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
+                        >
+                          {reason}
+                          <button
+                            type="button"
+                            onClick={() => handleReasonRemove(reason)}
+                            className="ml-2 text-green-600 hover:text-green-800 font-bold"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reason Selection Dropdown */}
                 <select
-                  name="reason"
-                  value={formData.reason}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleReasonSelect(e.target.value);
+                      e.target.value = ''; // Reset dropdown
+                    }
+                  }}
                   className="w-full border px-3 py-2 rounded focus:outline-none focus:ring focus:ring-blue-300"
-                  required
                 >
-                  <option value="">-- Select Reason --</option>
-                  <option value="Visit to Client">Visit to Client</option>
-                  <option value="Travelling Allowance">Travelling Allowance</option>
-                  <option value="Petrol Expense">Petrol Expense</option>
-                  <option value="Office Expense">Office Expense</option>
-                  <option value="Other">Other</option>
+                  <option value="">-- Select Reason to Add --</option>
+                  {reasonOptions
+                    .filter(option => !formData.reason.includes(option))
+                    .map(option => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
                 </select>
               </div>
 
-              {formData.reason === 'Other' && (
+              {formData.reason.includes('Other') && (
                 <div className="sm:col-span-2">
                   <label className="block mb-1 font-semibold">Specify Reason</label>
                   <input

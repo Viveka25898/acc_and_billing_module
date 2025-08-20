@@ -35,11 +35,27 @@ export default function AERequestTable({ data, onApprove, onReject }) {
 
   const paginatedData = sortedData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
+  // Check if VP approved before deadline (15:59) - using vpApprovedBeforeDeadline flag
+  const isVPApprovedBeforeDeadline = (req) => {
+    // Use the flag set by VP when approving
+    if (req.isVPRequest) {
+      return req.vpApprovedBeforeDeadline === true;
+    }
+    return true; // Non-VP requests are always eligible
+  };
+
   const isActionAllowed = (req) => {
-    return (
-      req.status === 'Pending AE Approval' ||
-      (req.status === 'Rejected by AE' && req.clarification)
-    );
+    // Basic status check
+    const statusCheck = req.status === 'Pending AE Approval' ||
+                       (req.status === 'Rejected by AE' && req.clarification);
+    
+    // If it's a VP request, check if VP approved before deadline
+    if (req.isVPRequest) {
+      return statusCheck && isVPApprovedBeforeDeadline(req);
+    }
+    
+    // For employee requests, normal rules apply
+    return statusCheck;
   };
 
   const getStatusColor = (status) => {
@@ -48,52 +64,128 @@ export default function AERequestTable({ data, onApprove, onReject }) {
     return 'text-yellow-600';
   };
 
-  // Enhanced download function
-  const handleDownload = () => {
-    const deadline = new Date();
-    deadline.setHours(15, 59, 0, 0); // 3:59 PM deadline
+  const getSelectableRequests = () => {
+    return paginatedData.filter(req => {
+      const basicCheck = req.status === 'Pending AE Approval';
+      if (req.isVPRequest) {
+        return basicCheck && isVPApprovedBeforeDeadline(req);
+      }
+      return basicCheck;
+    });
+  };
 
-    const approvedRequests = data.filter(req => 
-      req.status === 'Approved' && 
-      req.approvedAt && 
-      new Date(req.approvedAt) <= deadline
-    );
+  // Enhanced download function - only download properly approved requests
+  // Enhanced download function - only download properly approved requests
+const handleDownload = () => {
+  console.log("=== DOWNLOAD DEBUGGING ===");
+  console.log("All data for download check:", data);
 
-    if (approvedRequests.length === 0) {
-      alert("No eligible approved requests before 3:59 PM.");
-      return;
+  const approvedRequests = data.filter(req => {
+    console.log(`\nChecking request ${req.requestId || req.submittedAt}:`);
+    console.log("- Status:", req.status);
+    console.log("- Request Type:", req.isVPRequest ? "VP Request" : "Employee Request");
+    console.log("- approvedAt:", req.approvedAt);
+    console.log("- vpApprovedBeforeDeadline:", req.vpApprovedBeforeDeadline);
+    
+    // Must be approved by AE
+    if (req.status !== 'Approved') {
+      console.log("❌ REJECTED: Status is not 'Approved'");
+      return false;
     }
+    
+    // Must have AE approval time
+    if (!req.approvedAt) {
+      console.log("❌ REJECTED: No approvedAt timestamp");
+      return false;
+    }
+    
+    // For VP requests, must have been approved by VP before deadline
+    if (req.isVPRequest) {
+      if (req.vpApprovedBeforeDeadline === undefined) {
+        console.log("❌ REJECTED: VP request but vpApprovedBeforeDeadline is undefined");
+        return false;
+      }
+      if (!req.vpApprovedBeforeDeadline) {
+        console.log("❌ REJECTED: VP request but VP didn't approve before deadline");
+        return false;
+      }
+      console.log("✅ VP request approved before deadline");
+    } else {
+      console.log("✅ Employee request (no deadline restriction)");
+    }
+    
+    console.log("✅ ACCEPTED for download");
+    return true;
+  });
 
-    const excelData = approvedRequests.map(req => ({
-      "TYPE": "NEFT",
-      "DEBIT BANK A/C NO": "1234567890",
-      "DEBIT AMT": req.amount,
-      "CUR": "INR",
-      "BENIFICARY A/C NO": req.bankAccountNumber || "9876543210",
-      "IFSC CODE": req.ifscCode || "SBIN0000123",
-      "NARRTION/NAME (NOT MORE THAN 20)": req.employeeName.slice(0, 20),
-      "REQUEST TYPE": req.isVPRequest ? "VP Request" : "Employee Request"
-    }));
+  console.log("\n=== FINAL RESULT ===");
+  console.log("Eligible requests for download:", approvedRequests);
+  console.log("Total eligible:", approvedRequests.length);
 
-    const ws = XLSX.utils.json_to_sheet(excelData);
+  if (approvedRequests.length === 0) {
+    const statusBreakdown = {
+      total: data.length,
+      pending: data.filter(req => req.status === 'Pending AE Approval').length,
+      approved: data.filter(req => req.status === 'Approved').length,
+      rejected: data.filter(req => req.status === 'Rejected by AE').length,
+      vpRequests: data.filter(req => req.isVPRequest).length,
+      vpAfterDeadline: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === false).length,
+      vpBeforeDeadline: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === true).length,
+      vpNoDeadlineInfo: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === undefined).length
+    };
+    
+    let alertMessage = `No eligible requests for download.\n\nBreakdown:\n`;
+    alertMessage += `- Total requests: ${statusBreakdown.total}\n`;
+    alertMessage += `- Pending AE Approval: ${statusBreakdown.pending}\n`;
+    alertMessage += `- Approved by AE: ${statusBreakdown.approved}\n`;
+    alertMessage += `- Rejected by AE: ${statusBreakdown.rejected}\n`;
+    alertMessage += `- VP requests: ${statusBreakdown.vpRequests}\n`;
+    alertMessage += `  - VP approved before deadline: ${statusBreakdown.vpBeforeDeadline}\n`;
+    alertMessage += `  - VP approved after deadline: ${statusBreakdown.vpAfterDeadline}\n`;
+    alertMessage += `  - VP no deadline info: ${statusBreakdown.vpNoDeadlineInfo}\n\n`;
+    alertMessage += `To download: Approve pending requests first. VP requests must be approved by VP before 15:59.`;
+    
+    alert(alertMessage);
+    return;
+  }
 
-    ws['!cols'] = [
-      { wch: 10 },  // TYPE
-      { wch: 20 },  // DEBIT BANK A/C NO
-      { wch: 15 },  // DEBIT AMT
-      { wch: 10 },  // CUR
-      { wch: 20 },  // BENIFICARY A/C NO
-      { wch: 15 },  // IFSC CODE
-      { wch: 30 },  // NARRTION/NAME
-      { wch: 15 }   // REQUEST TYPE
-    ];
+  const excelData = approvedRequests.map(req => ({
+    "TYPE": "NEFT",
+    "DEBIT BANK A/C NO": "1234567890",
+    "DEBIT AMT": req.amount,
+    "CUR": "INR",
+    "BENIFICARY A/C NO": req.bankAccountNumber || "9876543210",
+    "IFSC CODE": req.ifscCode || "SBIN0000123",
+    "NARRTION/NAME (NOT MORE THAN 20)": req.employeeName.slice(0, 20),
+    "REQUEST TYPE": req.isVPRequest ? "VP Request" : "Employee Request"
+  }));
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "BankUpload");
+  const ws = XLSX.utils.json_to_sheet(excelData);
 
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(file, "BankUploadFile.xlsx");
+  ws['!cols'] = [
+    { wch: 10 },  // TYPE
+    { wch: 20 },  // DEBIT BANK A/C NO
+    { wch: 15 },  // DEBIT AMT
+    { wch: 10 },  // CUR
+    { wch: 20 },  // BENIFICARY A/C NO
+    { wch: 15 },  // IFSC CODE
+    { wch: 30 },  // NARRTION/NAME
+    { wch: 15 }   // REQUEST TYPE
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "BankUpload");
+
+  const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+  saveAs(file, "BankUploadFile.xlsx");
+  
+  alert(`Successfully downloaded ${approvedRequests.length} eligible requests.`);
+};
+  const handleApproveAll = () => {
+    const selectableRequests = getSelectableRequests();
+    selectableRequests.forEach(req => onApprove(req.submittedAt));
+    setSelectedIds([]);
   };
 
   return (
@@ -103,26 +195,22 @@ export default function AERequestTable({ data, onApprove, onReject }) {
           <tr>
             <th className="p-2 border">
               <input
-  type="checkbox"
-  onChange={(e) => {
-    if (e.target.checked) {
-      setSelectedIds(
-        paginatedData
-          .filter(req => req.status === 'Pending AE Approval')
-          .map(req => req.submittedAt)
-      );
-    } else {
-      setSelectedIds([]);
-    }
-  }}
-  checked={
-    selectedIds.length > 0 && 
-    selectedIds.length === paginatedData.filter(
-      req => req.status === 'Pending AE Approval'
-    ).length
-  }
-/>
+                type="checkbox"
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    const selectableRequests = getSelectableRequests();
+                    setSelectedIds(selectableRequests.map(req => req.submittedAt));
+                  } else {
+                    setSelectedIds([]);
+                  }
+                }}
+                checked={
+                  selectedIds.length > 0 && 
+                  selectedIds.length === getSelectableRequests().length
+                }
+              />
             </th>
+            <th className="p-2 border">Request ID</th>
             <th className="p-2 border">Name</th>
             <th className="p-2 border">Employee ID</th>
             <th className="p-2 border">Amount</th>
@@ -136,113 +224,149 @@ export default function AERequestTable({ data, onApprove, onReject }) {
         </thead>
 
         <tbody>
-          {paginatedData.map((req) => (
-            <tr key={req.submittedAt} className="text-center">
-              <td className="p-2">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(req.submittedAt)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedIds([...selectedIds, req.submittedAt]);
-                    } else {
-                      setSelectedIds(selectedIds.filter(id => id !== req.submittedAt));
-                    }
-                  }}
-                  disabled={req.status !== 'Pending AE Approval'}
-                />
-              </td>
-              <td className="p-2 border">{req.employeeName}</td>
-              <td className="p-2 border">{req.employeeId}</td>
-              <td className="p-2 border">₹{req.amount}</td>
-              <td className="p-2 border">{req.requestDate}</td>
-              <td className="p-2 border">₹{req.osBalance || 'N/A'}</td>
-              <td className="p-2 border">
-                <button 
-                  onClick={() => setCurrentReason({
-                    reason: req.reason,
-                    customReason: req.customReason
-                  })}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  <FaEye />
-                </button>
-              </td>
-              <td className="p-2 border">
-                {req.isVPRequest ? "VP Request" : "Employee Request"}
-              </td>
-              <td className={`border px-4 py-2 ${getStatusColor(req.status)}`}>
-                <div className="flex justify-center items-center gap-1">
-                  <span className="font-semibold">
-                    {req.status}
-                  </span>
-                  {req.status === 'Rejected by AE' && req.clarification && (
+          {paginatedData.map((req) => {
+            const canTakeAction = isActionAllowed(req);
+            const isVPRequestAfterDeadline = req.isVPRequest && !isVPApprovedBeforeDeadline(req);
+            
+            return (
+              <tr key={req.submittedAt} className="text-center">
+                <td className="p-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(req.submittedAt)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds([...selectedIds, req.submittedAt]);
+                      } else {
+                        setSelectedIds(selectedIds.filter(id => id !== req.submittedAt));
+                      }
+                    }}
+                    disabled={!canTakeAction}
+                  />
+                </td>
+                <td className="p-2 border font-mono text-xs">
+                  {req.requestId || 'N/A'}
+                </td>
+                <td className="p-2 border">{req.employeeName}</td>
+                <td className="p-2 border">{req.employeeId}</td>
+                <td className="p-2 border">₹{req.amount}</td>
+                <td className="p-2 border">{req.requestDate}</td>
+                <td className="p-2 border">₹{req.osBalance || '2200'}</td>
+                <td className="p-2 border">
+                  <button 
+                    onClick={() => setCurrentReason({
+                      reason: req.reason,
+                      customReason: req.customReason
+                    })}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <FaEye />
+                  </button>
+                </td>
+                <td className="p-2 border">
+                  <div className="flex flex-col items-center">
+                    <span>{req.isVPRequest ? "VP Request" : "Employee Request"}</span>
+                    {isVPRequestAfterDeadline && (
+                      <span className="text-xs text-red-500 mt-1">
+                        (VP approved after 15:59)
+                      </span>
+                    )}
+                    {req.isVPRequest && req.vpApprovedBeforeDeadline && (
+                      <span className="text-xs text-green-500 mt-1">
+                        (VP approved before 15:59 ✓)
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="p-2 border">
+                  <div className="flex justify-center items-center gap-1">
+                    <span className={`font-semibold ${getStatusColor(req.status)}`}>
+                      {req.status}
+                    </span>
+                    {req.status === 'Rejected by AE' && req.clarification && (
+                      <button
+                        onClick={() => setCurrentReason({
+                          remarks: req.remarks,
+                          clarification: req.clarification
+                        })}
+                        title="View Clarification"
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <FaEye className="inline" />
+                      </button>
+                    )}
+                  </div>
+                </td>
+                <td className="p-2 border">
+                  <div className="flex flex-col gap-2 items-center">
                     <button
-                      onClick={() => setCurrentReason({
-                        remarks: req.remarks,
-                        clarification: req.clarification
-                      })}
-                      title="View Clarification"
-                      className="text-blue-600 hover:text-blue-800"
+                      disabled={!canTakeAction}
+                      onClick={() => onApprove(req.submittedAt)}
+                      className={`px-3 py-1 rounded text-white ${
+                        canTakeAction
+                          ? 'bg-green-600 hover:bg-green-700'
+                          : 'bg-gray-300 cursor-not-allowed'
+                      }`}
+                      title={isVPRequestAfterDeadline ? "Cannot approve: VP approved after 15:59 deadline" : ""}
                     >
-                      <FaEye className="inline" />
+                      Approve
                     </button>
-                  )}
-                </div>
-              </td>
-              <td className="p-2 flex flex-col gap-2 items-center">
-                <button
-                  disabled={!isActionAllowed(req)}
-                  onClick={() => onApprove(req.submittedAt)}
-                  className={`px-3 py-1 rounded text-white ${
-                    isActionAllowed(req)
-                      ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-gray-300 cursor-not-allowed'
-                  }`}
-                >
-                  Approve
-                </button>
-                <button
-                  disabled={!isActionAllowed(req)}
-                  onClick={() => setRejectingId(req.submittedAt)}
-                  className={`px-3 py-1 rounded text-white ${
-                    isActionAllowed(req)
-                      ? 'bg-red-600 hover:bg-red-700'
-                      : 'bg-gray-300 cursor-not-allowed'
-                  }`}
-                >
-                  Reject
-                </button>
-              </td>
-            </tr>
-          ))}
+                    <button
+                      disabled={!canTakeAction}
+                      onClick={() => setRejectingId(req.submittedAt)}
+                      className={`px-3 py-1 rounded text-white ${
+                        canTakeAction
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-gray-300 cursor-not-allowed'
+                      }`}
+                      title={isVPRequestAfterDeadline ? "Cannot reject: VP approved after 15:59 deadline" : ""}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
-      {selectedIds.length > 0 && (
-  <div className="mt-4 space-x-2">
-    <button
-      onClick={() => {
-        // Only approve requests that are both in paginatedData AND selectedIds
-        const requestsToApprove = paginatedData.filter(
-          req => selectedIds.includes(req.submittedAt) && 
-                 req.status === 'Pending AE Approval'
-        );
-        requestsToApprove.forEach(req => onApprove(req.submittedAt));
-        setSelectedIds([]);
-      }}
-      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-    >
-      Approve Selected ({selectedIds.length})
-    </button>
-    <button
-      onClick={() => setSelectedIds([])}
-      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-    >
-      Clear Selection
-    </button>
-  </div>
-)}
+      {(selectedIds.length > 0 || getSelectableRequests().length > 0) && (
+        <div className="mt-4 space-x-2">
+          {selectedIds.length > 0 && (
+            <>
+              <button
+                onClick={() => {
+                  const requestsToApprove = paginatedData.filter(
+                    req => selectedIds.includes(req.submittedAt) && 
+                           isActionAllowed(req)
+                  );
+                  requestsToApprove.forEach(req => onApprove(req.submittedAt));
+                  setSelectedIds([]);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Approve Selected ({selectedIds.length})
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Clear Selection
+              </button>
+            </>
+          )}
+          
+          {getSelectableRequests().length > 0 && (
+            <button
+              onClick={handleApproveAll}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Approve All Eligible ({getSelectableRequests().length})
+            </button>
+          )}
+        </div>
+      )}
 
       <button
         onClick={handleDownload}

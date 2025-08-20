@@ -120,6 +120,7 @@ const MyRequests = () => {
             <table className="min-w-full table-auto border border-green-200 text-sm">
               <thead className="bg-gray-100">
                 <tr>
+                  <th className="border px-4 py-2">Request ID</th>
                   <th className="border px-4 py-2">Amount</th>
                   <th className="border px-4 py-2">Date</th>
                   <th className="border px-4 py-2">Status</th>
@@ -130,6 +131,9 @@ const MyRequests = () => {
               <tbody>
                 {paginatedRequests.map((req, index) => (
                   <tr key={index} className="text-center">
+                    <td className="border px-4 py-2 font-mono text-xs">
+                      {req.requestId || 'N/A'}
+                    </td>
                     <td className="border px-4 py-2">₹{req.amount}</td>
                     <td className="border px-4 py-2">{req.requestDate}</td>
                    <td

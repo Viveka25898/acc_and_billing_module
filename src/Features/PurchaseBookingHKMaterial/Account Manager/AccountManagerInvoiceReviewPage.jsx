@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AMInvoiceFilter from "./AccountManagerInvoiceFilter";
 import AMInvoiceVerifyModal from "./AccountManagerInvoiceVerifyModal";
+import InvoiceJVDisplay from "../Components/InvoiceJVDisplay";
 const dummyInvoices = [
   {
     id: 1,
@@ -10,9 +11,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-001",
     vendorName: "ABC Enterprises",
     totalAmount: 125000,
-    status: "Approved by Account Executive", // New status for AM workflow
-    accountManagerStatus: "Pending Final Approval", // New field
-    documentUrl: "https://example.com/invoice/inv001.pdf",
+    status: "Pending GST Verification",
+    gstRate: 18,
+    hsnCode: "998314",
+    hsnSummary: "Construction Services",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -24,9 +27,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-002",
     vendorName: "XYZ Pvt Ltd",
     totalAmount: 82000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv002.pdf",
+    status: "Pending GST Verification",
+    gstRate: 12,
+    hsnCode: "847130",
+    hsnSummary: "Computer Systems",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -44,9 +49,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-003",
     vendorName: "Delta Solutions",
     totalAmount: 230000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv003.pdf",
+    status: "Pending GST Verification",
+    gstRate: 18,
+    hsnCode: "998223",
+    hsnSummary: "Consultancy Services",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -64,9 +71,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-004",
     vendorName: "FastBuild Supplies",
     totalAmount: 45000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv004.pdf",
+    status: "Pending GST Verification",
+    gstRate: 5,
+    hsnCode: "401693",
+    hsnSummary: "Rubber Gaskets",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -78,9 +87,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-005",
     vendorName: "TechFront Pvt Ltd",
     totalAmount: 158000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv005.pdf",
+    status: "Pending GST Verification",
+    gstRate: 18,
+    hsnCode: "847149",
+    hsnSummary: "Hardware Equipments",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -98,9 +109,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-006",
     vendorName: "BuildSmart Inc",
     totalAmount: 64000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv006.pdf",
+    status: "Pending GST Verification",
+    gstRate: 12,
+    hsnCode: "730890",
+    hsnSummary: "Iron and Steel Fabrication",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -112,9 +125,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-007",
     vendorName: "Omega Traders",
     totalAmount: 97200,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv007.pdf",
+    status: "Pending GST Verification",
+    gstRate: 5,
+    hsnCode: "300490",
+    hsnSummary: "Medical Supplies",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -126,9 +141,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-008",
     vendorName: "NextGen Equipments",
     totalAmount: 298000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv008.pdf",
+    status: "Pending GST Verification",
+    gstRate: 18,
+    hsnCode: "850440",
+    hsnSummary: "Power Equipment",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -146,9 +163,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-009",
     vendorName: "Sunrise Traders",
     totalAmount: 52000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv009.pdf",
+    status: "Pending GST Verification",
+    gstRate: 5,
+    hsnCode: "100630",
+    hsnSummary: "Food Supplies",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -160,9 +179,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-010",
     vendorName: "MicroTech Solutions",
     totalAmount: 112500,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv010.pdf",
+    status: "Pending GST Verification",
+    gstRate: 12,
+    hsnCode: "902780",
+    hsnSummary: "Laboratory Equipment",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-001", url: "https://example.com/po-001.pdf" },
       { name: "PO-002", url: "https://example.com/po-002.pdf" }
@@ -180,9 +201,11 @@ const dummyInvoices = [
     invoiceNumber: "INV-011",
     vendorName: "InfraZone Pvt Ltd",
     totalAmount: 134000,
-    status: "Approved by Account Executive",
-    accountManagerStatus: "Pending Final Approval",
-    documentUrl: "https://example.com/invoice/inv011.pdf",
+    status: "Pending GST Verification",
+    gstRate: 18,
+    hsnCode: "995454",
+    hsnSummary: "Construction Turnkey Projects",
+    documentUrl: "/public/DxotBTxfHn.png",
     poDocuments: [
       { name: "PO-003", url: "https://example.com/po-003.pdf" },
       { name: "PO-004", url: "https://example.com/po-004.pdf" }
@@ -200,6 +223,8 @@ const AMInvoiceReviewPage = () => {
   const [filteredInvoices, setFilteredInvoices] = useState(dummyInvoices);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isJVModalOpen, setIsJVModalOpen] = useState(false);
+const [jvData, setJvData] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -217,32 +242,129 @@ const AMInvoiceReviewPage = () => {
     setIsModalOpen(false);
   };
 
+  //Prepare JV Data
+  const prepareJVData = (invoice) => {
+  // Calculate GST components (assuming 18% GST split into CGST/SGST)
+  const gstAmount = invoice.totalAmount * (invoice.gstRate / 100);
+  const cgstAmount = gstAmount / 2;
+  const sgstAmount = gstAmount / 2;
+  
+  // Calculate TDS (10% for example - adjust as needed)
+  const tdsRate = 0.10; // 10% TDS
+  const tdsAmount = invoice.totalAmount * tdsRate;
+  
+  // Calculate net payable
+  const netPayable = invoice.totalAmount + gstAmount - tdsAmount;
+
+  return {
+    header: {
+      company: "Your Company Name",
+      voucherNo: `JV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+      financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      date: new Date().toISOString().split('T')[0],
+      reference: `${invoice.invoiceNumber}`,
+      preparedBy: "Account Manager"
+    },
+    entries: [
+      {
+        id: 1,
+        particulars: invoice.type === "Fixed Asset" ? "Fixed Asset Purchase" : "Material Purchase",
+        gl: invoice.type === "Fixed Asset" ? "1010" : "5010",
+        costCenter: "Operations",
+        debit: invoice.totalAmount,
+        credit: 0,
+        note: `Vendor: ${invoice.vendorName}`,
+      },
+      {
+        id: 2,
+        particulars: "CGST Input",
+        gl: "1801",
+        costCenter: "",
+        debit: cgstAmount,
+        credit: 0,
+        note: `@${invoice.gstRate/2}%`,
+      },
+      {
+        id: 3,
+        particulars: "SGST Input",
+        gl: "1802",
+        costCenter: "",
+        debit: sgstAmount,
+        credit: 0,
+        note: `@${invoice.gstRate/2}%`,
+      },
+      {
+        id: 4,
+        particulars: "TDS 194C",
+        gl: "3001",
+        costCenter: "",
+        debit: tdsAmount,
+        credit: 0,
+        note: "@10%",
+      },
+      {
+        id: 5,
+        particulars: `Accounts Payable - ${invoice.vendorName}`,
+        gl: "2000",
+        costCenter: "",
+        debit: 0,
+        credit: netPayable,
+        note: `Invoice: ${invoice.invoiceNumber}`,
+      },
+    ],
+    narration: `Payment against ${invoice.type} Invoice No. ${invoice.invoiceNumber} (₹${invoice.totalAmount.toLocaleString()}), including GST @${invoice.gstRate}%. TDS @${tdsRate*100}% deducted.`,
+    approvals: {
+      preparer: "Account Manager",
+      reviewer: "Pending",
+      approver: "Pending",
+      date: new Date().toISOString().split('T')[0]
+    }
+  };
+};
+
   // Handle Update Invoice 
   const handleUpdateInvoice = (id, status, remark = "") => {
-    const updated = invoices.map((inv) => {
-      if (inv.id === id) {
-        let finalStatus = status;
-        let accountManagerStatus = status;
+  const updated = invoices.map((inv) => {
+    if (inv.id === id) {
+      let finalStatus = status;
+      let accountManagerStatus = status;
 
-        // 👉 Special condition for Procurement Material
-        if (inv.type === "Procurement Material" && status === "Final Approved") {
-          finalStatus = "Forwarded to Billing Manager";
-          accountManagerStatus = "Final Approved";
-        } else if (status === "Final Approved") {
-          accountManagerStatus = "Final Approved";
-        } else if (status === "Rejected") {
-          accountManagerStatus = "Rejected by Account Manager";
-        }
-
-        return { ...inv, status: finalStatus, accountManagerStatus, remark };
+      // Special condition for Procurement Material
+      if (inv.type === "Procurement Material" && status === "Approved") {
+        finalStatus = "Forwarded to Billing Manager";
+        accountManagerStatus = "Approved";
+      } else if (status === "Approved") {
+        accountManagerStatus = "Approved";
+        finalStatus = "Approved"; // Add this line to ensure status is updated
+      } else if (status === "Rejected") {
+        accountManagerStatus = "Rejected by Account Manager";
+        finalStatus = "Rejected";
       }
-      return inv;
-    });
 
-    setInvoices(updated);
-    setFilteredInvoices(updated);
-    closeModal();
-  };
+      // Prepare JV data if approved for Material or Fixed Asset
+      if (status === "Approved" && (inv.type === "Material" || inv.type === "Fixed Asset")) {
+        const jvData = prepareJVData(inv);
+        // Use setTimeout to ensure state updates complete before opening modal
+        setTimeout(() => {
+          setJvData(jvData);
+          setIsJVModalOpen(true);
+        }, 100);
+      }
+
+      return { 
+        ...inv, 
+        status: finalStatus, 
+        accountManagerStatus, 
+        remark 
+      };
+    }
+    return inv;
+  });
+
+  setInvoices(updated);
+  setFilteredInvoices(updated);
+  closeModal();
+};
 
   // Handle Filter
   const handleFilter = (newFilters) => {
@@ -311,62 +433,62 @@ const AMInvoiceReviewPage = () => {
                   )}
                 </td>
                 <td className="p-3 border">{inv.type || "Material"}</td>
-                <td className="p-3 border">
-                  {inv.accountManagerStatus === "Final Approved" ? (
-                    <div className="flex items-center justify-evenly">
-                      <span className="p-3 bg-green-200 rounded-full px-2 py-1">
-                        {inv.accountManagerStatus}
-                      </span>
+               <td className="p-3 border">
+                    {inv.accountManagerStatus === "Approved" ? (
+                      <div className="flex items-center justify-evenly">
+                        <span className="p-3 bg-green-200 rounded-full px-2 py-1">
+                          {inv.accountManagerStatus}
+                        </span>
 
-                      {/* 🔹 Purchase Entry and Fixed Asset Entry buttons for Account Manager */}
-                      {inv.type === "Material" && (
-                        <button
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"
-                          onClick={() =>
-                            navigate(`/dashboard/account-manager/invoice-purchase-entry/${inv.id}`, {
-                              state: { invoice: inv },
-                            })
-                          }
-                        >
-                          Purchase Entry
-                        </button>
-                      )}
+                        {/* 🔹 Purchase Entry and Fixed Asset Entry buttons for Account Manager */}
+                        {inv.type === "Material" && (
+                          <button
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"
+                            onClick={() =>
+                              navigate(`/dashboard/account-manager/invoice-purchase-entry/${inv.id}`, {
+                                state: { invoice: inv },
+                              })
+                            }
+                          >
+                            Purchase Entry
+                          </button>
+                        )}
 
-                      {inv.type === "Fixed Asset" && (
-                        <button
-                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"
-                          onClick={() =>
-                            navigate(`/dashboard/account-manager/fixed-asset-entry/${inv.id}`, {
-                              state: { invoice: inv },
-                            })
-                          }
-                        >
-                          Fixed Asset Entry
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    inv.accountManagerStatus || "Pending Final Approval"
-                  )}
-                </td>
+                        {inv.type === "Fixed Asset" && (
+                          <button
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"
+                            onClick={() =>
+                              navigate(`/dashboard/account-manager/fixed-asset-entry/${inv.id}`, {
+                                state: { invoice: inv },
+                              })
+                            }
+                          >
+                            Fixed Asset Entry
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      inv.accountManagerStatus || "Pending Approval"
+                    )}
+                  </td>
                 <td className="p-3 border text-center">
-                  <button
-                    onClick={() => openModal(inv)}
-                    className={`px-4 py-1.5 rounded text-sm ${
-                      inv.accountManagerStatus === "Final Approved" || 
-                      inv.accountManagerStatus === "Rejected by Account Manager" || 
-                      inv.status === "Forwarded to Billing Manager"
-                        ? "bg-gray-400 text-white cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                    }`}
-                    disabled={
-                      inv.accountManagerStatus === "Final Approved" || 
-                      inv.accountManagerStatus === "Rejected by Account Manager" || 
-                      inv.status === "Forwarded to Billing Manager"
-                    }
-                  >
-                    View & Approve
-                  </button>
+                 <button
+                  onClick={() => openModal(inv)}
+                  className={`px-4 py-1.5 rounded text-sm ${
+                    inv.accountManagerStatus === "Approved" || 
+                    inv.accountManagerStatus === "Rejected by Account Manager" || 
+                    inv.status === "Forwarded to Billing Manager"
+                      ? "bg-gray-400 text-white cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                  }`}
+                  disabled={
+                    inv.accountManagerStatus === "Approved" || 
+                    inv.accountManagerStatus === "Rejected by Account Manager" || 
+                    inv.status === "Forwarded to Billing Manager"
+                  }
+                >
+                  View & Approve
+                </button>
                 </td>
               </tr>
             ))}
@@ -398,6 +520,14 @@ const AMInvoiceReviewPage = () => {
           handleUpdateInvoice={handleUpdateInvoice}
         />
       )}
+
+      {/* JV Modal */}
+      {isJVModalOpen && jvData && (
+  <InvoiceJVDisplay 
+    data={jvData}
+    onClose={() => setIsJVModalOpen(false)}
+  />
+)}
     </div>
   );
 };

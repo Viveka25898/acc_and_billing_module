@@ -4,35 +4,11 @@ import { FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import ManagerFilter from './ManagerFilter';
 import { useSelector } from 'react-redux';
-
-// const initialRequests = [
-//   {
-//     id: 1,
-//     employeeName: 'Amit Sharma',
-//     employeeId: 'EMP001',
-//     amount: '5000',
-//     requestDate: '2024-05-01',
-//     reason: 'Medical Emergency',
-//     status: 'Rejected by Line Manager',
-//     remarks: 'Missing medical bills',
-//     clarification: 'Medical bills attached in new document',
-//   },
-//   {
-//     id: 2,
-//     employeeName: 'Sneha Patil',
-//     employeeId: 'EMP002',
-//     amount: '7000',
-//     requestDate: '2024-05-02',
-//     reason: 'House Rent',
-//     status: 'Pending Manager Approval',
-//   },
-// ];
-
 const ManagerApproval = () => {
   const loggedInUser = useSelector((state) => state.auth.user);
   console.log(loggedInUser);
   const [requests, setRequests] = useState([]);
-  const [filters, setFilters] = useState({ name: '', employeeId: '', date: '' });
+  const [filters, setFilters] = useState({ name: '', employeeId: '', date: '', requestId: '' });
   const [modalData, setModalData] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [rejectId, setRejectId] = useState(null);
@@ -113,7 +89,8 @@ const ManagerApproval = () => {
     .filter((req) =>
       req.employeeName.toLowerCase().includes(filters.name.toLowerCase()) &&
       req.employeeId.toLowerCase().includes(filters.employeeId.toLowerCase()) &&
-      (filters.date === '' || req.requestDate === filters.date)
+      (filters.date === '' || req.requestDate === filters.date) &&
+      (filters.requestId === '' || (req.requestId && req.requestId.toLowerCase().includes(filters.requestId.toLowerCase())))
     )
     .sort((a, b) => {
       const order = {
@@ -158,6 +135,7 @@ const ManagerApproval = () => {
           <table className="min-w-full table-auto border border-green-200 text-sm">
             <thead className="bg-green-100">
               <tr>
+                <th className="border px-4 py-2">Request ID</th>
                 <th className="border px-4 py-2">Name</th>
                 <th className="border px-4 py-2">Employee ID</th>
                 <th className="border px-4 py-2">Amount</th>
@@ -171,6 +149,9 @@ const ManagerApproval = () => {
             <tbody>
               {paginatedRequests.map((req) => (
                 <tr  key={req.submittedAt}className="text-center">
+                  <td className="border px-4 py-2 font-mono text-xs">
+                    {req.requestId || 'N/A'}
+                  </td>
                   <td className="border px-4 py-2">{req.employeeName}</td>
                   <td className="border px-4 py-2">{req.employeeId}</td>
                   <td className="border px-4 py-2">₹{req.amount}</td>

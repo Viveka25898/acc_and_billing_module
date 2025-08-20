@@ -9,6 +9,7 @@ const EmployeeAdvanceSettlementPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [osBalance, setOsBalance] = useState(5000); // Default O/S Balance
 
   // Get current user from localStorage
   useEffect(() => {
@@ -21,14 +22,21 @@ const EmployeeAdvanceSettlementPage = () => {
     if (!localStorage.getItem("settlements")) {
       localStorage.setItem("settlements", JSON.stringify([]));
     }
+    // Load user's current O/S balance from localStorage if exists
+    const userBalance = localStorage.getItem(`osBalance_${fullUser?.username}`);
+    if (userBalance) {
+      setOsBalance(parseFloat(userBalance));
+    }
   }, []);
+
+  
 
   // Export Blank Excel Template
   const exportTemplate = () => {
     try {
       const worksheetData = [
-        ["S. No", "Date", "Expense Head", "Description", "Amount (₹)", "Invoice/Doc No.", "Vendor Name", "Remarks"],
-        ["", "25/07/2025", "Travel", "Auto fare from office to client site", "350", "INV-123", "City Cab Services", "Paid via UPI"]
+        ["S. No", "Date", "Expense Head", "Description", "Amount (₹)", "Remarks"],
+        ["", "25/07/2025", "Travel", "Auto fare from office to client site", "350", "Paid via UPI"]
       ];
 
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
@@ -50,67 +58,84 @@ const EmployeeAdvanceSettlementPage = () => {
     }
   };
 
-  const handleSubmitSettlement = async (excelFile, attachments) => {
-  try {
-    console.log("Submitting settlement..."); // Debug log
-    console.log("Current user:", currentUser); // Debug log
-    
-    if (!currentUser) {
-      setError('User information not available. Please refresh the page.');
+   const handleSubmitSettlement = async (excelFile, attachments) => {
+    try {
+      console.log("Submitting settlement...");
+      console.log("Current user:", currentUser);
+      console.log("Current O/S Balance:", osBalance);
+      
+      if (!currentUser) {
+        setError('User information not available. Please refresh the page.');
+        return false;
+      }
+
+      if (!excelFile || attachments.length === 0) {
+        setError('Please upload both Excel file and supporting documents.');
+        return false;
+      }
+
+      // Parse Excel data
+      const excelData = await parseExcelFile(excelFile);
+      console.log("Parsed Excel data:", excelData);
+      
+      // Calculate total settlement amount
+      const totalAmount = excelData.reduce((sum, item) => {
+        const amount = Number(item['Amount (₹)']) || 0;
+        return sum + amount;
+      }, 0);
+
+      console.log("Total settlement amount:", totalAmount);
+
+      // Check if settlement amount exceeds available balance
+      if (totalAmount > osBalance) {
+        setError(`Settlement amount (₹${totalAmount}) exceeds available O/S Balance (₹${osBalance})`);
+        return false;
+      }
+
+      const newSettlement = {
+        id: Date.now().toString(),
+        employeeName: currentUser.username,
+        employeeId: currentUser.empId,
+        expenseItems: excelData,
+        totalAmount: totalAmount, // Store the total amount
+        attachments: attachments.map(file => ({
+          name: file.name,
+          size: file.size,
+          type: file.type
+        })),
+        status: 'Pending Line Manager Approval',
+        submittedAt: new Date().toISOString(),
+        assignedTo: currentUser.reportsTo,
+        submittedBy: currentUser.username,
+        currentLevel: 'line-manager',
+        osBalanceBefore: osBalance, // Store balance before submission
+        history: [{
+          action: 'submitted',
+          by: currentUser.username,
+          date: new Date().toISOString(),
+          comments: ''
+        }]
+      };
+
+      console.log("New settlement:", newSettlement);
+
+      const existingSettlements = JSON.parse(localStorage.getItem("settlements")) || [];
+      console.log("Existing settlements before:", existingSettlements);
+      
+      const updatedSettlements = [...existingSettlements, newSettlement];
+      localStorage.setItem("settlements", JSON.stringify(updatedSettlements));
+      
+      console.log("Updated settlements:", 
+        JSON.parse(localStorage.getItem("settlements")));
+      
+      setSubmitted(true);
+      return true;
+    } catch (err) {
+      console.error("Submission error:", err);
+      setError('Failed to submit settlement. Please try again.');
       return false;
     }
-
-    if (!excelFile || attachments.length === 0) {
-      setError('Please upload both Excel file and supporting documents.');
-      return false;
-    }
-
-    // Parse Excel data
-    const excelData = await parseExcelFile(excelFile);
-    console.log("Parsed Excel data:", excelData); // Debug log
-    
-    const newSettlement = {
-      id: Date.now().toString(),
-      employeeName: currentUser.username,
-      employeeId: currentUser.empId,
-      expenseItems: excelData,
-      attachments: attachments.map(file => ({
-        name: file.name,
-        size: file.size,
-        type: file.type
-      })),
-      status: 'Pending Line Manager Approval',
-      submittedAt: new Date().toISOString(),
-      assignedTo: currentUser.reportsTo,
-      submittedBy: currentUser.username,
-      currentLevel: 'line-manager',
-      history: [{
-        action: 'submitted',
-        by: currentUser.username,
-        date: new Date().toISOString(),
-        comments: ''
-      }]
-    };
-
-    console.log("New settlement:", newSettlement); // Debug log
-
-    const existingSettlements = JSON.parse(localStorage.getItem("settlements")) || [];
-    console.log("Existing settlements before:", existingSettlements); // Debug log
-    
-    const updatedSettlements = [...existingSettlements, newSettlement];
-    localStorage.setItem("settlements", JSON.stringify(updatedSettlements));
-    
-    console.log("Updated settlements:", 
-      JSON.parse(localStorage.getItem("settlements"))); // Debug log
-    
-    setSubmitted(true);
-    return true;
-  } catch (err) {
-    console.error("Submission error:", err); // Debug log
-    setError('Failed to submit settlement. Please try again.');
-    return false;
-  }
-};
+  };
 
   const parseExcelFile = (file) => {
     return new Promise((resolve, reject) => {
@@ -133,7 +158,7 @@ const EmployeeAdvanceSettlementPage = () => {
 
   if (!currentUser) return <div className="text-center p-8">Loading user data...</div>;
 
-  return (
+return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-gray-100">
       <div className="w-full max-w-4xl bg-white shadow rounded-md">
         <div className="p-6">
@@ -192,10 +217,11 @@ const EmployeeAdvanceSettlementPage = () => {
                   <li>Download and fill the Excel template with your expenses</li>
                   <li>Upload the completed file along with supporting documents</li>
                   <li>Submit for manager approval</li>
+                  <li>Available O/S Balance: <strong>₹{osBalance.toFixed(2)}</strong></li>
                 </ol>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block mb-1 font-semibold">Employee Name</label>
                   <input
@@ -213,6 +239,16 @@ const EmployeeAdvanceSettlementPage = () => {
                     value={currentUser.empId}
                     readOnly
                     className="w-full border px-3 py-2 rounded bg-gray-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 font-semibold">O/S Balance</label>
+                  <input
+                    type="text"
+                    value={`₹${osBalance.toFixed(2)}`}
+                    readOnly
+                    className="w-full border px-3 py-2 rounded bg-gray-100 font-bold text-green-700"
                   />
                 </div>
               </div>

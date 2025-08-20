@@ -7,7 +7,7 @@ import { useSelector } from 'react-redux';
 const VPApproval = () => {
   const loggedInUser = useSelector((state) => state.auth.user);
   const [requests, setRequests] = useState([]);
-  const [filters, setFilters] = useState({ name: '', employeeId: '', date: '' });
+  const [filters, setFilters] = useState({ name: '', employeeId: '', date: '', requestId: '' });
   const [modalData, setModalData] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [rejectId, setRejectId] = useState(null);
@@ -52,10 +52,23 @@ const VPApproval = () => {
 
   const handleApprove = (submittedAt) => {
     const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
+    const approvalTime = new Date();
+
+    // Check if approval is before 15:59 PM deadline
+    const isBeforeDeadline = approvalTime.getHours() < 15 || 
+                           (approvalTime.getHours() === 15 && approvalTime.getMinutes() <= 59);
 
     const updatedAllRequests = allRequests.map((req) =>
       req.submittedAt === submittedAt
-        ? { ...req, status: 'Pending AE Approval', remarks: '', vpApprovedBy: loggedInUser }
+        ? { 
+            ...req, 
+            status: 'Pending AE Approval', 
+            remarks: '', 
+            vpApprovedBy: loggedInUser,
+            vpApprovedAt: approvalTime.toISOString(), // Added timestamp
+            isVPRequest: true, // Mark as VP request
+            vpApprovedBeforeDeadline: isBeforeDeadline // Track if approved before deadline
+          }
         : req
     );
 
@@ -86,13 +99,20 @@ const VPApproval = () => {
     });
     
     setRequests(filtered);
-    toast.success("Request Approved - Sent to Account Executive");
+    
+    // Show different messages based on timing
+    if (isBeforeDeadline) {
+      toast.success("Request Approved - Sent to Account Executive (Eligible for same-day processing)");
+    } else {
+      toast.warning("Request Approved - Sent to Account Executive (Will be processed next working day - approved after 15:59)");
+    }
   };
 
   const handleReject = () => {
     if (!remarks.trim()) return alert('Please provide rejection remarks');
 
     const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
+    const rejectionTime = new Date();
 
     const updatedAllRequests = allRequests.map((req) =>
       req.submittedAt === rejectId
@@ -101,7 +121,8 @@ const VPApproval = () => {
             status: 'Rejected by VP Operations',
             remarks,
             clarification: '',
-            vpRejectedBy: loggedInUser
+            vpRejectedBy: loggedInUser,
+            vpRejectedAt: rejectionTime.toISOString() // Added rejection timestamp
           }
         : req
     );
@@ -138,30 +159,31 @@ const VPApproval = () => {
     toast.error('Request Rejected by VP Operations');
   };
 
- const filteredRequests = requests
-  .filter((req) =>
-    req.employeeName.toLowerCase().includes(filters.name.toLowerCase()) &&
-    req.employeeId.toLowerCase().includes(filters.employeeId.toLowerCase()) &&
-    (filters.date === '' || req.requestDate === filters.date)
-  )
-  .sort((a, b) => {
-    // Sort by status priority first (Pending VP Approval at top)
-    const statusPriority = {
-      'Pending VP Approval': 1,
-      'Rejected by VP Operations': 2,
-      'Pending AE Approval': 3
-    };
-    
-    const aPriority = statusPriority[a.status] || 4;
-    const bPriority = statusPriority[b.status] || 4;
-    
-    if (aPriority !== bPriority) {
-      return aPriority - bPriority;
-    }
-    
-    // Then sort by request date - newest first
-    return new Date(b.requestDate) - new Date(a.requestDate);
-  });
+  const filteredRequests = requests
+    .filter((req) =>
+      req.employeeName.toLowerCase().includes(filters.name.toLowerCase()) &&
+      req.employeeId.toLowerCase().includes(filters.employeeId.toLowerCase()) &&
+      (filters.date === '' || req.requestDate === filters.date) &&
+      (filters.requestId === '' || (req.requestId && req.requestId.toLowerCase().includes(filters.requestId.toLowerCase())))
+    )
+    .sort((a, b) => {
+      // Sort by status priority first (Pending VP Approval at top)
+      const statusPriority = {
+        'Pending VP Approval': 1,
+        'Rejected by VP Operations': 2,
+        'Pending AE Approval': 3
+      };
+      
+      const aPriority = statusPriority[a.status] || 4;
+      const bPriority = statusPriority[b.status] || 4;
+      
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // Then sort by request date - newest first
+      return new Date(b.requestDate) - new Date(a.requestDate);
+    });
 
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
   const paginatedRequests = filteredRequests.slice(
@@ -176,12 +198,30 @@ const VPApproval = () => {
     );
   };
 
+  // Helper function to check if current time is before deadline
+  const isCurrentlyBeforeDeadline = () => {
+    const now = new Date();
+    return now.getHours() < 15 || (now.getHours() === 15 && now.getMinutes() <= 59);
+  };
+
   return (
     <div className="min-h-screen px-2 py-6 bg-white rounded shadow-md overflow-x-hidden">
       <div className="max-w-full mx-2">
-        <h2 className="text-xl font-bold text-green-800 mb-4">
-          Advance Requests – VP Operations Approval
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-green-800">
+            Advance Requests – VP Operations Approval
+          </h2>
+          <div className={`text-sm px-3 py-1 rounded ${
+            isCurrentlyBeforeDeadline() 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {isCurrentlyBeforeDeadline() 
+              ? '🟢 Before 15:59 - Same day processing available' 
+              : '🔴 After 15:59 - Next day processing only'
+            }
+          </div>
+        </div>
 
         <ManagerFilter filters={filters} setFilters={setFilters} />
 
@@ -189,6 +229,7 @@ const VPApproval = () => {
           <table className="w-full table-auto border border-green-200 text-xs">
             <thead className="bg-green-100">
               <tr>
+                <th className="border px-2 py-1 whitespace-nowrap">Request ID</th>
                 <th className="border px-2 py-1 whitespace-nowrap">Name</th>
                 <th className="border px-2 py-1 whitespace-nowrap">Emp ID</th>
                 <th className="border px-2 py-1 whitespace-nowrap">Amount</th>
@@ -204,6 +245,9 @@ const VPApproval = () => {
             <tbody>
               {paginatedRequests.map((req) => (
                 <tr key={req.submittedAt} className="text-center">
+                  <td className="border px-2 py-1 whitespace-nowrap font-mono text-xs">
+                    {req.requestId || 'N/A'}
+                  </td>
                   <td className="border px-2 py-1 whitespace-nowrap">{req.employeeName}</td>
                   <td className="border px-2 py-1 whitespace-nowrap">{req.employeeId}</td>
                   <td className="border px-2 py-1 whitespace-nowrap">₹{req.amount}</td>
@@ -265,6 +309,7 @@ const VPApproval = () => {
                       )}
                     </div>
                   </td>
+
                   <td className="border px-2 py-1 whitespace-nowrap">
                     <div className="flex justify-center gap-1">
                       <button
@@ -275,6 +320,11 @@ const VPApproval = () => {
                             ? 'bg-green-600 text-white hover:bg-green-700'
                             : 'bg-gray-300 text-gray-600 cursor-not-allowed'
                         }`}
+                        title={
+                          isCurrentlyBeforeDeadline() 
+                            ? "Approve for same-day processing" 
+                            : "Approve for next-day processing (after 15:59)"
+                        }
                       >
                         Approve
                       </button>

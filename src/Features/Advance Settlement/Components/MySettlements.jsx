@@ -43,6 +43,7 @@ const MySettlements = () => {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedDate, setSelectedDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [osBalance, setOsBalance] = useState(5000); // Default O/S Balance
   const rowsPerPage = 5;
 
   // Get current user from localStorage
@@ -51,6 +52,14 @@ const MySettlements = () => {
     const allUsers = JSON.parse(localStorage.getItem("users")) || [];
     const fullUser = allUsers.find(u => u.username === user?.username);
     setCurrentUser(fullUser);
+
+    // Load user's current O/S balance from localStorage if exists
+    if (fullUser) {
+      const userBalance = localStorage.getItem(`osBalance_${fullUser.username}`);
+      if (userBalance) {
+        setOsBalance(parseFloat(userBalance));
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -62,8 +71,32 @@ const MySettlements = () => {
         .filter(s => s.employeeName === currentUser.username)
         .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
       setSettlements(userSettlements);
+
+      // Calculate current O/S balance based on approved settlements
+      calculateOsBalance(userSettlements);
     }
   }, [currentUser]);
+
+  // Function to calculate O/S balance
+  const calculateOsBalance = (userSettlements) => {
+    const initialBalance = 5000; // Starting balance
+    
+    // Sum of all approved settlements by Account Executive
+    const totalApprovedAmount = userSettlements
+      .filter(s => s.status === 'Approved by Account Executive')
+      .reduce((total, settlement) => {
+        const amount = settlement.totalAmount || calculateTotalAmount(settlement.expenseItems);
+        return total + amount;
+      }, 0);
+
+    const currentBalance = initialBalance - totalApprovedAmount;
+    setOsBalance(currentBalance);
+    
+    // Save to localStorage for persistence
+    if (currentUser) {
+      localStorage.setItem(`osBalance_${currentUser.username}`, currentBalance.toString());
+    }
+  };
 
   const openClarificationModal = (id) => {
     setClarificationId(id);
@@ -138,7 +171,10 @@ const MySettlements = () => {
       const updated = updatedSettlements.find(s => s.id === settlement.id);
       return updated || settlement;
     });
-    localStorage.setItem('settlements', JSON.stringify(updatedAllSettlements));
+    localStorage.setItem("settlements", JSON.stringify(updatedAllSettlements));
+
+    // Recalculate O/S balance
+    calculateOsBalance(updatedSettlements);
 
     // Close modal and reset
     setClarificationModalOpen(false);
@@ -170,6 +206,14 @@ const MySettlements = () => {
             settlement.status.includes('Rejected After Clarification'));
   };
 
+  // Calculate total amount for each settlement
+  const calculateTotalAmount = (expenseItems) => {
+    return expenseItems.reduce((sum, item) => {
+      const amount = Number(item['Amount (₹)']) || 0;
+      return sum + amount;
+    }, 0);
+  };
+
   const filteredRequests = settlements.filter((req) => {
     const normalizedStatus = req.status.toLowerCase();
     const matchStatus =
@@ -190,14 +234,6 @@ const MySettlements = () => {
     currentPage * rowsPerPage
   );
 
-  // Calculate total amount for each settlement
-  const calculateTotalAmount = (expenseItems) => {
-    return expenseItems.reduce((sum, item) => {
-      const amount = Number(item['Amount (₹)']) || 0;
-      return sum + amount;
-    }, 0);
-  };
-
   // Show loading state while currentUser is being fetched
   if (!currentUser) {
     return <div className="text-center p-8">Loading...</div>;
@@ -205,7 +241,16 @@ const MySettlements = () => {
 
   return (
     <div className='bg-white shadow-md rounded-md pb-8'>
-      <h3 className="text-2xl font-bold mb-4 py-4 px-6 text-green-600">My Settlement Requests</h3>
+      <div className="bg-green-50 p-4 border-b">
+        <h3 className="text-2xl font-bold text-green-600">My Settlement Requests</h3>
+        <div className="mt-2 flex items-center gap-4">
+          <span className="text-lg font-semibold">O/S Balance:</span>
+          <span className="text-2xl font-bold text-green-700">₹{osBalance.toFixed(2)}</span>
+        </div>
+        <p className="text-sm text-gray-600 mt-1">
+          Starting balance: ₹5000.00 | Deducted when Account Executive approves settlements.
+        </p>
+      </div>
 
       <FilterBar
         selectedStatus={selectedStatus}
@@ -226,51 +271,61 @@ const MySettlements = () => {
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((req, idx) => (
-              <tr key={req.id}>
-                <td className="p-3 border">{(currentPage - 1) * rowsPerPage + idx + 1}</td>
-                <td className="p-3 border">
-                  {new Date(req.submittedAt).toLocaleDateString()}
-                </td>
-                <td className="p-3 border">
-                  ₹ {calculateTotalAmount(req.expenseItems).toFixed(2)}
-                </td>
-                <td className="p-3 border">
-                  <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
-                    {req.status}
-                  </span>
-                </td>
-                <td className="p-3 border">
-                  {req.status.includes('Rejected') && (
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => openModal(req.rejectionReason || 'No reason provided')}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="View Rejection Reason"
-                      >
-                        <AiOutlineEye size={20} />
-                      </button>
-                      {req.status.includes('Clarification Submitted') ? (
-                        <span className="text-purple-600 text-xs font-semibold">
-                          Clarification Under Review
-                        </span>
-                      ) : canSubmitClarification(req) ? (
-                        <button
-                          onClick={() => openClarificationModal(req.id)}
-                          className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
-                        >
-                          Submit Clarification
-                        </button>
-                      ) : (
-                        <span className="text-gray-500 text-xs">
-                          No Action Available
-                        </span>
+            {paginatedData.map((req, idx) => {
+              const amount = calculateTotalAmount(req.expenseItems);
+              return (
+                <tr key={req.id}>
+                  <td className="p-3 border">{(currentPage - 1) * rowsPerPage + idx + 1}</td>
+                  <td className="p-3 border">
+                    {new Date(req.submittedAt).toLocaleDateString()}
+                  </td>
+                  <td className="p-3 border">
+                    <div>
+                      <span className="font-medium">₹ {amount.toFixed(2)}</span>
+                      {req.status === 'Approved by Account Executive' && (
+                        <div className="text-xs text-red-600 mt-1">
+                          - Deducted from O/S Balance
+                        </div>
                       )}
                     </div>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="p-3 border">
+                    <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
+                      {req.status}
+                    </span>
+                  </td>
+                  <td className="p-3 border">
+                    {req.status.includes('Rejected') && (
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => openModal(req.rejectionReason || 'No reason provided')}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="View Rejection Reason"
+                        >
+                          <AiOutlineEye size={20} />
+                        </button>
+                        {req.status.includes('Clarification Submitted') ? (
+                          <span className="text-purple-600 text-xs font-semibold">
+                            Clarification Under Review
+                          </span>
+                        ) : canSubmitClarification(req) ? (
+                          <button
+                            onClick={() => openClarificationModal(req.id)}
+                            className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
+                          >
+                            Submit Clarification
+                          </button>
+                        ) : (
+                          <span className="text-gray-500 text-xs">
+                            No Action Available
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
