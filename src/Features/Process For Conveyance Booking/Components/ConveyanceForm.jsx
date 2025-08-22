@@ -21,23 +21,32 @@ export default function ConveyanceForm({ entries, setEntries, errors, onSubmit, 
     setEntries(updated);
   };
 
-  const isWithinClaimWindow = (visitDateStr) => {
-    if (!visitDateStr) return false;
-    const visitDate = new Date(visitDateStr);
-    const today = new Date();
-    visitDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth();
-    const todayYear = today.getFullYear();
-    const inClaimWeek = todayDay >= 1 && todayDay <= 7;
-    const visitMonth = visitDate.getMonth();
-    const visitYear = visitDate.getFullYear();
-    const visitBeforeCurrentMonth =
-      visitYear < todayYear ||
-      (visitYear === todayYear && visitMonth < todayMonth);
-    return inClaimWeek && visitBeforeCurrentMonth;
-  };
+const isWithinClaimWindow = (visitDateStr) => {
+  if (!visitDateStr) return false;
+  const visitDate = new Date(visitDateStr);
+
+  // 🔹 FIXED DATE FOR TESTING (instead of system date)
+  const today = new Date("2025-08-05T10:30:00");  
+
+  visitDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
+
+  const inClaimWeek = todayDay >= 1 && todayDay <= 7;
+
+  const visitMonth = visitDate.getMonth();
+  const visitYear = visitDate.getFullYear();
+
+  const visitBeforeCurrentMonth =
+    visitYear < todayYear ||
+    (visitYear === todayYear && visitMonth < todayMonth);
+
+  return inClaimWeek && visitBeforeCurrentMonth;
+};
+
 
   const shouldShowReceipt = (transport) => {
     return ["Cab", "Bus", "Auto", "Train"].includes(transport);

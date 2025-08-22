@@ -10,6 +10,7 @@ import { saveAs } from "file-saver";
 import VendorInvoiceTable from "./Components/VendorInvoiceTable";
 import InvoiceViewer from "./Components/InvoiceReviewer";
 import { toast } from "react-toastify";
+import PaymentEntryModal from "./Components/PaymentEntryModal";
 
 // Mock data for vendors and invoices - replace with API calls in production
 const mockVendorData = [
@@ -76,6 +77,9 @@ export default function ProcessPaymentPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editableData, setEditableData] = useState([]);
+  //Payment Entry Modal
+  const [showPaymentEntry, setShowPaymentEntry] = useState(false);
+const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
   
   // New state for vendor invoice management
   const [vendorData, setVendorData] = useState(mockVendorData);
@@ -198,7 +202,6 @@ export default function ProcessPaymentPage() {
       'BENEFICIARY A/C NO': vendor.beneficiaryAccountNumber,
       'IFSC CODE': vendor.ifscCode,
       'NARRATION/NAME': vendor.narration,
-      'UTR': "",
     }));
 
     // Create Bank Upload Excel file
@@ -390,6 +393,72 @@ export default function ProcessPaymentPage() {
 
   console.log("Current approved invoices:", approvedInvoices);
 
+  //Payment Entry Function
+// Function to handle payment entry creation
+const handleCreatePaymentEntry = (acceptedData) => {
+  console.log("Accepted Data:", acceptedData); // Debug log
+  
+  // Calculate totals from the actual data structure
+  const totalAmount = acceptedData.reduce((sum, row) => {
+    const amount = parseFloat(row['Payment Done'] || row['Total Amount'] || 0);
+    return sum + amount;
+  }, 0);
+  
+  // Get vendor info from first row (or combine if multiple vendors)
+  const vendorName = acceptedData.length === 1 
+    ? acceptedData[0]['Vendor Name'] 
+    : `Multiple Vendors (${acceptedData.length})`;
+  
+  // Get invoice numbers (combine all)
+  const allInvoiceNumbers = acceptedData
+    .map(row => row['Invoice Numbers'])
+    .join(', ');
+  
+  // Calculate GST (assuming the Payment Done amount includes GST)
+  const gstAmount = Math.round(totalAmount * 0.18 / 1.18);
+  const netAmount = totalAmount - gstAmount;
+  
+  const paymentEntryData = {
+    entryNo: `PE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`,
+    date: new Date().toISOString().split('T')[0],
+    vendor: vendorName,
+    vendorCode: acceptedData.length === 1 ? 'VEN-001' : 'MULTIPLE',
+    amount: totalAmount,
+    paymentMethod: 'Bank Transfer',
+    bankAccount: 'HDFC Bank - Current A/c (****4567)', // You can make this dynamic
+    invoiceNo: allInvoiceNumbers,
+    particulars: `Payment for invoices: ${allInvoiceNumbers} - Total vendors: ${acceptedData.length}`,
+    gstAmount: gstAmount,
+    netAmount: netAmount,
+    status: 'Pending Approval',
+    preparedBy: 'Rajesh Kumar (Account Executive)',
+    approvedBy: '',
+    remarks: 'Auto-generated from uploaded payment file',
+    glEntries: [
+      {
+        glCode: '2001',
+        glDescription: 'Accounts Payable - Trade Creditors',
+        costCenter: 'CC-OPS-001',
+        department: 'Operations',
+        debitAmount: totalAmount,
+        creditAmount: 0
+      },
+      {
+        glCode: '1001',
+        glDescription: 'Bank Current Account',
+        costCenter: 'CC-GEN-001',
+        department: 'Finance',
+        debitAmount: 0,
+        creditAmount: totalAmount
+      }
+    ]
+  };
+  
+  console.log("Payment Entry Data:", paymentEntryData); // Debug log
+  setCurrentPaymentEntryData(paymentEntryData);
+  setShowPaymentEntry(true);
+};
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Original Payment Processing Section */}
@@ -408,13 +477,14 @@ export default function ProcessPaymentPage() {
 
         <UploadPaymentFile onFileUpload={handleFileUpload} />
 
-        {isModalOpen && (
-          <PaymentPreviewModal
-            data={parsedData}
-            onClose={handleCloseModal}
-            onRequestChanges={handleRequestChanges}
-          />
-        )}
+       {isModalOpen && (
+        <PaymentPreviewModal
+          data={parsedData}
+          onClose={handleCloseModal}
+          onRequestChanges={handleRequestChanges}
+          onAccept={handleCreatePaymentEntry} // Add this new prop
+        />
+      )}
 
         {editMode && (
           <EditPaymentDetails
@@ -462,6 +532,14 @@ export default function ProcessPaymentPage() {
           </div>
         </div>
       </div>
+      {/* Payment Entry Modal */}
+      {showPaymentEntry && (
+        <PaymentEntryModal
+          isOpen={showPaymentEntry}
+          onClose={() => setShowPaymentEntry(false)}
+          paymentData={currentPaymentEntryData}
+        />
+      )}
     </div>
   );
 }

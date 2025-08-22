@@ -244,21 +244,28 @@ const [jvData, setJvData] = useState(null);
 
   //Prepare JV Data
   const prepareJVData = (invoice) => {
-  // Calculate GST components (assuming 18% GST split into CGST/SGST)
-  const gstAmount = invoice.totalAmount * (invoice.gstRate / 100);
-  const cgstAmount = gstAmount / 2;
-  const sgstAmount = gstAmount / 2;
+ // Calculate base amount (excluding GST)
+const baseAmount = Math.round(invoice.totalAmount / (1 + (invoice.gstRate / 100)));
+
+  // Calculate GST amount (should be exact)
+const gstAmount = invoice.totalAmount - baseAmount;
+// For CGST/SGST (equal split), handle rounding properly
+const halfGst = gstAmount / 2;
+const cgstAmount = Math.floor(halfGst); // Round down
+const sgstAmount = gstAmount - cgstAmount; // Remainder to ensure total matches
   
-  // Calculate TDS (10% for example - adjust as needed)
-  const tdsRate = 0.10; // 10% TDS
-  const tdsAmount = invoice.totalAmount * tdsRate;
+  // Calculate total debits
+const totalDebits = baseAmount + cgstAmount + sgstAmount;
+  const adjustment = invoice.totalAmount - totalDebits;
   
-  // Calculate net payable
-  const netPayable = invoice.totalAmount + gstAmount - tdsAmount;
+// Net payable should equal total invoice amount
+const netPayable = invoice.totalAmount;
+// Verify balance (should be zero)
+const balanceCheck = totalDebits - netPayable;
 
   return {
     header: {
-      company: "Your Company Name",
+      company: "iSmart",
       voucherNo: `JV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
       financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
       date: new Date().toISOString().split('T')[0],
@@ -271,7 +278,7 @@ const [jvData, setJvData] = useState(null);
         particulars: invoice.type === "Fixed Asset" ? "Fixed Asset Purchase" : "Material Purchase",
         gl: invoice.type === "Fixed Asset" ? "1010" : "5010",
         costCenter: "Operations",
-        debit: invoice.totalAmount,
+        debit: baseAmount + adjustment, // Add any rounding adjustment here
         credit: 0,
         note: `Vendor: ${invoice.vendorName}`,
       },
@@ -295,15 +302,6 @@ const [jvData, setJvData] = useState(null);
       },
       {
         id: 4,
-        particulars: "TDS 194C",
-        gl: "3001",
-        costCenter: "",
-        debit: tdsAmount,
-        credit: 0,
-        note: "@10%",
-      },
-      {
-        id: 5,
         particulars: `Accounts Payable - ${invoice.vendorName}`,
         gl: "2000",
         costCenter: "",
@@ -312,7 +310,7 @@ const [jvData, setJvData] = useState(null);
         note: `Invoice: ${invoice.invoiceNumber}`,
       },
     ],
-    narration: `Payment against ${invoice.type} Invoice No. ${invoice.invoiceNumber} (₹${invoice.totalAmount.toLocaleString()}), including GST @${invoice.gstRate}%. TDS @${tdsRate*100}% deducted.`,
+    narration: `Payment against ${invoice.type} Invoice No. ${invoice.invoiceNumber} (₹${invoice.totalAmount.toLocaleString()}), including GST @${invoice.gstRate}%.`,
     approvals: {
       preparer: "Account Manager",
       reviewer: "Pending",

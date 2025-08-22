@@ -1,8 +1,7 @@
-// src/features/processPayments/components/PaymentPreviewModal.jsx
 import React from "react";
 import PaymentActions from "./PaymentActions";
 
-export default function PaymentPreviewModal({ data, onClose, onRequestChanges }) {
+export default function PaymentPreviewModal({ data, onClose, onRequestChanges, onAccept }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center px-2">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
@@ -45,7 +44,12 @@ export default function PaymentPreviewModal({ data, onClose, onRequestChanges })
         </div>
 
         <div className="mt-6">
-          <PaymentActions data={data} onClose={onClose} onRequestChanges={onRequestChanges} />
+          <PaymentActions 
+              data={data} 
+              onClose={onClose} 
+              onRequestChanges={onRequestChanges}
+              onAccept={onAccept} // Pass the new prop
+            />
         </div>
       </div>
     </div>

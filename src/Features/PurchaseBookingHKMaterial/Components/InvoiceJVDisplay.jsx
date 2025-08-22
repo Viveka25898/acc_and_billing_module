@@ -42,15 +42,6 @@ const InvoiceJVDisplay = ({ data = {}, onClose }) => {
     },
     {
       id: 4,
-      particulars: "TDS 194C (10%)",
-      gl: "3001",
-      costCenter: "",
-      debit: 1000,
-      credit: 0,
-      note: "",
-    },
-    {
-      id: 5,
       particulars: "Accounts Payable - Tech Solutions",
       gl: "2000",
       costCenter: "",
@@ -60,7 +51,7 @@ const InvoiceJVDisplay = ({ data = {}, onClose }) => {
     },
   ];
 
-  const narration = data.narration || "Payment against Invoice No. INV-789 for IT equipment (₹10,030), including GST (CGST+SGST 9% each). TDS @10% deducted u/s 194C.";
+  const narration = data.narration || "Payment against Invoice No. INV-789 for IT equipment (₹10,030), including GST (CGST+SGST 9% each).";
   
   const approvals = data.approvals || {
     preparer: "Account Manager",
@@ -105,7 +96,7 @@ const InvoiceJVDisplay = ({ data = {}, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
       <div className="w-full max-w-4xl bg-white rounded-lg shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
-        <div className="sticky top-0 bg-indigo-600 text-white p-3 sm:p-4 flex justify-between items-center">
+        <div className="sticky top-0 bg-green-600 text-white p-3 sm:p-4 flex justify-between items-center">
           <h2 className="text-lg sm:text-xl font-semibold">Journal Voucher - Invoice Entry</h2>
           <div className="flex items-center space-x-2">
             <button 
@@ -226,7 +217,7 @@ const InvoiceJVDisplay = ({ data = {}, onClose }) => {
                   <div className="flex justify-between">
                     <span>Net Payment:</span>
                     <span className="font-medium">
-                      ₹{(totals.credit - (lines.find(l => l.particulars?.toLowerCase().includes('tds'))?.debit || 0)).toLocaleString()}
+                      ₹{totals.credit.toLocaleString()}
                     </span>
                   </div>
                 </div>

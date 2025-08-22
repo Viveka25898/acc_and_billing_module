@@ -5,7 +5,7 @@ import ConveyanceFilter from "../Components/ConveyanceFilter";
 import Table from "../Components/Table";
 import RejectionModal from "../Components/RejectionModal";
 import DocumentPreviewModal from "../Components/DocumentPreviewModal";
-import ConveyanceVoucherPreviewModal from "../Components/ConveyanceVoucherPreviewModal";
+import ConveyanceExpenseVoucher from "../Components/ConveyanceExpenseVoucher";
 
 export default function AEConveyanceApprovalPage() {
   const [claims, setClaims] = useState([]);
@@ -22,7 +22,6 @@ export default function AEConveyanceApprovalPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showVoucher, setShowVoucher] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
-  const [generatedVoucherIds, setGeneratedVoucherIds] = useState([]);
   const itemsPerPage = 5;
   const currentUser = JSON.parse(localStorage.getItem("user")) || {};
 
@@ -56,16 +55,70 @@ export default function AEConveyanceApprovalPage() {
     Math.min(filteredClaims.length, currentPage * itemsPerPage)
   );
 
-  // AE Approves the request (final approval)
+  // AE Approves the request (final approval) and generates voucher
   const handleApprove = (id) => {
     try {
-      const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
-        request => request.id === id ? {
+      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+      const claimToApprove = allRequests.find(request => request.id === id);
+      
+      if (!claimToApprove) {
+        toast.error("Request not found");
+        return;
+      }
+
+      // Create voucher data
+      const voucherData = {
+      header: {
+        company: "ISmart",
+        voucherNo: `EV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+        date: new Date().toISOString().split('T')[0],
+        reference: `Conveyance Reimbursement - ${claimToApprove.employeeName}`,
+        preparedBy: currentUser.username,
+        expenseType: "Conveyance Expense",
+        department: claimToApprove.department || "Not specified",
+        approvalChain: "Manager → VP → Billing Executive"
+      },
+      employeeDetails: {
+        employeeId: claimToApprove.employeeId || "N/A",
+        employeeName: claimToApprove.employeeName,
+        designation: claimToApprove.designation || "N/A",
+        department: claimToApprove.department || "N/A",
+        manager: claimToApprove.manager || "N/A",
+        submissionDate: claimToApprove.submittedAt ? new Date(claimToApprove.submittedAt).toISOString().split('T')[0] : "N/A",
+        approvalDate: new Date().toISOString().split('T')[0]
+      },
+      conveyanceDetails: [
+        {
+          id: 1,
+          date: claimToApprove.date.split('T')[0],
+          clientName: claimToApprove.client,
+          fromLocation: claimToApprove.fromLocation || "Office",
+          toLocation: claimToApprove.toLocation || "Client Location",
+          purpose: claimToApprove.purpose,
+          modeOfTransport: claimToApprove.transport || "Not specified",
+          distance: claimToApprove.distance || "N/A",
+          amount: claimToApprove.amount,
+          billAttached: claimToApprove.receipts?.length > 0 ? "Yes" : "No"
+        }
+      ],
+      approvals: {
+        preparer: currentUser.username,
+        reviewer: claimToApprove.approvers?.find(a => a.level === "manager")?.user || "Manager",
+        approver: "VP Operations",
+        date: new Date().toISOString().split('T')[0]
+      }
+    };
+
+      // Update the request status
+      const updatedRequests = allRequests.map(request => 
+        request.id === id ? {
           ...request,
           status: "Approved",
           aeApprovedAt: new Date().toISOString(),
           aeApprovedBy: currentUser.username,
           currentLevel: "completed",
+          voucherNumber: voucherData.header.voucherNo,
           approvers: [...(request.approvers || []), {
             level: "account-executive",
             user: currentUser.username,
@@ -76,8 +129,23 @@ export default function AEConveyanceApprovalPage() {
       );
       
       localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+      
+      // Save voucher to localStorage
+      const existingVouchers = JSON.parse(localStorage.getItem("conveyanceVouchers")) || [];
+      localStorage.setItem(
+        "conveyanceVouchers", 
+        JSON.stringify([...existingVouchers, {
+          ...voucherData,
+          claimId: id
+        }])
+      );
+
+      // Set the voucher data to display
+      setSelectedVoucher(voucherData);
+      setShowVoucher(true);
       setClaims(prev => prev.filter(c => c.id !== id));
-      toast.success("Request approved");
+      
+      toast.success("Request approved and voucher generated");
     } catch (error) {
       toast.error("Approval failed");
       console.error(error);
@@ -85,71 +153,47 @@ export default function AEConveyanceApprovalPage() {
   };
 
   // AE Rejects the request
-  // AE Rejects the request - Updated version
-const handleReject = (id, reason) => {
-  try {
-    const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-    
-    const updatedRequests = allRequests.map(request => {
-      if (request.id === id) {
-        const rejectionEntry = {
-          level: "account-executive",
-          user: currentUser.username,
-          reason: reason,  // Ensure this stores the text reason
-          date: new Date().toISOString()
-        };
+  const handleReject = (id, reason) => {
+    try {
+      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+      
+      const updatedRequests = allRequests.map(request => {
+        if (request.id === id) {
+          const rejectionEntry = {
+            level: "account-executive",
+            user: currentUser.username,
+            reason: reason,
+            date: new Date().toISOString()
+          };
 
-        return {
-          ...request,
-          status: "Rejected by AE",
-          assignedTo: request.submittedBy,
-          rejectedAt: new Date().toISOString(),
-          rejectedBy: currentUser.username,
-          rejectionReason: reason,  // Store text reason here
-          currentLevel: "rejected",
-          rejections: [
-            ...(request.rejections || []),
-            rejectionEntry
-          ]
-        };
-      }
-      return request;
-    });
+          return {
+            ...request,
+            status: "Rejected by AE",
+            assignedTo: request.submittedBy,
+            rejectedAt: new Date().toISOString(),
+            rejectedBy: currentUser.username,
+            rejectionReason: reason,
+            currentLevel: "rejected",
+            rejections: [
+              ...(request.rejections || []),
+              rejectionEntry
+            ]
+          };
+        }
+        return request;
+      });
 
-    localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
-    
-    // Refresh the view
-    const refreshedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-    setClaims(refreshedRequests.filter(req => req.status === "Pending AE Approval"));
-    
-    toast.success("Request rejected successfully");
-  } catch (error) {
-    toast.error(`Rejection failed: ${error.message}`);
-    console.error("Rejection error:", error);
-  }
-};
-  // Generate voucher for approved requests
-  const handleGenerateVoucher = (claim) => {
-    const voucher = {
-      voucherNo: `EV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      employee: claim.employeeName,
-      purpose: claim.purpose,
-      amount: claim.amount,
-      approvedBy: currentUser.username,
-      claimId: claim.id
-    };
-
-    // Save voucher to localStorage
-    const existingVouchers = JSON.parse(localStorage.getItem("conveyanceVouchers")) || [];
-    localStorage.setItem(
-      "conveyanceVouchers", 
-      JSON.stringify([...existingVouchers, voucher])
-    );
-
-    setSelectedVoucher(voucher);
-    setShowVoucher(true);
-    setGeneratedVoucherIds(prev => [...prev, claim.id]);
-    toast.success("Voucher generated successfully");
+      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+      
+      // Refresh the view
+      const refreshedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+      setClaims(refreshedRequests.filter(req => req.status === "Pending AE Approval"));
+      
+      toast.success("Request rejected successfully");
+    } catch (error) {
+      toast.error(`Rejection failed: ${error.message}`);
+      console.error("Rejection error:", error);
+    }
   };
 
   const columns = [
@@ -189,18 +233,20 @@ const handleReject = (id, reason) => {
       label: "Actions",
       render: (row) => {
         if (row.status === "Approved") {
-          const isGenerated = generatedVoucherIds.includes(row.id);
           return (
             <button
-              disabled={isGenerated}
-              className={`text-sm px-2 py-1 rounded ${
-                isGenerated
-                  ? "bg-gray-400 text-white cursor-not-allowed"
-                  : "bg-green-700 text-white hover:bg-green-800"
-              }`}
-              onClick={() => !isGenerated && handleGenerateVoucher(row)}
+              className="bg-blue-600 text-white px-2 py-1 rounded text-sm hover:bg-blue-700"
+              onClick={() => {
+                // Load the voucher data from localStorage
+                const vouchers = JSON.parse(localStorage.getItem("conveyanceVouchers")) || [];
+                const voucher = vouchers.find(v => v.claimId === row.id);
+                if (voucher) {
+                  setSelectedVoucher(voucher);
+                  setShowVoucher(true);
+                }
+              }}
             >
-              {isGenerated ? "Voucher Created" : "Generate Voucher"}
+              View Voucher
             </button>
           );
         }
@@ -212,13 +258,13 @@ const handleReject = (id, reason) => {
         return (
           <div className="flex gap-2">
             <button
-              className="bg-green-600 text-white px-2 py-1 rounded text-sm"
+              className="bg-green-600 text-white px-2 py-1 rounded text-sm hover:bg-green-700"
               onClick={() => handleApprove(row.id)}
             >
               Approve
             </button>
             <button
-              className="bg-red-600 text-white px-2 py-1 rounded text-sm"
+              className="bg-red-600 text-white px-2 py-1 rounded text-sm hover:bg-red-700"
               onClick={() => setRejection({ show: true, claimId: row.id })}
             >
               Reject
@@ -264,22 +310,24 @@ const handleReject = (id, reason) => {
       )}
 
       <RejectionModal
-          isOpen={rejection.show}
-          onClose={() => setRejection({ show: false, claimId: null })}
-          onSubmit={(reason) => handleReject(rejection.claimId, reason)}
-          claimId={rejection.claimId}
-        />
-
+        isOpen={rejection.show}
+        onClose={() => setRejection({ show: false, claimId: null })}
+        onSubmit={(reason) => handleReject(rejection.claimId, reason)}
+        claimId={rejection.claimId}
+      />
 
       <DocumentPreviewModal 
         documents={viewDocs}
         onClose={() => setViewDocs(null)}
       />
 
-      {showVoucher && (
-        <ConveyanceVoucherPreviewModal
-          voucher={selectedVoucher}
-          onClose={() => setShowVoucher(false)}
+     {showVoucher && selectedVoucher && (
+        <ConveyanceExpenseVoucher 
+          data={selectedVoucher}
+          onClose={() => {
+            setShowVoucher(false);
+            setSelectedVoucher(null);
+          }}
         />
       )}
     </div>
