@@ -2,11 +2,14 @@ import React, { useState } from "react";
 import { FaEye } from "react-icons/fa";
 import AERejectionModal from "./AERejectionModal";
 import AEChallanPreviewModal from "./AEChallanPreviewModal";
+import StatutoryPaymentEntryModal from "./PaymentEntryModal";
 
 export default function AEPendingTable({ entries, onUpdate }) {
   const [previewFile, setPreviewFile] = useState(null);
   const [rejectId, setRejectId] = useState(null);
   const [selectedRejection, setSelectedRejection] = useState(null);
+  const [showStatutoryModal, setShowStatutoryModal] = useState(false);
+  const [selectedComplianceData, setSelectedComplianceData] = useState(null);
 
   // Helper to get manager approval details
   const getManagerApproval = (history) => {
@@ -25,6 +28,24 @@ export default function AEPendingTable({ entries, onUpdate }) {
       default:
         return { text: status, color: "text-gray-600" };
     }
+  };
+
+  // Handle approval with statutory payment modal
+  const handleApproval = (entry) => {
+    setSelectedComplianceData(entry);
+    setShowStatutoryModal(true);
+  };
+
+  // Handle modal close and process approval
+  const handleStatutoryModalClose = () => {
+    setShowStatutoryModal(false);
+    
+    if (selectedComplianceData) {
+      // Process the approval after modal is closed
+      onUpdate(selectedComplianceData.id, "AcceptedByAE");
+    }
+    
+    setSelectedComplianceData(null);
   };
 
   return (
@@ -76,7 +97,7 @@ export default function AEPendingTable({ entries, onUpdate }) {
                   {entry.status === "pending-ae" && (
                     <div className="flex justify-center gap-2">
                       <button
-                        onClick={() => onUpdate(entry.id, "AcceptedByAE")}
+                        onClick={() => handleApproval(entry)}
                         className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 text-xs"
                       >
                         Accept
@@ -128,6 +149,15 @@ export default function AEPendingTable({ entries, onUpdate }) {
         <AEChallanPreviewModal
           file={previewFile}
           onClose={() => setPreviewFile(null)}
+        />
+      )}
+
+      {/* Statutory Payment Entry Modal */}
+      {showStatutoryModal && selectedComplianceData && (
+        <StatutoryPaymentEntryModal
+          isOpen={showStatutoryModal}
+          onClose={handleStatutoryModalClose}
+          complianceData={selectedComplianceData}
         />
       )}
     </div>

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 
@@ -6,16 +7,34 @@ export default function ComplianceEntryForm() {
     paymentType: "",
     paymentMonth: "",
     amount: "",
-    challan: null,
+    challan: null, // { name, type, size, data(base64) } or null
     remarks: "",
   });
 
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value, files, type } = e.target;
+
     if (name === "challan") {
-      setFormData({ ...formData, [name]: files[0] });
+      const file = files && files[0];
+      if (!file) {
+        setFormData({ ...formData, challan: null });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFormData({
+          ...formData,
+          challan: {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: reader.result, // base64 data URL
+          },
+        });
+      };
+      reader.readAsDataURL(file); // convert file → Base64
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -26,7 +45,7 @@ export default function ComplianceEntryForm() {
     if (!formData.paymentType) newErrors.paymentType = "Payment type is required";
     if (!formData.paymentMonth) newErrors.paymentMonth = "Payment month is required";
     if (!formData.amount || isNaN(formData.amount)) newErrors.amount = "Valid amount is required";
-    if (!formData.challan) newErrors.challan = "Challan upload is required";
+    if (!formData.challan || !formData.challan.data) newErrors.challan = "Challan upload is required";
     return newErrors;
   };
 
@@ -41,17 +60,19 @@ export default function ComplianceEntryForm() {
     }
 
     try {
-      // Get current user from localStorage
-      const currentUser = JSON.parse(localStorage.getItem("user"));
-      
+      // Get current user from localStorage (safe fallback)
+      const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+      const username = currentUser?.username || "anonymous";
+
       // Get existing payments or initialize
-      const statutoryData = JSON.parse(localStorage.getItem("statutoryPayments")) || {
-        payments: [],
-        metadata: {
-          lastId: 0,
-          createdAt: new Date().toISOString()
-        }
-      };
+      const statutoryData =
+        JSON.parse(localStorage.getItem("statutoryPayments") || "null") || {
+          payments: [],
+          metadata: {
+            lastId: 0,
+            createdAt: new Date().toISOString(),
+          },
+        };
 
       // Create new payment object
       const newPayment = {
@@ -59,18 +80,19 @@ export default function ComplianceEntryForm() {
         type: formData.paymentType,
         period: formData.paymentMonth,
         amount: parseFloat(formData.amount),
-        challanRef: formData.challan.name, // Just store filename in localStorage
+        // Store the full challan object (with base64 data) in localStorage
+        challanRef: formData.challan, 
         remarks: formData.remarks,
         status: "pending-compliance-manager",
-        createdBy: currentUser.username,
+        createdBy: username,
         createdAt: new Date().toISOString(),
         history: [
           {
             action: "Submitted by Compliance Team",
-            by: currentUser.username,
-            at: new Date().toISOString()
-          }
-        ]
+            by: username,
+            at: new Date().toISOString(),
+          },
+        ],
       };
 
       // Update localStorage
@@ -78,15 +100,15 @@ export default function ComplianceEntryForm() {
         payments: [...statutoryData.payments, newPayment],
         metadata: {
           ...statutoryData.metadata,
-          lastId: statutoryData.metadata.lastId + 1,
-          updatedAt: new Date().toISOString()
-        }
+          lastId: (statutoryData.metadata?.lastId || 0) + 1,
+          updatedAt: new Date().toISOString(),
+        },
       };
 
       localStorage.setItem("statutoryPayments", JSON.stringify(updatedData));
 
       toast.success("Payment request submitted successfully!");
-      
+
       // Reset form
       setFormData({
         paymentType: "",
@@ -95,7 +117,6 @@ export default function ComplianceEntryForm() {
         challan: null,
         remarks: "",
       });
-
     } catch (error) {
       console.error("Error submitting payment:", error);
       toast.error("Failed to submit payment request");
@@ -116,7 +137,9 @@ export default function ComplianceEntryForm() {
           <option value="PF">PF</option>
           <option value="ESIC">ESIC</option>
         </select>
-        {errors.paymentType && <p className="text-red-600 text-sm mt-1">{errors.paymentType}</p>}
+        {errors.paymentType && (
+          <p className="text-red-600 text-sm mt-1">{errors.paymentType}</p>
+        )}
       </div>
 
       <div>
@@ -128,7 +151,9 @@ export default function ComplianceEntryForm() {
           onChange={handleChange}
           className="w-full border rounded-lg p-2"
         />
-        {errors.paymentMonth && <p className="text-red-600 text-sm mt-1">{errors.paymentMonth}</p>}
+        {errors.paymentMonth && (
+          <p className="text-red-600 text-sm mt-1">{errors.paymentMonth}</p>
+        )}
       </div>
 
       <div>
@@ -140,7 +165,9 @@ export default function ComplianceEntryForm() {
           onChange={handleChange}
           className="w-full border rounded-lg p-2"
         />
-        {errors.amount && <p className="text-red-600 text-sm mt-1">{errors.amount}</p>}
+        {errors.amount && (
+          <p className="text-red-600 text-sm mt-1">{errors.amount}</p>
+        )}
       </div>
 
       <div>
@@ -152,7 +179,13 @@ export default function ComplianceEntryForm() {
           onChange={handleChange}
           className="w-full border rounded-lg p-2 cursor-pointer"
         />
-        {errors.challan && <p className="text-red-600 text-sm mt-1">{errors.challan}</p>}
+        {errors.challan && (
+          <p className="text-red-600 text-sm mt-1">{errors.challan}</p>
+        )}
+        {/* Optional: show selected file name */}
+        {formData.challan?.name && (
+          <p className="text-sm text-gray-600 mt-1">Selected: {formData.challan.name}</p>
+        )}
       </div>
 
       <div>
