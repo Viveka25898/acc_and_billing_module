@@ -220,7 +220,7 @@ const itemsPerPage = 5;
                 <td className="p-3 border">{inv.invoiceNumber}</td>
                 <td className="p-3 border">{inv.vendorName}</td>
                 <td className="p-3 border">₹{inv.totalAmount.toLocaleString()}</td>
-                <td className="p-3 border">
+               <td className="p-3 border">
                   {inv.status}
                   {inv.status === "Approved" && (
                     <div className="mt-1 space-x-2">
@@ -232,17 +232,17 @@ const itemsPerPage = 5;
                           toast.success("Purchase Entry Created!")
                         }}
                       >
-                        Purchase Voucher
+                        View Purchase Voucher
                       </button>
                       <button
                         className="bg-blue-500 text-white text-xs px-2 py-1 rounded cursor-pointer"
                         onClick={() => {
                           setSelectedInvoice(inv);
                           setShowJournalModal(true);
-                          toast.success("Prepaid Expense entry Created!")
+                          toast.success("Prepaid Expense Entry Created!")
                         }}
                       >
-                        Journal Voucher
+                        View Journal Voucher
                       </button>
                     </div>
                   )}
