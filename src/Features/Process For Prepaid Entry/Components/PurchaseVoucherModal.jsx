@@ -21,39 +21,44 @@ export default function PurchaseVoucherModal({ onClose, invoice }) {
           <p><strong>Invoice Ref:</strong> {invoice.invoiceNumber}</p>
         </div>
 
-        <div className="border rounded-lg overflow-hidden mb-4">
+     <div className="border rounded-lg overflow-hidden mb-4">
           <table className="w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
-                <th className="p-2 text-left border">Description</th>
+                <th className="p-2 text-left border">Particulars</th>
                 <th className="p-2 text-right border">Amount (₹)</th>
-                <th className="p-2 text-left border">Account</th>
+                <th className="p-2 text-left border">GL Code</th>
+                <th className="p-2 text-left border">Cost Center</th> {/* New Column */}
                 <th className="p-2 text-left border">Type</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="p-2 border">Uniforms (Asset)</td>
+                <td className="p-2 border">Uniforms Received from {invoice.vendorName}</td> {/* Particulars */}
                 <td className="p-2 text-right border">{baseAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1200 - Uniforms (Asset Account)</td>
+                <td className="p-2 border">A-1200</td> {/* GL Code */}
+                <td className="p-2 border">CC-400</td> {/* Cost Center, e.g., HR Dept */}
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr>
-                <td className="p-2 border">Input CGST {gstPercentage/2}%</td>
+                <td className="p-2 border">Input Tax Credit (CGST)</td> {/* Particulars */}
                 <td className="p-2 text-right border">{gstAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1305 - Input CGST</td>
+                <td className="p-2 border">A-1305</td> {/* GL Code */}
+                <td className="p-2 border">CC-400</td> {/* Cost Center */}
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr>
-                <td className="p-2 border">Input SGST {gstPercentage/2}%</td>
+                <td className="p-2 border">Input Tax Credit (SGST)</td> {/* Particulars */}
                 <td className="p-2 text-right border">{gstAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1310 - Input SGST</td>
+                <td className="p-2 border">A-1310</td> {/* GL Code */}
+                <td className="p-2 border">CC-400</td> {/* Cost Center */}
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr className="bg-gray-50 font-medium">
-                <td className="p-2 border">To Accounts Payable</td>
+                <td className="p-2 border">To Accounts Payable for {invoice.invoiceNumber}</td> {/* Particulars */}
                 <td className="p-2 text-right border">{invoice.totalAmount.toLocaleString()}</td>
-                <td className="p-2 border">L-2000 - Accounts Payable</td>
+                <td className="p-2 border">L-2000</td> {/* GL Code */}
+                <td className="p-2 border">CC-400</td> {/* Cost Center */}
                 <td className="p-2 border">Credit</td>
               </tr>
             </tbody>

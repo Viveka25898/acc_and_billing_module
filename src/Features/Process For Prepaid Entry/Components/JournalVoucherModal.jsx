@@ -32,33 +32,37 @@ export default function JournalVoucherModal({ onClose, invoice }) {
           <p><strong>Narration:</strong> Monthly amortization for Uniform Invoice {invoice.invoiceNumber}</p>
         </div>
 
-        <div className="border rounded-lg overflow-hidden mb-4">
+       <div className="border rounded-lg overflow-hidden mb-4">
           <table className="w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
-                <th className="p-2 text-left border">Description</th>
+                <th className="p-2 text-left border">Particulars</th>
                 <th className="p-2 text-right border">Amount (₹)</th>
-                <th className="p-2 text-left border">Account</th>
+                <th className="p-2 text-left border">GL Code</th>
+                <th className="p-2 text-left border">Cost Center</th> {/* New Column */}
                 <th className="p-2 text-left border">Type</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="p-2 border">Prepaid Uniform Expense (Asset)</td>
+                <td className="p-2 border">Prepaid Expense for Uniforms ({invoice.billingPeriod})</td> {/* Particulars */}
                 <td className="p-2 text-right border">{prepaidAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1205 - Prepaid Uniforms</td>
+                <td className="p-2 border">A-1205</td> {/* GL Code */}
+                <td className="p-2 border">CC-400</td> {/* Cost Center */}
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr>
-                <td className="p-2 border">Uniform Expense (P&L)</td>
+                <td className="p-2 border">Monthly Amortization - Uniform Expense</td> {/* Particulars */}
                 <td className="p-2 text-right border">{monthlyExpense.toLocaleString()}</td>
-                <td className="p-2 border">E-4050 - Uniform Expense</td>
+                <td className="p-2 border">E-4050</td> {/* GL Code */}
+                <td className="p-2 border">CC-400</td> {/* Cost Center */}
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr className="bg-gray-50 font-medium">
-                <td className="p-2 border">To Uniforms (Asset Account)</td>
+                <td className="p-2 border">By Uniforms (Asset Account) Clearance</td> {/* Particulars */}
                 <td className="p-2 text-right border">{baseAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1200 - Uniforms (Asset Account)</td>
+                <td className="p-2 border">A-1200</td> {/* GL Code */}
+                <td className="p-2 border">CC-400</td> {/* Cost Center */}
                 <td className="p-2 border">Credit</td>
               </tr>
             </tbody>
