@@ -1,22 +1,24 @@
-// File: src/features/bankReconciliation/components/FileUploadBox.jsx
 import React, { useState } from "react";
 
-export default function FileUploadBox({ onUpload }) {
+export default function FileUploadBox({ onUpload, disabled }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
   const handleChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
     const validTypes = [
-      "application/pdf",
       "text/csv",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // Excel
+      "application/vnd.ms-excel", // Legacy Excel
     ];
-    if (!validTypes.includes(file.type)) {
-      alert("Only PDF, CSV, or Excel files are allowed.");
+    
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(csv|xlsx|xls)$/i)) {
+      alert("Only CSV or Excel files are allowed.");
       return;
     }
+    
     onUpload(file, { fromDate, toDate });
   };
 
@@ -43,14 +45,15 @@ export default function FileUploadBox({ onUpload }) {
         </div>
       </div>
 
-      <p className="text-gray-600 text-sm mb-4">Select a PDF, CSV, or Excel file to upload</p>
-      <label className="inline-block cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow">
+      <p className="text-gray-600 text-sm mb-4">Select a CSV or Excel file to upload</p>
+      <label className={`inline-block cursor-pointer ${disabled ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} text-white font-semibold py-2 px-6 rounded-lg shadow`}>
         Upload Statement
         <input
           type="file"
-          accept=".pdf,.csv,.xlsx"
+          accept=".csv,.xlsx,.xls"
           onChange={handleChange}
           className="hidden"
+          disabled={disabled}
         />
       </label>
     </div>

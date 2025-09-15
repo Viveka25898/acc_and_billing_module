@@ -2,15 +2,32 @@
 import React, { useRef, useState, useEffect } from "react";
 import { FaCloudUploadAlt, FaFilePdf, FaTrashAlt } from "react-icons/fa";
 import * as pdfjsLib from "pdfjs-dist";
-import "pdfjs-dist/build/pdf.worker.min.js";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// Initialize worker only once
+let workerInitialized = false;
+
+const initializePdfWorker = () => {
+  if (!workerInitialized) {
+    try {
+      // Use CDN worker for Vite compatibility
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+      workerInitialized = true;
+    } catch (error) {
+      console.error("Failed to initialize PDF worker:", error);
+    }
+  }
+};
 
 export default function AttendanceUpload({ onUpload, resetTrigger }) {
   const [pdfFile, setPdfFile] = useState(null);
   const [error, setError] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const fileInputRef = useRef();
+
+  // Initialize worker on component mount
+  useEffect(() => {
+    initializePdfWorker();
+  }, []);
 
   const handlePdfChange = async (e) => {
     const file = e.target.files[0];
@@ -27,27 +44,40 @@ export default function AttendanceUpload({ onUpload, resetTrigger }) {
       setIsParsing(true);
 
       try {
+        // Ensure worker is initialized
+        initializePdfWorker();
+        
         const reader = new FileReader();
         reader.onload = async () => {
-          const typedArray = new Uint8Array(reader.result);
-          const pdf = await pdfjsLib.getDocument(typedArray).promise;
-          const text = [];
+          try {
+            const typedArray = new Uint8Array(reader.result);
+            const pdf = await pdfjsLib.getDocument(typedArray).promise;
+            const text = [];
 
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            const pageText = content.items.map((item) => item.str).join(" ");
-            text.push(pageText);
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const content = await page.getTextContent();
+              const pageText = content.items.map((item) => item.str).join(" ");
+              text.push(pageText);
+            }
+
+            const parsedData = parseTableFromText(text.join(" "));
+            onUpload(parsedData);
+          } catch (parseError) {
+            console.error("PDF parsing error:", parseError);
+            setError("Failed to parse PDF content.");
+          } finally {
+            setIsParsing(false);
           }
-
-          const parsedData = parseTableFromText(text.join(" "));
-          onUpload(parsedData);
         };
-        reader.onerror = () => setError("File reading failed.");
+        reader.onerror = () => {
+          setError("File reading failed.");
+          setIsParsing(false);
+        };
         reader.readAsArrayBuffer(file);
       } catch (err) {
-        setError("Failed to parse PDF.");
-      } finally {
+        console.error("PDF processing error:", err);
+        setError("Failed to process PDF file.");
         setIsParsing(false);
       }
     } else {
@@ -59,6 +89,7 @@ export default function AttendanceUpload({ onUpload, resetTrigger }) {
   const handleRemove = () => {
     setPdfFile(null);
     onUpload(null);
+    setError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -69,33 +100,31 @@ export default function AttendanceUpload({ onUpload, resetTrigger }) {
   }, [resetTrigger]);
 
   const parseTableFromText = (text) => {
-  const data = [];
+    const data = [];
 
-  const lines = text
-    .replace(/\s+/g, " ")
-    .replace(/Attendance Report/gi, "")
-    .split(/(?= [A-Z][a-z]+\s[A-Z][a-z]+)/); // splits at names
+    const lines = text
+      .replace(/\s+/g, " ")
+      .replace(/Attendance Report/gi, "")
+      .split(/(?= [A-Z][a-z]+\s[A-Z][a-z]+)/); // splits at names
 
-  for (const line of lines) {
-    const match = line.trim().match(
-      /^([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s+([A-Za-z ]+?)\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})$/
-    );
-    if (match) {
-      const [, name, designation, present, weekOffs, holidays] = match;
-      data.push({
-        "Employee Name": name.trim(),
-        Designation: designation.trim(),
-        "Present Days": present.trim(),
-        "Week Offs": weekOffs.trim(),
-        Holidays: holidays.trim(),
-      });
+    for (const line of lines) {
+      const match = line.trim().match(
+        /^([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s+([A-Za-z ]+?)\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})$/
+      );
+      if (match) {
+        const [, name, designation, present, weekOffs, holidays] = match;
+        data.push({
+          "Employee Name": name.trim(),
+          Designation: designation.trim(),
+          "Present Days": present.trim(),
+          "Week Offs": weekOffs.trim(),
+          Holidays: holidays.trim(),
+        });
+      }
     }
-  }
 
-  return data;
-};
-
-
+    return data;
+  };
 
   return (
     <div className="space-y-2">
@@ -114,6 +143,7 @@ export default function AttendanceUpload({ onUpload, resetTrigger }) {
           ref={fileInputRef}
           className="text-sm w-full"
           aria-label="Upload certified attendance PDF"
+          disabled={isParsing}
         />
       </div>
       {isParsing && (

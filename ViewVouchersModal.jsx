@@ -1,4 +1,3 @@
-// File: src/components/rent/ViewVouchersModal.jsx
 import React from "react";
 
 export default function ViewVouchersModal({ site, agreement, vouchers, onClose }) {
