@@ -1,4 +1,3 @@
-// File: src/features/bankReconciliation/components/MatchedTransactionsTable.jsx
 import React from "react";
 
 export default function MatchedTransactionsTable({ data }) {

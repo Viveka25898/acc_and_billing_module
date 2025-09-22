@@ -1,10 +1,3 @@
-// File: src/features/bankReconciliation/Components/MatchTransactions.js
-
-/**
- * Enhanced transaction matching algorithm for bank reconciliation
- * Matches bank statement transactions with book entries
- */
-
 const normalizeDate = (dateStr) => {
   if (!dateStr) return null;
   

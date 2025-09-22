@@ -1,4 +1,4 @@
-// File: src/features/bankReconciliation/components/SummaryCard.jsx
+
 import React from "react";
 
 export default function SummaryCard({ matched, unmatched, total }) {

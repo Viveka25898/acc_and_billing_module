@@ -1,4 +1,3 @@
-// File: src/features/bankReconciliation/components/UnmatchedTransactionsTable.jsx
 import React from "react";
 
 export default function UnmatchedTransactionsTable({ data }) {
