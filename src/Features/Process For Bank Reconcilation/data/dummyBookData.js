@@ -11,7 +11,7 @@ export const dummyBookData_Main = [
   // ✅ PERFECT MATCHES: These should match with bank statement entries
   { 
     id: "l_m1", 
-    date: "2024-05-02", 
+    date: "2025-05-02", 
     description: "Invoice Payment from ABC Corp", 
     reference: "NEFT123456789", 
     amount: 50000.00, 
@@ -19,7 +19,7 @@ export const dummyBookData_Main = [
   },
   { 
     id: "l_m2", 
-    date: "2024-05-05", 
+    date: "2025-05-05", 
     description: "Cash Withdrawal for office expenses", 
     reference: "ATM987654", 
     amount: 10000.00, 
@@ -27,7 +27,7 @@ export const dummyBookData_Main = [
   },
   { 
     id: "l_m3", 
-    date: "2024-05-10", 
+    date: "2025-05-10", 
     description: "Payment to John Electronics", 
     reference: "IMPS987654321", 
     amount: 12500.00, 
@@ -35,7 +35,7 @@ export const dummyBookData_Main = [
   },
   { 
     id: "l_m4", 
-    date: "2024-05-14", 
+    date: "2025-05-14", 
     description: "Office supplies payment", 
     reference: "CHQ101", 
     amount: 5000.00, 
@@ -43,7 +43,7 @@ export const dummyBookData_Main = [
   },
   { 
     id: "l_m5", 
-    date: "2024-05-18", 
+    date: "2025-05-18", 
     description: "Client payment received", 
     reference: "RTGS456789123", 
     amount: 75000.00, 
@@ -53,7 +53,7 @@ export const dummyBookData_Main = [
   // ❌ UNMATCHED IN BANK: These are in our books but NOT on the bank statement yet
   { 
     id: "l_m6", 
-    date: "2024-05-30", 
+    date: "2025-05-30", 
     description: "Deposit from XYZ Ltd", 
     reference: "XYZ789", 
     amount: 15000.00, 
@@ -61,7 +61,7 @@ export const dummyBookData_Main = [
   },
   { 
     id: "l_m7", 
-    date: "2024-05-29", 
+    date: "2025-05-29", 
     description: "Rent payment by cheque", 
     reference: "CHQ102", 
     amount: 8000.00, 
@@ -69,7 +69,7 @@ export const dummyBookData_Main = [
   },
   { 
     id: "l_m8", 
-    date: "2024-05-31", 
+    date: "2025-05-31", 
     description: "Salary advance to employee", 
     reference: "SADV001", 
     amount: 25000.00, 
@@ -79,7 +79,7 @@ export const dummyBookData_Main = [
   // Additional entries for testing
   { 
     id: "l_m9", 
-    date: "2024-05-03", 
+    date: "2025-05-03", 
     description: "Utility bills payment", 
     reference: "UB240503", 
     amount: 3500.00, 
@@ -87,7 +87,7 @@ export const dummyBookData_Main = [
   },
   { 
     id: "l_m10", 
-    date: "2024-05-15", 
+    date: "2025-05-15", 
     description: "Insurance premium", 
     reference: "INS2024", 
     amount: 12000.00, 
@@ -100,7 +100,7 @@ export const dummyBookData_Sales = [
   // ✅ PERFECT MATCHES
   { 
     id: "l_s1", 
-    date: "2024-05-07", 
+    date: "2025-05-07", 
     description: "Customer advance payment", 
     reference: "NEFT555111222", 
     amount: 25000.00, 
@@ -108,7 +108,7 @@ export const dummyBookData_Sales = [
   },
   { 
     id: "l_s2", 
-    date: "2024-05-15", 
+    date: "2025-05-15", 
     description: "Sales commission payout", 
     reference: "COMM1505", 
     amount: 7500.00, 
@@ -116,7 +116,7 @@ export const dummyBookData_Sales = [
   },
   { 
     id: "l_s3", 
-    date: "2024-05-20", 
+    date: "2025-05-20", 
     description: "Product delivery charges", 
     reference: "DEL2024", 
     amount: 2500.00, 
@@ -126,7 +126,7 @@ export const dummyBookData_Sales = [
   // ❌ UNMATCHED IN BANK
   { 
     id: "l_s4", 
-    date: "2024-05-31", 
+    date: "2025-05-31", 
     description: "Monthly incentive payment", 
     reference: "INC3105", 
     amount: 15000.00, 
@@ -134,7 +134,7 @@ export const dummyBookData_Sales = [
   },
   { 
     id: "l_s5", 
-    date: "2024-05-28", 
+    date: "2025-05-28", 
     description: "Customer refund processed", 
     reference: "REF2805", 
     amount: 5000.00, 
@@ -144,7 +144,7 @@ export const dummyBookData_Sales = [
   // Additional test entries
   { 
     id: "l_s6", 
-    date: "2024-05-12", 
+    date: "2025-05-12", 
     description: "Marketing expense", 
     reference: "MKT001", 
     amount: 8000.00, 
@@ -152,7 +152,7 @@ export const dummyBookData_Sales = [
   },
   { 
     id: "l_s7", 
-    date: "2024-05-25", 
+    date: "2025-05-25", 
     description: "Sales team bonus", 
     reference: "BONUS25", 
     amount: 20000.00, 
@@ -164,7 +164,7 @@ export const dummyBookData_Sales = [
 export const dummyBookData_Ops = [
   { 
     id: "l_o1", 
-    date: "2024-05-01", 
+    date: "2025-05-01", 
     description: "Office snacks and refreshments", 
     reference: "PC001", 
     amount: 500.00, 
@@ -172,7 +172,7 @@ export const dummyBookData_Ops = [
   },
   { 
     id: "l_o2", 
-    date: "2024-05-10", 
+    date: "2025-05-10", 
     description: "Courier and postal charges", 
     reference: "PC002", 
     amount: 350.00, 
@@ -180,7 +180,7 @@ export const dummyBookData_Ops = [
   },
   { 
     id: "l_o3", 
-    date: "2024-05-15", 
+    date: "2025-05-15", 
     description: "Office cleaning supplies", 
     reference: "PC003", 
     amount: 750.00, 
@@ -188,7 +188,7 @@ export const dummyBookData_Ops = [
   },
   { 
     id: "l_o4", 
-    date: "2024-05-22", 
+    date: "2025-05-22", 
     description: "Vehicle fuel expense", 
     reference: "FUEL001", 
     amount: 2000.00, 
@@ -196,7 +196,7 @@ export const dummyBookData_Ops = [
   },
   { 
     id: "l_o5", 
-    date: "2024-05-28", 
+    date: "2025-05-28", 
     description: "Office maintenance", 
     reference: "MAINT01", 
     amount: 1500.00, 

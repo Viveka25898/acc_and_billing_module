@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function DocumentPreviewModal({ url, onClose }) {
+export default function DocumentPreviewModal({ url, onClose, title = "Document" }) {
   // Don't render if no URL is provided
   if (!url) return null;
 
@@ -9,7 +9,7 @@ export default function DocumentPreviewModal({ url, onClose }) {
       <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-lg shadow-lg overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-3 border-b">
-          <h3 className="text-base font-semibold">Receipt</h3>
+          <h3 className="text-base font-semibold">{title}</h3>
           <button
             onClick={onClose}
             className="text-red-500 text-xl font-bold hover:text-red-700"

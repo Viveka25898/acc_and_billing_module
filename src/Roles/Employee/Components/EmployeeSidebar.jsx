@@ -32,7 +32,7 @@ const EmployeeSidebar = () => {
         {/* Sidebar Menu */}
         <ul className="mt-6">
         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/admin">
+              <NavLink to="/dashboard/employee">
                 Dashboard
               </NavLink>
         </li>

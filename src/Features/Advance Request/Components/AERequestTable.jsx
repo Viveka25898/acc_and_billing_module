@@ -6,7 +6,7 @@ import { FaEye } from 'react-icons/fa';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-export default function AERequestTable({ data, onApprove, onReject }) {
+export default function AERequestTable({ data, onApprove, onReject, onDownloadComplete }) {
   const [currentReason, setCurrentReason] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -74,114 +74,121 @@ export default function AERequestTable({ data, onApprove, onReject }) {
     });
   };
 
-  // Enhanced download function - only download properly approved requests
-  // Enhanced download function - only download properly approved requests
-const handleDownload = () => {
-  console.log("=== DOWNLOAD DEBUGGING ===");
-  console.log("All data for download check:", data);
+  // Enhanced download function - download and remove approved requests
+  const handleDownload = () => {
+    console.log("=== DOWNLOAD DEBUGGING ===");
+    console.log("All data for download check:", data);
 
-  const approvedRequests = data.filter(req => {
-    console.log(`\nChecking request ${req.requestId || req.submittedAt}:`);
-    console.log("- Status:", req.status);
-    console.log("- Request Type:", req.isVPRequest ? "VP Request" : "Employee Request");
-    console.log("- approvedAt:", req.approvedAt);
-    console.log("- vpApprovedBeforeDeadline:", req.vpApprovedBeforeDeadline);
-    
-    // Must be approved by AE
-    if (req.status !== 'Approved') {
-      console.log("❌ REJECTED: Status is not 'Approved'");
-      return false;
-    }
-    
-    // Must have AE approval time
-    if (!req.approvedAt) {
-      console.log("❌ REJECTED: No approvedAt timestamp");
-      return false;
-    }
-    
-    // For VP requests, must have been approved by VP before deadline
-    if (req.isVPRequest) {
-      if (req.vpApprovedBeforeDeadline === undefined) {
-        console.log("❌ REJECTED: VP request but vpApprovedBeforeDeadline is undefined");
+    const approvedRequests = data.filter(req => {
+      console.log(`\nChecking request ${req.requestId || req.submittedAt}:`);
+      console.log("- Status:", req.status);
+      console.log("- Request Type:", req.isVPRequest ? "VP Request" : "Employee Request");
+      console.log("- approvedAt:", req.approvedAt);
+      console.log("- vpApprovedBeforeDeadline:", req.vpApprovedBeforeDeadline);
+      
+      // Must be approved by AE
+      if (req.status !== 'Approved') {
+        console.log("❌ REJECTED: Status is not 'Approved'");
         return false;
       }
-      if (!req.vpApprovedBeforeDeadline) {
-        console.log("❌ REJECTED: VP request but VP didn't approve before deadline");
+      
+      // Must have AE approval time
+      if (!req.approvedAt) {
+        console.log("❌ REJECTED: No approvedAt timestamp");
         return false;
       }
-      console.log("✅ VP request approved before deadline");
-    } else {
-      console.log("✅ Employee request (no deadline restriction)");
+      
+      // For VP requests, must have been approved by VP before deadline
+      if (req.isVPRequest) {
+        if (req.vpApprovedBeforeDeadline === undefined) {
+          console.log("❌ REJECTED: VP request but vpApprovedBeforeDeadline is undefined");
+          return false;
+        }
+        if (!req.vpApprovedBeforeDeadline) {
+          console.log("❌ REJECTED: VP request but VP didn't approve before deadline");
+          return false;
+        }
+        console.log("✅ VP request approved before deadline");
+      } else {
+        console.log("✅ Employee request (no deadline restriction)");
+      }
+      
+      console.log("✅ ACCEPTED for download");
+      return true;
+    });
+
+    console.log("\n=== FINAL RESULT ===");
+    console.log("Eligible requests for download:", approvedRequests);
+    console.log("Total eligible:", approvedRequests.length);
+
+    if (approvedRequests.length === 0) {
+      const statusBreakdown = {
+        total: data.length,
+        pending: data.filter(req => req.status === 'Pending AE Approval').length,
+        approved: data.filter(req => req.status === 'Approved').length,
+        rejected: data.filter(req => req.status === 'Rejected by AE').length,
+        vpRequests: data.filter(req => req.isVPRequest).length,
+        vpAfterDeadline: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === false).length,
+        vpBeforeDeadline: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === true).length,
+        vpNoDeadlineInfo: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === undefined).length
+      };
+      
+      let alertMessage = `No eligible requests for download.\n\nBreakdown:\n`;
+      alertMessage += `- Total requests: ${statusBreakdown.total}\n`;
+      alertMessage += `- Pending AE Approval: ${statusBreakdown.pending}\n`;
+      alertMessage += `- Approved by AE: ${statusBreakdown.approved}\n`;
+      alertMessage += `- Rejected by AE: ${statusBreakdown.rejected}\n`;
+      alertMessage += `- VP requests: ${statusBreakdown.vpRequests}\n`;
+      alertMessage += `  - VP approved before deadline: ${statusBreakdown.vpBeforeDeadline}\n`;
+      alertMessage += `  - VP approved after deadline: ${statusBreakdown.vpAfterDeadline}\n`;
+      alertMessage += `  - VP no deadline info: ${statusBreakdown.vpNoDeadlineInfo}\n\n`;
+      alertMessage += `To download: Approve pending requests first. VP requests must be approved by VP before 15:59.`;
+      
+      alert(alertMessage);
+      return;
+    }
+
+    const excelData = approvedRequests.map(req => ({
+      "TYPE": "NEFT",
+      "DEBIT BANK A/C NO": "1234567890",
+      "DEBIT AMT": req.amount,
+      "CUR": "INR",
+      "BENIFICARY A/C NO": req.bankAccountNumber || "9876543210",
+      "IFSC CODE": req.ifscCode || "SBIN0000123",
+      "NARRTION/NAME (NOT MORE THAN 20)": req.employeeName.slice(0, 20),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+
+    ws['!cols'] = [
+      { wch: 10 },  // TYPE
+      { wch: 20 },  // DEBIT BANK A/C NO
+      { wch: 15 },  // DEBIT AMT
+      { wch: 10 },  // CUR
+      { wch: 20 },  // BENIFICARY A/C NO
+      { wch: 15 },  // IFSC CODE
+      { wch: 30 },  // NARRTION/NAME
+      { wch: 15 }   // REQUEST TYPE
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BankUpload");
+
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(file, "BankUploadFile.xlsx");
+    
+    // Get the IDs of downloaded requests
+    const downloadedRequestIds = approvedRequests.map(req => req.submittedAt);
+    
+    // Call the parent component's function to remove downloaded requests
+    if (onDownloadComplete) {
+      onDownloadComplete(downloadedRequestIds);
     }
     
-    console.log("✅ ACCEPTED for download");
-    return true;
-  });
+    alert(`Successfully downloaded ${approvedRequests.length} eligible requests. These requests have been removed from the table.`);
+  };
 
-  console.log("\n=== FINAL RESULT ===");
-  console.log("Eligible requests for download:", approvedRequests);
-  console.log("Total eligible:", approvedRequests.length);
-
-  if (approvedRequests.length === 0) {
-    const statusBreakdown = {
-      total: data.length,
-      pending: data.filter(req => req.status === 'Pending AE Approval').length,
-      approved: data.filter(req => req.status === 'Approved').length,
-      rejected: data.filter(req => req.status === 'Rejected by AE').length,
-      vpRequests: data.filter(req => req.isVPRequest).length,
-      vpAfterDeadline: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === false).length,
-      vpBeforeDeadline: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === true).length,
-      vpNoDeadlineInfo: data.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline === undefined).length
-    };
-    
-    let alertMessage = `No eligible requests for download.\n\nBreakdown:\n`;
-    alertMessage += `- Total requests: ${statusBreakdown.total}\n`;
-    alertMessage += `- Pending AE Approval: ${statusBreakdown.pending}\n`;
-    alertMessage += `- Approved by AE: ${statusBreakdown.approved}\n`;
-    alertMessage += `- Rejected by AE: ${statusBreakdown.rejected}\n`;
-    alertMessage += `- VP requests: ${statusBreakdown.vpRequests}\n`;
-    alertMessage += `  - VP approved before deadline: ${statusBreakdown.vpBeforeDeadline}\n`;
-    alertMessage += `  - VP approved after deadline: ${statusBreakdown.vpAfterDeadline}\n`;
-    alertMessage += `  - VP no deadline info: ${statusBreakdown.vpNoDeadlineInfo}\n\n`;
-    alertMessage += `To download: Approve pending requests first. VP requests must be approved by VP before 15:59.`;
-    
-    alert(alertMessage);
-    return;
-  }
-
-  const excelData = approvedRequests.map(req => ({
-    "TYPE": "NEFT",
-    "DEBIT BANK A/C NO": "1234567890",
-    "DEBIT AMT": req.amount,
-    "CUR": "INR",
-    "BENIFICARY A/C NO": req.bankAccountNumber || "9876543210",
-    "IFSC CODE": req.ifscCode || "SBIN0000123",
-    "NARRTION/NAME (NOT MORE THAN 20)": req.employeeName.slice(0, 20),
-    "REQUEST TYPE": req.isVPRequest ? "VP Request" : "Employee Request"
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(excelData);
-
-  ws['!cols'] = [
-    { wch: 10 },  // TYPE
-    { wch: 20 },  // DEBIT BANK A/C NO
-    { wch: 15 },  // DEBIT AMT
-    { wch: 10 },  // CUR
-    { wch: 20 },  // BENIFICARY A/C NO
-    { wch: 15 },  // IFSC CODE
-    { wch: 30 },  // NARRTION/NAME
-    { wch: 15 }   // REQUEST TYPE
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "BankUpload");
-
-  const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-  saveAs(file, "BankUploadFile.xlsx");
-  
-  alert(`Successfully downloaded ${approvedRequests.length} eligible requests.`);
-};
   const handleApproveAll = () => {
     const selectableRequests = getSelectableRequests();
     selectableRequests.forEach(req => onApprove(req.submittedAt));

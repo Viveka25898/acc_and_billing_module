@@ -1,4 +1,3 @@
-// File: src/features/bankReconciliation/pages/ReconciliationHistoryPage.jsx
 import React from "react";
 import { Link } from "react-router-dom";
 import { getReconciliationHistory } from "../utils/saveReconcilation";

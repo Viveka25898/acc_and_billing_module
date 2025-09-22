@@ -6,6 +6,7 @@ export default function ManagerConveyanceTable({
   onApprove, 
   onReject, 
   onViewDocs,
+  onViewReports, // Add this new prop for viewing visit reports
   currentUserRole // Add this prop to determine user role
 }) {
   // Sort claims based on status priority
@@ -51,13 +52,14 @@ export default function ManagerConveyanceTable({
             <th className="p-2 border text-left">Amount</th>
             <th className="p-2 border text-left">Status</th>
             <th className="p-2 border text-left">Receipt</th>
+            <th className="p-2 border text-left">Visit Report</th>
             <th className="p-2 border text-left">Action</th>
           </tr>
         </thead>
         <tbody>
           {sortedClaims.length === 0 ? (
             <tr>
-              <td colSpan="9" className="text-center p-4 text-gray-500">
+              <td colSpan="10" className="text-center p-4 text-gray-500">
                 No requests found.
               </td>
             </tr>
@@ -94,6 +96,24 @@ export default function ManagerConveyanceTable({
                         }
                       }}
                       className="text-blue-600 hover:text-blue-800 text-lg"
+                    >
+                      <FaEye />
+                    </button>
+                  ) : (
+                    <span className="text-gray-400">--</span>
+                  )}
+                </td>
+                <td className="p-2 border">
+                  {claim.reports?.length > 0 ? (
+                    <button
+                      title="View Visit Report"
+                      onClick={() => {
+                        const validReports = claim.reports.filter(r => r);
+                        if (validReports.length > 0) {
+                          onViewReports(validReports);
+                        }
+                      }}
+                      className="text-green-600 hover:text-green-800 text-lg"
                     >
                       <FaEye />
                     </button>

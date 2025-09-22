@@ -1,4 +1,4 @@
-// File: src/features/finance/pages/FinanceInvoiceApprovalPage.jsx
+
 
 import React, { useState } from "react";
 import { FaEye } from "react-icons/fa";
@@ -16,7 +16,7 @@ const dummyInvoices = Array.from({ length: 10 }, (_, i) => ({
   amount: 10000 + i * 500,
   status: "pending",
   managerApproval: "approved",
-  documentUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  documentUrl: "/public/invoice.pdf",
 }));
 
 export default function FinancialHeadInvoiceApprovalPage() {

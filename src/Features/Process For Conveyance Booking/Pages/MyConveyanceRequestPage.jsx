@@ -69,9 +69,49 @@ export default function MyConveyanceRequestsPage() {
     }
   };
 
+  const handleViewReason = (request) => {
+    console.log("Button clicked!"); // Debug log
+    console.log("Request object:", request); // Debug log
+    console.log("rejectionReason field:", request.rejectionReason); // Debug log
+    console.log("rejections array:", request.rejections); // Debug log
+    
+    let rejectionReason = "No reason provided";
+    
+    // Handle different rejection reason structures
+    if (typeof request.rejectionReason === 'string' && request.rejectionReason.trim()) {
+      rejectionReason = request.rejectionReason.trim();
+    } else if (request.rejectionReason && typeof request.rejectionReason === 'object' && request.rejectionReason.reason) {
+      rejectionReason = request.rejectionReason.reason;
+    } else if (request.rejections && Array.isArray(request.rejections) && request.rejections.length > 0) {
+      const lastRejection = request.rejections[request.rejections.length - 1];
+      console.log("Last rejection object:", lastRejection); // Debug log
+      
+      // Check all possible fields where reason might be stored
+      rejectionReason = lastRejection.reason || 
+                       lastRejection.rejectionReason || 
+                       lastRejection.comment || 
+                       lastRejection.remarks ||
+                       request.remarks || // Check if reason is in main request remarks
+                       `Rejected by ${lastRejection.user} at ${lastRejection.level} level on ${new Date(lastRejection.date).toLocaleDateString()}`;
+    } else if (request.rejectedBy) {
+      // Fallback - show who rejected it and when
+      rejectionReason = `Rejected by ${request.rejectedBy} on ${new Date(request.rejectedAt).toLocaleDateString()}`;
+    }
+    
+    console.log("Final rejectionReason to set:", rejectionReason); // Debug log
+    setSelectedRejectReason(rejectionReason);
+  };
+
+  const handleCloseModal = () => {
+    console.log("Closing modal"); // Debug log
+    setSelectedRejectReason(null);
+  };
+
   if (isLoading) {
     return <div className="p-4">Loading your requests...</div>;
   }
+
+  console.log("selectedRejectReason state:", selectedRejectReason); // Debug log
 
   return (
     <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
@@ -101,26 +141,21 @@ export default function MyConveyanceRequestsPage() {
                   <td className="p-2 border">{request.distance} km</td>
                   <td className="p-2 border">₹{request.amount}</td>
                   <td className="p-2 border">
+                    <div className="flex items-center gap-2">
                       <span className={`text-xs px-2 border py-1 rounded-full font-medium ${getStatusStyle(request.status)}`}>
                         {request.status}
                       </span>
                       {request.status.includes("Rejected") && (
                         <button 
-                          onClick={() => {
-                            // Handle both direct string reasons and rejection object
-                            const rejectionReason = request.rejectionReason || 
-                                                  (request.rejections && request.rejections.length > 0 ? 
-                                                  request.rejections[request.rejections.length - 1].reason : 
-                                                  "No reason provided");
-                            setSelectedRejectReason(rejectionReason);
-                          }}
-                          className="ml-2 text-xs text-blue-500 hover:underline"
+                          onClick={() => handleViewReason(request)}
+                          className="ml-2 text-xs text-blue-500 hover:underline hover:text-blue-700 cursor-pointer"
+                          type="button"
                         >
                           View Reason
                         </button>
-                    )}
+                      )}
+                    </div>
                   </td>
-                  
                 </tr>
               ))}
             </tbody>
@@ -131,7 +166,7 @@ export default function MyConveyanceRequestsPage() {
           <p>No conveyance requests found.</p>
           {(filter.client || filter.status || filter.date) && (
             <button 
-              className="text-blue-500 mt-2"
+              className="text-blue-500 mt-2 hover:underline"
               onClick={() => setFilter({ client: "", status: "", date: "" })}
             >
               Clear filters
@@ -140,12 +175,21 @@ export default function MyConveyanceRequestsPage() {
         </div>
       )}
 
+      {/* Modal - this will show when selectedRejectReason is truthy */}
       {selectedRejectReason && (
         <RejectReasonModal
           reason={selectedRejectReason}
-          onClose={() => setSelectedRejectReason(null)}
+          onClose={handleCloseModal}
         />
       )}
+      
+      {/* Debug - temporarily uncomment this to test if modal component works */}
+      {/* 
+      <RejectReasonModal
+        reason="Test reason - modal is working!"
+        onClose={() => console.log("Test modal closed")}
+      />
+      */}
     </div>
   );
 }

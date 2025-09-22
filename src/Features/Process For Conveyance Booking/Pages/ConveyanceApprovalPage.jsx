@@ -16,6 +16,7 @@ export default function ManagerConveyanceApprovalsPage() {
   });
   const [rejection, setRejection] = useState({ show: false, claimId: null });
   const [viewDocs, setViewDocs] = useState(null);
+  const [viewReports, setViewReports] = useState(null); // Add state for visit reports
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -68,40 +69,40 @@ export default function ManagerConveyanceApprovalsPage() {
   );
 
   const handleApprove = (id) => {
-  try {
-    const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-    const requestToApprove = allRequests.find(request => request.id === id);
-    
-    // Get the VP this Line Manager reports to
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const lineManager = users.find(user => user.username === currentUser.username);
-    const assignedVP = lineManager?.reportsTo; // This will be "vp1" or "vp2"
+    try {
+      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+      const requestToApprove = allRequests.find(request => request.id === id);
+      
+      // Get the VP this Line Manager reports to
+      const users = JSON.parse(localStorage.getItem("users")) || [];
+      const lineManager = users.find(user => user.username === currentUser.username);
+      const assignedVP = lineManager?.reportsTo; // This will be "vp1" or "vp2"
 
-    const updatedRequests = allRequests.map(request => 
-      request.id === id ? {
-        ...request,
-        status: "Pending VP Approval",
-        assignedTo: assignedVP, // Assign to the VP
-        currentLevel: "vp",
-        approvedAt: new Date().toISOString(),
-        approvedBy: currentUser.username,
-        approvers: [...(request.approvers || []), {
-          level: "line-manager",
-          user: currentUser.username,
-          action: "approved",
-          date: new Date().toISOString()
-        }]
-      } : request
-    );
-    
-    localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
-    setClaims(prev => prev.filter(c => c.id !== id));
-    toast.success(`Sent to VP ${assignedVP} for approval`);
-  } catch (error) {
-    toast.error("Approval failed");
-    console.error(error);
-  }
-};
+      const updatedRequests = allRequests.map(request => 
+        request.id === id ? {
+          ...request,
+          status: "Pending VP Approval",
+          assignedTo: assignedVP, // Assign to the VP
+          currentLevel: "vp",
+          approvedAt: new Date().toISOString(),
+          approvedBy: currentUser.username,
+          approvers: [...(request.approvers || []), {
+            level: "line-manager",
+            user: currentUser.username,
+            action: "approved",
+            date: new Date().toISOString()
+          }]
+        } : request
+      );
+      
+      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+      setClaims(prev => prev.filter(c => c.id !== id));
+      toast.success(`Sent to VP ${assignedVP} for approval`);
+    } catch (error) {
+      toast.error("Approval failed");
+      console.error(error);
+    }
+  };
 
   const handleReject = (id, reason) => {
     try {
@@ -139,6 +140,25 @@ export default function ManagerConveyanceApprovalsPage() {
     }
   };
 
+  // Helper function to convert file objects to URLs for viewing
+  const prepareDocumentUrl = (documents) => {
+    if (!documents || documents.length === 0) return null;
+    
+    const firstDoc = documents[0];
+    if (typeof firstDoc === 'string') {
+      return firstDoc; // If it's already a URL
+    }
+    
+    // If it's a file object, create a blob URL
+    if (firstDoc.type && firstDoc.size) {
+      // For demonstration purposes - in real app you'd have the actual file content
+      // This assumes you have the file data stored somewhere
+      return URL.createObjectURL(new Blob([''], { type: firstDoc.type }));
+    }
+    
+    return null;
+  };
+
   return (
     <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
       <div className="flex justify-between items-center mb-4">
@@ -155,12 +175,13 @@ export default function ManagerConveyanceApprovalsPage() {
       />
 
       <ManagerConveyanceTable
-  claims={paginatedClaims}
-  onApprove={handleApprove}
-  onReject={(id) => setRejection({ show: true, claimId: id })}
-  onViewDocs={(docs) => setViewDocs(docs)}
-  currentUserRole={currentUser.role} // Add this line
-/>
+        claims={paginatedClaims}
+        onApprove={handleApprove}
+        onReject={(id) => setRejection({ show: true, claimId: id })}
+        onViewDocs={(docs) => setViewDocs(docs)}
+        onViewReports={(reports) => setViewReports(reports)} // Add handler for visit reports
+        currentUserRole={currentUser.role}
+      />
 
       {totalPages > 1 && (
         <div className="mt-4 flex justify-center gap-2">
@@ -186,10 +207,19 @@ export default function ManagerConveyanceApprovalsPage() {
         onSubmit={(reason) => handleReject(rejection.claimId, reason)}
       />
 
-     <DocumentPreviewModal 
-      url={viewDocs?.[0] || null} // Explicitly pass null if no document
-      onClose={() => setViewDocs(null)}
-    />
+      {/* Modal for receipts */}
+      <DocumentPreviewModal 
+        url={viewDocs?.[0] ? prepareDocumentUrl(viewDocs) : null}
+        onClose={() => setViewDocs(null)}
+        title="Receipt"
+      />
+
+      {/* Modal for visit reports */}
+      <DocumentPreviewModal 
+        url={viewReports?.[0] ? prepareDocumentUrl(viewReports) : null}
+        onClose={() => setViewReports(null)}
+        title="Visit Report"
+      />
     </div>
   );
 }

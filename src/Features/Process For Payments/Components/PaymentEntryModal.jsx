@@ -10,12 +10,16 @@ import {
   FaRupeeSign, 
   FaCheck, 
   FaTimes, 
-  FaEdit 
+  FaEdit,
+  FaChevronDown,
+  FaChevronRight,
+  FaUsers
 } from 'react-icons/fa';
 
 const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
   const [isEditable, setIsEditable] = useState(false);
   const [currentPaymentData, setCurrentPaymentData] = useState(paymentData);
+  const [expandedVendors, setExpandedVendors] = useState({});
 
   if (!isOpen) return null;
 
@@ -32,9 +36,20 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
     }
   };
 
+  // Toggle vendor expansion in breakdown section
+  const toggleVendorExpansion = (vendorIndex) => {
+    setExpandedVendors(prev => ({
+      ...prev,
+      [vendorIndex]: !prev[vendorIndex]
+    }));
+  };
+
+  // Check if this is a multi-vendor payment
+  const isMultiVendor = currentPaymentData.vendorDetails && currentPaymentData.vendorDetails.length > 1;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-blue-500">
@@ -42,11 +57,17 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
               <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
                 <FaCreditCard className="text-blue-600" />
                 Payment Entry
+                {isMultiVendor && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-lg text-sm flex items-center gap-1">
+                    <FaUsers size={12} />
+                    Multi-Vendor
+                  </span>
+                )}
               </h1>
               <p className="text-gray-600 mt-1">Entry No: {currentPaymentData.entryNo}</p>
             </div>
             <div className="flex items-center gap-2">
-            <button 
+              <button 
                 onClick={onClose}
                 className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Close Modal"
@@ -81,29 +102,107 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                     <span className="text-gray-600">Bank Account:</span>
                     <span className="font-medium text-sm">{currentPaymentData.bankAccount}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Vendors:</span>
+                    <span className="font-medium">
+                      {isMultiVendor ? currentPaymentData.vendorDetails.length : 1}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Vendor Information */}
+              {/* Vendor Information - Enhanced for Multiple Vendors */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FaBuilding className="text-blue-600" size={20} />
                   Vendor Details
+                  {isMultiVendor && (
+                    <span className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                      {currentPaymentData.vendorDetails.length} vendors
+                    </span>
+                  )}
                 </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Vendor Name:</span>
-                    <span className="font-medium">{currentPaymentData.vendor}</span>
+                
+                {!isMultiVendor ? (
+                  // Single Vendor Display (existing code)
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Vendor Name:</span>
+                      <span className="font-medium">{currentPaymentData.vendor}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Vendor Code:</span>
+                      <span className="font-medium">{currentPaymentData.vendorCode}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Invoice No:</span>
+                      <span className="font-medium">{currentPaymentData.invoiceNo}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Vendor Code:</span>
-                    <span className="font-medium">{currentPaymentData.vendorCode}</span>
+                ) : (
+                  // Multiple Vendors Display (new code)
+                  <div className="space-y-4 max-h-80 overflow-y-auto">
+                    {currentPaymentData.vendorDetails.map((vendor, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-3 bg-white">
+                        <div 
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded"
+                          onClick={() => toggleVendorExpansion(index)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {expandedVendors[index] ? <FaChevronDown size={14} /> : <FaChevronRight size={14} />}
+                            <span className="font-medium text-gray-800">{vendor.vendorName}</span>
+                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                              ₹{vendor.totalAmount.toLocaleString()}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {vendor.invoices.length} invoice{vendor.invoices.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        
+                        {expandedVendors[index] && (
+                          <div className="mt-3 pl-4 border-l-2 border-blue-200 space-y-2">
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-gray-600">Vendor Code:</span>
+                                <span className="ml-2 font-medium">{vendor.vendorCode || 'VEN-' + String(index + 1).padStart(3, '0')}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">IFSC:</span>
+                                <span className="ml-2 font-medium">{vendor.ifscCode}</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-gray-600">Account:</span>
+                                <span className="ml-2 font-medium">{vendor.beneficiaryAccountNumber}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Invoice Details */}
+                            <div className="bg-gray-50 p-2 rounded">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-2">Invoices:</h4>
+                              <div className="space-y-1">
+                                {vendor.invoices.map((invoice, invIndex) => (
+                                  <div key={invIndex} className="flex justify-between items-center text-xs">
+                                    <span className="text-blue-600 font-medium">{invoice.invoiceNumber}</span>
+                                    <div className="flex gap-2">
+                                      <span className="text-gray-500">₹{invoice.originalAmount.toLocaleString()}</span>
+                                      <span className="text-green-600 font-medium">
+                                        → ₹{invoice.paidAmount.toLocaleString()}
+                                      </span>
+                                      {invoice.paymentType === 'partial' && (
+                                        <span className="bg-orange-100 text-orange-700 px-1 rounded text-xs">Partial</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Invoice No:</span>
-                    <span className="font-medium">{currentPaymentData.invoiceNo}</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* GL Entries Table */}
@@ -179,6 +278,23 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                     <span>Total Payment:</span>
                     <span>₹ {currentPaymentData.amount?.toLocaleString()}</span>
                   </div>
+                  
+                  {/* Vendor-wise Amount Breakdown for Multi-vendor */}
+                  {isMultiVendor && (
+                    <div className="mt-4 pt-3 border-t border-blue-300">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Vendor-wise Breakdown:</h3>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {currentPaymentData.vendorDetails.map((vendor, index) => (
+                          <div key={index} className="flex justify-between text-sm">
+                            <span className="text-gray-600 truncate mr-2" title={vendor.vendorName}>
+                              {vendor.vendorName.length > 20 ? vendor.vendorName.substring(0, 20) + '...' : vendor.vendorName}
+                            </span>
+                            <span className="font-medium">₹ {vendor.totalAmount.toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -206,9 +322,7 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                   </div>
                   <div>
                     <span className="text-gray-600 block">Approved By:</span>
-                    <span className="font-medium">
-                      Account Manager
-                    </span>
+                    <span className="font-medium">Account Manager</span>
                   </div>
                   {currentPaymentData.remarks && (
                     <div>
@@ -229,7 +343,6 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
             >
               Close
             </button>
-            
           </div>
         </div>
       </div>

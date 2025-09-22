@@ -1,184 +1,113 @@
-/* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import React, { useState } from "react";
 
-const VerifyInvoiceModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) => {
-  const [gstRate, setGstRate] = useState("");
-  const [hsnCode, setHsnCode] = useState("");
-  const [hsnSummary, setHsnSummary] = useState("");
-  const [isRejecting, setIsRejecting] = useState(false);
-  const [remarks, setRemarks] = useState("");
+const ViewInvoiceModal = ({ invoice, onClose }) => {
   const [isIframeLoading, setIsIframeLoading] = useState(true);
 
-  useEffect(() => {
-    if (invoice) {
-      setRemarks("");
-      setIsRejecting(false);
-      setGstRate(invoice.gstRate?.toString() || "");
-      setHsnCode(invoice.hsnCode || "");
-      setHsnSummary(invoice.hsnSummary || "");
-    }
-  }, [invoice]);
-
-  if (!isOpen || !invoice) return null;
-
-  const handleApprove = () => {
-    const updatedInvoice = { ...invoice, gstRate, hsnCode, hsnSummary };
-    handleUpdateInvoice(updatedInvoice.id, "Approved", null, updatedInvoice);
-    onClose();
-    toast.success("Invoice approved successfully!");
-  };
-
-  const handleReject = () => {
-    if (!remarks.trim()) {
-      toast.warn("Please provide rejection remarks.");
-      return;
-    }
-    handleUpdateInvoice(invoice.id, "Rejected", remarks);
-    onClose();
-    toast.error("Invoice rejected successfully!");
-  };
+  if (!invoice) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center px-2 sm:px-4">
-      <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md sm:max-w-xl shadow-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md sm:max-w-4xl shadow-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <h2 className="text-lg sm:text-xl font-bold mb-4">
-          Verify Invoice - {invoice.invoiceNumber}
-        </h2>
-
-        {/* Invoice Basic Info */}
-        <div className="space-y-1 text-sm mb-4">
-          <p><strong>Invoice No:</strong> {invoice.invoiceNumber}</p>
-          <p><strong>Vendor:</strong> {invoice.vendorName}</p>
-          <p><strong>PO No:</strong> {invoice.poNo}</p>
-          <p><strong>GSTIN:</strong> {invoice.gstin}</p>
-          <p><strong>Amount:</strong> ₹{invoice.amount}</p>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg sm:text-xl font-bold">
+            View Invoice - {invoice.invoiceNo}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+          >
+            ×
+          </button>
         </div>
 
-        {/* Editable Fields */}
-        <div className="grid sm:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block font-medium mb-1">GST Rate (%)</label>
-            <input
-              type="number"
-              value={gstRate}
-              onChange={(e) => setGstRate(e.target.value)}
-              className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-              placeholder="e.g., 18"
-            />
+        {/* Invoice Details */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="space-y-2">
+            <p><strong>Invoice No:</strong> {invoice.invoiceNo}</p>
+            <p><strong>Vendor Name:</strong> {invoice.vendorName}</p>
+            <p><strong>PO No:</strong> {invoice.poNo}</p>
           </div>
-          <div>
-            <label className="block font-medium mb-1">HSN Code</label>
-            <input
-              type="text"
-              value={hsnCode}
-              onChange={(e) => setHsnCode(e.target.value)}
-              className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-              placeholder="e.g., 998314"
-            />
+          <div className="space-y-2">
+            <p><strong>GSTIN:</strong> {invoice.gstin}</p>
+            <p><strong>Amount:</strong> ₹{invoice.amount?.toLocaleString()}</p>
+            <p><strong>Status:</strong> 
+              <span className={`ml-2 px-2 py-1 rounded text-xs font-semibold ${
+                invoice.status === 'approved' ? 'bg-green-100 text-green-700' :
+                invoice.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                'bg-yellow-100 text-yellow-700'
+              }`}>
+                {invoice.status}
+              </span>
+            </p>
           </div>
         </div>
 
-        <div className="mb-4">
-          <label className="block font-medium mb-1">HSN Summary</label>
-          <textarea
-            value={hsnSummary}
-            onChange={(e) => setHsnSummary(e.target.value)}
-            rows={3}
-            className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-            placeholder="Write a short summary..."
-          ></textarea>
-        </div>
-
-        {/* Invoice Document Preview */}
+        {/* Document Preview */}
         {invoice.documentUrl && (
-          <div className="border rounded mb-4 h-64 sm:h-72 overflow-hidden relative">
-            {isIframeLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-                <span className="text-gray-600">Loading document...</span>
-              </div>
-            )}
-            <iframe
-              src={invoice.documentUrl}
-              title="Invoice Preview"
-              width="100%"
-              height="100%"
-              className="rounded"
-              onLoad={() => setIsIframeLoading(false)}
-            ></iframe>
-          </div>
-        )}
-
-        {/* Open Full Doc Link */}
-        <a
-          href={invoice.documentUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline text-sm mb-4 inline-block"
-        >
-          🔗 Open Full Document in Web
-        </a>
-
-        {/* Rejection Remarks */}
-        {isRejecting && (
           <div className="mb-4">
-            <label className="block font-medium mb-1 text-red-600">
-              Rejection Remarks
-            </label>
-            <textarea
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              rows={3}
-              className="w-full border border-red-400 rounded px-3 py-2 outline-none focus:ring focus:ring-red-200"
-              placeholder="Why are you rejecting this invoice?"
-            ></textarea>
+            <h3 className="font-medium mb-2">Invoice Document:</h3>
+            <div className="border rounded h-96 overflow-hidden relative">
+              {isIframeLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <span className="text-gray-600">Loading document...</span>
+                  </div>
+                </div>
+              )}
+              <iframe
+                src={invoice.documentUrl}
+                title="Invoice Preview"
+                width="100%"
+                height="100%"
+                className="rounded"
+                onLoad={() => setIsIframeLoading(false)}
+                onError={() => setIsIframeLoading(false)}
+              />
+            </div>
+            
+            {/* Open in new tab link */}
+            <div className="mt-2">
+              <a
+                href={invoice.documentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline text-sm"
+              >
+                🔗 Open document in new tab
+              </a>
+            </div>
           </div>
         )}
 
-        {/* Footer Buttons */}
-        <div className="flex flex-wrap justify-end gap-3">
-          {!isRejecting ? (
-            <>
-              {/* <button
-                onClick={() => setIsRejecting(true)}
-                className="text-red-600 border border-red-600 hover:bg-red-100 px-4 py-2 rounded text-sm"
-              >
-                Reject
-              </button>
-              <button
-                onClick={handleApprove}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
-              >
-                Approve
-              </button> */}
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm"
-              >
-                Close
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={onClose}
-                className="text-gray-600 border border-gray-400 px-4 py-2 rounded hover:bg-gray-100 text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
-              >
-                Confirm Reject
-              </button>
-            </>
-          )}
+        {/* If no document URL */}
+        {!invoice.documentUrl && (
+          <div className="bg-gray-100 p-4 rounded text-center mb-4">
+            <p className="text-gray-600">No document available for this invoice</p>
+          </div>
+        )}
+
+        {/* Additional Details */}
+        {invoice.rejectionReason && (
+          <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+            <h4 className="font-medium text-red-800 mb-1">Rejection Reason:</h4>
+            <p className="text-red-700 text-sm">{invoice.rejectionReason}</p>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-export default VerifyInvoiceModal;
+export default ViewInvoiceModal;

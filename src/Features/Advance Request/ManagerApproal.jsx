@@ -4,6 +4,7 @@ import { FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import ManagerFilter from './ManagerFilter';
 import { useSelector } from 'react-redux';
+
 const ManagerApproval = () => {
   const loggedInUser = useSelector((state) => state.auth.user);
   console.log(loggedInUser);
@@ -28,62 +29,88 @@ const ManagerApproval = () => {
   }, [loggedInUser]);
   console.log(requests);
 
+  // Helper function to format multiple reasons
+  const formatReasons = (reason, customReason) => {
+    const reasons = [];
+    
+    if (reason) {
+      // Handle case where reason might be an array or comma-separated string
+      if (Array.isArray(reason)) {
+        reasons.push(...reason.filter(r => r && r.toString().trim()));
+      } else if (typeof reason === 'string' && reason.trim()) {
+        // Split by comma and clean up each reason
+        const splitReasons = reason.split(',').map(r => r.trim()).filter(r => r);
+        reasons.push(...splitReasons);
+      } else if (reason && typeof reason === 'object') {
+        // Handle case where reason might be an object
+        reasons.push(reason.toString().trim());
+      } else if (reason) {
+        // Handle any other type
+        reasons.push(reason.toString().trim());
+      }
+    }
+    
+    if (customReason && customReason.toString().trim()) {
+      reasons.push(customReason.toString().trim());
+    }
+    
+    // Remove duplicates and join with comma and space
+    const uniqueReasons = [...new Set(reasons.filter(r => r))];
+    return uniqueReasons.length > 0 ? uniqueReasons.join(', ') : 'No reason provided';
+  };
+
   //Approve
+  const handleApprove = (submittedAt) => {
+    // 1. Get all requests
+    const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
 
- const handleApprove = (submittedAt) => {
-  // 1. Get all requests
-  const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
+    // 2. Update status of the specific request
+    const updatedAllRequests = allRequests.map((req) =>
+      req.submittedAt === submittedAt
+        ? { ...req, status: 'Pending VP Approval', remarks: '' }
+        : req
+    );
 
-  // 2. Update status of the specific request
-  const updatedAllRequests = allRequests.map((req) =>
-    req.submittedAt === submittedAt
-      ? { ...req, status: 'Pending VP Approval', remarks: '' }
-      : req
-  );
+    // 3. Save globally
+    localStorage.setItem("advanceRequests", JSON.stringify(updatedAllRequests));
 
-  // 3. Save globally
-  localStorage.setItem("advanceRequests", JSON.stringify(updatedAllRequests));
+    // 4. Filter and update local view
+    const filtered = updatedAllRequests.filter(
+      (req) => req.assignedTo === loggedInUser
+    );
+    setRequests(filtered);
 
-  // 4. Filter and update local view
-  const filtered = updatedAllRequests.filter(
-    (req) => req.assignedTo === loggedInUser
-  );
-  setRequests(filtered);
+    toast.success("Request Approved");
+  };
 
-  toast.success("Request Approved");
-};
-
-
-
-//Reject
+  //Reject
   const handleReject = () => {
-  if (!remarks.trim()) return alert('Please provide rejection remarks');
+    if (!remarks.trim()) return alert('Please provide rejection remarks');
 
-  const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
+    const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
 
-  const updatedAllRequests = allRequests.map((req) =>
-    req.submittedAt === rejectId
-      ? {
-          ...req,
-          status: 'Rejected by Line Manager',
-          remarks,
-          clarification: '', // clear previous clarification
-        }
-      : req
-  );
+    const updatedAllRequests = allRequests.map((req) =>
+      req.submittedAt === rejectId
+        ? {
+            ...req,
+            status: 'Rejected by Line Manager',
+            remarks,
+            clarification: '', // clear previous clarification
+          }
+        : req
+    );
 
-  localStorage.setItem("advanceRequests", JSON.stringify(updatedAllRequests));
+    localStorage.setItem("advanceRequests", JSON.stringify(updatedAllRequests));
 
-  const filtered = updatedAllRequests.filter(
-    (req) => req.assignedTo === loggedInUser
-  );
-  setRequests(filtered);
+    const filtered = updatedAllRequests.filter(
+      (req) => req.assignedTo === loggedInUser
+    );
+    setRequests(filtered);
 
-  setRemarks('');
-  setRejectId(null);
-  toast.error('Rejected successfully.');
-};
-
+    setRemarks('');
+    setRejectId(null);
+    toast.error('Rejected successfully.');
+  };
 
   const filteredRequests = requests
     .filter((req) =>
@@ -120,8 +147,6 @@ const ManagerApproval = () => {
   );
 };
 
-
-
   return (
     <div className="min-h-screen px-4 py-10 bg-white rounded shadow-md">
       <div className="max-w-6xl mx-auto">
@@ -148,7 +173,7 @@ const ManagerApproval = () => {
             </thead>
             <tbody>
               {paginatedRequests.map((req) => (
-                <tr  key={req.submittedAt}className="text-center">
+                <tr key={req.submittedAt} className="text-center">
                   <td className="border px-4 py-2 font-mono text-xs">
                     {req.requestId || 'N/A'}
                   </td>
@@ -159,12 +184,14 @@ const ManagerApproval = () => {
                   <td className="border px-4 py-2">₹{Math.floor(Math.random() * 5000)}</td>
                   <td className="border px-4 py-2">
                     <button
-                    onClick={() =>
-                      setModalData({
-                        reason: req.reason,
-                        customReason: req.customReason,
-                      })
-                    }
+                      onClick={() => {
+                        console.log('Eye button clicked for reason:', req.reason, req.customReason);
+                        setModalData({
+                          reason: req.reason,
+                          customReason: req.customReason,
+                          formattedReason: formatReasons(req.reason, req.customReason)
+                        });
+                      }}
                       className="text-green-600 hover:text-green-800"
                     >
                       <FaEye />
@@ -189,6 +216,7 @@ const ManagerApproval = () => {
                             setModalData({
                               reason: req.remarks || req.reason,
                               clarification: req.clarification,
+                              formattedReason: formatReasons(req.remarks || req.reason, req.customReason)
                             })
                           }
                           title="View Remarks / Clarification"
@@ -257,9 +285,12 @@ const ManagerApproval = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow max-w-md w-full">
             <h3 className="text-lg font-semibold mb-4">Details</h3>
-            {modalData.reason && (
+            {(modalData.reason || modalData.customReason || modalData.formattedReason) && (
               <div className="mb-4">
-                <p className="text-gray-800 mt-1">{modalData.reason}</p>
+                <h4 className="font-semibold text-green-700 mb-2">Reason(s):</h4>
+                <p className="text-gray-800 mt-1">
+                  {modalData.formattedReason || formatReasons(modalData.reason, modalData.customReason)}
+                </p>
               </div>
             )}
             {modalData.clarification && (

@@ -18,6 +18,7 @@ export default function VPOperationsConveyanceApprovalPage() {
     claimId: null 
   });
   const [viewDocs, setViewDocs] = useState(null);
+  const [viewReports, setViewReports] = useState(null); // Add state for visit reports
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const navigate = useNavigate();
@@ -25,18 +26,18 @@ export default function VPOperationsConveyanceApprovalPage() {
 
   // Load only requests pending VP approval and assigned to current VP
   useEffect(() => {
-  try {
-    const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-    const vpRequests = allRequests.filter(
-      request => request.status === "Pending VP Approval" && 
-                request.assignedTo === currentUser.username
-    );
-    setClaims(vpRequests);
-  } catch (error) {
-    toast.error("Failed to load requests");
-    console.error("Loading error:", error);
-  }
-}, [currentUser.username]);
+    try {
+      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+      const vpRequests = allRequests.filter(
+        request => request.status === "Pending VP Approval" && 
+                  request.assignedTo === currentUser.username
+      );
+      setClaims(vpRequests);
+    } catch (error) {
+      toast.error("Failed to load requests");
+      console.error("Loading error:", error);
+    }
+  }, [currentUser.username]);
 
   // Filter claims based on filters
   const filteredClaims = claims.filter((claim) => {
@@ -89,39 +90,58 @@ export default function VPOperationsConveyanceApprovalPage() {
 
   // VP Rejects the request
   const handleReject = (id, reason) => {
-  try {
-    const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
-      request => request.id === id ? {
-        ...request,
-        status: "Rejected by VP",
-        assignedTo: request.submittedBy,
-        rejectedAt: new Date().toISOString(),
-        rejectedBy: currentUser.username,
-        rejectionReason: reason,
-        currentLevel: "rejected",
-        rejections: [...(request.rejections || []), {
-          level: "vp",
-          user: currentUser.username,
-          reason: reason,
-          date: new Date().toISOString()
-        }]
-      } : request
-    );
+    try {
+      const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
+        request => request.id === id ? {
+          ...request,
+          status: "Rejected by VP",
+          assignedTo: request.submittedBy,
+          rejectedAt: new Date().toISOString(),
+          rejectedBy: currentUser.username,
+          rejectionReason: reason,
+          currentLevel: "rejected",
+          rejections: [...(request.rejections || []), {
+            level: "vp",
+            user: currentUser.username,
+            reason: reason,
+            date: new Date().toISOString()
+          }]
+        } : request
+      );
+      
+      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+      
+      // Manually trigger state update
+      setClaims(prev => prev.filter(c => c.id !== id));
+      
+      // Dispatch storage event to sync across tabs
+      window.dispatchEvent(new Event('storage'));
+      
+      toast.warning("Request rejected and returned to employee");
+    } catch (error) {
+      toast.error("Rejection failed");
+      console.error(error);
+    }
+  };
+
+  // Helper function to convert file objects to URLs for viewing
+  const prepareDocumentUrl = (documents) => {
+    if (!documents || documents.length === 0) return null;
     
-    localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+    const firstDoc = documents[0];
+    if (typeof firstDoc === 'string') {
+      return firstDoc; // If it's already a URL
+    }
     
-    // Manually trigger state update
-    setClaims(prev => prev.filter(c => c.id !== id));
+    // If it's a file object, create a blob URL
+    if (firstDoc.type && firstDoc.size) {
+      // For demonstration purposes - in real app you'd have the actual file content
+      // This assumes you have the file data stored somewhere
+      return URL.createObjectURL(new Blob([''], { type: firstDoc.type }));
+    }
     
-    // Dispatch storage event to sync across tabs
-    window.dispatchEvent(new Event('storage'));
-    
-    toast.warning("Request rejected and returned to employee");
-  } catch (error) {
-    toast.error("Rejection failed");
-    console.error(error);
-  }
-};
+    return null;
+  };
 
   return (
     <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
@@ -148,6 +168,7 @@ export default function VPOperationsConveyanceApprovalPage() {
         onApprove={handleApprove}
         onReject={(id) => setRejection({ show: true, claimId: id })}
         onViewDocs={(docs) => setViewDocs(docs)}
+        onViewReports={(reports) => setViewReports(reports)} // Add handler for visit reports
         currentUserRole="vp-operations"
       />
 
@@ -175,9 +196,18 @@ export default function VPOperationsConveyanceApprovalPage() {
         onSubmit={(reason) => handleReject(rejection.claimId, reason)}
       />
 
+      {/* Modal for receipts */}
       <DocumentPreviewModal 
-        documents={viewDocs}
+        url={viewDocs?.[0] ? prepareDocumentUrl(viewDocs) : null}
         onClose={() => setViewDocs(null)}
+        title="Receipt"
+      />
+
+      {/* Modal for visit reports */}
+      <DocumentPreviewModal 
+        url={viewReports?.[0] ? prepareDocumentUrl(viewReports) : null}
+        onClose={() => setViewReports(null)}
+        title="Visit Report"
       />
     </div>
   );

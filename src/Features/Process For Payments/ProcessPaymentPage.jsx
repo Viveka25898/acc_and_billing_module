@@ -86,7 +86,7 @@ const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [invoicePayments, setInvoicePayments] = useState({});
   
-  // 🔥 NEW STATE: Store approved invoices for download
+  //  NEW STATE: Store approved invoices for download
   const [approvedInvoices, setApprovedInvoices] = useState([]);
 
   const handleFileUpload = async (file) => {
@@ -124,7 +124,7 @@ const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
     }));
   };
 
-  // 🔥 NEW: Generate System Upload File
+  //  NEW: Generate System Upload File
   const generateSystemUploadFile = (approvedInvoices) => {
     // Group approved invoices by vendor
     const vendorGroups = {};
@@ -162,7 +162,7 @@ const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
     return systemUploadData;
   };
 
-  // 🔥 UPDATED: Download function now generates both files
+  //  UPDATED: Download function now generates both files
   const handleDownloadTemplate = () => {
     if (approvedInvoices.length === 0) {
       toast.warning("No approved invoices found. Please approve some invoices first.");
@@ -274,7 +274,7 @@ const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
     console.log("Approved invoices cleared after download");
   };
 
-  // 🔥 FIXED: Store approved invoices before deleting them
+  //  FIXED: Store approved invoices before deleting them
   const handleInvoiceApproval = (selectedVendors, currentPayments = {}) => {
     const updatedVendors = [];
     const newlyApprovedInvoices = []; // 🔥 Store newly approved invoices
@@ -396,7 +396,7 @@ const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
   //Payment Entry Function
 // Function to handle payment entry creation
 const handleCreatePaymentEntry = (acceptedData) => {
-  console.log("Accepted Data:", acceptedData); // Debug log
+  console.log("Accepted Data:", acceptedData);
   
   // Calculate totals from the actual data structure
   const totalAmount = acceptedData.reduce((sum, row) => {
@@ -404,17 +404,37 @@ const handleCreatePaymentEntry = (acceptedData) => {
     return sum + amount;
   }, 0);
   
-  // Get vendor info from first row (or combine if multiple vendors)
-  const vendorName = acceptedData.length === 1 
-    ? acceptedData[0]['Vendor Name'] 
-    : `Multiple Vendors (${acceptedData.length})`;
+  // Create vendor details array for multi-vendor support
+  const vendorDetails = acceptedData.map((row, index) => ({
+    vendorName: row['Vendor Name'],
+    vendorCode: `VEN-${String(index + 1).padStart(3, '0')}`, // Generate vendor codes
+    totalAmount: parseFloat(row['Payment Done'] || row['Total Amount'] || 0),
+    ifscCode: `IFSC${String(index + 1).padStart(4, '0')}`, // You can get this from your vendor data
+    beneficiaryAccountNumber: `ACC${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`, // Get from vendor data
+    // Parse invoice details from the Invoice Numbers field
+    invoices: row['Invoice Numbers'].split(', ').map(invNumber => {
+      // You might need to match these with your actual invoice data for detailed info
+      return {
+        invoiceNumber: invNumber.trim(),
+        originalAmount: parseFloat(row['Total Amount'] || 0) / row['Invoice Numbers'].split(', ').length, // Estimate per invoice
+        paidAmount: parseFloat(row['Payment Done'] || 0) / row['Invoice Numbers'].split(', ').length, // Estimate per invoice
+        paymentType: parseFloat(row['Payment Done'] || 0) === parseFloat(row['Total Amount'] || 0) ? 'full' : 'partial'
+      };
+    })
+  }));
   
-  // Get invoice numbers (combine all)
+  // Determine if single or multi-vendor
+  const isMultiVendor = acceptedData.length > 1;
+  const vendorName = isMultiVendor 
+    ? `Multiple Vendors (${acceptedData.length})` 
+    : acceptedData[0]['Vendor Name'];
+  
+  // Get all invoice numbers
   const allInvoiceNumbers = acceptedData
     .map(row => row['Invoice Numbers'])
     .join(', ');
   
-  // Calculate GST (assuming the Payment Done amount includes GST)
+  // Calculate GST (assuming 18% GST included in amount)
   const gstAmount = Math.round(totalAmount * 0.18 / 1.18);
   const netAmount = totalAmount - gstAmount;
   
@@ -422,10 +442,10 @@ const handleCreatePaymentEntry = (acceptedData) => {
     entryNo: `PE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`,
     date: new Date().toISOString().split('T')[0],
     vendor: vendorName,
-    vendorCode: acceptedData.length === 1 ? 'VEN-001' : 'MULTIPLE',
+    vendorCode: isMultiVendor ? 'MULTIPLE' : 'VEN-001',
     amount: totalAmount,
     paymentMethod: 'Bank Transfer',
-    bankAccount: 'HDFC Bank - Current A/c (****4567)', // You can make this dynamic
+    bankAccount: 'HDFC Bank - Current A/c (****4567)',
     invoiceNo: allInvoiceNumbers,
     particulars: `Payment for invoices: ${allInvoiceNumbers} - Total vendors: ${acceptedData.length}`,
     gstAmount: gstAmount,
@@ -434,6 +454,10 @@ const handleCreatePaymentEntry = (acceptedData) => {
     preparedBy: 'Rajesh Kumar (Account Executive)',
     approvedBy: '',
     remarks: 'Auto-generated from uploaded payment file',
+    
+    // NEW: Add vendor details for multi-vendor display
+    vendorDetails: vendorDetails,
+    
     glEntries: [
       {
         glCode: '2001',
@@ -454,7 +478,7 @@ const handleCreatePaymentEntry = (acceptedData) => {
     ]
   };
   
-  console.log("Payment Entry Data:", paymentEntryData); // Debug log
+  console.log("Payment Entry Data:", paymentEntryData);
   setCurrentPaymentEntryData(paymentEntryData);
   setShowPaymentEntry(true);
 };

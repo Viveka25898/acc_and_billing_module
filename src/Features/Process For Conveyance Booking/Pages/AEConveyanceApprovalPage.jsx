@@ -19,6 +19,7 @@ export default function AEConveyanceApprovalPage() {
     claimId: null 
   });
   const [viewDocs, setViewDocs] = useState(null);
+  const [viewReports, setViewReports] = useState(null); // Add state for visit reports
   const [currentPage, setCurrentPage] = useState(1);
   const [showVoucher, setShowVoucher] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
@@ -54,6 +55,25 @@ export default function AEConveyanceApprovalPage() {
     Math.max(0, (currentPage - 1) * itemsPerPage),
     Math.min(filteredClaims.length, currentPage * itemsPerPage)
   );
+
+  // Helper function to convert file objects to URLs for viewing
+  const prepareDocumentUrl = (documents) => {
+    if (!documents || documents.length === 0) return null;
+    
+    const firstDoc = documents[0];
+    if (typeof firstDoc === 'string') {
+      return firstDoc; // If it's already a URL
+    }
+    
+    // If it's a file object, create a blob URL
+    if (firstDoc.type && firstDoc.size) {
+      // For demonstration purposes - in real app you'd have the actual file content
+      // This assumes you have the file data stored somewhere
+      return URL.createObjectURL(new Blob([''], { type: firstDoc.type }));
+    }
+    
+    return null;
+  };
 
   // AE Approves the request (final approval) and generates voucher
   const handleApprove = (id) => {
@@ -208,7 +228,24 @@ export default function AEConveyanceApprovalPage() {
         row.receipts?.length > 0 ? (
           <button
             className="text-blue-600 hover:text-blue-800 text-lg"
+            title="View Receipt"
             onClick={() => setViewDocs(row.receipts)}
+          >
+            <FaEye />
+          </button>
+        ) : (
+          <span className="text-gray-400">--</span>
+        )
+      )
+    },
+    {
+      label: "Visit Report",
+      render: (row) => (
+        row.reports?.length > 0 ? (
+          <button
+            className="text-green-600 hover:text-green-800 text-lg"
+            title="View Visit Report"
+            onClick={() => setViewReports(row.reports)}
           >
             <FaEye />
           </button>
@@ -316,9 +353,18 @@ export default function AEConveyanceApprovalPage() {
         claimId={rejection.claimId}
       />
 
+      {/* Modal for receipts */}
       <DocumentPreviewModal 
-        documents={viewDocs}
+        url={viewDocs?.[0] ? prepareDocumentUrl(viewDocs) : null}
         onClose={() => setViewDocs(null)}
+        title="Receipt"
+      />
+
+      {/* Modal for visit reports */}
+      <DocumentPreviewModal 
+        url={viewReports?.[0] ? prepareDocumentUrl(viewReports) : null}
+        onClose={() => setViewReports(null)}
+        title="Visit Report"
       />
 
      {showVoucher && selectedVoucher && (

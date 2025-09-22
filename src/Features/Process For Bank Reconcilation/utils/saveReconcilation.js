@@ -1,7 +1,5 @@
 /* eslint-disable no-unused-vars */
-// File: src/features/bankReconciliation/utils/reconciliationHistory.js
 
-// File: src/features/bankReconciliation/utils/reconciliationHistory.js
 
 // Dummy Reconciliation Data
 const dummyHistory = [

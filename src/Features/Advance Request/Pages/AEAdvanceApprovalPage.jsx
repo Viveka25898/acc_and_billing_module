@@ -112,6 +112,29 @@ useEffect(() => {
     toast.error('Request Rejected');
   };
 
+  // New function to handle download completion and remove approved requests
+  const handleDownloadComplete = (downloadedRequestIds) => {
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+    
+    // Remove downloaded requests from localStorage
+    const remainingRequests = allRequests.filter(req => 
+      !downloadedRequestIds.includes(req.submittedAt)
+    );
+    
+    localStorage.setItem('advanceRequests', JSON.stringify(remainingRequests));
+    
+    // Update local state - filter for AE view
+    const filteredRequests = remainingRequests.filter(req => 
+      req.status === 'Pending AE Approval' || 
+      req.status === 'Approved' ||
+      req.status === 'Rejected by AE'
+    );
+    
+    setRequests(filteredRequests);
+    
+    toast.success(`${downloadedRequestIds.length} approved requests downloaded and removed from table`);
+  };
+
   const filteredRequests = requests.filter(r =>
     r.employeeName.toLowerCase().includes(filter.name.toLowerCase()) &&
     r.employeeId.toLowerCase().includes(filter.empId.toLowerCase()) &&
@@ -146,7 +169,8 @@ useEffect(() => {
       <AERequestTable 
         data={filteredRequests} 
         onApprove={handleApprove} 
-        onReject={handleReject} 
+        onReject={handleReject}
+        onDownloadComplete={handleDownloadComplete}
       />
     </div>
   );
