@@ -35,9 +35,10 @@ export default function VPRelieverApprovalPage() {
     localStorage.setItem("relieverRequests", JSON.stringify(updatedAllRequests));
   };
 
+  // ✅ FIXED: Changed from 11:59 AM to 7:00 PM (19:00)
   const canApproveNow = () => {
     const now = new Date();
-    return now.getHours() < 11 || (now.getHours() === 11 && now.getMinutes() < 59);
+    return now.getHours() < 19; // Before 7:00 PM
   };
 
   const handleStatusChange = (id, newStatus, reason = null) => {
@@ -102,7 +103,7 @@ export default function VPRelieverApprovalPage() {
   const isBeforeDeadline = canApproveNow();
   
   if (!isBeforeDeadline) {
-    toast.info("Approvals after 11:59 AM will be processed next day");
+    toast.info("Approvals after 7:00 PM will be processed next day");
   }
 
   const updated = requests.map(req => {
@@ -151,7 +152,7 @@ export default function VPRelieverApprovalPage() {
         VP Operations - Approvals
         {!canApproveNow() && (
           <span className="ml-4 text-sm text-red-600 font-normal">
-            (Approvals after 11:59 AM will be processed next day)
+            (Approvals after 7:00 PM will be processed next day)
           </span>
         )}
       </h1>

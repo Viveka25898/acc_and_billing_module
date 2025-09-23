@@ -13,8 +13,8 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
   const totalPages = Math.ceil(requests.length / ITEMS_PER_PAGE);
 
   const handleViewReason = (req) => {
-    // Find the rejection in history
-    const rejection = req.history?.find(item => 
+    // Find the most recent rejection in history
+    const rejection = req.history?.findLast(item => 
       item.action.includes("Rejected") || item.comments.includes("Rejected")
     );
     
@@ -26,14 +26,18 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
   };
 
   const getApprovalStatus = (req, role) => {
+    // If the overall request is approved, all roles show approved
     if (req.status === "Approved") return "Approved";
     
-    // Check if rejected by this role
-    const roleRejection = req.history?.find(item => 
-      item.action.includes(`Rejected by ${role}`)
-    );
+    // Map role names to match your system
+    const roleMap = {
+      "Line Manager": "line-manager",
+      "VP Operations": "vp-operations", 
+      "Account Executive": "account-executive"
+    };
     
-    if (roleRejection) {
+    // Check if rejected by checking the main status
+    if (req.status.includes(`Rejected by ${role}`)) {
       return (
         <div className="flex justify-center items-center gap-2">
           <span className="text-red-600">Rejected</span>
@@ -46,15 +50,33 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
       );
     }
     
-    // Check if pending for this role
-    if (req.status.includes(role)) return req.status;
+    // Check if approved by this role (look in history)
+    const roleApproval = req.history?.find(item => 
+      item.action.includes(`Approved by ${role}`) || 
+      item.action.includes(`Approved`) && item.by === req.approvers?.[roleMap[role]]
+    );
     
-    // Check if approved by this role
-    const approvedByHigherRole = req.history?.some(item => 
+    if (roleApproval) {
+      return "Approved";
+    }
+    
+    // Check if currently pending with this role
+    if (req.status.includes(role) && req.status.includes("Pending")) {
+      return req.status;
+    }
+    
+    // If request was rejected by a later role, earlier roles should show as approved
+    // if they had approved it previously
+    const wasApproved = req.history?.some(item => 
+      (item.action.includes("Approved") && item.by === req.approvers?.[roleMap[role]]) ||
       item.action.includes(`Approved by ${role}`)
     );
     
-    return approvedByHigherRole ? "Approved" : "Pending";
+    if (wasApproved) {
+      return "Approved";
+    }
+    
+    return "Pending";
   };
 
   return (
