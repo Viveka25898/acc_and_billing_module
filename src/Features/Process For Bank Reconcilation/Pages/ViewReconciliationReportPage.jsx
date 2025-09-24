@@ -172,7 +172,6 @@ export default function ReconciliationReportPage() {
                 <p className="text-2xl font-bold text-gray-900">₹{stats.totalAmount.toLocaleString()}</p>
                 <p className="text-xs text-gray-500">{stats.amountMatchPercentage}% matched</p>
               </div>
-              <FiDollarSign className="w-8 h-8 text-purple-500" />
             </div>
           </div>
         </div>
