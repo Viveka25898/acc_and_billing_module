@@ -6,7 +6,7 @@ import { FaEye } from 'react-icons/fa';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-export default function AERequestTable({ data, onApprove, onReject, onDownloadComplete }) {
+export default function AERequestTable({ data, onApprove, onReject, onDownloadComplete, onApproveMultiple }) {
   const [currentReason, setCurrentReason] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -72,6 +72,11 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
       }
       return basicCheck;
     });
+  };
+
+  // Modified single approve function to trigger modal
+  const handleSingleApprove = (submittedAt) => {
+    onApprove(submittedAt); // This will trigger the modal in parent component
   };
 
   // Enhanced download function - download and remove approved requests
@@ -189,9 +194,38 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
     alert(`Successfully downloaded ${approvedRequests.length} eligible requests. These requests have been removed from the table.`);
   };
 
+  // Modified approve all function to trigger modal with multiple requests
   const handleApproveAll = () => {
     const selectableRequests = getSelectableRequests();
-    selectableRequests.forEach(req => onApprove(req.submittedAt));
+    const requestIds = selectableRequests.map(req => req.submittedAt);
+    
+    if (onApproveMultiple) {
+      onApproveMultiple(requestIds); // This will trigger the modal in parent component
+    } else {
+      // Fallback to individual approvals if onApproveMultiple is not provided
+      selectableRequests.forEach(req => onApprove(req.submittedAt));
+    }
+    setSelectedIds([]);
+  };
+
+  // Modified approve selected function to trigger modal
+  const handleApproveSelected = () => {
+    const requestsToApprove = paginatedData.filter(
+      req => selectedIds.includes(req.submittedAt) && 
+             isActionAllowed(req)
+    );
+    
+    const requestIds = requestsToApprove.map(req => req.submittedAt);
+    
+    if (onApproveMultiple && requestIds.length > 1) {
+      onApproveMultiple(requestIds); // Trigger modal for multiple
+    } else if (requestIds.length === 1) {
+      onApprove(requestIds[0]); // Trigger modal for single
+    } else {
+      // Fallback to individual approvals
+      requestsToApprove.forEach(req => onApprove(req.submittedAt));
+    }
+    
     setSelectedIds([]);
   };
 
@@ -308,7 +342,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                   <div className="flex flex-col gap-2 items-center">
                     <button
                       disabled={!canTakeAction}
-                      onClick={() => onApprove(req.submittedAt)}
+                      onClick={() => handleSingleApprove(req.submittedAt)} // Modified to use handleSingleApprove
                       className={`px-3 py-1 rounded text-white ${
                         canTakeAction
                           ? 'bg-green-600 hover:bg-green-700'
@@ -343,14 +377,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
           {selectedIds.length > 0 && (
             <>
               <button
-                onClick={() => {
-                  const requestsToApprove = paginatedData.filter(
-                    req => selectedIds.includes(req.submittedAt) && 
-                           isActionAllowed(req)
-                  );
-                  requestsToApprove.forEach(req => onApprove(req.submittedAt));
-                  setSelectedIds([]);
-                }}
+                onClick={handleApproveSelected} // Modified to use handleApproveSelected
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               >
                 Approve Selected ({selectedIds.length})
@@ -366,7 +393,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
           
           {getSelectableRequests().length > 0 && (
             <button
-              onClick={handleApproveAll}
+              onClick={handleApproveAll} // Modified to use handleApproveAll
               className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             >
               Approve All Eligible ({getSelectableRequests().length})

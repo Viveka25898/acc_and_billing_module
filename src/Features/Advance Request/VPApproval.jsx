@@ -85,8 +85,8 @@ const VPApproval = () => {
     const approvalTime = new Date();
 
     // Check if approval is before 15:59 PM deadline
-    const isBeforeDeadline = approvalTime.getHours() < 15 || 
-                           (approvalTime.getHours() === 15 && approvalTime.getMinutes() <= 59);
+    const isBeforeDeadline = approvalTime.getHours() < 19 || 
+                           (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59);
 
     const updatedAllRequests = allRequests.map((req) =>
       req.submittedAt === submittedAt

@@ -3,35 +3,41 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AEFilter from '../Components/AEFilter';
 import AERequestTable from '../Components/AERequestTable';
+import AdvanceRequestPaymentEntryModal from '../Components/AdvanceRequestPaymentEntryModal';
 
 export default function AEAdvanceApprovalPage() {
   const [requests, setRequests] = useState([]);
   const [filter, setFilter] = useState({ name: '', empId: '', date: '', requestId: '' });
+  
+  // Add modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [approvedRequests, setApprovedRequests] = useState([]); // For multiple approvals
 
-useEffect(() => {
-  // Load requests from localStorage
-  const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-  console.log("All requests from localStorage:", allRequests);
-  
-  // Show ALL requests to AE for visibility, not just pending ones
-  // This allows AE to see and download approved requests too
-  const aeRequests = allRequests.filter(req => 
-    req.status === 'Pending AE Approval' || 
-    req.status === 'Approved' ||
-    req.status === 'Rejected by AE'
-  );
-  
-  console.log("Filtered AE requests:", aeRequests);
-  setRequests(aeRequests);
-}, []);
+  useEffect(() => {
+    // Load requests from localStorage
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+    console.log("All requests from localStorage:", allRequests);
+    
+    // Show ALL requests to AE for visibility, not just pending ones
+    // This allows AE to see and download approved requests too
+    const aeRequests = allRequests.filter(req => 
+      req.status === 'Pending AE Approval' || 
+      req.status === 'Approved' ||
+      req.status === 'Rejected by AE'
+    );
+    
+    console.log("Filtered AE requests:", aeRequests);
+    setRequests(aeRequests);
+  }, []);
 
   const handleApprove = (submittedAt) => {
     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
     const approvalTime = new Date();
     
     // Fixed: Changed from 18:59 to 15:59 for AE deadline
-    const isBeforeDeadline = approvalTime.getHours() < 15 || 
-                           (approvalTime.getHours() === 15 && approvalTime.getMinutes() <= 59);
+    const isBeforeDeadline = approvalTime.getHours() < 19 || 
+                           (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59);
 
     // Find the specific request to approve
     const requestIndex = allRequests.findIndex(req => req.submittedAt === submittedAt);
@@ -63,12 +69,16 @@ useEffect(() => {
     
     // Update local state with filtered requests
     const filteredRequests = updatedRequests.filter(req => 
-  req.status === 'Pending AE Approval' || 
-  req.status === 'Approved' ||
-  req.status === 'Rejected by AE'
-);
+      req.status === 'Pending AE Approval' || 
+      req.status === 'Approved' ||
+      req.status === 'Rejected by AE'
+    );
     
     setRequests(filteredRequests);
+    
+    // Show modal with approved request data
+    setSelectedRequest(updatedRequests[requestIndex]);
+    setIsModalOpen(true);
     
     // Better toast messages
     if (isBeforeDeadline) {
@@ -76,6 +86,61 @@ useEffect(() => {
     } else {
       toast.warning('Request Approved - Will be processed next working day (approved after 15:59)');
     }
+  };
+
+  // New function for handling multiple approvals
+  const handleApproveMultiple = (requestsData) => {
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+    const approvalTime = new Date();
+    const isBeforeDeadline = approvalTime.getHours() < 19 || 
+                           (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59);
+
+    let updatedRequests = [...allRequests];
+    const approvedRequestsData = [];
+
+    requestsData.forEach(submittedAt => {
+      const requestIndex = updatedRequests.findIndex(req => req.submittedAt === submittedAt);
+      
+      if (requestIndex !== -1) {
+        const request = updatedRequests[requestIndex];
+        
+        // Skip if VP request was approved after deadline
+        if (request.isVPRequest && !request.vpApprovedBeforeDeadline) {
+          return;
+        }
+
+        updatedRequests[requestIndex] = {
+          ...updatedRequests[requestIndex],
+          status: 'Approved',
+          approvedAt: approvalTime.toISOString(),
+          aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
+          aeApprovedBeforeDeadline: isBeforeDeadline
+        };
+
+        approvedRequestsData.push(updatedRequests[requestIndex]);
+      }
+    });
+
+    localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
+    
+    // Update local state
+    const filteredRequests = updatedRequests.filter(req => 
+      req.status === 'Pending AE Approval' || 
+      req.status === 'Approved' ||
+      req.status === 'Rejected by AE'
+    );
+    
+    setRequests(filteredRequests);
+    
+    // Show modal with multiple approved requests
+    if (approvedRequestsData.length === 1) {
+      setSelectedRequest(approvedRequestsData[0]);
+    } else if (approvedRequestsData.length > 1) {
+      setApprovedRequests(approvedRequestsData);
+    }
+    setIsModalOpen(true);
+    
+    toast.success(`${approvedRequestsData.length} requests approved successfully`);
   };
 
   const handleReject = (submittedAt, reason) => {
@@ -149,6 +214,13 @@ useEffect(() => {
     return isBeforeDeadline;
   };
 
+  // Close modal function
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedRequest(null);
+    setApprovedRequests([]);
+  };
+
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
       <div className="flex justify-between items-center mb-4">
@@ -171,6 +243,15 @@ useEffect(() => {
         onApprove={handleApprove} 
         onReject={handleReject}
         onDownloadComplete={handleDownloadComplete}
+        onApproveMultiple={handleApproveMultiple} // Add this prop
+      />
+
+      {/* Add the modal */}
+      <AdvanceRequestPaymentEntryModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        requestData={selectedRequest}
+        approvedRequests={approvedRequests}
       />
     </div>
   );
