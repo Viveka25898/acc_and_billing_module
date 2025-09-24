@@ -3,10 +3,13 @@ import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import FilterBar from "../Components/Filter";
 import AEApprovalTable from "../Components/AEApprovalTable";
+import RelieverPaymentEntryModal from "../Components/RelieverPaymentEntryModal"; // Import the modal
 
 export default function AERelieverApprovalPage() {
   const [requests, setRequests] = useState([]);
   const [filtered, setFiltered] = useState([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedApprovedRequests, setSelectedApprovedRequests] = useState([]);
   const currentUser = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
@@ -109,6 +112,13 @@ export default function AERelieverApprovalPage() {
     setFiltered(sortedUpdated);
     updateLocalStorage(sortedUpdated);
 
+    // Show payment modal if approved
+    if (newStatus === "Approved") {
+      const approvedRequest = sortedUpdated.find(req => req.id === id);
+      setSelectedApprovedRequests([approvedRequest]);
+      setShowPaymentModal(true);
+    }
+
     if (reason) {
       toast.error(`Request #${id.slice(-6)} rejected`);
     } else {
@@ -153,49 +163,55 @@ export default function AERelieverApprovalPage() {
     setRequests(sortedUpdated);
     setFiltered(sortedUpdated);
     updateLocalStorage(sortedUpdated);
+    
+    // Show payment modal with multiple requests
+    const approvedRequests = sortedUpdated.filter(req => ids.includes(req.id));
+    setSelectedApprovedRequests(approvedRequests);
+    setShowPaymentModal(true);
+    
     toast.success(`${ids.length} request(s) approved`);
   };
 
   const downloadBankFile = () => {
-  const approvedRequests = requests.filter(
-    req => req.status === "Approved"
-  );
+    const approvedRequests = requests.filter(
+      req => req.status === "Approved"
+    );
 
-  if (approvedRequests.length === 0) {
-    toast.error("No approved requests to download");
-    return;
-  }
+    if (approvedRequests.length === 0) {
+      toast.error("No approved requests to download");
+      return;
+    }
 
-  // Prepare Excel data with only required columns
-  const excelData = approvedRequests.map(req => ({
-    "TYPE": "NEFT",
-    "DEBIT BANK A/C NO": req.debitAccountNo || "123456789", // You might need to add this field to your request object
-    "DEBIT AMT": req.amount,
-    "CUR": "INR", // Assuming currency is always INR
-    "BENIFICARY A/C NO": req.accountNo,
-    "IFSC CODE": req.ifscCode,
-    "NARRTION/NAME (20 chars)": req.name.substring(0, 20) // Truncate to 20 chars
-  }));
+    // Prepare Excel data with only required columns
+    const excelData = approvedRequests.map(req => ({
+      "TYPE": "NEFT",
+      "DEBIT BANK A/C NO": req.debitAccountNo || "123456789",
+      "DEBIT AMT": req.amount,
+      "CUR": "INR",
+      "BENIFICARY A/C NO": req.accountNo,
+      "IFSC CODE": req.ifscCode,
+      "NARRTION/NAME (20 chars)": req.name.substring(0, 20)
+    }));
 
-  // Create workbook
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(excelData);
-  XLSX.utils.book_append_sheet(wb, ws, "Bank Payments");
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, "Bank Payments");
 
-  // Generate file and download
-  const fileName = `Bank_Payments_${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb, fileName);
+    // Generate file and download
+    const fileName = `Bank_Payments_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
 
-  // Remove downloaded requests from state and localStorage
-  const remainingRequests = requests.filter(req => req.status !== "Approved");
-  setRequests(remainingRequests);
-  setFiltered(remainingRequests);
-  
-  // Update localStorage
-  localStorage.setItem("relieverRequests", JSON.stringify(remainingRequests));
-  
-  toast.success(`${approvedRequests.length} payment(s) downloaded and removed`);
-};
+    // Remove downloaded requests from state and localStorage
+    const remainingRequests = requests.filter(req => req.status !== "Approved");
+    setRequests(remainingRequests);
+    setFiltered(remainingRequests);
+    
+    // Update localStorage
+    localStorage.setItem("relieverRequests", JSON.stringify(remainingRequests));
+    
+    toast.success(`${approvedRequests.length} payment(s) downloaded and removed`);
+  };
 
   const handleFilter = (filters) => {
     let temp = [...requests];
@@ -220,6 +236,11 @@ export default function AERelieverApprovalPage() {
     setFiltered(temp);
   };
 
+  const handleClosePaymentModal = () => {
+    setShowPaymentModal(false);
+    setSelectedApprovedRequests([]);
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-4 bg-white shadow-md rounded-md">
       <div className="flex justify-between items-center mb-4">
@@ -240,6 +261,13 @@ export default function AERelieverApprovalPage() {
         onStatusChange={handleStatusChange}
         onBulkApprove={handleBulkApprove}
         showActions={true}
+      />
+
+      {/* Payment Entry Modal */}
+      <RelieverPaymentEntryModal
+        isOpen={showPaymentModal}
+        onClose={handleClosePaymentModal}
+        approvedRequests={selectedApprovedRequests}
       />
     </div>
   );

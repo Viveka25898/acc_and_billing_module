@@ -21,12 +21,14 @@ export default function AEApprovalTable({
   const paginated = requests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   const totalPages = Math.ceil(requests.length / ITEMS_PER_PAGE);
 
-  const handleApprove = (id) => {
-    const request = requests.find(req => req.id === id);
-    if (request && request.status === "Pending Account Executive Approval") {
-      onStatusChange(id, "Approved");
-    }
-  };
+ const handleApprove = (id) => {
+  const request = requests.find(req => req.id === id);
+  if (request && request.status === "Pending Account Executive Approval") {
+    onStatusChange(id, "Approved");
+    // The modal will now be opened from the parent component
+  }
+};
+
 
   const handleRejectClick = (id) => {
     setSelectedId(id);
@@ -50,17 +52,16 @@ export default function AEApprovalTable({
   };
 
   const handleApproveAll = () => {
-    const approvableIds = selectedRequests.filter(id => {
-      const req = requests.find(r => r.id === id);
-      return req && req.status === "Pending Account Executive Approval";
-    });
+  const approvableIds = selectedRequests.filter(id => {
+    const req = requests.find(r => r.id === id);
+    return req && req.status === "Pending Account Executive Approval";
+  });
 
-    if (approvableIds.length > 0) {
-      onBulkApprove(approvableIds);
-      setSelectedRequests([]);
-    }
-  };
-
+  if (approvableIds.length > 0) {
+    onBulkApprove(approvableIds);
+    setSelectedRequests([]);
+  }
+};
   const handlePassbookView = (url) => {
     setPassbookUrl(url);
   };

@@ -38,7 +38,7 @@ export default function VPRelieverApprovalPage() {
   // ✅ FIXED: Changed from 11:59 AM to 7:00 PM (19:00)
   const canApproveNow = () => {
     const now = new Date();
-    return now.getHours() < 19; // Before 7:00 PM
+    return now.getHours() < 22; // Before 7:00 PM
   };
 
   const handleStatusChange = (id, newStatus, reason = null) => {
