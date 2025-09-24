@@ -141,6 +141,7 @@ import AccountManagerHome from "../Roles/Account Manager/Components/AccountManag
 import AMInvoiceReviewPage from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerInvoiceReviewPage"
 import AMInvoiceApproval from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage"
 import AMFixedAssetEntryPage from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage"
+import ChartOfAccountsDashboard from "../Features/Master/Pages/ChartOfAccountsDashboard"
 
 
 export const router=createBrowserRouter([
@@ -807,6 +808,10 @@ export const router=createBrowserRouter([
                 path:"fixed-asset-entry/:invoiceId",
                 element:<AMFixedAssetEntryPage/>
             },
+            {
+                path:"gl-master",
+                element:<ChartOfAccountsDashboard/>
+            }
         ]
     }
 
