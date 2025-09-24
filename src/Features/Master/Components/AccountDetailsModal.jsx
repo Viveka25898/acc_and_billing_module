@@ -3,40 +3,49 @@ import { FiX, FiEdit3, FiTrash2 } from "react-icons/fi";
 const AccountDetailsModal = ({ isOpen, onClose, account, onEdit, onDelete }) => {
   if (!isOpen || !account) return null;
 
-  const getHierarchyLevel = (accountCode, accounts) => {
-    let level = 1;
-    let currentAccount = account;
-    
-    while (currentAccount && currentAccount.parentAccount && currentAccount.parentAccount !== 'No Parent (Root Level)') {
-      const parent = accounts.find(acc => acc.code === currentAccount.parentAccount);
-      if (parent) {
-        level++;
-        currentAccount = parent;
-      } else {
-        break;
-      }
-    }
-    
-    return level;
-  };
-
   const handleEdit = () => {
     onEdit(account);
     onClose(); // Close the details modal when opening edit modal
   };
 
   const handleDelete = () => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the account "${account.code} - ${account.name}"?\n\nThis action cannot be undone.`
-    );
+    const confirmMessage = account.type === 'ROOT' || account.type === 'FOLDER' 
+      ? `Are you sure you want to delete the account "${account.code} - ${account.name}"?\n\nThis will also delete ALL accounts under this ${account.type.toLowerCase()}.\n\nThis action cannot be undone.`
+      : `Are you sure you want to delete the account "${account.code} - ${account.name}"?\n\nThis action cannot be undone.`;
     
+    const confirmDelete = window.confirm(confirmMessage);
+         
     if (confirmDelete) {
       onDelete(account.id);
       onClose();
     }
   };
 
-  const hierarchyLevel = getHierarchyLevel(account.code, []);
+  const getTypeColor = (type) => {
+    switch (type) {
+      case 'ROOT':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'FOLDER':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'Account':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'ROOT':
+        return '🏛️';
+      case 'FOLDER':
+        return '📁';
+      case 'Account':
+        return '📄';
+      default:
+        return '📄';
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -54,7 +63,7 @@ const AccountDetailsModal = ({ isOpen, onClose, account, onEdit, onDelete }) => 
             <FiX className="w-6 h-6" />
           </button>
         </div>
-        
+                
         {/* Account Information */}
         <div className="p-6 space-y-4">
           {/* Account Code */}
@@ -64,48 +73,62 @@ const AccountDetailsModal = ({ isOpen, onClose, account, onEdit, onDelete }) => 
             </label>
             <p className="text-lg font-mono text-gray-900">{account.code}</p>
           </div>
-          
+                    
           {/* Account Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Account Name
             </label>
-            <p className="text-lg text-gray-900">{account.name}</p>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{getTypeIcon(account.type)}</span>
+              <p className="text-lg text-gray-900">{account.name}</p>
+            </div>
           </div>
-          
+                    
           {/* Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Type
             </label>
-            <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-md border ${
-              account.type === 'Folder' 
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
-                : 'bg-gray-100 text-gray-800 border-gray-200'
-            }`}>
-              {account.type.toUpperCase()}
+            <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-md border ${getTypeColor(account.type)}`}>
+              {account.type}
             </span>
           </div>
-          
+                    
           {/* Parent Account */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Parent Account
             </label>
             <p className="text-lg text-gray-900">
-              {account.parentAccount || 'ASSETS'}
+              {account.parentAccount || 'None (Root Level)'}
             </p>
+            {account.parentCode && (
+              <p className="text-sm text-gray-500">
+                Parent Code: {account.parentCode}
+              </p>
+            )}
           </div>
-          
-          {/* Hierarchy Level */}
+
+          {/* Hierarchy Level Info */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hierarchy Level
+              Hierarchy Information
             </label>
-            <p className="text-lg text-gray-900">Level {hierarchyLevel}</p>
+            <div className="text-sm text-gray-600 space-y-1">
+              {account.type === 'ROOT' && (
+                <p>This is a root level account that can contain folders and other accounts.</p>
+              )}
+              {account.type === 'FOLDER' && (
+                <p>This is a folder that can contain other folders and accounts.</p>
+              )}
+              {account.type === 'Account' && (
+                <p>This is a final account that can be used for transactions.</p>
+              )}
+            </div>
           </div>
         </div>
-        
+                
         {/* Action Buttons */}
         <div className="flex gap-3 p-6 border-t border-gray-200">
           <button

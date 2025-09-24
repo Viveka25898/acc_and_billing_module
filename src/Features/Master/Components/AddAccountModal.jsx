@@ -5,18 +5,39 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
   const [formData, setFormData] = useState({
     accountCode: '',
     accountName: '',
-    accountType: 'Folder',
-    parentAccount: 'No Parent (Root Level)'
+    accountType: 'FOLDER',
+    parentAccount: 'No Parent (Root Level)',
+    parentCode: null
   });
 
   const [errors, setErrors] = useState({});
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name === 'parentAccount') {
+      if (value === 'No Parent (Root Level)') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          parentCode: null
+        }));
+      } else {
+        // Find the selected parent account to get its code
+        const selectedParent = accounts.find(acc => `${acc.code} - ${acc.name}` === value);
+        setFormData(prev => ({
+          ...prev,
+          [name]: selectedParent ? selectedParent.name : value,
+          parentCode: selectedParent ? selectedParent.code : null
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+    
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -51,6 +72,7 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
         name: formData.accountName.trim(),
         type: formData.accountType,
         parentAccount: formData.parentAccount === 'No Parent (Root Level)' ? null : formData.parentAccount,
+        parentCode: formData.parentCode,
         id: Date.now().toString()
       };
       onSubmit(newAccount);
@@ -58,8 +80,9 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
       setFormData({
         accountCode: '',
         accountName: '',
-        accountType: 'Folder',
-        parentAccount: 'No Parent (Root Level)'
+        accountType: 'FOLDER',
+        parentAccount: 'No Parent (Root Level)',
+        parentCode: null
       });
       setErrors({});
       onClose();
@@ -70,8 +93,9 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
     setFormData({
       accountCode: '',
       accountName: '',
-      accountType: 'Folder',
-      parentAccount: 'No Parent (Root Level)'
+      accountType: 'FOLDER',
+      parentAccount: 'No Parent (Root Level)',
+      parentCode: null
     });
     setErrors({});
     onClose();
@@ -79,8 +103,17 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
 
   if (!isOpen) return null;
 
-  // Get available parent accounts (only folders)
-  const availableParents = accounts.filter(acc => acc.type === 'Folder');
+  // Get available parent accounts (ROOT and FOLDER types)
+  const availableParents = accounts.filter(acc => acc.type === 'ROOT' || acc.type === 'FOLDER');
+
+  // Sort parents hierarchically for better display
+  const sortParentsHierarchically = (parentAccounts) => {
+    const roots = parentAccounts.filter(acc => acc.type === 'ROOT').sort((a, b) => a.code.localeCompare(b.code));
+    const folders = parentAccounts.filter(acc => acc.type === 'FOLDER').sort((a, b) => a.code.localeCompare(b.code));
+    return [...roots, ...folders];
+  };
+
+  const sortedParents = sortParentsHierarchically(availableParents);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -105,7 +138,7 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
               name="accountCode"
               value={formData.accountCode}
               onChange={handleInputChange}
-              placeholder="e.g., A1001"
+              placeholder="e.g., A1005, L2005, R3001, X3001"
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${
                 errors.accountCode ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -124,7 +157,7 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
               name="accountName"
               value={formData.accountName}
               onChange={handleInputChange}
-              placeholder="e.g., FA COMPUTERS"
+              placeholder="e.g., FA OFFICE EQUIPMENT"
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${
                 errors.accountName ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -144,9 +177,15 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
             >
-              <option value="Folder">Folder</option>
-              <option value="Account">Account</option>
+              <option value="ROOT">Root (Main Category)</option>
+              <option value="FOLDER">Folder (Sub Category)</option>
+              <option value="Account">Account (Final Account)</option>
             </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.accountType === 'ROOT' && 'Main categories like ASSETS, LIABILITIES, etc.'}
+              {formData.accountType === 'FOLDER' && 'Sub-categories that can contain other accounts'}
+              {formData.accountType === 'Account' && 'Final accounts for transactions'}
+            </p>
           </div>
           
           <div>
@@ -155,17 +194,23 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
             </label>
             <select
               name="parentAccount"
-              value={formData.parentAccount}
+              value={formData.parentAccount === null ? 'No Parent (Root Level)' : 
+                     sortedParents.find(p => p.name === formData.parentAccount) ? 
+                     `${sortedParents.find(p => p.name === formData.parentAccount).code} - ${formData.parentAccount}` : 
+                     'No Parent (Root Level)'}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
             >
               <option value="No Parent (Root Level)">No Parent (Root Level)</option>
-              {availableParents.map(parent => (
-                <option key={parent.id} value={parent.code}>
-                  {parent.code} - {parent.name}
+              {sortedParents.map(parent => (
+                <option key={parent.id} value={`${parent.code} - ${parent.name}`}>
+                  {parent.type === 'ROOT' ? '🏛️' : '📁'} {parent.code} - {parent.name}
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Select the parent category where this account should be placed
+            </p>
           </div>
           
           <div className="flex gap-3 pt-4">
@@ -188,4 +233,5 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
     </div>
   );
 };
-export default AddAccountModal
+
+export default AddAccountModal;

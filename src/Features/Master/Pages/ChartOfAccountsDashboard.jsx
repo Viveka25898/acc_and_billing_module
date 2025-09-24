@@ -4,110 +4,166 @@ import StatsCards from "../Components/StatsCard";
 import SearchAndFilter from "../Components/SearchAndFilter";
 import AccountsTable from "../Components/AccountsTable";
 import AddAccountModal from "../Components/AddAccountModal";
-import EditAccountModal from "../Components/EditAccountModal"; // Add this import
-import AccountDetailsModal from "../Components/AccountDetailsModal"; // Add this import
+import EditAccountModal from "../Components/EditAccountModal";
+import AccountDetailsModal from "../Components/AccountDetailsModal";
 
 const ChartOfAccountsDashboard = () => {
   const [accounts, setAccounts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  
-  // Add these states for edit modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
-  
-  // Add these states for details modal
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
 
+  // Initialize with hierarchical structure from your Excel sheet
+  const initializeAccounts = () => {
+    const initialAccounts = [
+      // ROOT LEVEL
+      { 
+        id: '1',
+        code: 'A',
+        name: 'ASSETS',
+        type: 'ROOT',
+        parentAccount: null,
+        parentCode: null
+      },
+      { 
+        id: '2',
+        code: 'L',
+        name: 'SOURCES OF FUNDS',
+        type: 'ROOT',
+        parentAccount: null,
+        parentCode: null
+      },
+      { 
+        id: '3',
+        code: 'R',
+        name: 'INCOME',
+        type: 'ROOT',
+        parentAccount: null,
+        parentCode: null
+      },
+      { 
+        id: '4',
+        code: 'X',
+        name: 'EXPENSES',
+        type: 'ROOT',
+        parentAccount: null,
+        parentCode: null
+      },
+     
+    ];
+    
+    return initialAccounts;
+  };
+
+  // Save accounts to localStorage
+  const saveToLocalStorage = (accountsData) => {
+    try {
+      localStorage.setItem('chartOfAccounts', JSON.stringify(accountsData));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
   // Load accounts from localStorage on component mount
   useEffect(() => {
-    const savedAccounts = localStorage.getItem('chartOfAccounts');
-    if (savedAccounts) {
-      setAccounts(JSON.parse(savedAccounts));
-    } else {
-      // Initialize with some sample data if no data exists
-      const initialAccounts = [
-        { 
-          id: '1',
-          code: 'A1',
-          name: 'FIXED ASSETS',
-          type: 'Folder',
-          parentAccount: null
-        },
-        { 
-          id: '2',
-          code: 'A1001',
-          name: 'FA COMPUTERS',
-          type: 'Account',
-          parentAccount: 'A1'
-        },
-        { 
-          id: '3',
-          code: 'L1',
-          name: 'LIABILITIES',
-          type: 'Folder',
-          parentAccount: null
-        },
-        { 
-          id: '4',
-          code: 'I1',
-          name: 'INCOME',
-          type: 'Folder',
-          parentAccount: null
-        },
-        { 
-          id: '5',
-          code: 'E1',
-          name: 'EXPENSES',
-          type: 'Folder',
-          parentAccount: null
+    try {
+      const savedAccounts = localStorage.getItem('chartOfAccounts');
+      if (savedAccounts) {
+        const parsedAccounts = JSON.parse(savedAccounts);
+        // Check if we have the new hierarchical structure
+        if (parsedAccounts.length > 0 && parsedAccounts[0].type === 'ROOT') {
+          setAccounts(parsedAccounts);
+        } else {
+          // Initialize with new structure if old data exists
+          const newAccounts = initializeAccounts();
+          setAccounts(newAccounts);
+          saveToLocalStorage(newAccounts);
         }
-      ];
-      setAccounts(initialAccounts);
-      localStorage.setItem('chartOfAccounts', JSON.stringify(initialAccounts));
+      } else {
+        // Initialize with hierarchical structure
+        const newAccounts = initializeAccounts();
+        setAccounts(newAccounts);
+        saveToLocalStorage(newAccounts);
+      }
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+      // Initialize with default data if localStorage fails
+      const newAccounts = initializeAccounts();
+      setAccounts(newAccounts);
     }
   }, []);
 
-  // Save accounts to localStorage whenever accounts state changes
-  useEffect(() => {
-    if (accounts.length > 0) {
-      localStorage.setItem('chartOfAccounts', JSON.stringify(accounts));
-    }
-  }, [accounts]);
-
-  const handleAddAccount = (newAccount) => {
-    setAccounts(prevAccounts => [...prevAccounts, newAccount]);
+  // Function to get all children of an account (recursive)
+  const getAllChildren = (parentCode, accountsList = accounts) => {
+    const directChildren = accountsList.filter(acc => acc.parentCode === parentCode);
+    let allChildren = [...directChildren];
+    
+    directChildren.forEach(child => {
+      allChildren = [...allChildren, ...getAllChildren(child.code, accountsList)];
+    });
+    
+    return allChildren;
   };
 
-  // Update this function to open details modal instead of edit modal directly
+  const handleAddAccount = (newAccount) => {
+    const accountWithId = {
+      ...newAccount,
+      id: Date.now().toString()
+    };
+    const updatedAccounts = [...accounts, accountWithId];
+    setAccounts(updatedAccounts);
+    saveToLocalStorage(updatedAccounts);
+  };
+
   const handleAccountClick = (account) => {
     setSelectedAccount(account);
     setIsDetailsModalOpen(true);
   };
 
-  // Add this function to handle edit from details modal
   const handleEditFromDetails = (account) => {
     setEditingAccount(account);
     setIsEditModalOpen(true);
-    setIsDetailsModalOpen(false); // Close details modal
+    setIsDetailsModalOpen(false);
   };
 
-  // Add this function to handle delete
   const handleDeleteAccount = (accountId) => {
-    setAccounts(prevAccounts => 
-      prevAccounts.filter(account => account.id !== accountId)
-    );
+    const accountToDelete = accounts.find(acc => acc.id === accountId);
+    if (!accountToDelete) return;
+
+    // Confirm deletion with user
+    const confirmMessage = accountToDelete.type === 'ROOT' || accountToDelete.type === 'FOLDER' 
+      ? `Are you sure you want to delete "${accountToDelete.code} - ${accountToDelete.name}"?\n\nThis will also delete ALL accounts under this ${accountToDelete.type.toLowerCase()}.`
+      : `Are you sure you want to delete "${accountToDelete.code} - ${accountToDelete.name}"?`;
+    
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) return;
+
+    // Get all children that need to be deleted
+    const childrenToDelete = getAllChildren(accountToDelete.code);
+    const idsToDelete = [accountId, ...childrenToDelete.map(child => child.id)];
+    
+    // Filter out the account and all its children
+    const updatedAccounts = accounts.filter(account => !idsToDelete.includes(account.id));
+    setAccounts(updatedAccounts);
+    saveToLocalStorage(updatedAccounts);
+    
+    // Close details modal if open
+    if (isDetailsModalOpen) {
+      setIsDetailsModalOpen(false);
+      setSelectedAccount(null);
+    }
   };
 
-  // Add this function to handle account update
   const handleUpdateAccount = (updatedAccount) => {
-    setAccounts(prevAccounts => 
-      prevAccounts.map(account => 
-        account.id === updatedAccount.id ? updatedAccount : account
-      )
+    const updatedAccounts = accounts.map(account => 
+      account.id === updatedAccount.id ? updatedAccount : account
     );
+    setAccounts(updatedAccounts);
+    saveToLocalStorage(updatedAccounts);
   };
 
   const openAddModal = () => {
@@ -118,13 +174,11 @@ const ChartOfAccountsDashboard = () => {
     setIsAddModalOpen(false);
   };
 
-  // Add this function to close details modal
   const closeDetailsModal = () => {
     setIsDetailsModalOpen(false);
     setSelectedAccount(null);
   };
 
-  // Update this function to close edit modal
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setEditingAccount(null);
@@ -145,7 +199,7 @@ const ChartOfAccountsDashboard = () => {
           accounts={accounts}
           searchTerm={searchTerm}
           selectedFilter={selectedFilter}
-          onAccountClick={handleAccountClick} // Change prop name to onAccountClick
+          onAccountClick={handleAccountClick}
         />
         
         <AddAccountModal
@@ -155,7 +209,6 @@ const ChartOfAccountsDashboard = () => {
           accounts={accounts}
         />
 
-        {/* Add the AccountDetailsModal */}
         <AccountDetailsModal
           isOpen={isDetailsModalOpen}
           onClose={closeDetailsModal}
@@ -165,7 +218,6 @@ const ChartOfAccountsDashboard = () => {
           onDelete={handleDeleteAccount}
         />
 
-        {/* Add the EditAccountModal */}
         <EditAccountModal
           isOpen={isEditModalOpen}
           onClose={closeEditModal}

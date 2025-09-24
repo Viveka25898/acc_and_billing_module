@@ -1,7 +1,7 @@
 const StatsCards = ({ accounts }) => {
   const totalAccounts = accounts.length;
-  const rootAccounts = accounts.filter(acc => !acc.parentAccount || acc.parentAccount === 'No Parent (Root Level)').length;
-  const folderAccounts = accounts.filter(acc => acc.type === 'Folder').length;
+  const rootAccounts = accounts.filter(acc => acc.type === 'ROOT').length;
+  const folderAccounts = accounts.filter(acc => acc.type === 'FOLDER').length;
   const accountsCount = accounts.filter(acc => acc.type === 'Account').length;
 
   const stats = [
@@ -26,4 +26,5 @@ const StatsCards = ({ accounts }) => {
     </div>
   );
 };
-export default StatsCards
+
+export default StatsCards;

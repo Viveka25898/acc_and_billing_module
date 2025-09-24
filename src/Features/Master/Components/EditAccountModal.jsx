@@ -5,8 +5,9 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
   const [formData, setFormData] = useState({
     accountCode: '',
     accountName: '',
-    accountType: 'Folder',
-    parentAccount: 'No Parent (Root Level)'
+    accountType: 'FOLDER',
+    parentAccount: 'No Parent (Root Level)',
+    parentCode: null
   });
 
   const [errors, setErrors] = useState({});
@@ -18,17 +19,38 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
         accountCode: editingAccount.code,
         accountName: editingAccount.name,
         accountType: editingAccount.type,
-        parentAccount: editingAccount.parentAccount || 'No Parent (Root Level)'
+        parentAccount: editingAccount.parentAccount || 'No Parent (Root Level)',
+        parentCode: editingAccount.parentCode || null
       });
     }
   }, [editingAccount]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name === 'parentAccount') {
+      if (value === 'No Parent (Root Level)') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          parentCode: null
+        }));
+      } else {
+        // Find the selected parent account to get its code and name
+        const selectedParent = accounts.find(acc => `${acc.code} - ${acc.name}` === value);
+        setFormData(prev => ({
+          ...prev,
+          [name]: selectedParent ? selectedParent.name : value,
+          parentCode: selectedParent ? selectedParent.code : null
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+    
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -53,7 +75,8 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
     }
 
     // Check if trying to set itself as parent
-    if (formData.parentAccount === formData.accountCode.trim()) {
+    const selectedParent = accounts.find(acc => `${acc.code} - ${acc.name}` === formData.parentAccount);
+    if (selectedParent && selectedParent.code === editingAccount?.code) {
       newErrors.parentAccount = 'Account cannot be its own parent';
     }
 
@@ -62,14 +85,14 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
       const checkCircularReference = (parentCode, originalCode) => {
         const parent = accounts.find(acc => acc.code === parentCode);
         if (!parent) return false;
-        if (parent.parentAccount === originalCode) return true;
-        if (parent.parentAccount && parent.parentAccount !== 'No Parent (Root Level)') {
-          return checkCircularReference(parent.parentAccount, originalCode);
+        if (parent.parentCode === originalCode) return true;
+        if (parent.parentCode && parent.parentCode !== null) {
+          return checkCircularReference(parent.parentCode, originalCode);
         }
         return false;
       };
 
-      if (checkCircularReference(formData.parentAccount, editingAccount?.code)) {
+      if (formData.parentCode && checkCircularReference(formData.parentCode, editingAccount?.code)) {
         newErrors.parentAccount = 'This would create a circular reference';
       }
     }
@@ -86,7 +109,8 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
         code: formData.accountCode.trim(),
         name: formData.accountName.trim(),
         type: formData.accountType,
-        parentAccount: formData.parentAccount === 'No Parent (Root Level)' ? null : formData.parentAccount
+        parentAccount: formData.parentAccount === 'No Parent (Root Level)' ? null : formData.parentAccount,
+        parentCode: formData.parentCode
       };
       onSubmit(updatedAccount);
       setErrors({});
@@ -101,22 +125,56 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
 
   if (!isOpen || !editingAccount) return null;
 
-  // Get available parent accounts (only folders, excluding the current account and its children)
-  const getAccountChildren = (accountCode) => {
-    const children = accounts.filter(acc => acc.parentAccount === accountCode);
-    let allChildren = [...children];
-    children.forEach(child => {
-      allChildren = [...allChildren, ...getAccountChildren(child.code)];
-    });
-    return allChildren;
+  // Get available parent accounts based on the current account type
+  const getAvailableParents = () => {
+    if (!editingAccount) return [];
+    
+    // Get accounts that this account and its children cannot be parents of
+    const getAccountChildren = (accountCode) => {
+      const children = accounts.filter(acc => acc.parentCode === accountCode);
+      let allChildren = [...children];
+      children.forEach(child => {
+        allChildren = [...allChildren, ...getAccountChildren(child.code)];
+      });
+      return allChildren;
+    };
+
+    const childrenCodes = getAccountChildren(editingAccount.code).map(child => child.code);
+    
+    let availableParents = [];
+    
+    if (editingAccount.type === 'ROOT') {
+      // ROOT accounts cannot have parents
+      availableParents = [];
+    } else if (editingAccount.type === 'FOLDER') {
+      // FOLDER accounts can have ROOT or other FOLDER parents
+      availableParents = accounts.filter(acc => 
+        (acc.type === 'ROOT' || acc.type === 'FOLDER') && 
+        acc.code !== editingAccount.code && 
+        !childrenCodes.includes(acc.code)
+      );
+    } else if (editingAccount.type === 'Account') {
+      // Account type can have ROOT or FOLDER parents
+      availableParents = accounts.filter(acc => 
+        (acc.type === 'ROOT' || acc.type === 'FOLDER') && 
+        acc.code !== editingAccount.code && 
+        !childrenCodes.includes(acc.code)
+      );
+    }
+    
+    return availableParents;
   };
 
-  const childrenCodes = getAccountChildren(editingAccount.code).map(child => child.code);
-  const availableParents = accounts.filter(acc => 
-    acc.type === 'Folder' && 
-    acc.code !== editingAccount.code && 
-    !childrenCodes.includes(acc.code)
-  );
+  const availableParents = getAvailableParents();
+
+  // Sort parents hierarchically for better display
+  const sortParentsHierarchically = (parentAccounts) => {
+    const roots = parentAccounts.filter(acc => acc.type === 'ROOT').sort((a, b) => a.code.localeCompare(b.code));
+    const folders = parentAccounts.filter(acc => acc.type === 'FOLDER').sort((a, b) => a.code.localeCompare(b.code));
+    return [...roots, ...folders];
+  };
+
+  const sortedParents = sortParentsHierarchically(availableParents);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -136,20 +194,15 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Account Code
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                name="accountCode"
-                value={formData.accountCode}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${
-                  errors.accountCode ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              <span className="absolute left-2 top-1 bg-emerald-100 text-emerald-800 text-xs px-1 rounded">
-                {editingAccount.code}
-              </span>
-            </div>
+            <input
+              type="text"
+              name="accountCode"
+              value={formData.accountCode}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${
+                errors.accountCode ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
             {errors.accountCode && (
               <p className="text-red-500 text-sm mt-1">{errors.accountCode}</p>
             )}
@@ -183,9 +236,15 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
             >
-              <option value="Folder">Folder</option>
-              <option value="Account">Account</option>
+              <option value="ROOT">Root (Main Category)</option>
+              <option value="FOLDER">Folder (Sub Category)</option>
+              <option value="Account">Account (Final Account)</option>
             </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.accountType === 'ROOT' && 'Main categories like ASSETS, LIABILITIES, etc.'}
+              {formData.accountType === 'FOLDER' && 'Sub-categories that can contain other accounts'}
+              {formData.accountType === 'Account' && 'Final accounts for transactions'}
+            </p>
           </div>
           
           <div>
@@ -194,21 +253,37 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
             </label>
             <select
               name="parentAccount"
-              value={formData.parentAccount}
+              value={formData.parentAccount === null ? 'No Parent (Root Level)' : 
+                     sortedParents.find(p => p.name === formData.parentAccount) ? 
+                     `${sortedParents.find(p => p.name === formData.parentAccount).code} - ${formData.parentAccount}` : 
+                     'No Parent (Root Level)'}
               onChange={handleInputChange}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white ${
                 errors.parentAccount ? 'border-red-500' : 'border-gray-300'
               }`}
+              disabled={editingAccount.type === 'ROOT'}
             >
-              <option value="No Parent (Root Level)">No Parent (Root Level)</option>
-              {availableParents.map(parent => (
-                <option key={parent.id} value={parent.code}>
-                  {parent.code} - {parent.name}
+              {editingAccount.type !== 'ROOT' && (
+                <option value="No Parent (Root Level)">No Parent (Root Level)</option>
+              )}
+              {sortedParents.map(parent => (
+                <option key={parent.id} value={`${parent.code} - ${parent.name}`}>
+                  {parent.type === 'ROOT' ? '🏛️' : '📁'} {parent.code} - {parent.name}
                 </option>
               ))}
             </select>
             {errors.parentAccount && (
               <p className="text-red-500 text-sm mt-1">{errors.parentAccount}</p>
+            )}
+            {editingAccount.type === 'ROOT' && (
+              <p className="text-xs text-gray-500 mt-1">
+                Root accounts cannot have parent accounts
+              </p>
+            )}
+            {editingAccount.type !== 'ROOT' && (
+              <p className="text-xs text-gray-500 mt-1">
+                Select the parent category where this account should be placed
+              </p>
             )}
           </div>
           
@@ -232,4 +307,5 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
     </div>
   );
 };
-export default EditAccountModal
+
+export default EditAccountModal;

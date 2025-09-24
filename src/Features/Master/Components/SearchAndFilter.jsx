@@ -2,10 +2,10 @@ import { FiFilter, FiSearch } from "react-icons/fi";
 
 const SearchAndFilter = ({ searchTerm, setSearchTerm, selectedFilter, setSelectedFilter }) => {
   const filterOptions = [
-    { value: 'all', label: 'All Levels' },
-    { value: 'root', label: 'Root Level' },
-    { value: 'folders', label: 'Folders Only' },
-    { value: 'accounts', label: 'Accounts Only' }
+    { value: 'all', label: 'All Levels', icon: '📋' },
+    { value: 'root', label: 'Root Level', icon: '🏛️' },
+    { value: 'folders', label: 'Folders Only', icon: '📁' },
+    { value: 'accounts', label: 'Accounts Only', icon: '📄' }
   ];
 
   return (
@@ -33,17 +33,34 @@ const SearchAndFilter = ({ searchTerm, setSearchTerm, selectedFilter, setSelecte
             >
               {filterOptions.map(option => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {option.icon} {option.label}
                 </option>
               ))}
             </select>
           </div>
           <span className="text-sm text-gray-500">
-            My List
+            Chart of Accounts
           </span>
         </div>
+      </div>
+      
+      {/* Filter Description */}
+      <div className="mt-3 text-sm text-gray-600">
+        {selectedFilter === 'all' && (
+          <span>📋 Showing all account types in hierarchical order</span>
+        )}
+        {selectedFilter === 'root' && (
+          <span>🏛️ Showing only root categories (ASSETS, SOURCES OF FUNDS, INCOME, EXPENSES)</span>
+        )}
+        {selectedFilter === 'folders' && (
+          <span>📁 Showing only folder categories that can contain other accounts</span>
+        )}
+        {selectedFilter === 'accounts' && (
+          <span>📄 Showing only final accounts used for transactions</span>
+        )}
       </div>
     </div>
   );
 };
-export default SearchAndFilter
+
+export default SearchAndFilter;
