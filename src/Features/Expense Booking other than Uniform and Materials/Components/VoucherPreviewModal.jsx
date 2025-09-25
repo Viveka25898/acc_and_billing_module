@@ -4,7 +4,7 @@ import React from "react";
 const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
   // Set default values if invoice data is not provided
   const header = {
-    company: "ABC Enterprises",
+    company: "iSmart",
     voucherNo: `JV-2025-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
     financialYear: "2025-26",
     date: new Date().toISOString().split('T')[0],

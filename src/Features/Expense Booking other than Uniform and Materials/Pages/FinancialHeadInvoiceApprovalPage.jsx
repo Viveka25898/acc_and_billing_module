@@ -1,10 +1,10 @@
-
-
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import { FaEye } from "react-icons/fa";
 import ViewInvoiceModal from "../Components/ViewInvoiceModal";
 import RejectInvoiceModal from "../Components/RejectInvoiceModal";
-import VoucherPreviewModal from "../Components/VoucherPreviewModal";
+import VoucherPreviewModal from "../Components/VoucherPreviewModal"; // JV Modal
+import ExpenseVoucherModal from "../Components/ExpenseVoucherModal";
 
 
 const dummyInvoices = Array.from({ length: 10 }, (_, i) => ({
@@ -17,6 +17,11 @@ const dummyInvoices = Array.from({ length: 10 }, (_, i) => ({
   status: "pending",
   managerApproval: "approved",
   documentUrl: "/public/invoice.pdf",
+  // Add expense type to differentiate
+  expenseType: i % 3 === 0 ? "Professional Fees" : i % 3 === 1 ? "Office Maintenance" : "Consultancy",
+  // Add some additional fields for expense voucher
+  department: "Operations",
+  costCenter: "GENERAL"
 }));
 
 export default function FinancialHeadInvoiceApprovalPage() {
@@ -26,26 +31,203 @@ export default function FinancialHeadInvoiceApprovalPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewInvoice, setViewInvoice] = useState(null);
   const [rejectInvoice, setRejectInvoice] = useState(null);
-  const [voucherPreview, setVoucherPreview] = useState(null);
+  
+  // Separate states for both voucher modals
+  const [expenseVoucherData, setExpenseVoucherData] = useState(null);
+  const [jvVoucherData, setJvVoucherData] = useState(null);
+  const [showExpenseVoucher, setShowExpenseVoucher] = useState(false);
+  const [showJVVoucher, setShowJVVoucher] = useState(false);
+  
   const itemsPerPage = 5;
 
+  // Prepare Expense Voucher Data with corrected logic
+  const prepareExpenseVoucherData = (invoice) => {
+    const tdsRate = 10; // You can make this dynamic based on expense type
+    const invoiceAmount = invoice.amount || 0;
+    const tdsAmount = Math.round((invoiceAmount * tdsRate) / 100);
+    const payableAmount = invoiceAmount - tdsAmount;
+
+    return {
+      header: {
+        company: "iSmart",
+        voucherNo: `EXP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+        financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+        date: new Date().toISOString().split('T')[0],
+        reference: `${invoice.poNo}/${invoice.invoiceNo}`,
+        preparedBy: "Finance Head",
+        expenseType: invoice.expenseType || "General Expense",
+        department: invoice.department || "Operations"
+      },
+      
+      // Vendor details adapted for expense voucher structure
+     vendorDetails: {
+      vendorId: `VND-${invoice.id}`,
+      vendorName: invoice.vendorName,
+      vendorType: "External Vendor",
+      department: "External Services",
+      poNumber: invoice.poNo,
+      invoiceNumber: invoice.invoiceNo,
+      submissionDate: new Date().toISOString().split('T')[0],
+      approvalDate: new Date().toISOString().split('T')[0]
+    },
+      // Expense details adapted for vendor invoice
+      conveyanceDetails: [{
+        id: 1,
+        date: new Date().toISOString().split('T')[0],
+        clientName: "ABC Enterprises", // Internal company
+        fromLocation: "Vendor",
+        toLocation: "Company",
+        purpose: invoice.expenseType || "Professional Services",
+        transport: "Invoice Payment", // Adapted field
+        distance: "N/A",
+        amount: invoiceAmount,
+        billAttached: "Yes"
+      }],
+
+      // Corrected accounting entries for vendor invoice (3 entries only)
+      entries: [
+        {
+          id: 1,
+          particulars: `${invoice.expenseType} Expense`,
+          gl: "5000", // Expense GL code
+          costCenter: invoice.costCenter || "GENERAL",
+          debit: invoiceAmount,
+          credit: 0,
+          note: `Invoice: ${invoice.invoiceNo}, Vendor: ${invoice.vendorName}`,
+        },
+        {
+          id: 2,
+          particulars: `Vendor Payable - ${invoice.vendorName}`,
+          gl: "2000", // Vendor payable GL
+          costCenter: "",
+          debit: 0,
+          credit: payableAmount,
+          note: `Net amount payable after TDS deduction`,
+        },
+        {
+          id: 3,
+          particulars: "TDS Payable",
+          gl: "2100", // TDS payable GL
+          costCenter: "",
+          debit: 0,
+          credit: tdsAmount,
+          note: `TDS liability to government @ ${tdsRate}%`,
+        }
+      ],
+
+      approvals: {
+        preparer: "Finance Head",
+        reviewer: "Approved",
+        approver: "Completed",
+        date: new Date().toISOString().split('T')[0]
+      }
+    };
+  };
+
+  // Prepare JV Data for TDS effect with corrected logic
+  const prepareJVData = (invoice) => {
+    const tdsRate = 10;
+    const invoiceAmount = invoice.amount || 0;
+    const tdsAmount = Math.round((invoiceAmount * tdsRate) / 100);
+
+    return {
+      header: {
+        company: "ABC Enterprises",
+        voucherNo: `JV-TDS-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+        financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+        date: new Date().toISOString().split('T')[0],
+        reference: `TDS Effect for ${invoice.invoiceNo}`,
+        preparedBy: "Finance Head"
+      },
+      entries: [
+        {
+          id: 1,
+          particulars: "TDS Receivable",
+          gl: "1200", // TDS Receivable from vendor
+          costCenter: "",
+          debit: tdsAmount,
+          credit: 0,
+          note: `TDS @ ${tdsRate}% on Invoice ${invoice.invoiceNo} - ${invoice.vendorName}`,
+        },
+        {
+          id: 2,
+          particulars: "TDS Payable to Government",
+          gl: "2100", // TDS Payable to government
+          costCenter: "",
+          debit: 0,
+          credit: tdsAmount,
+          note: `TDS liability for ${invoice.vendorName} - Invoice ${invoice.invoiceNo}`,
+        }
+      ],
+      narration: `TDS effect entry for Invoice ${invoice.invoiceNo} from ${invoice.vendorName}. TDS @ ${tdsRate}% = ₹${tdsAmount.toFixed(2)} deducted and liability created for government payment.`,
+      approvals: {
+        preparer: "Finance Head",
+        reviewer: "Auto Generated",
+        approver: "System",
+        date: new Date().toISOString().split('T')[0]
+      },
+      // Add invoice details for display
+      invoiceNo: invoice.invoiceNo,
+      vendorName: invoice.vendorName,
+      amount: invoiceAmount,
+      poNo: invoice.poNo
+    };
+  };
+
   const handleApprove = (id) => {
-  const updatedInvoices = invoices.map((inv) =>
-    inv.id === id ? { ...inv, status: "Approved" } : inv
-  );
-  setInvoices(updatedInvoices);
+    const updatedInvoices = invoices.map((inv) =>
+      inv.id === id ? { ...inv, status: "approved" } : inv
+    );
+    setInvoices(updatedInvoices);
 
-  // Open Voucher Modal for the approved invoice
-  const approvedInvoice = updatedInvoices.find((inv) => inv.id === id);
-  setVoucherPreview(approvedInvoice);
-};
+    // Get the approved invoice
+    const approvedInvoice = updatedInvoices.find((inv) => inv.id === id);
+    
+    // Prepare both voucher data
+    const expenseData = prepareExpenseVoucherData(approvedInvoice);
+    const jvData = prepareJVData(approvedInvoice);
+    
+    // Set both data and show expense voucher first
+    setExpenseVoucherData(expenseData);
+    setJvVoucherData(jvData);
+    setShowExpenseVoucher(true);
+  };
 
+  // Handle closing expense voucher and showing JV automatically
+  const handleExpenseVoucherClose = () => {
+    setShowExpenseVoucher(false);
+    setExpenseVoucherData(null);
+    
+    // Automatically show JV modal after expense voucher closes
+    setTimeout(() => {
+      setShowJVVoucher(true);
+    }, 300);
+  };
+
+  // Handle closing JV voucher
+  const handleJVVoucherClose = () => {
+    setShowJVVoucher(false);
+    setJvVoucherData(null);
+  };
+
+  // Handle manual voucher view (for already approved invoices)
+  const handleViewVoucher = (invoice, voucherType) => {
+    if (voucherType === 'expense') {
+      const expenseData = prepareExpenseVoucherData(invoice);
+      setExpenseVoucherData(expenseData);
+      setShowExpenseVoucher(true);
+    } else if (voucherType === 'jv') {
+      const jvData = prepareJVData(invoice);
+      setJvVoucherData(jvData);
+      setShowJVVoucher(true);
+    }
+  };
 
   const handleReject = (id, reason) => {
     setInvoices((prev) =>
       prev.map((inv) =>
         inv.id === id
-          ? { ...inv, status: "Rejected", rejectionReason: reason }
+          ? { ...inv, status: "rejected", rejectionReason: reason }
           : inv
       )
     );
@@ -114,7 +296,7 @@ export default function FinancialHeadInvoiceApprovalPage() {
               <th className="border p-2">Invoice No</th>
               <th className="border p-2">Vendor</th>
               <th className="border p-2">PO No</th>
-              <th className="border p-2">GSTIN</th>
+              <th className="border p-2">Expense Type</th>
               <th className="border p-2">Amount</th>
               <th className="border p-2">Manager Status</th>
               <th className="border p-2">Finance Status</th>
@@ -128,8 +310,8 @@ export default function FinancialHeadInvoiceApprovalPage() {
                 <td className="border p-2">{inv.invoiceNo}</td>
                 <td className="border p-2">{inv.vendorName}</td>
                 <td className="border p-2">{inv.poNo}</td>
-                <td className="border p-2">{inv.gstin}</td>
-                <td className="border p-2">₹{inv.amount}</td>
+                <td className="border p-2">{inv.expenseType}</td>
+                <td className="border p-2">₹{inv.amount.toLocaleString()}</td>
                 <td className="border p-2 text-green-700 font-semibold">Approved</td>
                 <td className="border p-2">
                   <span className={getStatusTag(inv.status)}>{inv.status}</span>
@@ -137,32 +319,45 @@ export default function FinancialHeadInvoiceApprovalPage() {
                 <td className="border p-2">
                   <FaEye
                     onClick={() => setViewInvoice(inv)}
-                    className="text-blue-600 cursor-pointer"
+                    className="text-blue-600 cursor-pointer mx-auto"
                   />
                 </td>
                 <td className="border p-2">
-                  <button
-                    disabled={inv.status !== "pending"}
-                    onClick={() => handleApprove(inv.id)}
-                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 mb-1"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    disabled={inv.status !== "pending"}
-                    onClick={() => setRejectInvoice(inv)}
-                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 disabled:opacity-50 mb-1"
-                  >
-                    Reject
-                  </button>
-                 {inv.status === "approved" && (
-                            <button
-                                onClick={() => setVoucherPreview(inv)}
-                                className="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 mt-1"
-                            >
-                                Voucher
-                            </button>
-                            )}
+                  <div className="flex flex-col gap-1">
+                    {inv.status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(inv.id)}
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => setRejectInvoice(inv)}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    
+                    {inv.status === "approved" && (
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => handleViewVoucher(inv, 'expense')}
+                          className="bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 text-xs"
+                        >
+                          Expense Voucher
+                        </button>
+                        <button
+                          onClick={() => handleViewVoucher(inv, 'jv')}
+                          className="bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700 text-xs"
+                        >
+                          TDS Journal
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -203,12 +398,21 @@ export default function FinancialHeadInvoiceApprovalPage() {
         />
       )}
 
-      {voucherPreview && (
-        <VoucherPreviewModal
-            invoice={voucherPreview}
-            onClose={() => setVoucherPreview(null)}
+      {/* Expense Voucher Modal */}
+      {showExpenseVoucher && expenseVoucherData && (
+        <ExpenseVoucherModal
+          data={expenseVoucherData}
+          onClose={handleExpenseVoucherClose}
         />
-)}
+      )}
+
+      {/* TDS Journal Voucher Modal */}
+      {showJVVoucher && jvVoucherData && (
+        <VoucherPreviewModal
+          invoice={jvVoucherData}
+          onClose={handleJVVoucherClose}
+        />
+      )}
     </div>
   );
 }
