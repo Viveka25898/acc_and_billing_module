@@ -23,10 +23,16 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
     if (!isOpen || !invoice) return null;
 
     const handleFinalApprove = () => {
-  handleUpdateInvoice(invoice.id, "Approved"); // Changed from "Final Approved" to "Approved"
-  onClose();
-  toast.success("Invoice approved successfully!");
-};
+        // For Procurement Prepaid, don't close modal immediately as it will trigger the prepaid period selection
+        if (invoice.type === "Procurement Prepaid") {
+            handleUpdateInvoice(invoice.id, "Approved");
+            toast.success("Opening prepaid period selection...");
+        } else {
+            handleUpdateInvoice(invoice.id, "Approved");
+            onClose();
+            toast.success("Invoice approved successfully!");
+        }
+    };
 
     const handleReject = () => {
         if (!remarks.trim()) {
@@ -56,7 +62,20 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
                         <h3 className="font-semibold text-green-800 mb-2">Account Executive Review</h3>
                         <p className="text-sm text-green-700">This invoice has been approved by the Account Executive</p>
                         <p className="text-xs text-gray-600 mt-1">Status: {invoice.status}</p>
+                        {invoice.type && (
+                            <p className="text-xs text-gray-600 mt-1">Type: <span className="font-medium">{invoice.type}</span></p>
+                        )}
                     </div>
+
+                    {/* Special notice for Procurement Prepaid */}
+                    {invoice.type === "Procurement Prepaid" && (
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <h3 className="font-semibold text-purple-800 mb-2">Procurement Prepaid Invoice</h3>
+                            <p className="text-sm text-purple-700">
+                                This is a prepaid expense invoice. After approval, you will need to select the prepaid period for amortization.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
@@ -173,9 +192,13 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
                             </button>
                             <button
                                 onClick={handleFinalApprove}
-                                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                                className={`px-4 py-2 rounded text-white ${
+                                    invoice.type === "Procurement Prepaid" 
+                                        ? "bg-purple-600 hover:bg-purple-700" 
+                                        : "bg-blue-600 hover:bg-blue-700"
+                                }`}
                             >
-                                Final Approve
+                                {invoice.type === "Procurement Prepaid" ? "Approve & Set Period" : "Final Approve"}
                             </button>
                         </>
                     ) : (

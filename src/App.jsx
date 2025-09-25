@@ -48,7 +48,10 @@ function App() {
            // Add Payroll Team User
           { username: "payroll1", role: "payroll-team", empId: "20", reportsTo: "ae1" },
           // Account Manager
-          { username: "am1", role: "account-manager", empId: "21", reportsTo: null},
+          { username: "am1", role: "account-manager", empId: "21", reportsTo: "bm1"},
+          //Billing Manager
+          { username: "bm1", role: "billing-manager", empId: "22", reportsTo: null},
+
         ];
 
         localStorage.setItem("users", JSON.stringify(users));

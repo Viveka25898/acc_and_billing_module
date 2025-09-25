@@ -1,198 +1,286 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import BillingManagerFilter from "../../Components/BillingManagerFilter";
 import BillingManagerModal from "../../Components/BillingManagerModal";
 import PurchaseVoucherModal from "../../Components/PurchaseVoucherModal";
 import JournalVoucherModal from "../../Components/JournalVoucherModal";
 import { toast } from "react-toastify";
 
-
- const dummyInvoices = [
-  {
-    id: 1,
-    invoiceNumber: "INV-101",
-    poNumber: "PO-789",
-    vendorName: "Alpha Traders",
-    totalAmount: 120000,
-    status: "Pending",
-    documentUrl: "https://example.com/invoice101.pdf",
-    poDocuments: [
-      { name: "PO-789", url: "https://example.com/po789.pdf" },
-      { name: "PO-790", url: "https://example.com/po790.pdf" }
-    ],
-    gstRate: 18,
-    hsnCode: "998314",
-    billingPeriod: "June 2025"
-  },
-  {
-    id: 2,
-    invoiceNumber: "INV-102",
-    poNumber: "PO-001",
-    vendorName: "BuildSmart Pvt Ltd",
-    totalAmount: 84000,
-    status: "Approved",
-    documentUrl: "https://example.com/invoice102.pdf",
-    poDocuments: [{ name: "PO-001", url: "https://example.com/po001.pdf" }],
-    gstRate: 18,
-    hsnCode: "998320",
-    billingPeriod: "May 2025"
-  },
-  {
-    id: 3,
-    invoiceNumber: "INV-103",
-    poNumber: "PO-002",
-    vendorName: "NextGen Solutions",
-    totalAmount: 58000,
-    status: "Rejected",
-    documentUrl: "https://example.com/invoice103.pdf",
-    poDocuments: [{ name: "PO-002", url: "https://example.com/po002.pdf" }],
-    gstRate: 12,
-    hsnCode: "847130",
-    billingPeriod: "April 2025"
-  },
-  {
-    id: 4,
-    invoiceNumber: "INV-104",
-    poNumber: "PO-003",
-    vendorName: "FastBuild Co.",
-    totalAmount: 96000,
-    status: "Pending",
-    documentUrl: "https://example.com/invoice104.pdf",
-    poDocuments: [{ name: "PO-003", url: "https://example.com/po003.pdf" }],
-    gstRate: 18,
-    hsnCode: "998714",
-    billingPeriod: "March 2025"
-  },
-  {
-    id: 5,
-    invoiceNumber: "INV-105",
-    poNumber: "PO-004",
-    vendorName: "Omega Traders",
-    totalAmount: 112000,
-    status: "Pending",
-    documentUrl: "https://example.com/invoice105.pdf",
-    poDocuments: [{ name: "PO-004", url: "https://example.com/po004.pdf" }],
-    gstRate: 5,
-    hsnCode: "998399",
-    billingPeriod: "February 2025"
-  },
-  {
-    id: 6,
-    invoiceNumber: "INV-106",
-    poNumber: "PO-005",
-    vendorName: "Sunrise Equipments",
-    totalAmount: 132000,
-    status: "Approved",
-    documentUrl: "https://example.com/invoice106.pdf",
-    poDocuments: [{ name: "PO-005", url: "https://example.com/po005.pdf" }],
-    gstRate: 18,
-    hsnCode: "998101",
-    billingPeriod: "January 2025"
-  },
-  {
-    id: 7,
-    invoiceNumber: "INV-107",
-    poNumber: "PO-006",
-    vendorName: "MicroTech India",
-    totalAmount: 76000,
-    status: "Pending",
-    documentUrl: "https://example.com/invoice107.pdf",
-    poDocuments: [{ name: "PO-006", url: "https://example.com/po006.pdf" }],
-    gstRate: 18,
-    hsnCode: "847149",
-    billingPeriod: "December 2024"
-  },
-  {
-    id: 8,
-    invoiceNumber: "INV-108",
-    poNumber: "PO-007",
-    vendorName: "Infratech Corp",
-    totalAmount: 145000,
-    status: "Pending",
-    documentUrl: "https://example.com/invoice108.pdf",
-    poDocuments: [{ name: "PO-007", url: "https://example.com/po007.pdf" }],
-    gstRate: 12,
-    hsnCode: "998727",
-    billingPeriod: "November 2024"
-  },
-  {
-    id: 9,
-    invoiceNumber: "INV-109",
-    poNumber: "PO-008",
-    vendorName: "Skyline Works",
-    totalAmount: 99000,
-    status: "Approved",
-    documentUrl: "https://example.com/invoice109.pdf",
-    poDocuments: [{ name: "PO-008", url: "https://example.com/po008.pdf" }],
-    gstRate: 18,
-    hsnCode: "998654",
-    billingPeriod: "October 2024"
-  },
-  {
-    id: 10,
-    invoiceNumber: "INV-110",
-    poNumber: "PO-009",
-    vendorName: "Vertex Systems",
-    totalAmount: 67000,
-    status: "Rejected",
-    documentUrl: "https://example.com/invoice110.pdf",
-    poDocuments: [{ name: "PO-009", url: "https://example.com/po009.pdf" }],
-    gstRate: 18,
-    hsnCode: "998989",
-    billingPeriod: "September 2024"
-  }
-];
-
 export default function BillingManagerApprovalPage() {
   const [filterText, setFilterText] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [invoices, setInvoices] = useState(dummyInvoices);
+  const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showJournalModal, setShowJournalModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-const itemsPerPage = 5;
+  const itemsPerPage = 5;
 
+  // Load Invoice Data from localStorage (AM Approved invoices for Procurement Prepaid)
+  const loadInvoiceData = () => {
+    try {
+      // Get invoices approved by Account Manager that are of type "Procurement Prepaid"
+      const processedInvoices = localStorage.getItem("processed_invoices");
+      const billingManagerQueue = localStorage.getItem("billing_manager_invoices");
+      
+      let invoicesToShow = [];
+      
+      // Get existing billing manager invoices
+      if (billingManagerQueue) {
+        invoicesToShow = JSON.parse(billingManagerQueue);
+      }
+      
+      // Check for new processed invoices that should come to billing manager
+      if (processedInvoices) {
+        const processed = JSON.parse(processedInvoices);
+        
+        // Filter for Procurement Prepaid type invoices that haven't been moved to BM queue yet
+        const newProcurementInvoices = processed.filter(inv => 
+          inv.type === "Procurement Prepaid" && 
+          !invoicesToShow.some(existing => existing.id === inv.id)
+        );
+        
+        // Add new procurement invoices to billing manager queue
+        if (newProcurementInvoices.length > 0) {
+          const updatedInvoices = newProcurementInvoices.map(inv => ({
+            ...inv,
+            billingManagerStatus: "Pending",
+            bmRemarks: "",
+            processedByBM: "",
+            processedAtBM: ""
+          }));
+          
+          invoicesToShow = [...invoicesToShow, ...updatedInvoices];
+          
+          // Save updated billing manager queue
+          localStorage.setItem("billing_manager_invoices", JSON.stringify(invoicesToShow));
+        }
+      }
+      
+      setInvoices(invoicesToShow);
+      
+    } catch (error) {
+      console.error("Error loading BM invoice data:", error);
+      setInvoices([]);
+    }
+  };
 
+  // Load data on component mount
+  useEffect(() => {
+    loadInvoiceData();
+  }, []);
+
+  // Auto-refresh to check for new AM approvals
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadInvoiceData();
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh data from localStorage
+  const refreshData = () => {
+    loadInvoiceData();
+    toast.success("Data refreshed from localStorage!");
+  };
+
+  // Clear processed invoices (for demo purposes)
+  const clearBillingQueue = () => {
+    if (window.confirm("Clear all billing manager queue?")) {
+      localStorage.setItem("billing_manager_invoices", JSON.stringify([]));
+      setInvoices([]);
+      toast.info("Billing Manager queue cleared!");
+    }
+  };
+
+  // View processed invoices summary
+  const viewProcessedSummary = () => {
+    const processedInvoices = JSON.parse(localStorage.getItem("processed_invoices") || "[]");
+    const billingManagerInvoices = JSON.parse(localStorage.getItem("billing_manager_invoices") || "[]");
+    const finalProcessed = JSON.parse(localStorage.getItem("final_processed_invoices") || "[]");
+    const rejectedInvoices = JSON.parse(localStorage.getItem("rejected_invoices") || "[]");
+    
+    const summary = `
+Invoice Processing Summary:
+- Total AM Processed: ${processedInvoices.length}
+- Pending BM Approval: ${billingManagerInvoices.filter(inv => inv.billingManagerStatus === "Pending").length}
+- Final Processed: ${finalProcessed.length}
+- Total Rejected: ${rejectedInvoices.length}
+    `;
+    
+    alert(summary);
+  };
 
   const filteredInvoices = invoices.filter((inv) => {
     const textMatch =
       inv.invoiceNumber.toLowerCase().includes(filterText.toLowerCase()) ||
-      inv.poNumber?.toLowerCase().includes(filterText.toLowerCase());
+      inv.vendorName?.toLowerCase().includes(filterText.toLowerCase());
 
     const statusMatch =
-      !statusFilter || inv.status.toLowerCase() === statusFilter.toLowerCase();
+      !statusFilter || 
+      (statusFilter === "Pending" && inv.billingManagerStatus === "Pending") ||
+      (statusFilter === "Approved" && inv.billingManagerStatus === "Approved") ||
+      (statusFilter === "Rejected" && inv.billingManagerStatus === "Rejected");
 
     return textMatch && statusMatch;
   });
-//   Pagination 
+
+  // Pagination 
   const paginatedInvoices = filteredInvoices.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
-    );
-    const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
-
+  );
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
 
   const handleApprove = (id) => {
-    const updated = invoices.map((inv) =>
-      inv.id === id ? { ...inv, status: "Approved", approved: true } : inv
-    );
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const timestamp = new Date().toISOString();
+
+    // Update local state first
+    const updated = invoices.map((inv) => {
+      if (inv.id === id) {
+        return {
+          ...inv,
+          billingManagerStatus: "Approved",
+          bmRemarks: "Approved for Purchase and Journal Entry",
+          processedByBM: currentUser.username || "bm1",
+          processedAtBM: timestamp,
+          approved: true
+        };
+      }
+      return inv;
+    });
+    
     setInvoices(updated);
     setIsModalOpen(false);
+
+    // Update localStorage
+    const billingManagerInvoices = JSON.parse(localStorage.getItem("billing_manager_invoices") || "[]");
+    const updatedBMInvoices = billingManagerInvoices.map(inv => {
+      if (inv.id === id) {
+        return {
+          ...inv,
+          billingManagerStatus: "Approved",
+          bmRemarks: "Approved for Purchase and Journal Entry",
+          processedByBM: currentUser.username || "bm1",
+          processedAtBM: timestamp,
+          approved: true
+        };
+      }
+      return inv;
+    });
+
+    localStorage.setItem("billing_manager_invoices", JSON.stringify(updatedBMInvoices));
+
+    // Find the approved invoice for final processing
+    const approvedInvoice = updatedBMInvoices.find(inv => inv.id === id);
+    
+    if (approvedInvoice) {
+      // Move to final processed queue
+      const finalProcessed = JSON.parse(localStorage.getItem("final_processed_invoices") || "[]");
+      const finalInvoice = {
+        ...approvedInvoice,
+        finalStatus: "Completed - Vouchers Created",
+        completedAt: timestamp
+      };
+      
+      const updatedFinalProcessed = [...finalProcessed, finalInvoice];
+      localStorage.setItem("final_processed_invoices", JSON.stringify(updatedFinalProcessed));
+      
+      toast.success(`Invoice ${approvedInvoice.invoiceNumber} approved! Purchase and Journal vouchers will be created.`);
+    }
   };
 
   const handleReject = (id) => {
-    const updated = invoices.map((inv) =>
-      inv.id === id ? { ...inv, status: "Rejected", approved: true } : inv
-    );
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const timestamp = new Date().toISOString();
+
+    // Update local state first
+    const updated = invoices.map((inv) => {
+      if (inv.id === id) {
+        return {
+          ...inv,
+          billingManagerStatus: "Rejected",
+          bmRemarks: "Rejected by Billing Manager",
+          processedByBM: currentUser.username || "bm1",
+          processedAtBM: timestamp,
+          approved: true
+        };
+      }
+      return inv;
+    });
+    
     setInvoices(updated);
     setIsModalOpen(false);
+
+    // Update localStorage
+    const billingManagerInvoices = JSON.parse(localStorage.getItem("billing_manager_invoices") || "[]");
+    const updatedBMInvoices = billingManagerInvoices.map(inv => {
+      if (inv.id === id) {
+        return {
+          ...inv,
+          billingManagerStatus: "Rejected",
+          bmRemarks: "Rejected by Billing Manager",
+          processedByBM: currentUser.username || "bm1",
+          processedAtBM: timestamp,
+          approved: true
+        };
+      }
+      return inv;
+    });
+
+    localStorage.setItem("billing_manager_invoices", JSON.stringify(updatedBMInvoices));
+
+    // Move to rejected queue
+    const rejectedInvoices = JSON.parse(localStorage.getItem("rejected_invoices") || "[]");
+    const rejectedInvoice = updatedBMInvoices.find(inv => inv.id === id);
+    
+    if (rejectedInvoice) {
+      const updatedRejected = [...rejectedInvoices, {
+        ...rejectedInvoice,
+        finalStatus: "Rejected by Billing Manager",
+        rejectedAtBM: timestamp
+      }];
+      localStorage.setItem("rejected_invoices", JSON.stringify(updatedRejected));
+      
+      toast.error(`Invoice ${rejectedInvoice.invoiceNumber} rejected by Billing Manager.`);
+    }
   };
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto bg-white shadow-md rounded-md">
-      <h1 className="text-2xl md:text-2xl font-bold mb-4 text-green-600">Final Invoice Approval</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl md:text-2xl font-bold text-green-600">
+          Final Invoice Approval (Billing Manager)
+        </h1>
+        
+        {/* Control Buttons for Demo/Development */}
+        <div className="flex gap-2">
+          <button
+            onClick={refreshData}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+            title="Refresh data from localStorage"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={viewProcessedSummary}
+            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+            title="View processing summary"
+          >
+            Summary
+          </button>
+          <button
+            onClick={clearBillingQueue}
+            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+            title="Clear billing queue"
+          >
+            Clear Queue
+          </button>
+        </div>
+      </div>
 
       <BillingManagerFilter
         filterText={filterText}
@@ -209,66 +297,94 @@ const itemsPerPage = 5;
               <th className="p-3 border">Invoice #</th>
               <th className="p-3 border">Vendor</th>
               <th className="p-3 border">Amount (₹)</th>
+              <th className="p-3 border">Type</th>
               <th className="p-3 border">Status</th>
               <th className="p-3 border text-center">Action</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedInvoices.map((inv, i) => (
-              <tr key={inv.id} className="hover:bg-gray-50">
-                <td className="p-3 border">{i + 1}</td>
-                <td className="p-3 border">{inv.invoiceNumber}</td>
-                <td className="p-3 border">{inv.vendorName}</td>
-                <td className="p-3 border">₹{inv.totalAmount.toLocaleString()}</td>
-               <td className="p-3 border">
-                  {inv.status}
-                  {inv.status === "Approved" && (
-                    <div className="mt-1 space-x-2">
-                      <button
-                        className="bg-green-500 text-white text-xs px-2 py-1 rounded cursor-pointer"
-                        onClick={() => {
-                          setSelectedInvoice(inv);
-                          setShowPurchaseModal(true);
-                          toast.success("Purchase Entry Created!")
-                        }}
-                      >
-                        View Purchase Voucher
-                      </button>
-                      <button
-                        className="bg-blue-500 text-white text-xs px-2 py-1 rounded cursor-pointer"
-                        onClick={() => {
-                          setSelectedInvoice(inv);
-                          setShowJournalModal(true);
-                          toast.success("Prepaid Expense Entry Created!")
-                        }}
-                      >
-                        View Journal Voucher
-                      </button>
-                    </div>
-                  )}
-                </td>
-                <td className="p-3 border text-center">
-                  <button
-                    onClick={() => {
-                      setSelectedInvoice(inv);
-                      setIsModalOpen(true);
-                    }}
-                    disabled={inv.status !== "Pending"}
-                    className={`px-3 py-1.5 rounded text-white text-sm ${
-                      inv.status !== "Pending"
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700"
-                    }`}
-                  >
-                    View
-                  </button>
+            {paginatedInvoices.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="p-4 text-center text-gray-500">
+                  No Procurement Prepaid invoices pending approval.
+                  <br />
+                  <span className="text-xs">Invoices will appear here after Account Manager approval.</span>
                 </td>
               </tr>
-            ))}
+            ) : (
+              paginatedInvoices.map((inv, i) => (
+                <tr key={inv.id} className="hover:bg-gray-50">
+                  <td className="p-3 border">{(currentPage - 1) * itemsPerPage + i + 1}</td>
+                  <td className="p-3 border">{inv.invoiceNumber}</td>
+                  <td className="p-3 border">{inv.vendorName}</td>
+                  <td className="p-3 border">₹{inv.totalAmount.toLocaleString()}</td>
+                  <td className="p-3 border">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                      {inv.type || "Procurement Prepaid"}
+                    </span>
+                  </td>
+                  <td className="p-3 border">
+                    {inv.billingManagerStatus === "Pending" && (
+                      <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs">
+                        Pending BM Approval
+                      </span>
+                    )}
+                    {inv.billingManagerStatus === "Approved" && (
+                      <div>
+                        <span className="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">
+                          Approved
+                        </span>
+                        <div className="mt-1 space-x-2">
+                          <button
+                            className="bg-green-500 text-white text-xs px-2 py-1 rounded cursor-pointer"
+                            onClick={() => {
+                              setSelectedInvoice(inv);
+                              setShowPurchaseModal(true);
+                              toast.success("Purchase Entry Created!")
+                            }}
+                          >
+                            View Purchase Voucher
+                          </button>
+                          <button
+                            className="bg-blue-500 text-white text-xs px-2 py-1 rounded cursor-pointer"
+                            onClick={() => {
+                              setSelectedInvoice(inv);
+                              setShowJournalModal(true);
+                              toast.success("Prepaid Expense Entry Created!")
+                            }}
+                          >
+                            View Journal Voucher
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {inv.billingManagerStatus === "Rejected" && (
+                      <span className="bg-red-200 text-red-800 px-2 py-1 rounded text-xs">
+                        Rejected
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3 border text-center">
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(inv);
+                        setIsModalOpen(true);
+                      }}
+                      disabled={inv.billingManagerStatus !== "Pending"}
+                      className={`px-3 py-1.5 rounded text-white text-sm ${
+                        inv.billingManagerStatus !== "Pending"
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700"
+                      }`}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-   
-
 
         {isModalOpen && selectedInvoice && (
           <BillingManagerModal
@@ -294,22 +410,24 @@ const itemsPerPage = 5;
         )}
       </div>
 
-               {/* Pagination  */}
+      {/* Pagination */}
+      {totalPages > 1 && (
         <div className="flex justify-center mt-4 gap-2">
-            {Array.from({ length: totalPages }, (_, index) => (
-                <button
-                key={index}
-                onClick={() => setCurrentPage(index + 1)}
-                className={`px-3 py-1 rounded border text-sm ${
-                    currentPage === index + 1
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-700"
-                }`}
-                >
-                {index + 1}
-                </button>
-            ))}
-            </div>
+          {Array.from({ length: totalPages }, (_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentPage(index + 1)}
+              className={`px-3 py-1 rounded border text-sm ${
+                currentPage === index + 1
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700"
+              }`}
+            >
+              {index + 1}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
