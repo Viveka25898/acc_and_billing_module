@@ -16,7 +16,7 @@ export default function ManagerConveyanceApprovalsPage() {
   });
   const [rejection, setRejection] = useState({ show: false, claimId: null });
   const [viewDocs, setViewDocs] = useState(null);
-  const [viewReports, setViewReports] = useState(null); // Add state for visit reports
+  const [viewReports, setViewReports] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -76,13 +76,13 @@ export default function ManagerConveyanceApprovalsPage() {
       // Get the VP this Line Manager reports to
       const users = JSON.parse(localStorage.getItem("users")) || [];
       const lineManager = users.find(user => user.username === currentUser.username);
-      const assignedVP = lineManager?.reportsTo; // This will be "vp1" or "vp2"
+      const assignedVP = lineManager?.reportsTo;
 
       const updatedRequests = allRequests.map(request => 
         request.id === id ? {
           ...request,
           status: "Pending VP Approval",
-          assignedTo: assignedVP, // Assign to the VP
+          assignedTo: assignedVP,
           currentLevel: "vp",
           approvedAt: new Date().toISOString(),
           approvedBy: currentUser.username,
@@ -104,39 +104,65 @@ export default function ManagerConveyanceApprovalsPage() {
     }
   };
 
+  // FIXED: handleReject function with proper rejection reason storage
   const handleReject = (id, reason) => {
     try {
-      const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
-        request => request.id === id ? {
-          ...request,
-          status: "Rejected by Line Manager",
-          rejectedAt: new Date().toISOString(),
-          rejectedBy: currentUser.username,
-          rejectionReason: reason,
-          currentLevel: "rejected",
-          rejections: [...(request.rejections || []), {
+      console.log("Rejecting request ID:", id, "with reason:", reason);
+      
+      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+      const updatedRequests = allRequests.map(request => {
+        if (request.id === id) {
+          // Create rejection entry with all necessary information
+          const rejectionEntry = {
             level: "line-manager",
             user: currentUser.username,
-            reason: reason,
-            date: new Date().toISOString()
-          }]
-        } : request
-      );
+            reason: reason.trim(), // Store the actual reason
+            date: new Date().toISOString(),
+            rejectedBy: currentUser.username
+          };
+
+          console.log("Creating rejection entry:", rejectionEntry);
+
+          return {
+            ...request,
+            status: "Rejected by Line Manager",
+            rejectedAt: new Date().toISOString(),
+            rejectedBy: currentUser.username,
+            rejectionReason: reason.trim(), // Store reason at top level too
+            currentLevel: "rejected",
+            // Add to rejections array and ensure it's properly structured
+            rejections: [...(request.rejections || []), rejectionEntry]
+          };
+        }
+        return request;
+      });
+      
+      console.log("Updated requests after rejection:", updatedRequests.find(r => r.id === id));
       
       localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
       
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
       
-      // Update local state instead of removing
+      // Update local state
       setClaims(prev => prev.map(c => 
-        c.id === id ? { ...c, status: "Rejected by Line Manager", rejectionReason: reason } : c
+        c.id === id ? { 
+          ...c, 
+          status: "Rejected by Line Manager", 
+          rejectionReason: reason.trim(),
+          rejections: [...(c.rejections || []), {
+            level: "line-manager",
+            user: currentUser.username,
+            reason: reason.trim(),
+            date: new Date().toISOString()
+          }]
+        } : c
       ));
       
       toast.warning("Request rejected");
     } catch (error) {
       toast.error("Rejection failed");
-      console.error(error);
+      console.error("Rejection error:", error);
     }
   };
 
@@ -146,13 +172,10 @@ export default function ManagerConveyanceApprovalsPage() {
     
     const firstDoc = documents[0];
     if (typeof firstDoc === 'string') {
-      return firstDoc; // If it's already a URL
+      return firstDoc;
     }
     
-    // If it's a file object, create a blob URL
     if (firstDoc.type && firstDoc.size) {
-      // For demonstration purposes - in real app you'd have the actual file content
-      // This assumes you have the file data stored somewhere
       return URL.createObjectURL(new Blob([''], { type: firstDoc.type }));
     }
     
@@ -179,7 +202,7 @@ export default function ManagerConveyanceApprovalsPage() {
         onApprove={handleApprove}
         onReject={(id) => setRejection({ show: true, claimId: id })}
         onViewDocs={(docs) => setViewDocs(docs)}
-        onViewReports={(reports) => setViewReports(reports)} // Add handler for visit reports
+        onViewReports={(reports) => setViewReports(reports)}
         currentUserRole={currentUser.role}
       />
 
@@ -201,10 +224,12 @@ export default function ManagerConveyanceApprovalsPage() {
         </div>
       )}
 
+      {/* FIXED: RejectionModal with proper parameter passing */}
       <RejectionModal
         isOpen={rejection.show}
         onClose={() => setRejection({ show: false, claimId: null })}
         onSubmit={(reason) => handleReject(rejection.claimId, reason)}
+        claimId={rejection.claimId}
       />
 
       {/* Modal for receipts */}

@@ -19,7 +19,7 @@ export default function AEConveyanceApprovalPage() {
     claimId: null 
   });
   const [viewDocs, setViewDocs] = useState(null);
-  const [viewReports, setViewReports] = useState(null); // Add state for visit reports
+  const [viewReports, setViewReports] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showVoucher, setShowVoucher] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
@@ -88,47 +88,47 @@ export default function AEConveyanceApprovalPage() {
 
       // Create voucher data
       const voucherData = {
-      header: {
-        company: "ISmart",
-        voucherNo: `EV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-        financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
-        date: new Date().toISOString().split('T')[0],
-        reference: `Conveyance Reimbursement - ${claimToApprove.employeeName}`,
-        preparedBy: currentUser.username,
-        expenseType: "Conveyance Expense",
-        department: claimToApprove.department || "Not specified",
-        approvalChain: "Manager → VP → Billing Executive"
-      },
-      employeeDetails: {
-        employeeId: claimToApprove.employeeId || "N/A",
-        employeeName: claimToApprove.employeeName,
-        designation: claimToApprove.designation || "N/A",
-        department: claimToApprove.department || "N/A",
-        manager: claimToApprove.manager || "N/A",
-        submissionDate: claimToApprove.submittedAt ? new Date(claimToApprove.submittedAt).toISOString().split('T')[0] : "N/A",
-        approvalDate: new Date().toISOString().split('T')[0]
-      },
-      conveyanceDetails: [
-        {
-          id: 1,
-          date: claimToApprove.date.split('T')[0],
-          clientName: claimToApprove.client,
-          fromLocation: claimToApprove.fromLocation || "Office",
-          toLocation: claimToApprove.toLocation || "Client Location",
-          purpose: claimToApprove.purpose,
-          modeOfTransport: claimToApprove.transport || "Not specified",
-          distance: claimToApprove.distance || "N/A",
-          amount: claimToApprove.amount,
-          billAttached: claimToApprove.receipts?.length > 0 ? "Yes" : "No"
+        header: {
+          company: "ISmart",
+          voucherNo: `EV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+          date: new Date().toISOString().split('T')[0],
+          reference: `Conveyance Reimbursement - ${claimToApprove.employeeName}`,
+          preparedBy: currentUser.username,
+          expenseType: "Conveyance Expense",
+          department: claimToApprove.department || "Not specified",
+          approvalChain: "Manager → VP → Billing Executive"
+        },
+        employeeDetails: {
+          employeeId: claimToApprove.employeeId || "N/A",
+          employeeName: claimToApprove.employeeName,
+          designation: claimToApprove.designation || "N/A",
+          department: claimToApprove.department || "N/A",
+          manager: claimToApprove.manager || "N/A",
+          submissionDate: claimToApprove.submittedAt ? new Date(claimToApprove.submittedAt).toISOString().split('T')[0] : "N/A",
+          approvalDate: new Date().toISOString().split('T')[0]
+        },
+        conveyanceDetails: [
+          {
+            id: 1,
+            date: claimToApprove.date.split('T')[0],
+            clientName: claimToApprove.client,
+            fromLocation: claimToApprove.fromLocation || "Office",
+            toLocation: claimToApprove.toLocation || "Client Location",
+            purpose: claimToApprove.purpose,
+            modeOfTransport: claimToApprove.transport || "Not specified",
+            distance: claimToApprove.distance || "N/A",
+            amount: claimToApprove.amount,
+            billAttached: claimToApprove.receipts?.length > 0 ? "Yes" : "No"
+          }
+        ],
+        approvals: {
+          preparer: currentUser.username,
+          reviewer: claimToApprove.approvers?.find(a => a.level === "manager")?.user || "Manager",
+          approver: "VP Operations",
+          date: new Date().toISOString().split('T')[0]
         }
-      ],
-      approvals: {
-        preparer: currentUser.username,
-        reviewer: claimToApprove.approvers?.find(a => a.level === "manager")?.user || "Manager",
-        approver: "VP Operations",
-        date: new Date().toISOString().split('T')[0]
-      }
-    };
+      };
 
       // Update the request status
       const updatedRequests = allRequests.map(request => 
@@ -160,6 +160,12 @@ export default function AEConveyanceApprovalPage() {
         }])
       );
 
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
+
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
+
       // Set the voucher data to display
       setSelectedVoucher(voucherData);
       setShowVoucher(true);
@@ -172,19 +178,25 @@ export default function AEConveyanceApprovalPage() {
     }
   };
 
-  // AE Rejects the request
+  // FIXED: AE Rejects the request with proper rejection reason storage
   const handleReject = (id, reason) => {
     try {
+      console.log("AE Rejecting request ID:", id, "with reason:", reason);
+      
       const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
       
       const updatedRequests = allRequests.map(request => {
         if (request.id === id) {
+          // Create rejection entry with all necessary information
           const rejectionEntry = {
             level: "account-executive",
             user: currentUser.username,
-            reason: reason,
-            date: new Date().toISOString()
+            reason: reason.trim(),
+            date: new Date().toISOString(),
+            rejectedBy: currentUser.username
           };
+
+          console.log("AE Creating rejection entry:", rejectionEntry);
 
           return {
             ...request,
@@ -192,27 +204,30 @@ export default function AEConveyanceApprovalPage() {
             assignedTo: request.submittedBy,
             rejectedAt: new Date().toISOString(),
             rejectedBy: currentUser.username,
-            rejectionReason: reason,
+            rejectionReason: reason.trim(), // Store reason at top level
             currentLevel: "rejected",
-            rejections: [
-              ...(request.rejections || []),
-              rejectionEntry
-            ]
+            // Add to rejections array
+            rejections: [...(request.rejections || []), rejectionEntry]
           };
         }
         return request;
       });
 
+      console.log("AE Updated requests after rejection:", updatedRequests.find(r => r.id === id));
+
       localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
       
-      // Refresh the view
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
+      
+      // Refresh the view - filter out rejected requests from AE view
       const refreshedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
       setClaims(refreshedRequests.filter(req => req.status === "Pending AE Approval"));
       
       toast.success("Request rejected successfully");
     } catch (error) {
       toast.error(`Rejection failed: ${error.message}`);
-      console.error("Rejection error:", error);
+      console.error("AE Rejection error:", error);
     }
   };
 
@@ -346,11 +361,11 @@ export default function AEConveyanceApprovalPage() {
         </div>
       )}
 
+      {/* FIXED: RejectionModal with proper parameter passing */}
       <RejectionModal
         isOpen={rejection.show}
         onClose={() => setRejection({ show: false, claimId: null })}
         onSubmit={(reason) => handleReject(rejection.claimId, reason)}
-        claimId={rejection.claimId}
       />
 
       {/* Modal for receipts */}
@@ -367,7 +382,7 @@ export default function AEConveyanceApprovalPage() {
         title="Visit Report"
       />
 
-     {showVoucher && selectedVoucher && (
+      {showVoucher && selectedVoucher && (
         <ConveyanceExpenseVoucher 
           data={selectedVoucher}
           onClose={() => {

@@ -4,9 +4,9 @@ import RentAgreementForm from "../Components/RentAgreementForm";
 import MonthlyVoucherGenerator from "../Components/MonthlyVoucherGenerator"
 import { toast } from "react-toastify";
 import ViewVouchersModal from "../Components/ViewVouchersModal";
+import RentExpenseVoucher from "../Components/RentExpenseVoucher";
 
-
- const dummySites = [
+const dummySites = [
   { id: 1, city: "Mumbai", state: "Maharashtra", siteName: "Site A", location: "Andheri", owner: "Mr. A", gst: true, agreementUrl: "https://example.com/agreement1.pdf" },
   { id: 2, city: "Mumbai", state: "Maharashtra", siteName: "Site B", location: "Borivali", owner: "Mrs. B", gst: false },
   { id: 3, city: "Delhi", state: "Delhi", siteName: "Site C", location: "Saket", owner: "Mr. C", gst: true },
@@ -17,46 +17,78 @@ import ViewVouchersModal from "../Components/ViewVouchersModal";
 
 export default function RentExpenseBookingPage() {
   const [selectedSite, setSelectedSite] = useState(null);
-  const [agreements, setAgreements] = useState([
-    { siteId: 1, startDate: "2024-01-01", endDate: "2025-01-01", withGST: true, fileUrl: "https://example.com/agreement1.pdf" }
-  ]);
+  const [agreements, setAgreements] = useState([]);
   const [vouchers, setVouchers] = useState([
-                                            { siteId: 1, month: "2024-01", amount: 10000 },
-                                            { siteId: 1, month: "2024-03", amount: 10000 },
-                                            { siteId: 1, month: "2025-02", amount: 10000 }, 
-                                            { siteId: 2, month: "2024-02", amount: 8000 },
-                                            { siteId: 3, month: "2024-04", amount: 9500 },
-                                            ]);
+    { siteId: 1, month: "2024-01", amount: 10000 },
+    { siteId: 1, month: "2024-03", amount: 10000 },
+    { siteId: 1, month: "2025-02", amount: 10000 }, 
+    { siteId: 2, month: "2024-02", amount: 8000 },
+    { siteId: 3, month: "2024-04", amount: 9500 },
+  ]);
   const [filters, setFilters] = useState({ owner: "", city: "", state: "" });
   const [showAgreementModal, setShowAgreementModal] = useState(false);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [voucherViewSite, setVoucherViewSite] = useState(null);
-const [showViewVoucherModal, setShowViewVoucherModal] = useState(false);
-const [showVoucherListModal, setShowVoucherListModal] = useState(false);
-
+  const [showViewVoucherModal, setShowViewVoucherModal] = useState(false);
+  
+  // State for Expense Voucher Modal
+  const [showExpenseVoucherModal, setShowExpenseVoucherModal] = useState(false);
+  const [expenseVoucherData, setExpenseVoucherData] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
   const handleAgreementSubmit = (agreementData) => {
-  const newAgreement = { ...agreementData, siteId: selectedSite.id };
-  setAgreements((prev) => [...prev, newAgreement]);
-  console.log("Parent",agreements);
+    const newAgreement = { ...agreementData, siteId: selectedSite.id };
+    setAgreements((prev) => [...prev, newAgreement]);
+    console.log("Parent", agreements);
 
-  // Clear modal + feedback
-  setSelectedSite(null);
-  setShowAgreementModal(false);
-  toast.success("Rent agreement uploaded successfully");
-};
+    // Clear modal + feedback
+    setSelectedSite(null);
+    setShowAgreementModal(false);
+    toast.success("Rent agreement uploaded successfully");
+  };
 
-
-   const handleVoucherSubmit = (voucherData) => {
+  // Modified to automatically show expense voucher modal
+  const handleVoucherSubmit = (voucherData) => {
     const newVoucher = { ...voucherData, siteId: selectedSite.id };
     setVouchers((prev) => [...prev, newVoucher]);
 
-    // 👇 Open modal to view newly generated voucher
-    setVoucherViewSite(selectedSite);
-    setShowViewVoucherModal(true);
+    // Prepare expense voucher data
+    const agreement = getAgreementForSite(selectedSite.id);
+    const expenseData = {
+      // Header information
+      voucherNo: `EXP-RENT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+      date: new Date().toISOString().split('T')[0],
+      company: "Your Company Name",
+      financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      reference: `Monthly rent payment for ${selectedSite.siteName}`,
+      preparedBy: "Billing Executive",
+      
+      // Site details
+      siteDetails: {
+        siteName: selectedSite.siteName,
+        location: selectedSite.location,
+        city: selectedSite.city,
+        state: selectedSite.state,
+        owner: agreement?.owner || selectedSite.owner,
+        agreementPeriod: agreement ? `${agreement.startDate} to ${agreement.endDate}` : "N/A"
+      },
+      
+      // Rent details with proper GST breakdown
+      rentDetails: {
+        month: voucherData.month,
+        baseRent: agreement?.monthlyBaseRent || (agreement?.withGST ? Math.round(voucherData.amount / 1.18) : voucherData.amount),
+        gstAmount: agreement?.monthlyGST || (agreement?.withGST ? Math.round(voucherData.amount * 0.18 / 1.18) : 0),
+        totalAmount: voucherData.amount,
+        gstType: voucherData.gstType,
+        withGST: agreement?.withGST || false
+      }
+    };
+
+    // Show expense voucher modal instead of view vouchers
+    setExpenseVoucherData(expenseData);
+    setShowExpenseVoucherModal(true);
 
     setSelectedSite(null);
     setShowVoucherModal(false);
@@ -77,12 +109,12 @@ const [showVoucherListModal, setShowVoucherListModal] = useState(false);
       (!state || site.state === state)
     );
   });
+  
   const totalPages = Math.ceil(filteredSites.length / itemsPerPage);
-const paginatedSites = filteredSites.slice(
-  (currentPage - 1) * itemsPerPage,
-  currentPage * itemsPerPage
-);
-
+  const paginatedSites = filteredSites.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="min-h-screen bg-white shadow-md rounded-md px-4 py-6 md:px-6">
@@ -91,7 +123,7 @@ const paginatedSites = filteredSites.slice(
       </h1>
 
       {/* Filter UI */}
-      <div className=" p-4 mb-6">
+      <div className="p-4 mb-6">
         <h2 className="text-lg font-semibold mb-4 text-gray-700">Filter :-</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <input
@@ -125,7 +157,7 @@ const paginatedSites = filteredSites.slice(
       </div>
 
       {/* Table */}
-      <div className=" p-4 mb-10 overflow-x-auto">
+      <div className="p-4 mb-10 overflow-x-auto">
         <table className="min-w-full table-fixed border text-sm">
           <thead className="bg-gray-100">
             <tr>
@@ -146,7 +178,7 @@ const paginatedSites = filteredSites.slice(
               const agreement = getAgreementForSite(site.id);
               return (
                 <tr key={site.id} className="text-center">
-                  <td className="border px-2 py-1">{index + 1}</td>
+                  <td className="border px-2 py-1">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                   <td className="border px-2 py-1">{site.siteName}</td>
                   <td className="border px-2 py-1">{site.location}</td>
                   <td className="border px-2 py-1">{site.state}</td>
@@ -172,12 +204,12 @@ const paginatedSites = filteredSites.slice(
                       <button
                         className="text-blue-600 underline text-xs"
                         onClick={() => {
-                            setVoucherViewSite(site);
-                            setShowViewVoucherModal(true);
+                          setVoucherViewSite(site);
+                          setShowViewVoucherModal(true);
                         }}
-                        >
+                      >
                         View Vouchers
-                        </button>
+                      </button>
                     ) : (
                       <span className="text-gray-400">—</span>
                     )}
@@ -199,26 +231,26 @@ const paginatedSites = filteredSites.slice(
             })}
           </tbody>
         </table>
-            {/* Pagination  */}
+
+        {/* Pagination */}
         {totalPages > 1 && (
-        <div className="flex justify-center mt-4 space-x-2">
+          <div className="flex justify-center mt-4 space-x-2">
             {[...Array(totalPages)].map((_, i) => (
-            <button
+              <button
                 key={i}
                 onClick={() => setCurrentPage(i + 1)}
                 className={`px-3 py-1 rounded border ${
-                currentPage === i + 1 ? "bg-green-600 text-white" : "bg-white text-gray-800"
+                  currentPage === i + 1 ? "bg-green-600 text-white" : "bg-white text-gray-800"
                 }`}
-            >
+              >
                 {i + 1}
-            </button>
+              </button>
             ))}
-        </div>
+          </div>
         )}
-
       </div>
 
-      {/* Modals */}
+      {/* Agreement Upload Modal */}
       {showAgreementModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-2">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md h-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6 relative">
@@ -233,6 +265,7 @@ const paginatedSites = filteredSites.slice(
         </div>
       )}
 
+      {/* Voucher Generation Modal */}
       {showVoucherModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-2">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md h-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6 relative">
@@ -242,31 +275,38 @@ const paginatedSites = filteredSites.slice(
             >
               ✕
             </button>
-           <MonthlyVoucherGenerator
-            site={selectedSite}
-            agreement={getAgreementForSite(selectedSite?.id)}
-            onSuccess={handleVoucherSubmit}
-          />
-
+            <MonthlyVoucherGenerator
+              site={selectedSite}
+              agreement={getAgreementForSite(selectedSite?.id)}
+              onSuccess={handleVoucherSubmit}
+            />
           </div>
         </div>
       )}
 
-      {/* View Voucher List  */}
-
+      {/* View Voucher List Modal */}
       {showViewVoucherModal && (
-            <ViewVouchersModal
-                site={voucherViewSite}
-                agreement={getAgreementForSite(voucherViewSite?.id)}
-                vouchers={getVouchersForSite(voucherViewSite?.id)}
-                onClose={() => {
-                setShowViewVoucherModal(false);
-                setVoucherViewSite(null);
-                }}
-            />
-            )}
+        <ViewVouchersModal
+          site={voucherViewSite}
+          agreement={getAgreementForSite(voucherViewSite?.id)}
+          vouchers={getVouchersForSite(voucherViewSite?.id)}
+          onClose={() => {
+            setShowViewVoucherModal(false);
+            setVoucherViewSite(null);
+          }}
+        />
+      )}
 
+      {/* Rent Expense Voucher Modal */}
+      {showExpenseVoucherModal && (
+        <RentExpenseVoucher
+          data={expenseVoucherData}
+          onClose={() => {
+            setShowExpenseVoucherModal(false);
+            setExpenseVoucherData(null);
+          }}
+        />
+      )}
     </div>
   );
 }
-

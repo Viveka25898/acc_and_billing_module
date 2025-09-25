@@ -18,7 +18,7 @@ export default function VPOperationsConveyanceApprovalPage() {
     claimId: null 
   });
   const [viewDocs, setViewDocs] = useState(null);
-  const [viewReports, setViewReports] = useState(null); // Add state for visit reports
+  const [viewReports, setViewReports] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const navigate = useNavigate();
@@ -88,28 +88,46 @@ export default function VPOperationsConveyanceApprovalPage() {
     }
   };
 
-  // VP Rejects the request
+  // FIXED: VP Rejects the request with proper rejection reason storage
   const handleReject = (id, reason) => {
     try {
-      const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
-        request => request.id === id ? {
-          ...request,
-          status: "Rejected by VP",
-          assignedTo: request.submittedBy,
-          rejectedAt: new Date().toISOString(),
-          rejectedBy: currentUser.username,
-          rejectionReason: reason,
-          currentLevel: "rejected",
-          rejections: [...(request.rejections || []), {
+      console.log("VP Rejecting request ID:", id, "with reason:", reason);
+      
+      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
+      const updatedRequests = allRequests.map(request => {
+        if (request.id === id) {
+          // Create rejection entry with all necessary information
+          const rejectionEntry = {
             level: "vp",
             user: currentUser.username,
-            reason: reason,
-            date: new Date().toISOString()
-          }]
-        } : request
-      );
+            reason: reason.trim(),
+            date: new Date().toISOString(),
+            rejectedBy: currentUser.username
+          };
+
+          console.log("VP Creating rejection entry:", rejectionEntry);
+
+          return {
+            ...request,
+            status: "Rejected by VP",
+            assignedTo: request.submittedBy,
+            rejectedAt: new Date().toISOString(),
+            rejectedBy: currentUser.username,
+            rejectionReason: reason.trim(), // Store reason at top level
+            currentLevel: "rejected",
+            // Add to rejections array
+            rejections: [...(request.rejections || []), rejectionEntry]
+          };
+        }
+        return request;
+      });
+      
+      console.log("VP Updated requests after rejection:", updatedRequests.find(r => r.id === id));
       
       localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
       
       // Manually trigger state update
       setClaims(prev => prev.filter(c => c.id !== id));
@@ -120,7 +138,7 @@ export default function VPOperationsConveyanceApprovalPage() {
       toast.warning("Request rejected and returned to employee");
     } catch (error) {
       toast.error("Rejection failed");
-      console.error(error);
+      console.error("VP Rejection error:", error);
     }
   };
 
@@ -168,7 +186,7 @@ export default function VPOperationsConveyanceApprovalPage() {
         onApprove={handleApprove}
         onReject={(id) => setRejection({ show: true, claimId: id })}
         onViewDocs={(docs) => setViewDocs(docs)}
-        onViewReports={(reports) => setViewReports(reports)} // Add handler for visit reports
+        onViewReports={(reports) => setViewReports(reports)}
         currentUserRole="vp-operations"
       />
 
@@ -190,6 +208,7 @@ export default function VPOperationsConveyanceApprovalPage() {
         </div>
       )}
 
+      {/* FIXED: RejectionModal with proper parameter passing */}
       <RejectionModal
         isOpen={rejection.show}
         onClose={() => setRejection({ show: false, claimId: null })}

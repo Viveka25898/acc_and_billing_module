@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-export default function RejectionModal({ isOpen, onClose, onSubmit, claimId }) {
+export default function RejectionModal({ isOpen, onClose, onSubmit }) {
   const [reason, setReason] = useState("");
 
   useEffect(() => {
@@ -14,7 +14,11 @@ export default function RejectionModal({ isOpen, onClose, onSubmit, claimId }) {
       alert("Please enter a reason for rejection");
       return;
     }
-    onSubmit(claimId, reason); // Pass both claimId and reason
+    
+    console.log("Submitting rejection reason:", reason.trim());
+    
+    // FIXED: Only pass the reason, not claimId since it's handled in the parent component
+    onSubmit(reason.trim());
     onClose();
   };
 
@@ -36,11 +40,15 @@ export default function RejectionModal({ isOpen, onClose, onSubmit, claimId }) {
         <div className="p-4">
           <textarea
             rows="4"
-            placeholder="Enter reason..."
+            placeholder="Enter detailed reason for rejection..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full border rounded p-2 focus:outline-none focus:ring"
+            className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+            autoFocus
           />
+          <p className="text-sm text-gray-500 mt-1">
+            This reason will be visible to the employee who submitted the request.
+          </p>
         </div>
 
         <div className="flex justify-end gap-2 px-4 py-3 border-t">
@@ -52,9 +60,14 @@ export default function RejectionModal({ isOpen, onClose, onSubmit, claimId }) {
           </button>
           <button
             onClick={handleSubmit}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            disabled={!reason.trim()}
+            className={`px-4 py-2 rounded text-white ${
+              reason.trim() 
+                ? "bg-red-600 hover:bg-red-700" 
+                : "bg-gray-400 cursor-not-allowed"
+            }`}
           >
-            Submit
+            Submit Rejection
           </button>
         </div>
       </div>

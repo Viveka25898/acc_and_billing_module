@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import ConveyanceFilter from "../Components/ConveyanceFilter";
@@ -22,8 +23,9 @@ export default function MyConveyanceRequestsPage() {
       const userRequests = allRequests
         .filter(request => request.submittedBy === currentUser.username)
         .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
-        .slice(0, 5); // Get only the last 5 requests
+        .slice(0, 5);
       
+      console.log("Loaded user requests:", userRequests);
       setRequests(userRequests);
     } catch (error) {
       toast.error("Failed to load requests");
@@ -61,6 +63,8 @@ export default function MyConveyanceRequestsPage() {
       case "Pending VP Approval":
         return "bg-blue-100 text-blue-800";
       case "Rejected by Line Manager":
+      case "Rejected by VP":
+      case "Rejected by AE":
         return "bg-red-100 text-red-800";
       case "Approved":
         return "bg-green-100 text-green-800";
@@ -69,49 +73,72 @@ export default function MyConveyanceRequestsPage() {
     }
   };
 
+  // FIXED: Improved handleViewReason function with better debugging and data retrieval
   const handleViewReason = (request) => {
-    console.log("Button clicked!"); // Debug log
-    console.log("Request object:", request); // Debug log
-    console.log("rejectionReason field:", request.rejectionReason); // Debug log
-    console.log("rejections array:", request.rejections); // Debug log
+    console.log("=== View Reason Debug Info ===");
+    console.log("Full request object:", request);
+    console.log("Request ID:", request.id);
+    console.log("Request status:", request.status);
+    console.log("rejectionReason field:", request.rejectionReason);
+    console.log("rejections array:", request.rejections);
+    console.log("================================");
     
     let rejectionReason = "No reason provided";
     
-    // Handle different rejection reason structures
-    if (typeof request.rejectionReason === 'string' && request.rejectionReason.trim()) {
-      rejectionReason = request.rejectionReason.trim();
-    } else if (request.rejectionReason && typeof request.rejectionReason === 'object' && request.rejectionReason.reason) {
-      rejectionReason = request.rejectionReason.reason;
-    } else if (request.rejections && Array.isArray(request.rejections) && request.rejections.length > 0) {
-      const lastRejection = request.rejections[request.rejections.length - 1];
-      console.log("Last rejection object:", lastRejection); // Debug log
+    try {
+      // Strategy 1: Check top-level rejectionReason field
+      if (request.rejectionReason && typeof request.rejectionReason === 'string' && request.rejectionReason.trim()) {
+        rejectionReason = request.rejectionReason.trim();
+        console.log("Found reason in rejectionReason field:", rejectionReason);
+      }
+      // Strategy 2: Check rejections array for the most recent rejection
+      else if (request.rejections && Array.isArray(request.rejections) && request.rejections.length > 0) {
+        // Get the most recent rejection
+        const lastRejection = request.rejections[request.rejections.length - 1];
+        console.log("Last rejection object:", lastRejection);
+        
+        if (lastRejection.reason && lastRejection.reason.trim()) {
+          rejectionReason = lastRejection.reason.trim();
+          console.log("Found reason in rejections array:", rejectionReason);
+        } else {
+          // Fallback: construct a message with available info
+          const rejectedBy = lastRejection.user || lastRejection.rejectedBy || 'Unknown';
+          const rejectedAt = lastRejection.date ? new Date(lastRejection.date).toLocaleDateString() : 'Unknown date';
+          const level = lastRejection.level || 'unknown level';
+          
+          rejectionReason = `Request was rejected by ${rejectedBy} at ${level} level on ${rejectedAt}. No specific reason was provided.`;
+          console.log("Constructed fallback reason:", rejectionReason);
+        }
+      }
+      // Strategy 3: Check for other possible rejection reason fields
+      else if (request.remarks && request.remarks.trim()) {
+        rejectionReason = `Remarks: ${request.remarks.trim()}`;
+        console.log("Found reason in remarks field:", rejectionReason);
+      }
+      // Strategy 4: Final fallback with basic rejection info
+      else if (request.rejectedBy) {
+        const rejectedAt = request.rejectedAt ? new Date(request.rejectedAt).toLocaleDateString() : 'Unknown date';
+        rejectionReason = `Request was rejected by ${request.rejectedBy} on ${rejectedAt}. No specific reason was recorded.`;
+        console.log("Final fallback reason:", rejectionReason);
+      }
       
-      // Check all possible fields where reason might be stored
-      rejectionReason = lastRejection.reason || 
-                       lastRejection.rejectionReason || 
-                       lastRejection.comment || 
-                       lastRejection.remarks ||
-                       request.remarks || // Check if reason is in main request remarks
-                       `Rejected by ${lastRejection.user} at ${lastRejection.level} level on ${new Date(lastRejection.date).toLocaleDateString()}`;
-    } else if (request.rejectedBy) {
-      // Fallback - show who rejected it and when
-      rejectionReason = `Rejected by ${request.rejectedBy} on ${new Date(request.rejectedAt).toLocaleDateString()}`;
+    } catch (error) {
+      console.error("Error extracting rejection reason:", error);
+      rejectionReason = "Error retrieving rejection reason. Please contact administrator.";
     }
     
-    console.log("Final rejectionReason to set:", rejectionReason); // Debug log
+    console.log("Final rejection reason to display:", rejectionReason);
     setSelectedRejectReason(rejectionReason);
   };
 
   const handleCloseModal = () => {
-    console.log("Closing modal"); // Debug log
+    console.log("Closing rejection reason modal");
     setSelectedRejectReason(null);
   };
 
   if (isLoading) {
     return <div className="p-4">Loading your requests...</div>;
   }
-
-  console.log("selectedRejectReason state:", selectedRejectReason); // Debug log
 
   return (
     <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
@@ -131,7 +158,7 @@ export default function MyConveyanceRequestsPage() {
                 <th className="p-2 border text-left">Amount</th>
                 <th className="p-2 border text-left">Status</th>
               </tr>
-            </thead>
+            </thead>  
             <tbody>
               {filteredRequests.map((request) => (
                 <tr key={request.id}>
@@ -145,10 +172,10 @@ export default function MyConveyanceRequestsPage() {
                       <span className={`text-xs px-2 border py-1 rounded-full font-medium ${getStatusStyle(request.status)}`}>
                         {request.status}
                       </span>
-                      {request.status.includes("Rejected") && (
+                      {(request.status.includes("Rejected") || request.status.includes("rejected")) && (
                         <button 
                           onClick={() => handleViewReason(request)}
-                          className="ml-2 text-xs text-blue-500 hover:underline hover:text-blue-700 cursor-pointer"
+                          className="ml-2 text-xs text-blue-500 hover:underline hover:text-blue-700 cursor-pointer transition-colors duration-200"
                           type="button"
                         >
                           View Reason
@@ -175,7 +202,7 @@ export default function MyConveyanceRequestsPage() {
         </div>
       )}
 
-      {/* Modal - this will show when selectedRejectReason is truthy */}
+      {/* Modal for displaying rejection reason */}
       {selectedRejectReason && (
         <RejectReasonModal
           reason={selectedRejectReason}
@@ -183,13 +210,18 @@ export default function MyConveyanceRequestsPage() {
         />
       )}
       
-      {/* Debug - temporarily uncomment this to test if modal component works */}
-      {/* 
-      <RejectReasonModal
-        reason="Test reason - modal is working!"
-        onClose={() => console.log("Test modal closed")}
-      />
-      */}
+      {/* Debug info - remove this in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-4 p-2 bg-gray-100 text-xs">
+          <strong>Debug Info:</strong>
+          <br />
+          Selected Reason: {selectedRejectReason}
+          <br />
+          Total Requests: {requests.length}
+          <br />
+          Filtered Requests: {filteredRequests.length}
+        </div>
+      )}
     </div>
   );
 }
