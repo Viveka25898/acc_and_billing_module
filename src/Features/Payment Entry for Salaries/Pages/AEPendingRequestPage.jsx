@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import PaymentEntriesFilter from "../Components/PaymentEntriesFilter";
 import AERejectionModal from "../Components/AERejectionModal";
+import SalaryPaymentEntryModal from "../Components/SalaryPaymentEntryModal"; // Import the modal
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 
@@ -39,6 +40,11 @@ export default function AEPendingRequestsPage() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [currentRejectId, setCurrentRejectId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+
+  // NEW STATE FOR PAYMENT ENTRY MODAL
+  const [showPaymentEntryModal, setShowPaymentEntryModal] = useState(false);
+  const [approvedBatchData, setApprovedBatchData] = useState(null);
+  const [approvedBatches, setApprovedBatches] = useState([]); // For bulk approval
 
   // For Sorting
   const getStatusOrder = (status) => {
@@ -142,6 +148,14 @@ export default function AEPendingRequestsPage() {
     });
 
     toast.success("Amount updated successfully!");
+  };
+
+  const cancelAmountEdit = (batchId) => {
+    setEditingAmount(prev => {
+      const updated = { ...prev };
+      delete updated[batchId];
+      return updated;
+    });
   };
 
   // Download Excel file for editing
@@ -254,6 +268,7 @@ export default function AEPendingRequestsPage() {
     setSelectedIds(allSelected ? [] : allIds);
   };
 
+  // NEW: Handle bulk approval with modal
   const handleBulkApprove = () => {
     if (selectedIds.length === 0) {
       toast.warn("Please select at least one batch to approve.");
@@ -280,12 +295,20 @@ export default function AEPendingRequestsPage() {
     });
 
     setPayrollBatches(updatedBatches);
+    
+    // Get the approved batches data for the modal
+    const approvedBatchData = payrollBatches.filter(batch => selectedIds.includes(batch.id));
+    setApprovedBatches(approvedBatchData);
+    setApprovedBatchData(null); // Clear single batch data
+    setShowPaymentEntryModal(true);
+    
     setSelectedIds([]);
     toast.success(`${selectedIds.length} batches approved!`);
   };
 
+  // NEW: Handle single approval with modal
   const handleApprove = (id) => {
-    setPayrollBatches(prev => prev.map(batch => {
+    const updatedBatches = payrollBatches.map(batch => {
       if (batch.id === id) {
         return {
           ...batch,
@@ -302,7 +325,16 @@ export default function AEPendingRequestsPage() {
         };
       }
       return batch;
-    }));
+    });
+
+    setPayrollBatches(updatedBatches);
+    
+    // Get the approved batch data for the modal
+    const approvedBatch = payrollBatches.find(batch => batch.id === id);
+    setApprovedBatchData(approvedBatch);
+    setApprovedBatches([]); // Clear bulk batches data
+    setShowPaymentEntryModal(true);
+    
     toast.success("Batch approved!");
   };
 
@@ -336,6 +368,13 @@ export default function AEPendingRequestsPage() {
     setRejectionReason("");
     setCurrentRejectId(null);
     toast.error("Payment Batch Rejected!");
+  };
+
+  // NEW: Close payment entry modal
+  const closePaymentEntryModal = () => {
+    setShowPaymentEntryModal(false);
+    setApprovedBatchData(null);
+    setApprovedBatches([]);
   };
 
   return (
@@ -584,6 +623,14 @@ export default function AEPendingRequestsPage() {
           reasonChange: setRejectionReason,
           confirm: confirmReject,
         }}
+      />
+
+      {/* NEW: Payment Entry Modal */}
+      <SalaryPaymentEntryModal
+        isOpen={showPaymentEntryModal}
+        onClose={closePaymentEntryModal}
+        batchData={approvedBatchData}
+        approvedBatches={approvedBatches}
       />
     </div>
   );
