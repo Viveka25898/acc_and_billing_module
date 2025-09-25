@@ -209,19 +209,6 @@ export default function MyConveyanceRequestsPage() {
           onClose={handleCloseModal}
         />
       )}
-      
-      {/* Debug info - remove this in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-2 bg-gray-100 text-xs">
-          <strong>Debug Info:</strong>
-          <br />
-          Selected Reason: {selectedRejectReason}
-          <br />
-          Total Requests: {requests.length}
-          <br />
-          Filtered Requests: {filteredRequests.length}
-        </div>
-      )}
     </div>
   );
 }
