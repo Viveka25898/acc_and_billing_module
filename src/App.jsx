@@ -30,7 +30,7 @@ function App() {
           { username: "vp2", role: "vp-operations", empId: "10", reportsTo: "ae1" },
 
           // Account Executive
-          { username: "ae1", role: "account-executive", empId: "11", reportsTo: null },
+          { username: "ae1", role: "account-executive", empId: "11", reportsTo: "am1" },
           
           // Operation Executives
           { username: "oe1", role: "operation-executive", empId: "12", reportsTo: "lm1" },
@@ -47,6 +47,8 @@ function App() {
           { username: "compliance-manager2", role: "compliance-manager", empId: "19", reportsTo: "ae1" },
            // Add Payroll Team User
           { username: "payroll1", role: "payroll-team", empId: "20", reportsTo: "ae1" },
+          // Account Manager
+          { username: "am1", role: "account-manager", empId: "21", reportsTo: null},
         ];
 
         localStorage.setItem("users", JSON.stringify(users));
