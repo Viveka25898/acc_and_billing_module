@@ -79,12 +79,13 @@ const calculateMatchScore = (bankEntry, bookEntry) => {
     score += Math.min(10, commonWords * 3);
   }
   
-  // Reference match bonus
+  // Reference match bonus (but don't exceed 100)
   if (bankRef && bookRef && (bankRef === bookRef || bankRef.includes(bookRef) || bookRef.includes(bankRef))) {
     score += 15;
   }
   
-  return score;
+  // Cap the score at 100
+  return Math.min(score, 100);
 };
 
 export const matchTransactions = (bankData, bookData) => {

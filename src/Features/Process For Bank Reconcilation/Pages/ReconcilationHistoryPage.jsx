@@ -358,9 +358,6 @@ export default function ReconciliationHistoryPage() {
                             <FiEye className="w-3 h-3 mr-1" />
                             View Report
                           </Link>
-                          <button className="p-1 text-gray-400 hover:text-gray-600">
-                            <FiMoreVertical className="w-4 h-4" />
-                          </button>
                         </div>
                       </td>
                     </tr>
