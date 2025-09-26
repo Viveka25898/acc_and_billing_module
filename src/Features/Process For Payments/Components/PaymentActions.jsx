@@ -40,12 +40,12 @@ export default function PaymentActions({ data, onClose, onRequestChanges, onAcce
       >
         Cancel
       </button>
-      <button
+      {/* <button
         onClick={handleRequestChanges}
         className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
       >
         Request Changes
-      </button>
+      </button> */}
       <button
         onClick={handleAccept}
         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"

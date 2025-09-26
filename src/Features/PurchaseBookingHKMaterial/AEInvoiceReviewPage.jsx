@@ -417,23 +417,22 @@ const InvoiceReviewPage = () => {
       <AEInvoiceFilter filters={filters} setFilters={handleFilter} />
 
       <div className="overflow-x-auto mt-4 rounded border">
-        <table className="min-w-[700px] text-xs sm:text-sm md:text-base table-auto">
+        <table className="w-full text-xs sm:text-sm md:text-base table-fixed">
           <thead className="bg-gray-100 text-left text-gray-700">
             <tr>
-              <th className="p-2 sm:p-3 border">Invoice #</th>
-              <th className="p-2 sm:p-3 border">Vendor Name</th>
-              <th className="p-2 sm:p-3 border">Amount (₹)</th>
-              <th className="p-2 sm:p-3 border">PO</th>
-              <th className="p-2 sm:p-3 border">Type</th>
-              <th className="p-2 sm:p-3 border">Status</th>
-              <th className="p-2 sm:p-3 border text-center">Account Manager Status</th>
-              <th className="p-2 sm:p-3 border text-center">Action</th>
+              <th className="p-2 sm:p-3 border w-[12%]">Invoice #</th>
+              <th className="p-2 sm:p-3 border w-[20%]">Vendor Name</th>
+              <th className="p-2 sm:p-3 border w-[12%]">Amount (₹)</th>
+              <th className="p-2 sm:p-3 border w-[15%]">PO</th>
+              <th className="p-2 sm:p-3 border w-[15%]">Type</th>
+              <th className="p-2 sm:p-3 border w-[16%]">Status</th>
+              <th className="p-2 sm:p-3 border text-center w-[10%]">Action</th>
             </tr>
           </thead>
           <tbody>
             {currentInvoices.length === 0 ? (
               <tr>
-                <td colSpan="8" className="p-4 text-center text-gray-500">
+                <td colSpan="7" className="p-4 text-center text-gray-500">
                   No invoices pending for review
                 </td>
               </tr>
@@ -475,9 +474,6 @@ const InvoiceReviewPage = () => {
                     }`}>
                       {inv.status}
                     </span>
-                  </td>
-                  <td className="p-2 sm:p-3 border text-center text-gray-600 text-sm">
-                    Pending AE Approval
                   </td>
                   <td className="p-2 sm:p-3 border text-center">
                     <button

@@ -9,7 +9,7 @@ const EmployeeAdvanceSettlementPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  const [osBalance, setOsBalance] = useState(5000); // Default O/S Balance
+  const [osBalance, setOsBalance] = useState(10000); // Default O/S Balance
 
   // Get current user from localStorage
   useEffect(() => {

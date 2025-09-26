@@ -131,11 +131,7 @@ const StatutoryPaymentEntryModal = ({ isOpen, onClose, complianceData }) => {
           <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-blue-500">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                {getComplianceIcon(currentComplianceData.type)}
                 Statutory Payment Entry - {currentComplianceData.type}
-                <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(currentComplianceData.status)}`}>
-                  {currentComplianceData.status?.replace('-', ' ').toUpperCase()}
-                </span>
               </h1>
               <p className="text-gray-600 mt-1">Request ID: #{currentComplianceData.id?.slice(-6)}</p>
               
