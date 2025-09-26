@@ -57,8 +57,14 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       case 'folders':
         matchesFilter = account.type === 'FOLDER';
         break;
+      case 'subfolders':
+        matchesFilter = account.type === 'SUB_FOLDER';
+        break;
+      case 'subsubfolders':
+        matchesFilter = account.type === 'SUB_SUB_FOLDER';
+        break;
       case 'accounts':
-        matchesFilter = account.type === 'Account';
+        matchesFilter = account.type === 'ACCOUNT';
         break;
       default:
         matchesFilter = true;
@@ -74,7 +80,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'FOLDER':
         return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'Account':
+      case 'SUB_FOLDER':
+        return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'SUB_SUB_FOLDER':
+        return 'bg-pink-100 text-pink-800 border-pink-200';
+      case 'ACCOUNT':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -87,7 +97,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         return '🏛️'; // Root
       case 'FOLDER':
         return '📁'; // Folder
-      case 'Account':
+      case 'SUB_FOLDER':
+        return '📂'; // Sub Folder
+      case 'SUB_SUB_FOLDER':
+        return '🗂️'; // Sub Sub Folder
+      case 'ACCOUNT':
         return '📄'; // Leaf account
       default:
         return '📄';
@@ -142,6 +156,10 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                               ? 'font-bold text-blue-900'
                               : account.type === 'FOLDER'
                               ? 'font-medium'
+                              : account.type === 'SUB_FOLDER'
+                              ? 'font-medium text-amber-700'
+                              : account.type === 'SUB_SUB_FOLDER'
+                              ? 'font-medium text-pink-700'
                               : ''
                           }`}
                         >
@@ -156,7 +174,7 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                         account.type
                       )}`}
                     >
-                      {account.type}
+                      {account.type.replace('_', ' ')}
                     </span>
                   </td>
                   <td className="py-3 px-6 text-sm">

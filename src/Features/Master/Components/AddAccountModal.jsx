@@ -103,14 +103,23 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
 
   if (!isOpen) return null;
 
-  // Get available parent accounts (ROOT and FOLDER types)
-  const availableParents = accounts.filter(acc => acc.type === 'ROOT' || acc.type === 'FOLDER');
+  // Get available parent accounts (ROOT, FOLDER, SUB_FOLDER, ACCOUNT_SUBCATEGORY, and ACCOUNT_TYPE types)
+  const availableParents = accounts.filter(acc => 
+    acc.type === 'ROOT' || 
+    acc.type === 'FOLDER' || 
+    acc.type === 'SUB_FOLDER' || 
+    acc.type === 'ACCOUNT_SUBCATEGORY' ||
+    acc.type === 'ACCOUNT_TYPE'
+  );
 
   // Sort parents hierarchically for better display
   const sortParentsHierarchically = (parentAccounts) => {
     const roots = parentAccounts.filter(acc => acc.type === 'ROOT').sort((a, b) => a.code.localeCompare(b.code));
     const folders = parentAccounts.filter(acc => acc.type === 'FOLDER').sort((a, b) => a.code.localeCompare(b.code));
-    return [...roots, ...folders];
+    const subFolders = parentAccounts.filter(acc => acc.type === 'SUB_FOLDER').sort((a, b) => a.code.localeCompare(b.code));
+    const accountSubcategories = parentAccounts.filter(acc => acc.type === 'ACCOUNT_SUBCATEGORY').sort((a, b) => a.code.localeCompare(b.code));
+    const accountTypes = parentAccounts.filter(acc => acc.type === 'ACCOUNT_TYPE').sort((a, b) => a.code.localeCompare(b.code));
+    return [...roots, ...folders, ...subFolders, ...accountSubcategories, ...accountTypes];
   };
 
   const sortedParents = sortParentsHierarchically(availableParents);
@@ -179,12 +188,18 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
             >
               <option value="ROOT">Root (Main Category)</option>
               <option value="FOLDER">Folder (Sub Category)</option>
-              <option value="Account">Account (Final Account)</option>
+              <option value="SUB_FOLDER">Sub Folder (Sub Folder)</option>
+              <option value="ACCOUNT_SUBCATEGORY">Account Subcategory (Account Subcategory)</option>
+              <option value="ACCOUNT_TYPE">Account Type (Account Type)</option>
+              <option value="ACCOUNT">Account (Final Account)</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
               {formData.accountType === 'ROOT' && 'Main categories like ASSETS, LIABILITIES, etc.'}
               {formData.accountType === 'FOLDER' && 'Sub-categories that can contain other accounts'}
-              {formData.accountType === 'Account' && 'Final accounts for transactions'}
+              {formData.accountType === 'SUB_FOLDER' && 'Sub-folders within folders that can contain accounts'}
+              {formData.accountType === 'ACCOUNT_SUBCATEGORY' && 'Account subcategories within sub-folders that can contain account types'}
+              {formData.accountType === 'ACCOUNT_TYPE' && 'Account types within subcategories that can contain final accounts'}
+              {formData.accountType === 'ACCOUNT' && 'Final accounts for transactions'}
             </p>
           </div>
           
@@ -204,7 +219,11 @@ const AddAccountModal = ({ isOpen, onClose, onSubmit, accounts }) => {
               <option value="No Parent (Root Level)">No Parent (Root Level)</option>
               {sortedParents.map(parent => (
                 <option key={parent.id} value={`${parent.code} - ${parent.name}`}>
-                  {parent.type === 'ROOT' ? '🏛️' : '📁'} {parent.code} - {parent.name}
+                  {parent.type === 'ROOT' ? '🏛️' : 
+                   parent.type === 'FOLDER' ? '📁' : 
+                   parent.type === 'SUB_FOLDER' ? '📂' : 
+                   parent.type === 'ACCOUNT_SUBCATEGORY' ? '🗂️' : 
+                   parent.type === 'ACCOUNT_TYPE' ? '📋' : '📁'} {parent.code} - {parent.name}
                 </option>
               ))}
             </select>
