@@ -23,12 +23,14 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
     if (!isOpen || !invoice) return null;
 
     const handleFinalApprove = () => {
-        // For Procurement Prepaid, don't close modal immediately as it will trigger the prepaid period selection
+        // For Procurement Prepaid, the modal will stay open and prepaid period modal will open
         if (invoice.type === "Procurement Prepaid") {
             handleUpdateInvoice(invoice.id, "Approved");
+            // Don't close this modal - it will be closed when prepaid period is set
             toast.success("Opening prepaid period selection...");
         } else {
             handleUpdateInvoice(invoice.id, "Approved");
+            // For other types, close the modal as usual
             onClose();
             toast.success("Invoice approved successfully!");
         }
@@ -45,7 +47,7 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-40 z-40 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
                 {/* Header */}
                 <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white z-10">

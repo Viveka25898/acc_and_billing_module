@@ -1,13 +1,14 @@
-// File: src/features/billingManager/components/PurchaseVoucherModal.jsx
 import React from "react";
 
 export default function PurchaseVoucherModal({ onClose, invoice }) {
   if (!invoice) return null;
 
-  // Calculate GST and base amount (assuming 18% GST for this example)
+  // CORRECTED GST Calculation
   const gstPercentage = invoice.gstRate || 18;
-  const gstAmount = Math.round(invoice.totalAmount * gstPercentage / (100 + gstPercentage));
-  const baseAmount = invoice.totalAmount - (gstAmount * 2); // Assuming CGST+SGST
+  const baseAmount = Math.round(invoice.totalAmount / (1 + gstPercentage/100));
+  const totalGstAmount = invoice.totalAmount - baseAmount;
+  const cgstAmount = Math.round(totalGstAmount / 2);
+  const sgstAmount = totalGstAmount - cgstAmount; // Ensure total matches
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center px-2">
@@ -21,44 +22,44 @@ export default function PurchaseVoucherModal({ onClose, invoice }) {
           <p><strong>Invoice Ref:</strong> {invoice.invoiceNumber}</p>
         </div>
 
-     <div className="border rounded-lg overflow-hidden mb-4">
+        <div className="border rounded-lg overflow-hidden mb-4">
           <table className="w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-2 text-left border">Particulars</th>
                 <th className="p-2 text-right border">Amount (₹)</th>
                 <th className="p-2 text-left border">GL Code</th>
-                <th className="p-2 text-left border">Cost Center</th> {/* New Column */}
+                <th className="p-2 text-left border">Cost Center</th>
                 <th className="p-2 text-left border">Type</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="p-2 border">Uniforms Received from {invoice.vendorName}</td> {/* Particulars */}
+                <td className="p-2 border">Prepaid Assets - {invoice.vendorName}</td>
                 <td className="p-2 text-right border">{baseAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1200</td> {/* GL Code */}
-                <td className="p-2 border">CC-400</td> {/* Cost Center, e.g., HR Dept */}
+                <td className="p-2 border">A-1205</td>
+                <td className="p-2 border">CC-400</td>
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr>
-                <td className="p-2 border">Input Tax Credit (CGST)</td> {/* Particulars */}
-                <td className="p-2 text-right border">{gstAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1305</td> {/* GL Code */}
-                <td className="p-2 border">CC-400</td> {/* Cost Center */}
+                <td className="p-2 border">Input Tax Credit (CGST)</td>
+                <td className="p-2 text-right border">{cgstAmount.toLocaleString()}</td>
+                <td className="p-2 border">A-1305</td>
+                <td className="p-2 border">CC-400</td>
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr>
-                <td className="p-2 border">Input Tax Credit (SGST)</td> {/* Particulars */}
-                <td className="p-2 text-right border">{gstAmount.toLocaleString()}</td>
-                <td className="p-2 border">A-1310</td> {/* GL Code */}
-                <td className="p-2 border">CC-400</td> {/* Cost Center */}
+                <td className="p-2 border">Input Tax Credit (SGST)</td>
+                <td className="p-2 text-right border">{sgstAmount.toLocaleString()}</td>
+                <td className="p-2 border">A-1310</td>
+                <td className="p-2 border">CC-400</td>
                 <td className="p-2 border">Debit</td>
               </tr>
               <tr className="bg-gray-50 font-medium">
-                <td className="p-2 border">To Accounts Payable for {invoice.invoiceNumber}</td> {/* Particulars */}
+                <td className="p-2 border">To Accounts Payable - {invoice.vendorName}</td>
                 <td className="p-2 text-right border">{invoice.totalAmount.toLocaleString()}</td>
-                <td className="p-2 border">L-2000</td> {/* GL Code */}
-                <td className="p-2 border">CC-400</td> {/* Cost Center */}
+                <td className="p-2 border">L-2000</td>
+                <td className="p-2 border">CC-400</td>
                 <td className="p-2 border">Credit</td>
               </tr>
             </tbody>
@@ -67,7 +68,7 @@ export default function PurchaseVoucherModal({ onClose, invoice }) {
 
         <div className="bg-blue-50 p-3 rounded mb-4">
           <p className="text-sm">
-            The invoice has been booked. A prepaid expense for the base cost of <strong>₹{baseAmount.toLocaleString()}</strong> has been identified.
+            The invoice has been booked as a Prepaid Asset. Base amount of <strong>₹{baseAmount.toLocaleString()}</strong> will be amortized over <strong>{invoice.prepaidPeriod || 12} months</strong> starting from <strong>{invoice.prepaidStartMonth || 'current month'}</strong>.
           </p>
         </div>
 

@@ -113,19 +113,39 @@ Invoice Processing Summary:
     alert(summary);
   };
 
-  const filteredInvoices = invoices.filter((inv) => {
-    const textMatch =
-      inv.invoiceNumber.toLowerCase().includes(filterText.toLowerCase()) ||
-      inv.vendorName?.toLowerCase().includes(filterText.toLowerCase());
+  // UPDATED: Filter and sort invoices
+  const filteredInvoices = invoices
+    .filter((inv) => {
+      const textMatch =
+        inv.invoiceNumber.toLowerCase().includes(filterText.toLowerCase()) ||
+        inv.vendorName?.toLowerCase().includes(filterText.toLowerCase());
 
-    const statusMatch =
-      !statusFilter || 
-      (statusFilter === "Pending" && inv.billingManagerStatus === "Pending") ||
-      (statusFilter === "Approved" && inv.billingManagerStatus === "Approved") ||
-      (statusFilter === "Rejected" && inv.billingManagerStatus === "Rejected");
+      const statusMatch =
+        !statusFilter || 
+        (statusFilter === "Pending" && inv.billingManagerStatus === "Pending") ||
+        (statusFilter === "Approved" && inv.billingManagerStatus === "Approved") ||
+        (statusFilter === "Rejected" && inv.billingManagerStatus === "Rejected");
 
-    return textMatch && statusMatch;
-  });
+      return textMatch && statusMatch;
+    })
+    .sort((a, b) => {
+      // Sort by status priority: Pending -> Approved -> Rejected
+      const statusPriority = {
+        "Pending": 1,
+        "Approved": 2, 
+        "Rejected": 3
+      };
+      
+      const aPriority = statusPriority[a.billingManagerStatus] || 4;
+      const bPriority = statusPriority[b.billingManagerStatus] || 4;
+      
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // If same status, sort by invoice number or date
+      return a.invoiceNumber.localeCompare(b.invoiceNumber);
+    });
 
   // Pagination 
   const paginatedInvoices = filteredInvoices.slice(
