@@ -153,10 +153,31 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
         acc.code !== editingAccount.code && 
         !childrenCodes.includes(acc.code)
       );
-    } else if (editingAccount.type === 'Account') {
-      // Account type can have ROOT or FOLDER parents
+    } else if (editingAccount.type === 'SUB_FOLDER') {
+      // SUB_FOLDER accounts can have ROOT, FOLDER, or other SUB_FOLDER parents
       availableParents = accounts.filter(acc => 
-        (acc.type === 'ROOT' || acc.type === 'FOLDER') && 
+        (acc.type === 'ROOT' || acc.type === 'FOLDER' || acc.type === 'SUB_FOLDER') && 
+        acc.code !== editingAccount.code && 
+        !childrenCodes.includes(acc.code)
+      );
+    } else if (editingAccount.type === 'ACCOUNT_SUBCATEGORY') {
+      // ACCOUNT_SUBCATEGORY can have ROOT, FOLDER, SUB_FOLDER, or other ACCOUNT_SUBCATEGORY parents
+      availableParents = accounts.filter(acc => 
+        (acc.type === 'ROOT' || acc.type === 'FOLDER' || acc.type === 'SUB_FOLDER' || acc.type === 'ACCOUNT_SUBCATEGORY') && 
+        acc.code !== editingAccount.code && 
+        !childrenCodes.includes(acc.code)
+      );
+    } else if (editingAccount.type === 'ACCOUNT_TYPE') {
+      // ACCOUNT_TYPE can have ROOT, FOLDER, SUB_FOLDER, ACCOUNT_SUBCATEGORY, or other ACCOUNT_TYPE parents
+      availableParents = accounts.filter(acc => 
+        (acc.type === 'ROOT' || acc.type === 'FOLDER' || acc.type === 'SUB_FOLDER' || acc.type === 'ACCOUNT_SUBCATEGORY' || acc.type === 'ACCOUNT_TYPE') && 
+        acc.code !== editingAccount.code && 
+        !childrenCodes.includes(acc.code)
+      );
+    } else if (editingAccount.type === 'ACCOUNT') {
+      // ACCOUNT type can have any parent type
+      availableParents = accounts.filter(acc => 
+        (acc.type === 'ROOT' || acc.type === 'FOLDER' || acc.type === 'SUB_FOLDER' || acc.type === 'ACCOUNT_SUBCATEGORY' || acc.type === 'ACCOUNT_TYPE') && 
         acc.code !== editingAccount.code && 
         !childrenCodes.includes(acc.code)
       );
@@ -171,7 +192,10 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
   const sortParentsHierarchically = (parentAccounts) => {
     const roots = parentAccounts.filter(acc => acc.type === 'ROOT').sort((a, b) => a.code.localeCompare(b.code));
     const folders = parentAccounts.filter(acc => acc.type === 'FOLDER').sort((a, b) => a.code.localeCompare(b.code));
-    return [...roots, ...folders];
+    const subFolders = parentAccounts.filter(acc => acc.type === 'SUB_FOLDER').sort((a, b) => a.code.localeCompare(b.code));
+    const accountSubcategories = parentAccounts.filter(acc => acc.type === 'ACCOUNT_SUBCATEGORY').sort((a, b) => a.code.localeCompare(b.code));
+    const accountTypes = parentAccounts.filter(acc => acc.type === 'ACCOUNT_TYPE').sort((a, b) => a.code.localeCompare(b.code));
+    return [...roots, ...folders, ...subFolders, ...accountSubcategories, ...accountTypes];
   };
 
   const sortedParents = sortParentsHierarchically(availableParents);
@@ -238,12 +262,18 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
             >
               <option value="ROOT">Root (Main Category)</option>
               <option value="FOLDER">Folder (Sub Category)</option>
-              <option value="Account">Account (Final Account)</option>
+              <option value="SUB_FOLDER">Sub Folder (Sub Folder)</option>
+              <option value="ACCOUNT_SUBCATEGORY">Account Subcategory (Account Subcategory)</option>
+              <option value="ACCOUNT_TYPE">Account Type (Account Type)</option>
+              <option value="ACCOUNT">Account (Final Account)</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
               {formData.accountType === 'ROOT' && 'Main categories like ASSETS, LIABILITIES, etc.'}
               {formData.accountType === 'FOLDER' && 'Sub-categories that can contain other accounts'}
-              {formData.accountType === 'Account' && 'Final accounts for transactions'}
+              {formData.accountType === 'SUB_FOLDER' && 'Sub-folders within folders that can contain accounts'}
+              {formData.accountType === 'ACCOUNT_SUBCATEGORY' && 'Account subcategories within sub-folders that can contain account types'}
+              {formData.accountType === 'ACCOUNT_TYPE' && 'Account types within subcategories that can contain final accounts'}
+              {formData.accountType === 'ACCOUNT' && 'Final accounts for transactions'}
             </p>
           </div>
           
@@ -268,7 +298,11 @@ const EditAccountModal = ({ isOpen, onClose, onSubmit, accounts, editingAccount 
               )}
               {sortedParents.map(parent => (
                 <option key={parent.id} value={`${parent.code} - ${parent.name}`}>
-                  {parent.type === 'ROOT' ? '🏛️' : '📁'} {parent.code} - {parent.name}
+                  {parent.type === 'ROOT' ? '🏛️' : 
+                   parent.type === 'FOLDER' ? '📁' : 
+                   parent.type === 'SUB_FOLDER' ? '📂' : 
+                   parent.type === 'ACCOUNT_SUBCATEGORY' ? '🗂️' : 
+                   parent.type === 'ACCOUNT_TYPE' ? '📋' : '📁'} {parent.code} - {parent.name}
                 </option>
               ))}
             </select>

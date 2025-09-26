@@ -60,8 +60,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       case 'subfolders':
         matchesFilter = account.type === 'SUB_FOLDER';
         break;
-      case 'subsubfolders':
-        matchesFilter = account.type === 'SUB_SUB_FOLDER';
+      case 'accountsubcategories':
+        matchesFilter = account.type === 'ACCOUNT_SUBCATEGORY';
+        break;
+      case 'accounttypes':
+        matchesFilter = account.type === 'ACCOUNT_TYPE';
         break;
       case 'accounts':
         matchesFilter = account.type === 'ACCOUNT';
@@ -82,8 +85,10 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       case 'SUB_FOLDER':
         return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'SUB_SUB_FOLDER':
+      case 'ACCOUNT_SUBCATEGORY':
         return 'bg-pink-100 text-pink-800 border-pink-200';
+      case 'ACCOUNT_TYPE':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'ACCOUNT':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
@@ -99,8 +104,10 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         return '📁'; // Folder
       case 'SUB_FOLDER':
         return '📂'; // Sub Folder
-      case 'SUB_SUB_FOLDER':
-        return '🗂️'; // Sub Sub Folder
+      case 'ACCOUNT_SUBCATEGORY':
+        return '🗂️'; // Account Subcategory
+      case 'ACCOUNT_TYPE':
+        return '📋'; // Account Type
       case 'ACCOUNT':
         return '📄'; // Leaf account
       default:
@@ -158,8 +165,10 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                               ? 'font-medium'
                               : account.type === 'SUB_FOLDER'
                               ? 'font-medium text-amber-700'
-                              : account.type === 'SUB_SUB_FOLDER'
+                              : account.type === 'ACCOUNT_SUBCATEGORY'
                               ? 'font-medium text-pink-700'
+                              : account.type === 'ACCOUNT_TYPE'
+                              ? 'font-medium text-purple-700'
                               : ''
                           }`}
                         >
