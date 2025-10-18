@@ -1,0 +1,122 @@
+export const vendorData = {
+  vendorCode: "VEN-ABC001",
+  vendorName: "ABC Suppliers Pvt Ltd",
+  gstin: "27AABCU9603R1ZM",
+  pan: "AABCU9603R",
+  glAccountCode: "L2005-VEN-ABC001",
+  accountName: "Sundry Creditors - ABC Suppliers",
+  tdsSection: "194C - Contractors (2%)",
+  paymentTerms: "Net 30 Days",
+  openingBalance: {
+    date: "01-Apr-2024",
+    amount: 250000,
+    type: "Credit (Outstanding)"
+  },
+  currentOutstanding: 335000,
+  overdueAmount: 150000
+};
+
+export const summaryData = {
+  totalInvoices: 585000,
+  totalPayments: 500000,
+  pendingInvoices: 5
+};
+
+export const ledgerEntries = [
+  {
+    id: 1,
+    date: "01-Apr-24",
+    voucherNo: "OB-2024",
+    entryType: "opening",
+    debit: null,
+    credit: 250000,
+    balance: 250000,
+    balanceType: "cr",
+    narration: "Opening Balance B/F",
+    refNo: "-",
+    counterparty: "-",
+    counterpartyType: "-",
+    approvedBy: "System",
+    attachments: 0,
+    costCenter: "Head Office",
+    status: "posted"
+  },
+  {
+    id: 2,
+    date: "05-Apr-24",
+    voucherNo: "PUR-2024-0012",
+    entryType: "invoice",
+    debit: null,
+    credit: 118000,
+    balance: 368000,
+    balanceType: "cr",
+    narration: "Purchase of Housekeeping Materials",
+    invoiceDetails: "Invoice Date: 03-Apr-24 | Due: 03-May-24",
+    refNo: "INV-ABC-001",
+    counterparty: "HK Materials (X1001004001)",
+    counterpartyType: "expense",
+    approvedBy: "Amit Shah (AM)",
+    attachments: 2,
+    costCenter: "Mumbai Branch",
+    status: "pending"
+  },
+  {
+    id: 3,
+    date: "10-Apr-24",
+    voucherNo: "PAY-2024-0056",
+    entryType: "payment",
+    debit: 118000,
+    credit: null,
+    balance: 250000,
+    balanceType: "cr",
+    narration: "Payment for Invoice INV-ABC-001",
+    invoiceDetails: "Mode: NEFT | UTR: HDFC24110345678",
+    refNo: "INV-ABC-001",
+    counterparty: "HDFC Bank (A300403)",
+    counterpartyType: "bank",
+    tdsDetails: "TDS: ₹2,000 (194C)",
+    approvedBy: "Priya Sharma (AE)",
+    attachments: 3,
+    costCenter: "Mumbai Branch",
+    status: "paid"
+  },
+  {
+    id: 4,
+    date: "15-Apr-24",
+    voucherNo: "PUR-2024-0023",
+    entryType: "invoice",
+    debit: null,
+    credit: 236000,
+    balance: 486000,
+    balanceType: "cr",
+    narration: "Purchase of Cleaning Supplies - Q2",
+    invoiceDetails: "Invoice Date: 12-Apr-24 | Due: 12-May-24 | GST: ₹36,000",
+    refNo: "INV-ABC-002",
+    counterparty: "Cleaning Supplies (X1001004002)",
+    counterpartyType: "expense",
+    approvedBy: "Amit Shah (AM)",
+    attachments: 2,
+    costCenter: "Delhi Branch",
+    status: "partial"
+  },
+  {
+    id: 5,
+    date: "20-Apr-24",
+    voucherNo: "PAY-2024-0089",
+    entryType: "payment",
+    debit: 150000,
+    credit: null,
+    balance: 336000,
+    balanceType: "cr",
+    narration: "Partial Payment for Invoice INV-ABC-002",
+    invoiceDetails: "Mode: RTGS | UTR: SBI24110987654 | Remaining: ₹86,000",
+    refNo: "INV-ABC-002",
+    counterparty: "SBI Bank (A300405)",
+    counterpartyType: "bank",
+    tdsDetails: "TDS: ₹3,000 (194C)",
+    approvedBy: "Priya Sharma (AE)",
+    attachments: 2,
+    costCenter: "Delhi Branch",
+    status: "partial"
+  }
+];

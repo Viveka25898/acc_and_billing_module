@@ -1,0 +1,157 @@
+export const ledgerEntries = [
+  {
+    date: '01-Apr-24',
+    voucherNo: 'OB-2024',
+    entryType: 'Opening',
+    debit: 30000.00,
+    credit: null,
+    balance: 30000.00,
+    balanceType: 'DR',
+    narration: 'Opening Balance B/F',
+    refNo: '-',
+    counterparty: '-',
+    counterpartyType: null,
+    type: '-',
+    approvedBy: 'System',
+    attachments: 0,
+    costCenter: 'Head Office',
+    status: 'Posted'
+  },
+  {
+    date: '05-Apr-24',
+    voucherNo: 'PAY-2024-0045',
+    entryType: 'Payment',
+    debit: 50000.00,
+    credit: null,
+    balance: 80000.00,
+    balanceType: 'DR',
+    narration: 'Advance for Site Visit - Mumbai',
+    refNo: 'ADV-REQ-2024-001',
+    counterparty: 'HDFC Current A/c',
+    counterpartyType: 'Bank',
+    type: 'Advance Payment',
+    approvedBy: 'Rajesh Kumar (VP Ops)',
+    attachments: 2,
+    costCenter: 'Mumbai Branch',
+    status: 'Posted'
+  },
+  {
+    date: '12-Apr-24',
+    voucherNo: 'JV-2024-0089',
+    entryType: 'Journal',
+    debit: null,
+    credit: 45000.00,
+    balance: 35000.00,
+    balanceType: 'DR',
+    narration: 'Advance Settlement: Travel ₹25K, Food ₹12K, Conveyance ₹8K',
+    refNo: 'ADV-SETTLE-2024-001',
+    counterparty: 'Travel Expenses (X2014)',
+    counterpartyType: 'Expense',
+    type: 'Settlement',
+    approvedBy: 'Priya Sharma (AE)',
+    attachments: 5,
+    costCenter: 'Mumbai Branch',
+    status: 'Posted'
+  },
+  {
+    date: '20-Apr-24',
+    voucherNo: 'PAY-2024-0123',
+    entryType: 'Payment',
+    debit: 25000.00,
+    credit: null,
+    balance: 60000.00,
+    balanceType: 'DR',
+    narration: 'Advance for Training - Delhi',
+    refNo: 'ADV-REQ-2024-015',
+    counterparty: 'ICICI Current A/c',
+    counterpartyType: 'Bank',
+    type: 'Advance Payment',
+    approvedBy: 'Amit Verma (Line Mgr)',
+    attachments: 1,
+    costCenter: 'Head Office',
+    status: 'Posted'
+  },
+  {
+    date: '28-Apr-24',
+    voucherNo: 'JV-2024-0156',
+    entryType: 'Journal',
+    debit: null,
+    credit: 30000.00,
+    balance: 30000.00,
+    balanceType: 'DR',
+    narration: 'Advance Settlement: Training Fee ₹15K, Hotel ₹10K, Misc ₹5K',
+    refNo: 'ADV-SETTLE-2024-015',
+    counterparty: 'Training Expenses (X2027)',
+    counterpartyType: 'Expense',
+    type: 'Settlement',
+    approvedBy: 'Priya Sharma (AE)',
+    attachments: 3,
+    costCenter: 'Head Office',
+    status: 'Posted'
+  },
+  {
+    date: '05-May-24',
+    voucherNo: 'PAY-2024-0198',
+    entryType: 'Payment',
+    debit: 15000.00,
+    credit: null,
+    balance: 45000.00,
+    balanceType: 'DR',
+    narration: 'Advance for Client Meeting',
+    refNo: 'ADV-REQ-2024-032',
+    counterparty: 'HDFC Current A/c',
+    counterpartyType: 'Bank',
+    type: 'Advance Payment',
+    approvedBy: 'Rajesh Kumar (VP Ops)',
+    attachments: 1,
+    costCenter: 'Mumbai Branch',
+    status: 'Posted'
+  },
+  {
+    date: '10-May-24',
+    voucherNo: 'JV-2024-0203',
+    entryType: 'Journal',
+    debit: null,
+    credit: 18000.00,
+    balance: 27000.00,
+    balanceType: 'DR',
+    narration: 'Advance Settlement - Full (Total Expenses: ₹18,000)',
+    refNo: 'ADV-SETTLE-2024-032',
+    counterparty: 'Meeting Expenses (X2035)',
+    counterpartyType: 'Expense',
+    type: 'Settlement',
+    approvedBy: 'Priya Sharma (AE)',
+    attachments: 4,
+    costCenter: 'Mumbai Branch',
+    status: 'Posted'
+  },
+  {
+    date: '15-May-24',
+    voucherNo: 'REC-2024-0045',
+    entryType: 'Receipt',
+    debit: null,
+    credit: 2000.00,
+    balance: 25000.00,
+    balanceType: 'DR',
+    narration: 'Cash Return - Advance Excess Amount',
+    refNo: 'ADV-SETTLE-2024-032',
+    counterparty: 'Cash in Hand',
+    counterpartyType: 'Cash',
+    type: 'Cash Return',
+    approvedBy: 'Priya Sharma (AE)',
+    attachments: 1,
+    costCenter: 'Mumbai Branch',
+    status: 'Posted'
+  }
+];
+
+// ============ CHILD COMPONENTS ============
+
+const InfoItem = ({ label, value }) => {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs opacity-90 mb-1">{label}</span>
+      <span className="text-base font-semibold">{value}</span>
+    </div>
+  );
+};

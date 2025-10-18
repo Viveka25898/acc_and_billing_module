@@ -1,4 +1,7 @@
+import { useNavigate } from "react-router-dom";
+
 const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick }) => {
+  const navigate=useNavigate()
   // Function to sort accounts hierarchically
   const sortAccountsHierarchically = (accountsList) => {
     const accountMap = new Map();
@@ -114,7 +117,38 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         return '📄';
     }
   };
+ const handleAccountClick = (account) => {
+  if (account.type === 'ACCOUNT') {
+    // Determine account type based on code pattern
+    const isVendorAccount = account.code.startsWith('L2005') || 
+                           account.code.includes('VEN') || 
+                           account.name.toLowerCase().includes('vendor');
+    
+    const isTDSAccount = account.code.startsWith('L2003') || 
+                        account.code.includes('TDS') || 
+                        account.name.toLowerCase().includes('tds');
+    
+    const isEmployeeAccount = account.code.startsWith('A3002') || 
+                             account.name.toLowerCase().includes('employee');
 
+    if (isVendorAccount) {
+      navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);
+    } else if (isTDSAccount) {
+      // Extract section code from TDS account (e.g., "194C" from "L2003001")
+      const sectionCode = account.code.replace('L2003', '').replace(/^0+/, '') || '194C';
+      navigate(`/dashboard/account-manager/tds-ledger/${sectionCode}`);
+    } else if (isEmployeeAccount) {
+      navigate(`/dashboard/account-manager/ledger/${account.code}`);
+    } else {
+      // Default to employee ledger for other accounts
+      navigate(`/dashboard/account-manager/ledger/${account.code}`);
+    }
+  } else {
+    if (onAccountClick) {
+      onAccountClick(account);
+    }
+  }
+};
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-6 border-b border-gray-200">
@@ -139,19 +173,16 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
               filteredAccounts.map((account, index) => (
                 <tr
                   key={account.id || index}
-                  className={`hover:bg-gray-50 cursor-pointer ${account.type === 'ROOT' ? 'bg-blue-50' : ''}`}
-                  onClick={() => {
-                    if (onAccountClick) {
-                      onAccountClick(account);
-                    }
-                  }}
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                    account.type === 'ROOT' ? 'bg-blue-50' : ''
+                  } ${account.type === 'ACCOUNT' ? 'hover:bg-indigo-50' : ''}`}
+                  onClick={() => handleAccountClick(account)}
                 >
                   <td className="py-3 px-6 text-sm">
                     <span className="font-mono text-gray-900">{account.code}</span>
                   </td>
                   <td className="py-3 px-6 text-sm">
                     <div className="flex items-center gap-2">
-                      {/* Indentation based on hierarchy level */}
                       <span
                         style={{ marginLeft: `${account.level * 20}px` }}
                         className="flex items-center gap-2"
@@ -174,6 +205,10 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                         >
                           {account.name}
                         </span>
+                        {/* Add indicator for clickable ledger accounts */}
+                        {account.type === 'ACCOUNT' && (
+                          <span className="text-xs text-indigo-600 ml-2">→ View Ledger</span>
+                        )}
                       </span>
                     </div>
                   </td>

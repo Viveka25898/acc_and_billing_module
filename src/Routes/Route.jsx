@@ -142,6 +142,9 @@ import AMInvoiceReviewPage from "../Features/PurchaseBookingHKMaterial/Account M
 import AMInvoiceApproval from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage"
 import AMFixedAssetEntryPage from "../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage"
 import ChartOfAccountsDashboard from "../Features/Master/Pages/ChartOfAccountsDashboard"
+import EmployeeLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage"
+import ProcessOfPaymentVendorPage from "../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage"
+import TDSLedgerPage from "../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage"
 
 
 export const router=createBrowserRouter([
@@ -811,8 +814,29 @@ export const router=createBrowserRouter([
             {
                 path:"gl-master",
                 element:<ChartOfAccountsDashboard/>
-            }
-        ]
-    }
+            },
+            // ************************************Master Dummy********************************************
+            // Add Employee Ledger Route
+        {
+            path:"ledger/:accountCode",
+            element:<EmployeeLedgerPage/>
+        },
+        // Vendor Ledger Account 
+         {
+            path:"vendor-ledger/:accountCode",
+            element:<ProcessOfPaymentVendorPage/>
+         },
+         {
+            path: "tds-ledger/:sectionCode",
+            element: <TDSLedgerPage/>
+          }
 
+        ]
+    },
+
+    
+
+    {
+
+    }
 ])
