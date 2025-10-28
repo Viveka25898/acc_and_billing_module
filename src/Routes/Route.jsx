@@ -145,6 +145,7 @@ import ChartOfAccountsDashboard from "../Features/Master/Pages/ChartOfAccountsDa
 import EmployeeLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage"
 import ProcessOfPaymentVendorPage from "../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage"
 import TDSLedgerPage from "../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage"
+import BankLedgerPage from "../Features/Master/Bank Ledger/Pages/BankLedgerPage"
 
 
 export const router=createBrowserRouter([
@@ -829,7 +830,11 @@ export const router=createBrowserRouter([
          {
             path: "tds-ledger/:sectionCode",
             element: <TDSLedgerPage/>
-          }
+          },
+          {
+            path: "bank-ledger/:accountCode",
+            element: <BankLedgerPage/> 
+            }
 
         ]
     },

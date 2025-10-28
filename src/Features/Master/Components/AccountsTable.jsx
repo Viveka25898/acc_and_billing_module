@@ -131,6 +131,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
     const isEmployeeAccount = account.code.startsWith('A3002') || 
                              account.name.toLowerCase().includes('employee');
 
+    const isBankAccount = account.code.startsWith('A3004') || 
+                         account.name.toLowerCase().includes('bank') ||
+                         account.name.toLowerCase().includes('hdfc') ||
+                         account.name.toLowerCase().includes('sbi') ||
+                         account.name.toLowerCase().includes('icici');
+
     if (isVendorAccount) {
       navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);
     } else if (isTDSAccount) {
@@ -139,6 +145,8 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       navigate(`/dashboard/account-manager/tds-ledger/${sectionCode}`);
     } else if (isEmployeeAccount) {
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
+    } else if (isBankAccount) {
+      navigate(`/dashboard/account-manager/bank-ledger/${account.code}`);
     } else {
       // Default to employee ledger for other accounts
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
