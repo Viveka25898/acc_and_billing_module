@@ -14,7 +14,7 @@ const AdvanceRequestForm = () => {
 
     setFormData((prev) => ({
       ...prev,
-      employeeName: fullUser?.username || '',
+      employeeName: fullUser?.fullName || '',
       employeeId: fullUser?.employeeId || fullUser?.username || '',
     }));
   }

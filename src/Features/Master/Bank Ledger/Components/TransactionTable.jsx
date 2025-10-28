@@ -1,72 +1,16 @@
-// src/components/BankLedger/TransactionTable.jsx
+// src/components/BankLedger/TransactionTable.jsx - UPDATED
 import React from 'react';
 import Badge from './Badge';
 
-
-const TransactionTable = () => {
-  const transactions = [
-    {
-      date: '01-Apr-24',
-      voucherNo: 'OB-2024',
-      entryType: 'opening',
-      debit: '5,00,000.00',
-      credit: '-',
-      balance: '5,00,000.00 DR',
-      narration: 'Opening Balance B/F FY 2024-25',
-      refNo: '-',
-      counterparty: '-',
-      type: 'opening_type',
-      approvedBy: '-',
-      instrument: '-',
-      valueDate: '01-Apr-24',
-      tdsDetails: '-',
-      status: 'posted',
-      costCenter: 'Head Office',
-      recon: 'reconciled',
-      rowClass: 'bg-orange-50'
-    },
-    {
-      date: '05-Apr-24',
-      voucherNo: 'PAY-2024-0045',
-      entryType: 'payment',
-      debit: '-',
-      credit: '1,16,000.00',
-      balance: '3,84,000.00 DR',
-      narration: 'Payment to ABC Suppliers - Invoice INV-ABC-2024-001',
-      refNo: 'INV-ABC-2024-001',
-      counterparty: 'L2005-VEN-ABC001',
-      type: 'vendor',
-      approvedBy: 'Account Manager',
-      instrument: 'NEFT - HDFC24110123456',
-      valueDate: '06-Apr-24',
-      tdsDetails: '2,000 (TDS 194C)',
-      status: 'posted',
-      costCenter: 'Mumbai Branch',
-      recon: 'reconciled',
-      rowClass: 'bg-red-50'
-    },
-    {
-      date: '10-Apr-24',
-      voucherNo: 'PAY-2024-0056',
-      entryType: 'payment',
-      debit: '-',
-      credit: '50,000.00',
-      balance: '3,34,000.00 DR',
-      narration: 'Advance to John Doe - Site Visit Mumbai',
-      refNo: 'ADV-REQ-2024-001',
-      counterparty: 'A3002-EMP-001',
-      type: 'advance',
-      approvedBy: 'VP Operations',
-      instrument: 'NEFT - HDFC24110234567',
-      valueDate: '11-Apr-24',
-      tdsDetails: '-',
-      status: 'posted',
-      costCenter: 'Mumbai Branch',
-      recon: 'reconciled',
-      rowClass: 'bg-red-50'
-    },
-    // Add more transactions as needed...
-  ];
+const TransactionTable = ({ transactions = [] }) => {
+  if (transactions.length === 0) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        <p>No bank transactions found.</p>
+        <p className="text-sm mt-2">Transactions will appear here when payments are processed.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 overflow-x-auto">
@@ -129,7 +73,8 @@ const TransactionTable = () => {
               <td className="px-2 py-3 text-sm">
                 <Badge type={transaction.type}>
                   {transaction.type === 'vendor' ? 'Vendor Payment' :
-                   transaction.type === 'advance' ? 'Advance' : 'Opening'}
+                   transaction.type === 'advance' ? 'Advance' : 
+                   transaction.type === 'opening_type' ? 'Opening' : 'Other'}
                 </Badge>
               </td>
               <td className="px-2 py-3 text-sm">{transaction.approvedBy}</td>
