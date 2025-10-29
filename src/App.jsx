@@ -1,15 +1,23 @@
-/* eslint-disable no-unused-vars */
 import { RouterProvider } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
-import { useDispatch } from "react-redux";
-import { login } from "./Auth/authSlice.jsx";
+import { ToastContainer, toast } from "react-toastify";
 import { router } from "./Routes/Route.jsx";
 import { useEffect } from "react";
 
 function App() {
+  // Application Version for Migration Management
+  const APP_VERSION = "1.0.0";
+
   // Local Storage Initialization - Enhanced with Accounting Modules
   useEffect(() => {
     try {
+      // Check version and handle migrations
+      const storedVersion = localStorage.getItem('appVersion');
+      if (storedVersion && storedVersion !== APP_VERSION) {
+        console.log(`🔄 Upgrading from ${storedVersion} to ${APP_VERSION}`);
+        // Handle data migration here if needed
+      }
+      localStorage.setItem('appVersion', APP_VERSION);
+
       // ========================================
       // 1. INITIALIZE USERS (Enhanced Structure)
       // ========================================
@@ -390,16 +398,39 @@ function App() {
         console.log("✅ Ledger balances initialized");
       }
 
+      // ========================================
+      // 5. INITIALIZE BANK OPENING BALANCES
+      // ========================================
+      if (!localStorage.getItem('bankOpeningBalances')) {
+        const bankOpeningBalances = {
+          "A3004003002": 500000, // HDFC Bank - ₹5,00,000
+          "A3004003003": 300000  // Punjab Bank - ₹3,00,000
+        };
+        localStorage.setItem('bankOpeningBalances', JSON.stringify(bankOpeningBalances));
+        console.log("✅ Bank opening balances initialized");
+      }
+
       console.log("🎯 All accounting modules initialized successfully!");
 
     } catch (error) {
       console.error("❌ Error initializing accounting modules:", error);
+      toast.error("Failed to initialize application. Please refresh the page.");
     }
   }, []);
 
   return (
     <>
-      <ToastContainer />
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <RouterProvider router={router} />  
     </>
   );

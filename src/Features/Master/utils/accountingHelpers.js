@@ -1,69 +1,85 @@
 /* eslint-disable no-unused-vars */
-// src/utils/accountingHelpers.js
+// src/utils/accountingHelpers.js - PRODUCTION READY WITH BATCH FIX
 
 /**
  * Complete Accounting Helper Functions
- * For Employee Advance Module
+ * FIXED: Batch processing now creates individual transactions per employee
  */
 
+const DEBUG = import.meta.env.MODE === 'development';
+
 // ========================================
-// 1. SITE MAPPING FUNCTIONS
+// 0. UTILITY FUNCTIONS
 // ========================================
 
-/**
- * Get site code by employee ID (hardcoded mapping)
- */
+export const normalizeEmployeeId = (employeeId) => {
+  if (!employeeId) return null;
+  const id = String(employeeId);
+  return id.startsWith('emp') ? id.replace('emp', '') : id;
+};
+
+export const generateEmployeeGLCode = (employeeId) => {
+  const normalizedId = normalizeEmployeeId(employeeId);
+  if (!normalizedId) return null;
+  return `A3002-EMP-${normalizedId.padStart(3, '0')}`;
+};
+
+const safeGetItem = (key, defaultValue = null) => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error(`Error reading ${key}:`, error);
+    return defaultValue;
+  }
+};
+
+const safeSetItem = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.error(`Error writing ${key}:`, error);
+    return false;
+  }
+};
+
+// ========================================
+// 1. SITE MAPPING
+// ========================================
+
 export const getSiteByEmpId = (empId) => {
+  const normalizedId = normalizeEmployeeId(empId);
   const siteMap = {
-    "1": "MH01",   // emp1 - Mumbai
-    "2": "DL01",   // emp2 - Delhi
-    "3": "BLR01",  // emp3 - Bangalore
-    "4": "MH01",   // emp4 - Mumbai
-    "5": "MH01",   // lm1 - Mumbai
-    "6": "DL01",   // lm2 - Delhi
-    "7": "BLR01",  // lm3 - Bangalore
-    "8": "MH01",   // lm4 - Mumbai
-    "9": "MH01",   // vp1 - Mumbai
-    "10": "DL01",  // vp2 - Delhi
-    "11": "MH01",  // ae1 - Mumbai
-    "12": "MH01",  // oe1 - Mumbai
-    "13": "DL01",  // oe2 - Delhi
-    "14": "BLR01", // oe3 - Bangalore
-    "15": "MH01"   // oe4 - Mumbai
+    "1": "MH01", "2": "DL01", "3": "BLR01", "4": "MH01",
+    "5": "MH01", "6": "DL01", "7": "BLR01", "8": "MH01",
+    "9": "MH01", "10": "DL01", "11": "MH01", "12": "MH01",
+    "13": "DL01", "14": "BLR01", "15": "MH01"
   };
-  return siteMap[empId] || "MH01"; // Default to Mumbai
+  return siteMap[normalizedId] || "MH01";
 };
 
 // ========================================
 // 2. VOUCHER NUMBER GENERATION
 // ========================================
 
-/**
- * Generate voucher number in format: PAY/SITE/YEAR/0001
- */
 export const generateVoucherNumber = (site, year = new Date().getFullYear()) => {
   try {
-    const counters = JSON.parse(localStorage.getItem('voucherCounters')) || {};
+    const counters = safeGetItem('voucherCounters', {});
     const key = `PAY/${site}/${year}`;
     
-    // Initialize counter if doesn't exist
-    if (!counters[key]) {
-      counters[key] = 0;
-    }
-    
-    // Increment counter
-    counters[key] += 1;
-    
-    // Generate voucher number with leading zeros (4 digits)
+    counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
     
-    // Save updated counter
-    localStorage.setItem('voucherCounters', JSON.stringify(counters));
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
     
+    if (DEBUG) console.log(`🎫 Generated voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
-    console.error('Error generating voucher number:', error);
-    return `PAY/${site}/${year}/ERROR`;
+    console.error('Error generating voucher:', error);
+    throw new Error(`Failed to generate voucher: ${error.message}`);
   }
 };
 
@@ -71,115 +87,64 @@ export const generateVoucherNumber = (site, year = new Date().getFullYear()) => 
 // 3. EMPLOYEE LEDGER FUNCTIONS
 // ========================================
 
-/**
- * Check if employee ledger exists in Chart of Accounts
- */
 export const checkEmployeeLedgerExists = (employeeId) => {
   try {
-    const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-    const glCode = generateEmployeeGLCode(employeeId);
-    
-    console.log(`🔍 Checking if employee ledger exists: ${glCode}`);
-    console.log('Available accounts:', chartOfAccounts.map(acc => acc.code));
-    
-    const exists = chartOfAccounts.some(acc => acc.code === glCode);
-    console.log(`✅ Employee ledger ${glCode} exists: ${exists}`);
-    
-    return exists;
+    const normalizedId = normalizeEmployeeId(employeeId);
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const glCode = generateEmployeeGLCode(normalizedId);
+    return chartOfAccounts.some(acc => acc.code === glCode);
   } catch (error) {
-    console.error('Error checking employee ledger:', error);
+    console.error('Error checking ledger:', error);
     return false;
   }
 };
 
-
-/**
- * Create employee ledger in Chart of Accounts
- */
-//  Generate employee GL code that matches your COA structure
- 
-export const generateEmployeeGLCode = (employeeId, department) => {
-  // Convert employeeId from "emp1" to "1" if needed
-  let empId = employeeId;
-  if (empId.startsWith('emp')) {
-    empId = empId.replace('emp', '');
-  }
-  
-  // Pad with zeros to 3 digits
-  const paddedId = empId.padStart(3, '0');
-  
-  // Return in format: A3002-EMP-001 (matches your COA structure)
-  return `A3002-EMP-${paddedId}`;
-};
 export const createEmployeeLedger = (empId, employeeName) => {
   try {
-    const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-    const glCode = generateEmployeeGLCode(empId);
+    const normalizedId = normalizeEmployeeId(empId);
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const glCode = generateEmployeeGLCode(normalizedId);
     
-    console.log(`🔄 Creating employee ledger: ${glCode} for ${employeeName}`);
-    
-    // Check if already exists
     if (chartOfAccounts.some(acc => acc.code === glCode)) {
-      console.log(`⚠️ Employee ledger ${glCode} already exists`);
+      if (DEBUG) console.log(`⚠️ Ledger ${glCode} already exists`);
       return glCode;
     }
     
-    // Create new employee ledger that matches your COA structure
     const newLedger = {
-      id: `EMP_${Date.now()}`,
+      id: `EMP_${Date.now()}_${normalizedId}`,
       code: glCode,
-      name: `EMP-${empId.padStart(3, '0')}`,
+      name: `EMP-${normalizedId.padStart(3, '0')}`,
       type: "ACCOUNT",
       parentAccount: "LOANS & ADVANCES (ASSETS)",
       parentCode: "A3002"
     };
     
     chartOfAccounts.push(newLedger);
-    localStorage.setItem('chartOfAccounts', JSON.stringify(chartOfAccounts));
+    
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to save chart of accounts');
+    }
     
     console.log(`✅ Created employee ledger: ${glCode} for ${employeeName}`);
-    console.log('Updated COA:', chartOfAccounts);
-    
     return glCode;
   } catch (error) {
     console.error('❌ Error creating employee ledger:', error);
-    throw new Error(`Failed to create employee ledger for ${employeeName}`);
+    throw new Error(`Failed to create employee ledger: ${error.message}`);
   }
 };
 
-
-/**
- * Get employee details from users localStorage
- */
 export const getEmployeeDetails = (employeeId) => {
   try {
-    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const normalizedId = normalizeEmployeeId(employeeId);
+    const users = safeGetItem('users', []);
     
-    // Handle both "emp1" and "1" formats
-    let searchId = employeeId;
-    if (employeeId.startsWith('emp')) {
-      searchId = employeeId.replace('emp', '');
-    }
+    const employee = users.find(u => u.empId === normalizedId);
+    if (employee) return employee;
     
-    console.log(`🔍 Looking for employee: ${employeeId} (converted to: ${searchId})`);
-    console.log('Available users:', users.map(u => ({ empId: u.empId, username: u.username })));
-    
-    // Try exact empId match first
-    const employee = users.find(u => u.empId === searchId);
-    
-    if (employee) {
-      console.log(`✅ Found employee:`, employee);
-      return employee;
-    }
-    
-    // Try username match (emp1, emp2, etc.)
     const employeeByUsername = users.find(u => u.username === employeeId);
-    if (employeeByUsername) {
-      console.log(`✅ Found employee by username:`, employeeByUsername);
-      return employeeByUsername;
-    }
+    if (employeeByUsername) return employeeByUsername;
     
-    console.log(`❌ Employee not found for ID: ${employeeId}`);
+    console.warn(`⚠️ Employee not found: ${employeeId}`);
     return null;
   } catch (error) {
     console.error('Error getting employee details:', error);
@@ -191,12 +156,9 @@ export const getEmployeeDetails = (employeeId) => {
 // 4. BANK FUNCTIONS
 // ========================================
 
-/**
- * Get bank details by bank code
- */
 export const getBankDetails = (bankCode) => {
   try {
-    const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
     return chartOfAccounts.find(acc => acc.code === bankCode) || null;
   } catch (error) {
     console.error('Error getting bank details:', error);
@@ -205,17 +167,66 @@ export const getBankDetails = (bankCode) => {
 };
 
 // ========================================
-// 5. TRANSACTION POSTING FUNCTIONS
+// 5. VALIDATION FUNCTIONS
 // ========================================
 
-/**
- * Post transaction to localStorage
- */
+export const validateAdvanceRequest = (advanceRequest) => {
+  const errors = [];
+  
+  if (!advanceRequest.employeeId) errors.push('Employee ID is missing');
+  if (!advanceRequest.amount || parseFloat(advanceRequest.amount) <= 0) errors.push('Invalid amount');
+  if (!advanceRequest.status || advanceRequest.status !== 'Approved') errors.push('Request is not approved');
+  
+  return { isValid: errors.length === 0, errors };
+};
+
+export const validateBankData = (bankData) => {
+  const errors = [];
+  
+  if (!bankData.bankCode) errors.push('Bank code is missing');
+  if (!bankData.bankName) errors.push('Bank name is missing');
+  
+  return { isValid: errors.length === 0, errors };
+};
+
+export const validateTransaction = (transaction) => {
+  const errors = [];
+  
+  const totalDebit = transaction.entries.reduce((sum, e) => sum + (e.debit || 0), 0);
+  const totalCredit = transaction.entries.reduce((sum, e) => sum + (e.credit || 0), 0);
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    errors.push(`Unbalanced: Dr ₹${totalDebit.toFixed(2)} ≠ Cr ₹${totalCredit.toFixed(2)}`);
+  }
+  
+  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+  transaction.entries.forEach(entry => {
+    const glExists = chartOfAccounts.some(acc => acc.code === entry.glCode);
+    if (!glExists) errors.push(`GL Code ${entry.glCode} not found`);
+  });
+  
+  transaction.entries.forEach(entry => {
+    if (entry.debit < 0 || entry.credit < 0) {
+      errors.push(`Negative amounts not allowed: ${entry.glCode}`);
+    }
+  });
+  
+  return { isValid: errors.length === 0, errors };
+};
+
+// ========================================
+// 6. TRANSACTION POSTING
+// ========================================
+
 export const postTransaction = (transactionData) => {
   try {
-    const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    const validation = validateTransaction(transactionData);
+    if (!validation.isValid) {
+      throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+    }
     
-    // Add transaction ID and timestamp if not provided
+    const transactions = safeGetItem('transactions', []);
+    
     const transaction = {
       id: transactionData.id || `TXN_${Date.now()}`,
       ...transactionData,
@@ -224,38 +235,35 @@ export const postTransaction = (transactionData) => {
     };
     
     transactions.push(transaction);
-    localStorage.setItem('transactions', JSON.stringify(transactions));
+    
+    if (!safeSetItem('transactions', transactions)) {
+      throw new Error('Failed to save transaction');
+    }
     
     console.log(`✅ Transaction posted: ${transaction.voucherNo}`);
-    return transaction;
+    return { success: true, transaction };
   } catch (error) {
-    console.error('Error posting transaction:', error);
-    throw new Error('Failed to post transaction');
+    console.error('❌ Error posting transaction:', error);
+    return { success: false, error: error.message };
   }
 };
 
-/**
- * Create transaction object for advance payment
- */
 export const createAdvancePaymentTransaction = (advanceRequest, bankData, voucherNo) => {
   try {
-    // Convert employeeId from "emp1" to "1" format if needed
-    let employeeId = advanceRequest.employeeId;
-    if (employeeId.startsWith('emp')) {
-      employeeId = employeeId.replace('emp', '');
-    }
-    
-    const employee = getEmployeeDetails(employeeId);
+    const normalizedId = normalizeEmployeeId(advanceRequest.employeeId);
+    const employee = getEmployeeDetails(normalizedId);
     const bank = getBankDetails(bankData.bankCode);
     const amount = parseFloat(advanceRequest.amount);
     
-    const employeeGLCode = employee?.glCode || `A3002-EMP-${employeeId.padStart(3, '0')}`;
-    const employeeName = employee?.fullName || advanceRequest.employeeName;
+    if (!employee) throw new Error(`Employee ${advanceRequest.employeeId} not found`);
+    
+    const employeeGLCode = generateEmployeeGLCode(normalizedId);
+    const employeeName = employee.fullName || advanceRequest.employeeName;
     const bankGLCode = bankData.bankCode;
     const bankName = bank?.name || bankData.bankName;
     
-    const transaction = {
-      id: `TXN_${Date.now()}`,
+    return {
+      id: `TXN_${Date.now()}_${normalizedId}`,
       voucherNo: voucherNo,
       voucherType: "Payment Voucher",
       date: advanceRequest.requestDate || new Date().toISOString().split('T')[0],
@@ -269,8 +277,8 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
           debit: amount,
           credit: 0,
           narration: `Advance paid to ${employeeName} - ${Array.isArray(advanceRequest.reason) ? advanceRequest.reason.join(', ') : advanceRequest.reason}`,
-          employeeId: employeeId, // Use converted employeeId
-          costCenter: employee?.site || 'General'
+          employeeId: normalizedId,
+          costCenter: employee.site || 'General'
         },
         {
           lineNo: 2,
@@ -289,101 +297,23 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
       approvedBy: advanceRequest.aeApprovedBy || 'ae1',
       approvedDate: advanceRequest.approvedAt || new Date().toISOString()
     };
-    
-    return transaction;
   } catch (error) {
     console.error('Error creating transaction:', error);
-    throw new Error('Failed to create transaction object');
-  }
-};
-
-/**
- * Create transaction object for MULTIPLE advance payments (BATCH)
- */
-export const createBatchAdvancePaymentTransaction = (advanceRequests, bankData, voucherNo) => {
-  try {
-    const bank = getBankDetails(bankData.bankCode);
-    const bankGLCode = bankData.bankCode;
-    const bankName = bank?.name || bankData.bankName;
-    
-    let totalAmount = 0;
-    const entries = [];
-    let lineNo = 1;
-    
-    // Create debit entries for each employee
-    advanceRequests.forEach((request) => {
-      const employee = getEmployeeDetails(request.employeeId);
-      const amount = parseFloat(request.amount);
-      totalAmount += amount;
-      
-      const employeeGLCode = employee?.glCode || `A3002-EMP-${request.employeeId.padStart(3, '0')}`;
-      const employeeName = employee?.fullName || request.employeeName;
-      
-      entries.push({
-        lineNo: lineNo++,
-        glCode: employeeGLCode,
-        glName: `Employee Advance - ${employeeName}`,
-        debit: amount,
-        credit: 0,
-        narration: `Advance paid to ${employeeName} - ${Array.isArray(request.reason) ? request.reason.join(', ') : request.reason}`,
-        employeeId: request.employeeId,
-        costCenter: employee?.site || 'General'
-      });
-    });
-    
-    // Single credit entry for bank (total amount)
-    entries.push({
-      lineNo: lineNo,
-      glCode: bankGLCode,
-      glName: bankName,
-      debit: 0,
-      credit: totalAmount,
-      narration: `Batch payment to ${advanceRequests.length} employees via ${bankName}`,
-      costCenter: 'HEAD OFFICE'
-    });
-    
-    const transaction = {
-      id: `TXN_${Date.now()}`,
-      voucherNo: voucherNo,
-      voucherType: "Payment Voucher - Batch",
-      date: new Date().toISOString().split('T')[0],
-      advanceRequestIds: advanceRequests.map(req => req.requestId),
-      batchSize: advanceRequests.length,
-      
-      entries: entries,
-      
-      totalDebit: totalAmount,
-      totalCredit: totalAmount,
-      narration: `Batch advance payment to ${advanceRequests.length} employees`,
-      approvedBy: advanceRequests[0].aeApprovedBy || 'ae1',
-      approvedDate: advanceRequests[0].approvedAt || new Date().toISOString()
-    };
-    
-    return transaction;
-  } catch (error) {
-    console.error('Error creating batch transaction:', error);
-    throw new Error('Failed to create batch transaction object');
+    throw new Error(`Failed to create transaction: ${error.message}`);
   }
 };
 
 // ========================================
-// 6. LEDGER BALANCE FUNCTIONS
+// 7. LEDGER BALANCE FUNCTIONS
 // ========================================
 
-/**
- * Update ledger balances after posting transaction
- */
 export const updateLedgerBalances = (entries) => {
   try {
-    const balances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
+    const balances = safeGetItem('ledgerBalances', {});
     
     entries.forEach(entry => {
       if (!balances[entry.glCode]) {
-        balances[entry.glCode] = {
-          debit: 0,
-          credit: 0,
-          balance: 0
-        };
+        balances[entry.glCode] = { debit: 0, credit: 0, balance: 0 };
       }
       
       balances[entry.glCode].debit += entry.debit;
@@ -391,21 +321,21 @@ export const updateLedgerBalances = (entries) => {
       balances[entry.glCode].balance = balances[entry.glCode].debit - balances[entry.glCode].credit;
     });
     
-    localStorage.setItem('ledgerBalances', JSON.stringify(balances));
+    if (!safeSetItem('ledgerBalances', balances)) {
+      throw new Error('Failed to save ledger balances');
+    }
+    
     console.log('✅ Ledger balances updated');
     return balances;
   } catch (error) {
-    console.error('Error updating ledger balances:', error);
-    throw new Error('Failed to update ledger balances');
+    console.error('❌ Error updating ledger balances:', error);
+    throw new Error(`Failed to update ledger balances: ${error.message}`);
   }
 };
 
-/**
- * Get balance for a specific GL code
- */
 export const getLedgerBalance = (glCode) => {
   try {
-    const balances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
+    const balances = safeGetItem('ledgerBalances', {});
     return balances[glCode] || { debit: 0, credit: 0, balance: 0 };
   } catch (error) {
     console.error('Error getting ledger balance:', error);
@@ -413,26 +343,24 @@ export const getLedgerBalance = (glCode) => {
   }
 };
 
-// ========================================
-// 7. EMPLOYEE BALANCE UPDATE
-// ========================================
-
-/**
- * Update employee outstanding balance in users localStorage
- */
 export const updateEmployeeOSBalance = (employeeId, newBalance) => {
   try {
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    const userIndex = users.findIndex(u => u.empId === employeeId);
+    const normalizedId = normalizeEmployeeId(employeeId);
+    const users = safeGetItem('users', []);
+    const userIndex = users.findIndex(u => u.empId === normalizedId);
     
     if (userIndex !== -1) {
       users[userIndex].osBalance = newBalance;
-      localStorage.setItem('users', JSON.stringify(users));
-      console.log(`✅ Updated osBalance for employee ${employeeId}: ₹${newBalance}`);
+      
+      if (!safeSetItem('users', users)) {
+        throw new Error('Failed to save user data');
+      }
+      
+      console.log(`✅ Updated osBalance for employee ${normalizedId}: ₹${newBalance}`);
       return true;
     }
     
-    console.warn(`⚠️ Employee ${employeeId} not found in users`);
+    console.warn(`⚠️ Employee ${normalizedId} not found in users`);
     return false;
   } catch (error) {
     console.error('Error updating employee balance:', error);
@@ -441,68 +369,14 @@ export const updateEmployeeOSBalance = (employeeId, newBalance) => {
 };
 
 // ========================================
-// 8. VALIDATION FUNCTIONS
+// 8. MAIN PROCESSING - SINGLE APPROVAL
 // ========================================
 
-/**
- * Validate advance request before processing
- */
-export const validateAdvanceRequest = (advanceRequest) => {
-  const errors = [];
-  
-  if (!advanceRequest.employeeId) {
-    errors.push('Employee ID is missing');
-  }
-  
-  if (!advanceRequest.amount || parseFloat(advanceRequest.amount) <= 0) {
-    errors.push('Invalid amount');
-  }
-  
-  if (!advanceRequest.status || advanceRequest.status !== 'Approved') {
-    errors.push('Request is not approved');
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors: errors
-  };
-};
-
-/**
- * Validate bank data
- */
-export const validateBankData = (bankData) => {
-  const errors = [];
-  
-  if (!bankData.bankCode) {
-    errors.push('Bank code is missing');
-  }
-  
-  if (!bankData.bankName) {
-    errors.push('Bank name is missing');
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors: errors
-  };
-};
-
-// ========================================
-// 9. COMPLETE ADVANCE APPROVAL PROCESS (SINGLE)
-// ========================================
-
-/**
- * Complete process for SINGLE advance approval
- * Creates ledger, generates voucher, posts transaction, updates balances
- */
 export const processAdvanceApproval = (advanceRequest, bankData) => {
   try {
-    console.log('🚀 STARTING SINGLE ADVANCE APPROVAL PROCESS...');
-    console.log('📦 Request data:', advanceRequest);
-    console.log('🏦 Bank data:', bankData);
+    if (DEBUG) console.log('🚀 Starting advance approval...');
     
-    // 0. Validate inputs
+    // Validate inputs
     const requestValidation = validateAdvanceRequest(advanceRequest);
     if (!requestValidation.isValid) {
       throw new Error(`Invalid request: ${requestValidation.errors.join(', ')}`);
@@ -513,59 +387,49 @@ export const processAdvanceApproval = (advanceRequest, bankData) => {
       throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
     }
     
-    // 1. Get employee details
-    const employee = getEmployeeDetails(advanceRequest.employeeId);
-    if (!employee) {
-      throw new Error(`Employee ${advanceRequest.employeeId} not found`);
-    }
+    // Get employee details
+    const normalizedId = normalizeEmployeeId(advanceRequest.employeeId);
+    const employee = getEmployeeDetails(normalizedId);
+    if (!employee) throw new Error(`Employee ${advanceRequest.employeeId} not found`);
     
-    console.log("✅ Found employee:", employee);
+    if (DEBUG) console.log("✅ Found employee:", employee.fullName);
     
-    // 2. Check and create employee ledger if needed
-    const ledgerExists = checkEmployeeLedgerExists(employee.empId);
+    // Check/create employee ledger
+    const ledgerExists = checkEmployeeLedgerExists(normalizedId);
     if (!ledgerExists) {
-      console.log(`📝 Creating employee ledger for ${employee.fullName}...`);
-      createEmployeeLedger(employee.empId, employee.fullName);
-    } else {
-      console.log(`✅ Employee ledger already exists for ${employee.fullName}`);
+      if (DEBUG) console.log(`📝 Creating ledger for ${employee.fullName}...`);
+      createEmployeeLedger(normalizedId, employee.fullName);
     }
     
-    // 3. Get employee GL code
-    const employeeGLCode = generateEmployeeGLCode(employee.empId);
-    
-    // 4. Get employee site
-    const site = employee.site || getSiteByEmpId(employee.empId);
-    
-    // 5. Generate voucher number
+    const employeeGLCode = generateEmployeeGLCode(normalizedId);
+    const site = employee.site || getSiteByEmpId(normalizedId);
     const voucherNo = generateVoucherNumber(site);
-    console.log(`🎫 Generated voucher: ${voucherNo}`);
     
-    // 6. Create transaction object
+    // Create and post transaction
     const transaction = createAdvancePaymentTransaction(advanceRequest, bankData, voucherNo);
-    console.log('📋 Transaction created:', transaction);
+    const postResult = postTransaction(transaction);
     
-    // 7. Post transaction
-    const postedTransaction = postTransaction(transaction);
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
     
-    // 8. Update ledger balances
+    // Update balances
     updateLedgerBalances(transaction.entries);
-    
-    // 9. Update employee OS balance
     const ledgerBalance = getLedgerBalance(employeeGLCode);
-    updateEmployeeOSBalance(employee.empId, ledgerBalance.balance);
+    updateEmployeeOSBalance(normalizedId, ledgerBalance.balance);
     
-    console.log('✅ SINGLE ADVANCE APPROVAL PROCESS COMPLETED SUCCESSFULLY!');
+    console.log('✅ Advance approval completed!');
     
     return {
       success: true,
       voucherNo: voucherNo,
-      transactionId: postedTransaction.id,
+      transactionId: postResult.transaction.id,
       employeeGLCode: employeeGLCode,
       bankGLCode: bankData.bankCode,
       amount: parseFloat(advanceRequest.amount),
       newBalance: ledgerBalance.balance,
       employeeName: employee.fullName,
-      message: `Advance of ₹${parseFloat(advanceRequest.amount).toLocaleString()} processed successfully for ${employee.fullName}`
+      message: `Advance of ₹${parseFloat(advanceRequest.amount).toLocaleString()} processed for ${employee.fullName}`
     };
     
   } catch (error) {
@@ -579,177 +443,137 @@ export const processAdvanceApproval = (advanceRequest, bankData) => {
 };
 
 // ========================================
-// 10. COMPLETE ADVANCE APPROVAL PROCESS (MULTIPLE/BATCH)
+// 9. MAIN PROCESSING - BATCH APPROVAL (FIXED!)
 // ========================================
 
 /**
- * Complete process for MULTIPLE advance approvals (BATCH)
- * Processes all requests in a single transaction
+ * 🔧 FIXED: Now creates INDIVIDUAL transactions for each employee
+ * Each employee gets their own voucher number and transaction entry
  */
 export const processMultipleAdvanceApprovals = (advanceRequests, bankData) => {
   try {
-    console.log(`🚀 Starting batch advance approval for ${advanceRequests.length} requests...`);
+    if (DEBUG) console.log(`🚀 Starting batch approval for ${advanceRequests.length} requests...`);
     
-    // 0. Validate bank data
+    // Validate bank data
     const bankValidation = validateBankData(bankData);
     if (!bankValidation.isValid) {
       throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
     }
     
-    // 1. Validate all requests
-    const invalidRequests = [];
-    advanceRequests.forEach((request, index) => {
-      const validation = validateAdvanceRequest(request);
-      if (!validation.isValid) {
-        invalidRequests.push({ index, errors: validation.errors });
-      }
-    });
-    
-    if (invalidRequests.length > 0) {
-      throw new Error(`${invalidRequests.length} invalid requests found`);
-    }
-    
-    // 2. Create/check employee ledgers for all employees
-    const employeeDetails = [];
+    const results = [];
     let totalAmount = 0;
+    let successCount = 0;
+    let failureCount = 0;
     
-    for (const request of advanceRequests) {
-      const employee = getEmployeeDetails(request.employeeId);
-      if (!employee) {
-        throw new Error(`Employee ${request.employeeId} not found`);
-      }
+    // 🔧 FIX: Process each request INDIVIDUALLY
+    for (let i = 0; i < advanceRequests.length; i++) {
+      const request = advanceRequests[i];
       
-      employeeDetails.push(employee);
-      totalAmount += parseFloat(request.amount);
-      
-      // Check and create ledger if needed
-      const ledgerExists = checkEmployeeLedgerExists(request.employeeId);
-      if (!ledgerExists) {
-        console.log(`Creating employee ledger for ${employee.fullName}...`);
-        createEmployeeLedger(request.employeeId, employee.fullName);
+      try {
+        console.log(`\n📝 Processing request ${i + 1}/${advanceRequests.length}...`);
+        
+        // Process this single request
+        const result = processAdvanceApproval(request, bankData);
+        
+        if (result.success) {
+          results.push({
+            employeeId: normalizeEmployeeId(request.employeeId),
+            employeeName: result.employeeName,
+            amount: result.amount,
+            voucherNo: result.voucherNo,
+            transactionId: result.transactionId,
+            newBalance: result.newBalance,
+            success: true
+          });
+          
+          totalAmount += result.amount;
+          successCount++;
+          
+          console.log(`✅ Request ${i + 1} processed successfully`);
+        } else {
+          results.push({
+            employeeId: normalizeEmployeeId(request.employeeId),
+            employeeName: request.employeeName,
+            amount: parseFloat(request.amount),
+            error: result.error,
+            success: false
+          });
+          
+          failureCount++;
+          console.error(`❌ Request ${i + 1} failed: ${result.error}`);
+        }
+        
+      } catch (error) {
+        console.error(`❌ Error processing request ${i + 1}:`, error);
+        results.push({
+          employeeId: normalizeEmployeeId(request.employeeId),
+          employeeName: request.employeeName,
+          amount: parseFloat(request.amount),
+          error: error.message,
+          success: false
+        });
+        failureCount++;
       }
     }
     
-    // 3. Get site from first employee (batch is processed at site level)
-    const firstEmployee = employeeDetails[0];
-    const site = firstEmployee.site || getSiteByEmpId(advanceRequests[0].employeeId);
-    
-    // 4. Generate voucher number
-    const voucherNo = generateVoucherNumber(site);
-    console.log(`Generated batch voucher: ${voucherNo}`);
-    
-    // 5. Create batch transaction object
-    const transaction = createBatchAdvancePaymentTransaction(advanceRequests, bankData, voucherNo);
-    
-    // 6. Post transaction
-    const postedTransaction = postTransaction(transaction);
-    
-    // 7. Update ledger balances
-    updateLedgerBalances(transaction.entries);
-    
-    // 8. Update OS balance for each employee
-    const updatedEmployees = [];
-    employeeDetails.forEach((employee, index) => {
-      const employeeGLCode = employee.glCode || `A3002-EMP-${advanceRequests[index].employeeId.padStart(3, '0')}`;
-      const ledgerBalance = getLedgerBalance(employeeGLCode);
-      updateEmployeeOSBalance(advanceRequests[index].employeeId, ledgerBalance.balance);
-      
-      updatedEmployees.push({
-        employeeId: advanceRequests[index].employeeId,
-        employeeName: employee.fullName,
-        amount: parseFloat(advanceRequests[index].amount),
-        newBalance: ledgerBalance.balance
-      });
-    });
-    
-    console.log(`✅ Batch advance approval process completed for ${advanceRequests.length} requests!`);
+    console.log(`\n✅ Batch processing complete: ${successCount} succeeded, ${failureCount} failed`);
     
     return {
-      success: true,
-      voucherNo: voucherNo,
-      transactionId: postedTransaction.id,
+      success: successCount > 0,
       batchSize: advanceRequests.length,
+      successCount: successCount,
+      failureCount: failureCount,
       totalAmount: totalAmount,
       bankGLCode: bankData.bankCode,
-      employees: updatedEmployees,
-      message: `Batch advance of ₹${totalAmount.toLocaleString()} processed successfully for ${advanceRequests.length} employees`
+      employees: results,
+      message: failureCount === 0 
+        ? `All ${successCount} advances processed successfully (Total: ₹${totalAmount.toLocaleString()})`
+        : `${successCount} of ${advanceRequests.length} advances processed. ${failureCount} failed.`
     };
     
   } catch (error) {
-    console.error('❌ Error processing batch advance approval:', error);
+    console.error('❌ Error in batch approval:', error);
     return {
       success: false,
       error: error.message,
-      message: `Failed to process batch advance: ${error.message}`
+      message: `Batch processing failed: ${error.message}`
     };
   }
 };
 
 // ========================================
-// 11. UTILITY FUNCTIONS
+// 10. QUERY FUNCTIONS
 // ========================================
 
-/**
- * Get all transactions from localStorage
- */
-export const getAllTransactions = () => {
-  try {
-    return JSON.parse(localStorage.getItem('transactions')) || [];
-  } catch (error) {
-    console.error('Error getting transactions:', error);
-    return [];
-  }
-};
+export const getAllTransactions = () => safeGetItem('transactions', []);
 
-/**
- * Get transactions by employee ID
- */
 export const getTransactionsByEmployee = (employeeId) => {
-  try {
-    const transactions = getAllTransactions();
-    return transactions.filter(txn => 
-      txn.entries.some(entry => entry.employeeId === employeeId)
-    );
-  } catch (error) {
-    console.error('Error getting employee transactions:', error);
-    return [];
-  }
+  const normalizedId = normalizeEmployeeId(employeeId);
+  const transactions = getAllTransactions();
+  return transactions.filter(txn => 
+    txn.entries.some(entry => entry.employeeId === normalizedId)
+  );
 };
 
-/**
- * Get transactions by GL code
- */
 export const getTransactionsByGLCode = (glCode) => {
-  try {
-    const transactions = getAllTransactions();
-    return transactions.filter(txn => 
-      txn.entries.some(entry => entry.glCode === glCode)
-    );
-  } catch (error) {
-    console.error('Error getting GL transactions:', error);
-    return [];
-  }
+  const transactions = getAllTransactions();
+  return transactions.filter(txn => 
+    txn.entries.some(entry => entry.glCode === glCode)
+  );
 };
 
-/**
- * Get transactions by date range
- */
 export const getTransactionsByDateRange = (fromDate, toDate) => {
-  try {
-    const transactions = getAllTransactions();
-    return transactions.filter(txn => {
-      const txnDate = new Date(txn.date);
-      return txnDate >= new Date(fromDate) && txnDate <= new Date(toDate);
-    });
-  } catch (error) {
-    console.error('Error getting transactions by date range:', error);
-    return [];
-  }
+  const transactions = getAllTransactions();
+  return transactions.filter(txn => {
+    const txnDate = new Date(txn.date);
+    return txnDate >= new Date(fromDate) && txnDate <= new Date(toDate);
+  });
 };
 
-/**
- * Format amount for display
- */
+// ========================================
+// 11. FORMATTING FUNCTIONS
+// ========================================
+
 export const formatAmount = (amount) => {
   return parseFloat(amount).toLocaleString('en-IN', {
     minimumFractionDigits: 2,
@@ -757,9 +581,6 @@ export const formatAmount = (amount) => {
   });
 };
 
-/**
- * Format date for display
- */
 export const formatDate = (dateString) => {
   try {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -772,44 +593,26 @@ export const formatDate = (dateString) => {
   }
 };
 
-// ========================================
-// EXPORT ALL FUNCTIONS
-// ========================================
-
+// Export all functions
 export default {
-  // Site functions
+  normalizeEmployeeId,
+  generateEmployeeGLCode,
   getSiteByEmpId,
-  
-  // Voucher functions
   generateVoucherNumber,
-  
-  // Employee ledger functions
   checkEmployeeLedgerExists,
   createEmployeeLedger,
   getEmployeeDetails,
-  
-  // Bank functions
   getBankDetails,
-  
-  // Transaction functions
+  validateAdvanceRequest,
+  validateBankData,
+  validateTransaction,
   postTransaction,
   createAdvancePaymentTransaction,
-  createBatchAdvancePaymentTransaction,
-  
-  // Balance functions
   updateLedgerBalances,
   getLedgerBalance,
   updateEmployeeOSBalance,
-  
-  // Validation functions
-  validateAdvanceRequest,
-  validateBankData,
-  
-  // Main processing functions
   processAdvanceApproval,
   processMultipleAdvanceApprovals,
-  
-  // Utility functions
   getAllTransactions,
   getTransactionsByEmployee,
   getTransactionsByGLCode,

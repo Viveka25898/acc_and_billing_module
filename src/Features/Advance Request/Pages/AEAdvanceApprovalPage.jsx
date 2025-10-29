@@ -285,7 +285,8 @@
 // }
 
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from 'react';
+/* eslint-disable no-unused-vars */
+import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AEFilter from '../Components/AEFilter';
@@ -308,297 +309,353 @@ export default function AEAdvanceApprovalPage() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [approvedRequests, setApprovedRequests] = useState([]);
   const [pendingApprovalData, setPendingApprovalData] = useState(null);
-  const [accountingResult, setAccountingResult] = useState(null); // NEW: Store accounting processing result
+  const [accountingResult, setAccountingResult] = useState(null);
+  
+  // Add loading state
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Component mount tracking for cleanup
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-    const aeRequests = allRequests.filter(req => 
-      req.status === 'Pending AE Approval' || 
-      req.status === 'Approved' ||
-      req.status === 'Rejected by AE'
-    );
-    setRequests(aeRequests);
+    // Set mounted flag
+    isMounted.current = true;
+    
+    loadRequests();
+    
+    // Cleanup on unmount
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
-  // NEW FUNCTION - Process accounting for single approval
-  const processSingleAccounting = async (request, bankData) => {
-  try {
-    console.log('🔄 Processing accounting for single approval...');
-    console.log('Original request employeeId:', request.employeeId);
-    
-    // Ensure we're using the correct employee ID format
-    const processedRequest = {
-      ...request,
-      employeeId: request.employeeId // Let accountingHelpers handle the conversion
-    };
-    
-    const result = processAdvanceApproval(processedRequest, bankData);
-    
-    if (result.success) {
-      console.log('✅ Accounting processed successfully:', result);
-      return result;
-    } else {
-      console.error('❌ Accounting processing failed:', result.error);
-      throw new Error(result.message);
-    }
-  } catch (error) {
-    console.error('❌ Error in accounting processing:', error);
-    throw error;
-  }
-};
-
-  // NEW FUNCTION - Process accounting for multiple approvals
-  const processMultipleAccounting = async (requests, bankData) => {
+  const loadRequests = () => {
     try {
-      console.log(`🔄 Processing accounting for ${requests.length} approvals...`);
-      
-      const result = processMultipleAdvanceApprovals(requests, bankData);
-      
-      if (result.success) {
-        console.log('✅ Batch accounting processed successfully:', result);
-        return result;
-      } else {
-        console.error('❌ Batch accounting processing failed:', result.error);
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      console.error('❌ Error in batch accounting processing:', error);
-      throw error;
-    }
-  };
-
-  // UPDATED FUNCTION - Opens bank selection modal first
-  const handleApprove = (submittedAt) => {
-    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-    const requestIndex = allRequests.findIndex(req => req.submittedAt === submittedAt);
-    
-    if (requestIndex === -1) {
-      toast.error('Request not found');
-      return;
-    }
-
-    const request = allRequests[requestIndex];
-
-    // Check VP deadline
-    if (request.isVPRequest && !request.vpApprovedBeforeDeadline) {
-      toast.error('Cannot approve: VP request was approved after 15:59 deadline');
-      return;
-    }
-
-    // Store request data and open bank selection modal
-    setPendingApprovalData({ type: 'single', request, requestIndex });
-    setIsBankModalOpen(true);
-  };
-
-  // UPDATED FUNCTION - Handle multiple approvals
-  const handleApproveMultiple = (requestsData) => {
-    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-    
-    const requestsToApprove = requestsData
-      .map(submittedAt => {
-        const index = allRequests.findIndex(req => req.submittedAt === submittedAt);
-        return index !== -1 ? { request: allRequests[index], index } : null;
-      })
-      .filter(item => item !== null)
-      .filter(item => !item.request.isVPRequest || item.request.vpApprovedBeforeDeadline);
-
-    if (requestsToApprove.length === 0) {
-      toast.error('No eligible requests to approve');
-      return;
-    }
-
-    // Store multiple requests and open bank selection modal
-    setPendingApprovalData({ type: 'multiple', requests: requestsToApprove });
-    setIsBankModalOpen(true);
-  };
-
-  // UPDATED FUNCTION - Called after bank is selected (NOW INCLUDES ACCOUNTING PROCESSING)
-  // In AEAdvanceApprovalPage.jsx, update the handleBankSelected function:
-
-// UPDATED FUNCTION - Called after bank is selected (FIXED VALIDATION ISSUE)
-const handleBankSelected = async (bankData) => {
-  if (!pendingApprovalData) return;
-
-  const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-  const approvalTime = new Date();
-  const isBeforeDeadline = approvalTime.getHours() < 19 || 
-                         (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59);
-
-  let updatedRequests = [...allRequests];
-  const approvedRequestsData = [];
-  let accountingProcessingResult = null;
-
-  try {
-    if (pendingApprovalData.type === 'single') {
-      // Single approval with accounting processing
-      const { request, requestIndex } = pendingApprovalData;
-      
-      // Create a temporary approved request for accounting processing
-      const tempApprovedRequest = {
-        ...request,
-        status: 'Approved', // TEMPORARILY set to Approved for validation
-        approvedAt: approvalTime.toISOString(),
-        aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
-        aeApprovedBeforeDeadline: isBeforeDeadline,
-        bankCode: bankData.bankCode,
-        bankName: bankData.bankName,
-        bankId: bankData.bankId
-      };
-
-      // Process accounting FIRST with temporary approved request
-      accountingProcessingResult = await processSingleAccounting(tempApprovedRequest, bankData);
-      
-      if (!accountingProcessingResult.success) {
-        throw new Error(accountingProcessingResult.message);
-      }
-
-      // Update request status AFTER successful accounting with accounting details
-      updatedRequests[requestIndex] = {
-        ...tempApprovedRequest,
-        // Add accounting details
-        voucherNo: accountingProcessingResult.voucherNo,
-        transactionId: accountingProcessingResult.transactionId,
-        glCode: accountingProcessingResult.employeeGLCode
-      };
-
-      approvedRequestsData.push(updatedRequests[requestIndex]);
-
-      localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
-      
-      // Update local state
-      const filteredRequests = updatedRequests.filter(req => 
+      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+      const aeRequests = allRequests.filter(req => 
         req.status === 'Pending AE Approval' || 
         req.status === 'Approved' ||
         req.status === 'Rejected by AE'
       );
-      setRequests(filteredRequests);
       
-      // Store accounting result and show payment modal
-      setAccountingResult(accountingProcessingResult);
-      setSelectedRequest(updatedRequests[requestIndex]);
-      setApprovedRequests([]);
-      
-      toast.success(
-        isBeforeDeadline 
-          ? `Request Approved - ${accountingProcessingResult.message}`
-          : `Request Approved - ${accountingProcessingResult.message} (Next working day)`
-      );
+      if (isMounted.current) {
+        setRequests(aeRequests);
+      }
+    } catch (error) {
+      console.error('Error loading requests:', error);
+      toast.error('Failed to load requests');
+    }
+  };
 
-    } else if (pendingApprovalData.type === 'multiple') {
-      // Multiple approvals with accounting processing
-      const requestsArray = pendingApprovalData.requests.map(r => {
-        // Create temporary approved requests for batch processing
-        return {
+  // Opens bank selection modal first
+  const handleApprove = (submittedAt) => {
+    try {
+      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+      const requestIndex = allRequests.findIndex(req => req.submittedAt === submittedAt);
+      
+      if (requestIndex === -1) {
+        toast.error('Request not found');
+        return;
+      }
+
+      const request = allRequests[requestIndex];
+
+      // Check VP deadline
+      if (request.isVPRequest && !request.vpApprovedBeforeDeadline) {
+        toast.error('Cannot approve: VP request was approved after 15:59 deadline');
+        return;
+      }
+
+      // Store request data and open bank selection modal
+      setPendingApprovalData({ type: 'single', request, requestIndex });
+      setIsBankModalOpen(true);
+    } catch (error) {
+      console.error('Error in handleApprove:', error);
+      toast.error('Failed to initiate approval process');
+    }
+  };
+
+  // Handle multiple approvals
+  const handleApproveMultiple = (requestsData) => {
+    try {
+      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+      
+      const requestsToApprove = requestsData
+        .map(submittedAt => {
+          const index = allRequests.findIndex(req => req.submittedAt === submittedAt);
+          return index !== -1 ? { request: allRequests[index], index } : null;
+        })
+        .filter(item => item !== null)
+        .filter(item => !item.request.isVPRequest || item.request.vpApprovedBeforeDeadline);
+
+      if (requestsToApprove.length === 0) {
+        toast.error('No eligible requests to approve');
+        return;
+      }
+
+      // Store multiple requests and open bank selection modal
+      setPendingApprovalData({ type: 'multiple', requests: requestsToApprove });
+      setIsBankModalOpen(true);
+    } catch (error) {
+      console.error('Error in handleApproveMultiple:', error);
+      toast.error('Failed to initiate batch approval');
+    }
+  };
+
+  // Called after bank is selected - WITH PROPER ERROR HANDLING
+  const handleBankSelected = async (bankData) => {
+    if (!pendingApprovalData) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+      const approvalTime = new Date();
+      const isBeforeDeadline = approvalTime.getHours() < 19 || 
+                             (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59);
+
+      let updatedRequests = [...allRequests];
+      const approvedRequestsData = [];
+      let accountingProcessingResult = null;
+
+      if (pendingApprovalData.type === 'single') {
+        // ========================================
+        // SINGLE APPROVAL WITH PROPER TRANSACTION HANDLING
+        // ========================================
+        const { request, requestIndex } = pendingApprovalData;
+        
+        console.log('🔄 Processing single approval...');
+        console.log('Request:', request);
+        console.log('Bank:', bankData);
+        
+        // Step 1: Process accounting FIRST (before changing status)
+        accountingProcessingResult = await processAdvanceApproval(
+          {
+            ...request,
+            status: 'Approved', // Temporary for validation
+            approvedAt: approvalTime.toISOString(),
+            aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
+            aeApprovedBeforeDeadline: isBeforeDeadline,
+            bankCode: bankData.bankCode,
+            bankName: bankData.bankName,
+            bankId: bankData.bankId
+          },
+          bankData
+        );
+        
+        // Step 2: Check if accounting succeeded
+        if (!accountingProcessingResult.success) {
+          throw new Error(accountingProcessingResult.message);
+        }
+        
+        console.log('✅ Accounting processed successfully:', accountingProcessingResult);
+        
+        // Step 3: NOW update request status (only after successful accounting)
+        updatedRequests[requestIndex] = {
+          ...request,
+          status: 'Approved',
+          approvedAt: approvalTime.toISOString(),
+          aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
+          aeApprovedBeforeDeadline: isBeforeDeadline,
+          bankCode: bankData.bankCode,
+          bankName: bankData.bankName,
+          bankId: bankData.bankId,
+          // Add accounting details
+          voucherNo: accountingProcessingResult.voucherNo,
+          transactionId: accountingProcessingResult.transactionId,
+          glCode: accountingProcessingResult.employeeGLCode
+        };
+
+        approvedRequestsData.push(updatedRequests[requestIndex]);
+
+        // Step 4: Save to localStorage
+        try {
+          localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
+        } catch (storageError) {
+          console.error('❌ Failed to save to localStorage:', storageError);
+          throw new Error('Failed to save approval. Please try again.');
+        }
+        
+        // Step 5: Update local state (only if component is still mounted)
+        if (isMounted.current) {
+          const filteredRequests = updatedRequests.filter(req => 
+            req.status === 'Pending AE Approval' || 
+            req.status === 'Approved' ||
+            req.status === 'Rejected by AE'
+          );
+          setRequests(filteredRequests);
+          
+          // Store accounting result and show payment modal
+          setAccountingResult(accountingProcessingResult);
+          setSelectedRequest(updatedRequests[requestIndex]);
+          setApprovedRequests([]);
+        }
+        
+        toast.success(
+          isBeforeDeadline 
+            ? `✅ ${accountingProcessingResult.message} (Same-day processing)`
+            : `✅ ${accountingProcessingResult.message} (Next working day)`
+        );
+
+      } else if (pendingApprovalData.type === 'multiple') {
+        // ========================================
+        // BATCH APPROVAL WITH PROPER TRANSACTION HANDLING
+        // ========================================
+        console.log(`🔄 Processing batch approval for ${pendingApprovalData.requests.length} requests...`);
+        
+        // Step 1: Prepare requests for batch processing
+        const requestsArray = pendingApprovalData.requests.map(r => ({
           ...r.request,
-          status: 'Approved', // TEMPORARILY set to Approved for validation
+          status: 'Approved', // Temporary for validation
           approvedAt: approvalTime.toISOString(),
           aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
           aeApprovedBeforeDeadline: isBeforeDeadline,
           bankCode: bankData.bankCode,
           bankName: bankData.bankName,
           bankId: bankData.bankId
-        };
-      });
-      
-      // Process batch accounting FIRST with temporary approved requests
-      accountingProcessingResult = await processMultipleAccounting(requestsArray, bankData);
-      
-      if (!accountingProcessingResult.success) {
-        throw new Error(accountingProcessingResult.message);
+        }));
+        
+        // Step 2: Process batch accounting FIRST
+        accountingProcessingResult = await processMultipleAdvanceApprovals(requestsArray, bankData);
+        
+        // Step 3: Check if batch accounting succeeded
+        if (!accountingProcessingResult.success) {
+          throw new Error(accountingProcessingResult.message);
+        }
+        
+        console.log('✅ Batch accounting processed:', accountingProcessingResult);
+        
+        // Step 4: Update all requests (only after successful accounting)
+        pendingApprovalData.requests.forEach(({ request, index }) => {
+          updatedRequests[index] = {
+            ...request,
+            status: 'Approved',
+            approvedAt: approvalTime.toISOString(),
+            aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
+            aeApprovedBeforeDeadline: isBeforeDeadline,
+            bankCode: bankData.bankCode,
+            bankName: bankData.bankName,
+            bankId: bankData.bankId,
+            // Add accounting details
+            voucherNo: accountingProcessingResult.voucherNo,
+            transactionId: accountingProcessingResult.transactionId
+          };
+
+          approvedRequestsData.push(updatedRequests[index]);
+        });
+
+        // Step 5: Save to localStorage
+        try {
+          localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
+        } catch (storageError) {
+          console.error('❌ Failed to save to localStorage:', storageError);
+          throw new Error('Failed to save batch approval. Please try again.');
+        }
+        
+        // Step 6: Update local state (only if component is still mounted)
+        if (isMounted.current) {
+          const filteredRequests = updatedRequests.filter(req => 
+            req.status === 'Pending AE Approval' || 
+            req.status === 'Approved' ||
+            req.status === 'Rejected by AE'
+          );
+          setRequests(filteredRequests);
+          
+          // Store accounting result and show payment modal
+          setAccountingResult(accountingProcessingResult);
+          setSelectedRequest(null);
+          setApprovedRequests(approvedRequestsData);
+        }
+        
+        toast.success(`✅ ${approvedRequestsData.length} requests approved - ${accountingProcessingResult.message}`);
       }
 
-      // Update all requests status AFTER successful accounting
-      pendingApprovalData.requests.forEach(({ request, index }) => {
-        updatedRequests[index] = {
-          ...requestsArray.find(req => req.submittedAt === request.submittedAt),
-          // Add accounting details
-          voucherNo: accountingProcessingResult.voucherNo,
-          transactionId: accountingProcessingResult.transactionId
-        };
+      // Close bank modal and open payment modal
+      if (isMounted.current) {
+        setIsBankModalOpen(false);
+        setIsPaymentModalOpen(true);
+        setPendingApprovalData(null);
+      }
 
-        approvedRequestsData.push(updatedRequests[index]);
-      });
+    } catch (error) {
+      console.error('❌ Error during approval process:', error);
+      toast.error(`Approval failed: ${error.message}`);
+      
+      // Reset states on error (only if component is mounted)
+      if (isMounted.current) {
+        setIsBankModalOpen(false);
+        setPendingApprovalData(null);
+        setAccountingResult(null);
+      }
+    } finally {
+      if (isMounted.current) {
+        setIsProcessing(false);
+      }
+    }
+  };
+
+  const handleReject = (submittedAt, reason) => {
+    try {
+      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+      const requestIndex = allRequests.findIndex(req => req.submittedAt === submittedAt);
+      
+      if (requestIndex === -1) {
+        toast.error('Request not found');
+        return;
+      }
+
+      const updatedRequests = [...allRequests];
+      updatedRequests[requestIndex] = {
+        ...updatedRequests[requestIndex],
+        status: 'Rejected by AE',
+        remarks: reason,
+        rejectedAt: new Date().toISOString(),
+        aeRejectedBy: JSON.parse(localStorage.getItem('user')).username
+      };
 
       localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
       
-      // Update local state
-      const filteredRequests = updatedRequests.filter(req => 
+      const filteredRequests = updatedRequests.filter(
+        req => req.status === 'Pending AE Approval' || 
+               (req.status === 'Rejected by AE' && req.clarification) ||
+               (req.status === 'Approved' && req.currentLevel === 'account-executive')
+      );
+      
+      if (isMounted.current) {
+        setRequests(filteredRequests);
+      }
+      
+      toast.error('Request Rejected');
+    } catch (error) {
+      console.error('Error in handleReject:', error);
+      toast.error('Failed to reject request');
+    }
+  };
+
+  const handleDownloadComplete = (downloadedRequestIds) => {
+    try {
+      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
+      const remainingRequests = allRequests.filter(req => 
+        !downloadedRequestIds.includes(req.submittedAt)
+      );
+      
+      localStorage.setItem('advanceRequests', JSON.stringify(remainingRequests));
+      
+      const filteredRequests = remainingRequests.filter(req => 
         req.status === 'Pending AE Approval' || 
         req.status === 'Approved' ||
         req.status === 'Rejected by AE'
       );
-      setRequests(filteredRequests);
       
-      // Store accounting result and show payment modal
-      setAccountingResult(accountingProcessingResult);
-      setSelectedRequest(null);
-      setApprovedRequests(approvedRequestsData);
+      if (isMounted.current) {
+        setRequests(filteredRequests);
+      }
       
-      toast.success(`${approvedRequestsData.length} requests approved - ${accountingProcessingResult.message}`);
+      toast.success(`${downloadedRequestIds.length} approved requests downloaded and removed from table`);
+    } catch (error) {
+      console.error('Error in handleDownloadComplete:', error);
+      toast.error('Failed to process download');
     }
-
-    // Close bank modal and open payment modal
-    setIsBankModalOpen(false);
-    setIsPaymentModalOpen(true);
-    setPendingApprovalData(null);
-
-  } catch (error) {
-    console.error('❌ Error during approval process:', error);
-    toast.error(`Approval failed: ${error.message}`);
-    
-    // Reset states on error
-    setIsBankModalOpen(false);
-    setPendingApprovalData(null);
-    setAccountingResult(null);
-  }
-};
-
-  const handleReject = (submittedAt, reason) => {
-    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-    const requestIndex = allRequests.findIndex(req => req.submittedAt === submittedAt);
-    
-    if (requestIndex === -1) {
-      toast.error('Request not found');
-      return;
-    }
-
-    const updatedRequests = [...allRequests];
-    updatedRequests[requestIndex] = {
-      ...updatedRequests[requestIndex],
-      status: 'Rejected by AE',
-      remarks: reason,
-      rejectedAt: new Date().toISOString(),
-      aeRejectedBy: JSON.parse(localStorage.getItem('user')).username
-    };
-
-    localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
-    
-    const filteredRequests = updatedRequests.filter(
-      req => req.status === 'Pending AE Approval' || 
-             (req.status === 'Rejected by AE' && req.clarification) ||
-             (req.status === 'Approved' && req.currentLevel === 'account-executive')
-    );
-    
-    setRequests(filteredRequests);
-    toast.error('Request Rejected');
-  };
-
-  const handleDownloadComplete = (downloadedRequestIds) => {
-    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-    const remainingRequests = allRequests.filter(req => 
-      !downloadedRequestIds.includes(req.submittedAt)
-    );
-    
-    localStorage.setItem('advanceRequests', JSON.stringify(remainingRequests));
-    
-    const filteredRequests = remainingRequests.filter(req => 
-      req.status === 'Pending AE Approval' || 
-      req.status === 'Approved' ||
-      req.status === 'Rejected by AE'
-    );
-    
-    setRequests(filteredRequests);
-    toast.success(`${downloadedRequestIds.length} approved requests downloaded and removed from table`);
   };
 
   const filteredRequests = requests.filter(r =>
@@ -615,15 +672,19 @@ const handleBankSelected = async (bankData) => {
   };
 
   const closePaymentModal = () => {
-    setIsPaymentModalOpen(false);
-    setSelectedRequest(null);
-    setApprovedRequests([]);
-    setAccountingResult(null); // Reset accounting result when modal closes
+    if (isMounted.current) {
+      setIsPaymentModalOpen(false);
+      setSelectedRequest(null);
+      setApprovedRequests([]);
+      setAccountingResult(null);
+    }
   };
 
   const closeBankModal = () => {
-    setIsBankModalOpen(false);
-    setPendingApprovalData(null);
+    if (isMounted.current) {
+      setIsBankModalOpen(false);
+      setPendingApprovalData(null);
+    }
   };
 
   return (
@@ -669,8 +730,19 @@ const handleBankSelected = async (bankData) => {
         onClose={closePaymentModal}
         requestData={selectedRequest}
         approvedRequests={approvedRequests}
-        accountingResult={accountingResult} // Pass accounting result to modal
+        accountingResult={accountingResult}
       />
+
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <p className="text-gray-700 font-medium">Processing approval...</p>
+            <p className="text-sm text-gray-500">Please wait, posting accounting entries</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

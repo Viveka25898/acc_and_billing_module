@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -9,26 +10,95 @@ const EmployeeAdvanceSettlementPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  const [osBalance, setOsBalance] = useState(10000); // Default O/S Balance
+  const [osBalance, setOsBalance] = useState(); // Default O/S Balance
+
+  // Function to update user's osBalance in users array
+const updateUserOSBalance = (employeeId, newBalance) => {
+  try {
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const updatedUsers = users.map(user => 
+      user.empId === employeeId 
+        ? { ...user, osBalance: newBalance }
+        : user
+    );
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    console.log(`Updated O/S balance for employee ${employeeId}: ₹${newBalance}`);
+  } catch (error) {
+    console.error('Error updating user O/S balance:', error);
+  }
+};
 
   // Get current user from localStorage
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
-    const fullUser = allUsers.find(u => u.username === user?.username);
-    setCurrentUser(fullUser);
+ useEffect(() => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+  const fullUser = allUsers.find(u => u.username === user?.username);
+  setCurrentUser(fullUser);
+  console.log("Full User:-",currentUser);
 
-    // Initialize settlements if not exists
-    if (!localStorage.getItem("settlements")) {
-      localStorage.setItem("settlements", JSON.stringify([]));
-    }
-    // Load user's current O/S balance from localStorage if exists
-    const userBalance = localStorage.getItem(`osBalance_${fullUser?.username}`);
-    if (userBalance) {
-      setOsBalance(parseFloat(userBalance));
-    }
-  }, []);
+  // Initialize settlements if not exists
+  if (!localStorage.getItem("settlements")) {
+    localStorage.setItem("settlements", JSON.stringify([]));
+  }
 
+  // Calculate REAL O/S balance from transactions
+  if (fullUser) {
+    const realOSBalance = calculateRealOSBalance(fullUser.empId);
+    setOsBalance(realOSBalance);
+    
+    // Also update user's osBalance in users array for consistency
+    updateUserOSBalance(fullUser.empId, realOSBalance);
+  }
+}, []);
+
+
+  //Getting Real O/S Balance.
+const calculateRealOSBalance = (employeeId) => {
+  try {
+    const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    const settlements = JSON.parse(localStorage.getItem('settlements')) || [];
+    
+    console.log('Calculating O/S balance for employee:', employeeId);
+    
+    // 1. Calculate total advances received
+    const totalAdvances = transactions
+      .filter(txn => 
+        txn.entries.some(entry => 
+          entry.employeeId === employeeId && 
+          entry.debit > 0
+        )
+      )
+      .reduce((sum, txn) => {
+        const advanceEntry = txn.entries.find(entry => 
+          entry.employeeId === employeeId && entry.debit > 0
+        );
+        return sum + (advanceEntry?.debit || 0);
+      }, 0);
+
+    // 2. Calculate total settlements approved
+    const totalSettlements = settlements
+      .filter(settlement => 
+        settlement.employeeId === employeeId && 
+        settlement.status === 'Approved'
+      )
+      .reduce((sum, settlement) => sum + settlement.totalAmount, 0);
+
+    // 3. Calculate O/S balance
+    const osBalance = totalAdvances - totalSettlements;
+    
+    console.log('O/S Balance Calculation:', {
+      employeeId,
+      totalAdvances,
+      totalSettlements,
+      osBalance
+    });
+
+    return osBalance;
+  } catch (error) {
+    console.error('Error calculating O/S balance:', error);
+    return 0;
+  }
+};
   
 
   // Export Blank Excel Template
@@ -58,84 +128,85 @@ const EmployeeAdvanceSettlementPage = () => {
     }
   };
 
-   const handleSubmitSettlement = async (excelFile, attachments) => {
-    try {
-      console.log("Submitting settlement...");
-      console.log("Current user:", currentUser);
-      console.log("Current O/S Balance:", osBalance);
-      
-      if (!currentUser) {
-        setError('User information not available. Please refresh the page.');
-        return false;
-      }
-
-      if (!excelFile || attachments.length === 0) {
-        setError('Please upload both Excel file and supporting documents.');
-        return false;
-      }
-
-      // Parse Excel data
-      const excelData = await parseExcelFile(excelFile);
-      console.log("Parsed Excel data:", excelData);
-      
-      // Calculate total settlement amount
-      const totalAmount = excelData.reduce((sum, item) => {
-        const amount = Number(item['Amount (₹)']) || 0;
-        return sum + amount;
-      }, 0);
-
-      console.log("Total settlement amount:", totalAmount);
-
-      // Check if settlement amount exceeds available balance
-      if (totalAmount > osBalance) {
-        setError(`Settlement amount (₹${totalAmount}) exceeds available O/S Balance (₹${osBalance})`);
-        return false;
-      }
-
-      const newSettlement = {
-        id: Date.now().toString(),
-        employeeName: currentUser.username,
-        employeeId: currentUser.empId,
-        expenseItems: excelData,
-        totalAmount: totalAmount, // Store the total amount
-        attachments: attachments.map(file => ({
-          name: file.name,
-          size: file.size,
-          type: file.type
-        })),
-        status: 'Pending Line Manager Approval',
-        submittedAt: new Date().toISOString(),
-        assignedTo: currentUser.reportsTo,
-        submittedBy: currentUser.username,
-        currentLevel: 'line-manager',
-        osBalanceBefore: osBalance, // Store balance before submission
-        history: [{
-          action: 'submitted',
-          by: currentUser.username,
-          date: new Date().toISOString(),
-          comments: ''
-        }]
-      };
-
-      console.log("New settlement:", newSettlement);
-
-      const existingSettlements = JSON.parse(localStorage.getItem("settlements")) || [];
-      console.log("Existing settlements before:", existingSettlements);
-      
-      const updatedSettlements = [...existingSettlements, newSettlement];
-      localStorage.setItem("settlements", JSON.stringify(updatedSettlements));
-      
-      console.log("Updated settlements:", 
-        JSON.parse(localStorage.getItem("settlements")));
-      
-      setSubmitted(true);
-      return true;
-    } catch (err) {
-      console.error("Submission error:", err);
-      setError('Failed to submit settlement. Please try again.');
+  const handleSubmitSettlement = async (excelFile, attachments) => {
+  try {
+    console.log("Submitting settlement...");
+    console.log("Current user:", currentUser);
+    console.log("Current O/S Balance:", osBalance);
+    
+    if (!currentUser) {
+      setError('User information not available. Please refresh the page.');
       return false;
     }
-  };
+
+    if (!excelFile || attachments.length === 0) {
+      setError('Please upload both Excel file and supporting documents.');
+      return false;
+    }
+
+    // Parse Excel data
+    const excelData = await parseExcelFile(excelFile);
+    console.log("Parsed Excel data:", excelData);
+    
+    // Calculate total settlement amount
+    const totalAmount = excelData.reduce((sum, item) => {
+      const amount = Number(item['Amount (₹)']) || 0;
+      return sum + amount;
+    }, 0);
+
+    console.log("Total settlement amount:", totalAmount);
+
+    // ALLOW settlements > O/S balance (just show warning)
+    if (totalAmount > osBalance) {
+      console.log(`Creating liability: Settlement (₹${totalAmount}) > O/S (₹${osBalance})`);
+      // Show info message instead of error
+      setError(`Note: Settlement exceeds O/S balance by ₹${totalAmount - osBalance}. This will create employee liability.`);
+      // Don't return false - allow submission
+    }
+
+    const newSettlement = {
+      id: `SET-${Date.now()}`,
+      employeeName: currentUser.fullName || currentUser.username,
+      employeeId: currentUser.empId,
+      expenseItems: excelData,
+      totalAmount: totalAmount,
+      attachments: attachments.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        // You might want to store file content for later retrieval
+        // content: await readFileAsBase64(file) 
+      })),
+      status: 'Pending Line Manager Approval',
+      submittedAt: new Date().toISOString(),
+      assignedTo: currentUser.reportsTo,
+      submittedBy: currentUser.username,
+      currentLevel: 'line-manager',
+      osBalanceBefore: osBalance, // Store balance before submission
+      history: [{
+        action: 'submitted',
+        by: currentUser.username,
+        date: new Date().toISOString(),
+        comments: ''
+      }]
+    };
+
+    console.log("New settlement:", newSettlement);
+
+    const existingSettlements = JSON.parse(localStorage.getItem("settlements")) || [];
+    const updatedSettlements = [...existingSettlements, newSettlement];
+    localStorage.setItem("settlements", JSON.stringify(updatedSettlements));
+    
+    console.log("Settlement saved successfully");
+    
+    setSubmitted(true);
+    return true;
+  } catch (err) {
+    console.error("Submission error:", err);
+    setError('Failed to submit settlement. Please try again.');
+    return false;
+  }
+};
 
   const parseExcelFile = (file) => {
     return new Promise((resolve, reject) => {
