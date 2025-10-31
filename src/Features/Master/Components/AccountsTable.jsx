@@ -137,18 +137,38 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                          account.name.toLowerCase().includes('sbi') ||
                          account.name.toLowerCase().includes('icici');
 
+    // Add Travel Expense Account condition
+    const isTravelExpenseAccount = account.code.startsWith('X1001002') || 
+                                  account.name.toLowerCase().includes('travel') ||
+                                  account.name.toLowerCase().includes('travel expense');
+    
+
+    // Add Food & Refreshment condition
+    const isFoodRefreshmentAccount = account.code.startsWith('X1001001') || 
+                                   account.name.toLowerCase().includes('food') ||
+                                   account.name.toLowerCase().includes('refreshment');
+
+    // Add Office Supplies condition  
+    const isOfficeSuppliesAccount = account.code.startsWith('X1001003') || 
+                                   account.name.toLowerCase().includes('office supplies') ||
+                                   account.name.toLowerCase().includes('stationery');
+
     if (isVendorAccount) {
       navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);
     } else if (isTDSAccount) {
-      // Extract section code from TDS account (e.g., "194C" from "L2003001")
       const sectionCode = account.code.replace('L2003', '').replace(/^0+/, '') || '194C';
       navigate(`/dashboard/account-manager/tds-ledger/${sectionCode}`);
     } else if (isEmployeeAccount) {
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
     } else if (isBankAccount) {
       navigate(`/dashboard/account-manager/bank-ledger/${account.code}`);
+    } else if (isTravelExpenseAccount) {
+      navigate(`/dashboard/account-manager/travel-expense-ledger`);
+    } else if (isFoodRefreshmentAccount) {
+      navigate(`/dashboard/account-manager/food-refreshment-ledger`);
+    } else if (isOfficeSuppliesAccount) {
+      navigate(`/dashboard/account-manager/office-supplies-ledger`);
     } else {
-      // Default to employee ledger for other accounts
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
     }
   } else {

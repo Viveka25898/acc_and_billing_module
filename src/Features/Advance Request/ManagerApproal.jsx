@@ -59,6 +59,25 @@ const ManagerApproval = () => {
     return uniqueReasons.length > 0 ? uniqueReasons.join(', ') : 'No reason provided';
   };
 
+// Helper function to get employee O/S balance
+const getEmployeeOSBalance = (employeeId) => {
+  try {
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    
+    // Find the employee by employeeId
+    const employee = users.find(user => 
+      user.empId === employeeId || 
+      user.username === employeeId ||
+      (user.empId && user.empId.toString() === employeeId.toString())
+    );
+    
+    return employee?.osBalance || 0;
+  } catch (error) {
+    console.error('Error getting employee O/S balance:', error);
+    return 0;
+  }
+};
+
   //Approve
   const handleApprove = (submittedAt) => {
     // 1. Get all requests
@@ -181,7 +200,9 @@ const ManagerApproval = () => {
                   <td className="border px-4 py-2">{req.employeeId}</td>
                   <td className="border px-4 py-2">₹{req.amount}</td>
                   <td className="border px-4 py-2">{req.requestDate}</td>
-                  <td className="border px-4 py-2">₹{Math.floor(Math.random() * 5000)}</td>
+                  <td className="border px-4 py-2">
+                        ₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}
+                  </td>
                   <td className="border px-4 py-2">
                     <button
                       onClick={() => {

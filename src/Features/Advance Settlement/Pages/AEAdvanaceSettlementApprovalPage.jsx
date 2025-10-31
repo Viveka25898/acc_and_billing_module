@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { AiOutlineEye, AiOutlineCheck, AiOutlineClose } from 'react-icons/ai';
 import RemarkModal from '../Components/RemarkModal';
@@ -6,6 +7,12 @@ import ManagerClarificationModal from '../Components/ManagerClarificationModal';
 import EmployeeAdvanceSettlementJV from '../Components/JVDisplay';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+// Import accounting helper functions
+import { 
+  processAdvanceSettlement,
+  generateEmployeeGLCode,
+  normalizeEmployeeId
+} from '../../Master/utils/accountingHelpers';
 
 const AEAdvanceSettlementApprovalPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -21,6 +28,7 @@ const AEAdvanceSettlementApprovalPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 5;
   const [showJVFor, setShowJVFor] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Get current user from localStorage
   useEffect(() => {
@@ -50,84 +58,70 @@ const AEAdvanceSettlementApprovalPage = () => {
     }
   }, [currentUser]);
 
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
     if (!currentUser) return;
     
-    const updated = settlements.map(settlement => {
-      if (settlement.id === id) {
-        // Generate JV data before updating status
-        const jvData = generateJVData(settlement);
-        
-        return {
-          ...settlement,
-          status: 'Approved by Account Executive',
-          currentLevel: 'completed',
-          assignedTo: null,
-          rejectionReason: null,
-          jvEntry: jvData, // Store JV data with the settlement
-          history: [
-            ...settlement.history,
-            {
-              action: settlement.status.includes('Clarification') ? 
-                'approved-after-clarification' : 'approved',
-              by: currentUser.username,
-              date: new Date().toISOString(),
-              comments: 'Automatic JV entry passed'
-            }
-          ]
-        };
+    setIsProcessing(true);
+    
+    try {
+      const settlement = settlements.find(s => s.id === id);
+      if (!settlement) {
+        toast.error('Settlement not found');
+        return;
       }
-      return settlement;
-    });
 
-    updateSettlements(updated);
-    const approvedRequest = updated.find(req => req.id === id);
-    setShowJVFor(approvedRequest);
-    setClarificationData(null);
-    toast.success("Automatic Settlement Entry Passed in the System through JV.");
-  };
-
-  const generateJVData = (settlement) => {
-  const totalAmount = settlement.expenseItems.reduce((sum, item) => {
-    return sum + (Number(item['Amount (₹)']) || 0);
-  }, 0);
-  
-  return {
-    header: {
-      company: "Ismart",
-      voucherNo: `JV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
-      financialYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`,
-      date: new Date().toISOString().split('T')[0],
-      reference: `SETTLEMENT-${settlement.id.slice(-6)}`,
-      preparedBy: "System"
-    },
-    entries: [
-      {
-        particulars: "Employee Advances",
-        gl: "2005",
-        debit: totalAmount,
-        credit: 0
-      },
-      {
-        particulars: "Cash",
-        gl: "1001",
-        debit: 0,
-        credit: totalAmount
+      // Process accounting FIRST
+      const accountingResult = await processAdvanceSettlement(settlement);
+      
+      if (!accountingResult.success) {
+        throw new Error(accountingResult.message);
       }
-    ],
-    narration: `Advance settlement for ${settlement.employeeName}`,
-    approvals: {
-      preparer: "System",
-      reviewer: "Pending",
-      approver: "Pending",
-      date: new Date().toISOString().split('T')[0]
-    },
-    totals: {
-      debit: totalAmount,
-      credit: totalAmount
+
+      // Update settlement with accounting data
+      const updated = settlements.map(s => {
+        if (s.id === id) {
+          return {
+            ...s,
+            status: 'Approved by Account Executive',
+            currentLevel: 'completed',
+            assignedTo: null,
+            rejectionReason: null,
+            jvEntry: accountingResult.jvData,
+            voucherNo: accountingResult.voucherNo,
+            transactionId: accountingResult.transactionId,
+            newOSBalance: accountingResult.newOSBalance,
+            history: [
+              ...s.history,
+              {
+                action: s.status.includes('Clarification') ? 
+                  'approved-after-clarification' : 'approved',
+                by: currentUser.username,
+                date: new Date().toISOString(),
+                comments: `Automatic JV entry passed - ${accountingResult.voucherNo}`
+              }
+            ]
+          };
+        }
+        return s;
+      });
+
+      // Update localStorage
+      updateSettlements(updated);
+      
+      // Show JV modal
+      const approvedRequest = updated.find(req => req.id === id);
+      setShowJVFor(approvedRequest);
+      setClarificationData(null);
+      
+      toast.success(`✅ Automatic Settlement Entry Passed - ${accountingResult.voucherNo}`);
+      
+    } catch (error) {
+      console.error('❌ Settlement approval failed:', error);
+      toast.error(`Settlement failed: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
-};
 
   const handleReject = (id) => {
     if (!remarkInput.trim()) return alert('Please enter a rejection reason.');
@@ -161,6 +155,7 @@ const AEAdvanceSettlementApprovalPage = () => {
     updateSettlements(updated);
     setSelectedRejectId(null);
     setRemarkInput('');
+    toast.error('Settlement Rejected');
   };
 
   // Function to handle file viewing
@@ -232,6 +227,17 @@ const AEAdvanceSettlementApprovalPage = () => {
         Account Executive Review - {currentUser.username}
       </h2>
 
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <p className="text-gray-700 font-medium">Processing settlement...</p>
+            <p className="text-sm text-gray-500">Please wait, posting accounting entries</p>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <ManagerFilter filter={filter} setFilter={setFilter} />
         <table className="min-w-full border text-sm">
@@ -243,6 +249,7 @@ const AEAdvanceSettlementApprovalPage = () => {
               <th className="p-3 border">Excel File</th>
               <th className="p-3 border">Attachments</th>
               <th className="p-3 border">Amount</th>
+              <th className="p-3 border">O/S Before</th>
               <th className="p-3 border">Status</th>
               <th className="p-3 border">Remarks</th>
               <th className="p-3 border">Actions</th>
@@ -299,6 +306,9 @@ const AEAdvanceSettlementApprovalPage = () => {
                   ₹{calculateTotalAmount(req.expenseItems).toFixed(2)}
                 </td>
                 <td className="p-3 border">
+                  ₹{(req.osBalanceBefore || 0).toFixed(2)}
+                </td>
+                <td className="p-3 border">
                   <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
                     {req.status}
                   </span>
@@ -318,14 +328,17 @@ const AEAdvanceSettlementApprovalPage = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleApprove(req.id)}
-                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded text-xs"
+                        disabled={isProcessing}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded text-xs disabled:opacity-50"
                         title="Approve"
                       >
-                        <AiOutlineCheck size={14} /> Approve
+                        <AiOutlineCheck size={14} /> 
+                        {isProcessing ? 'Processing...' : 'Approve'}
                       </button>
                       <button
                         onClick={() => setSelectedRejectId(req.id)}
-                        className="flex items-center gap-1 bg-red-600 text-white px-3 py-1 rounded text-xs"
+                        disabled={isProcessing}
+                        className="flex items-center gap-1 bg-red-600 text-white px-3 py-1 rounded text-xs disabled:opacity-50"
                         title="Reject"
                       >
                         <AiOutlineClose size={14} /> Reject
@@ -383,31 +396,31 @@ const AEAdvanceSettlementApprovalPage = () => {
         />
 
         <ManagerClarificationModal
-        isOpen={!!clarificationData}
-        onClose={() => setClarificationData(null)}
-        data={{
-          ...clarificationData,
-          // Include the rejection history
-          rejectionHistory: clarificationData?.history?.find(h => 
-            h.action.includes('rejected') && !h.action.includes('after-clarification')
-          ),
-          // Include the clarification history if exists
-          clarificationHistory: clarificationData?.history?.find(h => 
-            h.action.includes('clarification')
-          )
-        }}
-        onApprove={() => handleApprove(clarificationData.id)}
-        onReject={() => {
-          setSelectedRejectId(clarificationData.id);
-          setClarificationData(null);
-        }}
-      />
+          isOpen={!!clarificationData}
+          onClose={() => setClarificationData(null)}
+          data={{
+            ...clarificationData,
+            // Include the rejection history
+            rejectionHistory: clarificationData?.history?.find(h => 
+              h.action.includes('rejected') && !h.action.includes('after-clarification')
+            ),
+            // Include the clarification history if exists
+            clarificationHistory: clarificationData?.history?.find(h => 
+              h.action.includes('clarification')
+            )
+          }}
+          onApprove={() => handleApprove(clarificationData.id)}
+          onReject={() => {
+            setSelectedRejectId(clarificationData.id);
+            setClarificationData(null);
+          }}
+        />
 
         {showJVFor && (
           <EmployeeAdvanceSettlementJV 
-          data={showJVFor.jvEntry} 
-          onClose={() => setShowJVFor(null)}
-        />
+            data={showJVFor.jvEntry} 
+            onClose={() => setShowJVFor(null)}
+          />
         )}
       </div>
     </div>

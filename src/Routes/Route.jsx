@@ -146,6 +146,9 @@ import EmployeeLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/
 import ProcessOfPaymentVendorPage from "../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage"
 import TDSLedgerPage from "../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage"
 import BankLedgerPage from "../Features/Master/Bank Ledger/Pages/BankLedgerPage"
+import TravelExpenseLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Travel Expense/Pages/TravelExpenseLedgerPage"
+import FoodRefreshmentLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/FoodsAndRefreshments/Pages/FoodRefreshmentLedgerPage"
+import OfficeSuppliesLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Office Supplies/Pages/OfficeSuppliesLedgerPage"
 
 
 export const router=createBrowserRouter([
@@ -834,7 +837,19 @@ export const router=createBrowserRouter([
           {
             path: "bank-ledger/:accountCode",
             element: <BankLedgerPage/> 
-            }
+           },
+            {
+            path: "travel-expense-ledger",
+            element: <TravelExpenseLedgerPage/>
+           },
+           {
+            path: "food-refreshment-ledger",
+            element: <FoodRefreshmentLedgerPage/>
+           },
+            {
+            path: "office-supplies-ledger", 
+            element: <OfficeSuppliesLedgerPage/>
+           }
 
         ]
     },

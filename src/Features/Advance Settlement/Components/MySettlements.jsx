@@ -43,8 +43,44 @@ const MySettlements = () => {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedDate, setSelectedDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [osBalance, setOsBalance] = useState(5000); // Default O/S Balance
+  const [osBalance, setOsBalance] = useState(0);
   const rowsPerPage = 5;
+
+  // Function to generate employee GL code
+  const generateEmployeeGLCode = (employeeId) => {
+    if (!employeeId) return null;
+    const normalizedId = String(employeeId).replace('emp', '');
+    return `A3002-EMP-${normalizedId.padStart(3, '0')}`;
+  };
+
+  // CORRECT O/S Balance calculation from GL transactions
+  const calculateRealOSBalance = (employeeId) => {
+    try {
+      const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+      const employeeGLCode = generateEmployeeGLCode(employeeId);
+      
+      if (!employeeGLCode) return 0;
+
+      let totalDebits = 0;
+      let totalCredits = 0;
+
+      transactions.forEach(txn => {
+        if (txn.entries && Array.isArray(txn.entries)) {
+          txn.entries.forEach(entry => {
+            if (entry.glCode === employeeGLCode) {
+              totalDebits += entry.debit || 0;
+              totalCredits += entry.credit || 0;
+            }
+          });
+        }
+      });
+
+      return totalDebits - totalCredits;
+    } catch (error) {
+      console.error('❌ Error calculating O/S balance:', error);
+      return 0;
+    }
+  };
 
   // Get current user from localStorage
   useEffect(() => {
@@ -52,51 +88,25 @@ const MySettlements = () => {
     const allUsers = JSON.parse(localStorage.getItem("users")) || [];
     const fullUser = allUsers.find(u => u.username === user?.username);
     setCurrentUser(fullUser);
-
-    // Load user's current O/S balance from localStorage if exists
-    if (fullUser) {
-      const userBalance = localStorage.getItem(`osBalance_${fullUser.username}`);
-      if (userBalance) {
-        setOsBalance(parseFloat(userBalance));
-      }
-    }
   }, []);
 
   useEffect(() => {
     // Load settlements from localStorage when currentUser is available
     if (currentUser) {
       const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
-      // Filter by current user and sort by date (newest first)
+      
+      // ✅ FIXED: Filter by employeeId instead of employeeName
       const userSettlements = storedSettlements
-        .filter(s => s.employeeName === currentUser.username)
+        .filter(s => s.employeeId === currentUser.empId)
         .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+      
       setSettlements(userSettlements);
 
-      // Calculate current O/S balance based on approved settlements
-      calculateOsBalance(userSettlements);
+      // Calculate O/S balance from actual GL transactions
+      const realBalance = calculateRealOSBalance(currentUser.empId);
+      setOsBalance(realBalance);
     }
   }, [currentUser]);
-
-  // Function to calculate O/S balance
-  const calculateOsBalance = (userSettlements) => {
-    const initialBalance = 5000; // Starting balance
-    
-    // Sum of all approved settlements by Account Executive
-    const totalApprovedAmount = userSettlements
-      .filter(s => s.status === 'Approved by Account Executive')
-      .reduce((total, settlement) => {
-        const amount = settlement.totalAmount || calculateTotalAmount(settlement.expenseItems);
-        return total + amount;
-      }, 0);
-
-    const currentBalance = initialBalance - totalApprovedAmount;
-    setOsBalance(currentBalance);
-    
-    // Save to localStorage for persistence
-    if (currentUser) {
-      localStorage.setItem(`osBalance_${currentUser.username}`, currentBalance.toString());
-    }
-  };
 
   const openClarificationModal = (id) => {
     setClarificationId(id);
@@ -173,9 +183,6 @@ const MySettlements = () => {
     });
     localStorage.setItem("settlements", JSON.stringify(updatedAllSettlements));
 
-    // Recalculate O/S balance
-    calculateOsBalance(updatedSettlements);
-
     // Close modal and reset
     setClarificationModalOpen(false);
     setClarificationText('');
@@ -214,14 +221,23 @@ const MySettlements = () => {
     }, 0);
   };
 
+  // ✅ FIXED: Better filtering logic
   const filteredRequests = settlements.filter((req) => {
     const normalizedStatus = req.status.toLowerCase();
-    const matchStatus =
-      selectedStatus === 'All' ||
-      normalizedStatus === selectedStatus.toLowerCase() ||
-      (selectedStatus === 'Rejected' && normalizedStatus.includes('rejected')) ||
-      (selectedStatus === 'Pending' && normalizedStatus.includes('pending'));
     
+    // Status filtering
+    let matchStatus = false;
+    if (selectedStatus === 'All') {
+      matchStatus = true;
+    } else if (selectedStatus === 'Pending') {
+      matchStatus = normalizedStatus.includes('pending');
+    } else if (selectedStatus === 'Approved') {
+      matchStatus = normalizedStatus.includes('approved');
+    } else if (selectedStatus === 'Rejected') {
+      matchStatus = normalizedStatus.includes('rejected');
+    }
+    
+    // Date filtering
     const matchDate = !selectedDate || 
       new Date(req.submittedAt).toISOString().split('T')[0] === selectedDate;
     
@@ -248,7 +264,7 @@ const MySettlements = () => {
           <span className="text-2xl font-bold text-green-700">₹{osBalance.toFixed(2)}</span>
         </div>
         <p className="text-sm text-gray-600 mt-1">
-          Starting balance: ₹5000.00 | Deducted when Account Executive approves settlements.
+          Based on actual GL transactions (Advances - Settlements)
         </p>
       </div>
 
@@ -293,9 +309,14 @@ const MySettlements = () => {
                     <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
                       {req.status}
                     </span>
+                    {req.rejectionReason && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Click eye icon to view reason
+                      </div>
+                    )}
                   </td>
                   <td className="p-3 border">
-                    {req.status.includes('Rejected') && (
+                    {req.rejectionReason && (
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => openModal(req.rejectionReason || 'No reason provided')}
@@ -315,11 +336,7 @@ const MySettlements = () => {
                           >
                             Submit Clarification
                           </button>
-                        ) : (
-                          <span className="text-gray-500 text-xs">
-                            No Action Available
-                          </span>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </td>

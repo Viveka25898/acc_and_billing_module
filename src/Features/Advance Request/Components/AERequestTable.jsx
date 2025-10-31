@@ -6,7 +6,7 @@ import { FaEye } from 'react-icons/fa';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-export default function AERequestTable({ data, onApprove, onReject, onDownloadComplete, onApproveMultiple }) {
+export default function AERequestTable({ data, onApprove, onReject, onDownloadComplete, onApproveMultiple,getEmployeeOSBalance }) {
   const [currentReason, setCurrentReason] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -292,7 +292,9 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                 <td className="p-2 border">{req.employeeId}</td>
                 <td className="p-2 border">₹{req.amount}</td>
                 <td className="p-2 border">{req.requestDate}</td>
-                <td className="p-2 border">₹{req.osBalance || '2200'}</td>
+                <td className="p-3 border">
+                   ₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}
+                </td>
                 <td className="p-2 border">
                   <button 
                     onClick={() => setCurrentReason({

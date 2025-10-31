@@ -80,6 +80,25 @@ const VPApproval = () => {
     setRequests(filteredRequests);
   }, [loggedInUser]);
 
+  // Helper function to get employee O/S balance
+const getEmployeeOSBalance = (employeeId) => {
+  try {
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    
+    // Find the employee by employeeId
+    const employee = users.find(user => 
+      user.empId === employeeId || 
+      user.username === employeeId ||
+      (user.empId && user.empId.toString() === employeeId.toString())
+    );
+    
+    return employee?.osBalance || 0;
+  } catch (error) {
+    console.error('Error getting employee O/S balance:', error);
+    return 0;
+  }
+};
+
   const handleApprove = (submittedAt) => {
     const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
     const approvalTime = new Date();
@@ -231,7 +250,7 @@ const VPApproval = () => {
   // Helper function to check if current time is before deadline
   const isCurrentlyBeforeDeadline = () => {
     const now = new Date();
-    return now.getHours() < 15 || (now.getHours() === 15 && now.getMinutes() <= 59);
+    return now.getHours() < 15 || (now.getHours() === 19 && now.getMinutes() <= 59);
   };
 
   return (
@@ -282,7 +301,9 @@ const VPApproval = () => {
                   <td className="border px-2 py-1 whitespace-nowrap">{req.employeeId}</td>
                   <td className="border px-2 py-1 whitespace-nowrap">₹{req.amount}</td>
                   <td className="border px-2 py-1 whitespace-nowrap">{req.requestDate}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">₹{Math.floor(Math.random() * 5000)}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">
+                     ₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}
+                  </td>
                   <td className="border px-2 py-1 whitespace-nowrap">
                     <button
                       onClick={() =>

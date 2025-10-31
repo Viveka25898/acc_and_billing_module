@@ -496,7 +496,7 @@
 import React from "react";
 
 export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
-  // Set default values if data is not provided
+  // Use the actual data passed from accounting processing
   const header = data.header || {
     company: "Ismart",
     voucherNo: "JV-0000",
@@ -521,12 +521,15 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
     credit: lines.reduce((sum, line) => sum + (line.credit || 0), 0)
   };
 
+  // Get employee details for display
+  const employeeInfo = data.employeeInfo || {};
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="max-w-5xl w-full bg-white rounded-lg shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Modal Header with Close Button */}
         <div className="sticky top-0 bg-green-600 text-white p-4 flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Journal Voucher</h2>
+          <h2 className="text-xl font-semibold">Journal Voucher - Advance Settlement</h2>
           <button 
             onClick={onClose}
             className="text-white hover:text-indigo-200 text-2xl"
@@ -556,13 +559,17 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
               <p className="text-sm text-gray-500">Financial Year</p>
               <p className="font-medium">{header.financialYear}</p>
             </div>
+            <div>
+              <p className="text-sm text-gray-500">Employee</p>
+              <p className="font-medium">{employeeInfo.employeeName || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Employee ID</p>
+              <p className="font-medium">{employeeInfo.employeeId || 'N/A'}</p>
+            </div>
             <div className="md:col-span-2">
               <p className="text-sm text-gray-500">Reference</p>
               <p className="font-medium">{header.reference}</p>
-            </div>
-            <div className="md:col-span-2">
-              <p className="text-sm text-gray-500">Prepared By</p>
-              <p className="font-medium">{header.preparedBy}</p>
             </div>
           </div>
 
@@ -581,23 +588,44 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
                 {lines.map((line, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-4 py-2 border text-sm">{line.particulars || "N/A"}</td>
-                    <td className="px-4 py-2 border text-sm">{line.gl || "N/A"}</td>
+                    <td className="px-4 py-2 border text-sm font-mono">{line.glCode || line.gl || "N/A"}</td>
                     <td className="px-4 py-2 border text-right text-sm">
-                      {line.debit ? line.debit.toLocaleString() : "-"}
+                      {line.debit ? `₹${line.debit.toLocaleString('en-IN')}` : "-"}
                     </td>
                     <td className="px-4 py-2 border text-right text-sm">
-                      {line.credit ? line.credit.toLocaleString() : "-"}
+                      {line.credit ? `₹${line.credit.toLocaleString('en-IN')}` : "-"}
                     </td>
                   </tr>
                 ))}
                 <tr className="bg-gray-100 font-medium">
                   <td colSpan={2} className="px-4 py-2 border text-right text-sm">Total</td>
-                  <td className="px-4 py-2 border text-right text-sm">{totals.debit.toLocaleString()}</td>
-                  <td className="px-4 py-2 border text-right text-sm">{totals.credit.toLocaleString()}</td>
+                  <td className="px-4 py-2 border text-right text-sm">₹{totals.debit.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-2 border text-right text-sm">₹{totals.credit.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
           </div>
+
+          {/* Balance Information */}
+          {data.balanceInfo && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-medium text-blue-800 mb-2">Balance Impact</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-blue-600">O/S Balance Before</p>
+                  <p className="font-medium">₹{(data.balanceInfo.osBalanceBefore || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <div>
+                  <p className="text-blue-600">Settlement Amount</p>
+                  <p className="font-medium">₹{(data.balanceInfo.settlementAmount || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <div>
+                  <p className="text-blue-600">O/S Balance After</p>
+                  <p className="font-medium">₹{(data.balanceInfo.osBalanceAfter || 0).toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Narration */}
           <div className="mb-6">
@@ -611,7 +639,14 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
               <p className="text-gray-500">Preparer</p>
               <p className="font-medium">{approvals.preparer}</p>
             </div>
-            
+            <div>
+              <p className="text-gray-500">Reviewer</p>
+              <p className="font-medium">{approvals.reviewer}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Approver</p>
+              <p className="font-medium">{approvals.approver}</p>
+            </div>
           </div>
         </div>
       </div>

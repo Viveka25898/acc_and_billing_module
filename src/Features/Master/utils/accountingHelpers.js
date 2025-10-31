@@ -581,6 +581,294 @@ export const formatAmount = (amount) => {
   });
 };
 
+// ========================================
+// 12. Advance Settlement
+// ========================================
+
+/**
+ * Process advance settlement with proper GL entries
+ */
+export const processAdvanceSettlement = (settlement) => {
+  try {
+    console.log('🚀 Starting advance settlement processing...');
+    
+    // Validate settlement data
+    if (!settlement.employeeGLCode) {
+      throw new Error('Employee GL Code not found');
+    }
+    
+    if (!settlement.expenseItems || settlement.expenseItems.length === 0) {
+      throw new Error('No expense items found');
+    }
+    
+    // Calculate total settlement amount
+    const totalAmount = settlement.expenseItems.reduce((sum, item) => {
+      return sum + (Number(item['Amount (₹)']) || 0);
+    }, 0);
+    
+    if (totalAmount <= 0) {
+      throw new Error('Invalid settlement amount');
+    }
+    
+    // Get employee details
+    const normalizedId = normalizeEmployeeId(settlement.employeeId);
+    const employee = getEmployeeDetails(normalizedId);
+    if (!employee) throw new Error(`Employee ${settlement.employeeId} not found`);
+    
+    // Get current O/S balance
+    const currentBalance = getLedgerBalance(settlement.employeeGLCode).balance;
+    const osBalanceBefore = settlement.osBalanceBefore || currentBalance;
+    
+    // Calculate new O/S balance
+    const osBalanceAfter = osBalanceBefore - totalAmount;
+    
+    if (osBalanceAfter < 0) {
+      throw new Error(`Settlement amount (₹${totalAmount}) exceeds O/S balance (₹${osBalanceBefore})`);
+    }
+    
+    // Generate voucher number
+    const site = employee.site || getSiteByEmpId(normalizedId);
+    const voucherNo = generateSettlementVoucherNumber(site);
+    
+    // Create JV data for display
+    const jvData = createSettlementJVData(settlement, employee, voucherNo, totalAmount, osBalanceBefore, osBalanceAfter);
+    
+    // Create and post transaction
+    const transaction = createSettlementTransaction(settlement, employee, voucherNo, totalAmount);
+    const postResult = postTransaction(transaction);
+    
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+    
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+    
+    // Update employee O/S balance
+    updateEmployeeOSBalance(normalizedId, osBalanceAfter);
+    
+    console.log('✅ Advance settlement completed!');
+    
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      jvData: jvData,
+      settlementAmount: totalAmount,
+      osBalanceBefore: osBalanceBefore,
+      newOSBalance: osBalanceAfter,
+      employeeName: employee.fullName,
+      message: `Settlement of ₹${totalAmount.toLocaleString()} processed for ${employee.fullName}`
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR in processAdvanceSettlement:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process settlement: ${error.message}`
+    };
+  }
+};
+
+/**
+ * Create settlement JV data for display
+ */
+const createSettlementJVData = (settlement, employee, voucherNo, totalAmount, osBalanceBefore, osBalanceAfter) => {
+  // Map expense heads to proper GL codes
+  const expenseGLMapping = {
+  'Travel': 'X1001002001', // TRAVEL EXPENSE
+  'Food & Refreshments': 'X1001003001', // FOOD & REFRESHMENT
+  'Accommodation': 'X1001002002', // ACCOMODATION
+  'Other': 'X2002002001' // OTHER EXPENSE
+};
+  
+  // Group expenses by expense head
+  const expenseGroups = {};
+  settlement.expenseItems.forEach(item => {
+    const expenseHead = item['Expense Head'] || 'Other';
+    const amount = Number(item['Amount (₹)']) || 0;
+    
+    if (!expenseGroups[expenseHead]) {
+      expenseGroups[expenseHead] = 0;
+    }
+    expenseGroups[expenseHead] += amount;
+  });
+  
+  // Create JV entries
+  const entries = [];
+  
+  // Debit entries for each expense head
+  Object.entries(expenseGroups).forEach(([expenseHead, amount]) => {
+    const glCode = expenseGLMapping[expenseHead] || expenseGLMapping['Other'];
+    const glName = getGLName(glCode) || expenseHead;
+    
+    entries.push({
+      particulars: `${expenseHead} Expense`,
+      glCode: glCode,
+      debit: amount,
+      credit: 0,
+      narration: `Settlement for ${expenseHead}`
+    });
+  });
+  
+  // Credit entry for employee advance
+  entries.push({
+    particulars: `Employee Advance - ${employee.fullName}`,
+    glCode: settlement.employeeGLCode,
+    debit: 0,
+    credit: totalAmount,
+    narration: `Advance settlement`
+  });
+  
+  return {
+    header: {
+      company: "Ismart",
+      voucherNo: voucherNo,
+      financialYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`,
+      date: new Date().toISOString().split('T')[0],
+      reference: `SETTLEMENT-${settlement.id.slice(-6)}`,
+      preparedBy: "System"
+    },
+    entries: entries,
+    narration: `Advance settlement for ${employee.fullName}. ${Object.entries(expenseGroups).map(([head, amt]) => `${head}: ₹${amt}`).join(', ')}`,
+    approvals: {
+      preparer: "System",
+      reviewer: "Account Executive",
+      approver: "System",
+      date: new Date().toISOString().split('T')[0]
+    },
+    totals: {
+      debit: totalAmount,
+      credit: totalAmount
+    },
+    employeeInfo: {
+      employeeName: employee.fullName,
+      employeeId: employee.empId,
+      designation: employee.designation,
+      department: employee.department
+    },
+    balanceInfo: {
+      osBalanceBefore: osBalanceBefore,
+      settlementAmount: totalAmount,
+      osBalanceAfter: osBalanceAfter
+    }
+  };
+};
+
+/**
+ * Create settlement transaction for posting
+ */
+const createSettlementTransaction = (settlement, employee, voucherNo, totalAmount) => {
+  const normalizedId = normalizeEmployeeId(settlement.employeeId);
+  const employeeName = employee.fullName;
+  
+  // Map expense heads to proper GL codes (same as above)
+  const expenseGLMapping = {
+  'Travel': 'X1001002001', // TRAVEL EXPENSE
+  'Food & Refreshments': 'X1001003001', // FOOD & REFRESHMENT
+  'Accommodation': 'X1001002002', // ACCOMODATION
+  'Other': 'X2002002001' // OTHER EXPENSE
+};
+  
+  // Group expenses by expense head
+  const expenseGroups = {};
+  settlement.expenseItems.forEach(item => {
+    const expenseHead = item['Expense Head'] || 'Other';
+    const amount = Number(item['Amount (₹)']) || 0;
+    
+    if (!expenseGroups[expenseHead]) {
+      expenseGroups[expenseHead] = 0;
+    }
+    expenseGroups[expenseHead] += amount;
+  });
+  
+  // Create transaction entries
+  const entries = [];
+  let lineNo = 1;
+  
+  // Debit entries for each expense head
+  Object.entries(expenseGroups).forEach(([expenseHead, amount]) => {
+    const glCode = expenseGLMapping[expenseHead] || expenseGLMapping['Other'];
+    const glName = getGLName(glCode) || expenseHead;
+    
+    entries.push({
+      lineNo: lineNo++,
+      glCode: glCode,
+      glName: glName,
+      debit: amount,
+      credit: 0,
+      narration: `${expenseHead} expense settlement - ${employeeName}`,
+      employeeId: normalizedId,
+      costCenter: employee.site || 'General'
+    });
+  });
+  
+  // Credit entry for employee advance
+  entries.push({
+    lineNo: lineNo,
+    glCode: settlement.employeeGLCode,
+    glName: `Employee Advance - ${employeeName}`,
+    debit: 0,
+    credit: totalAmount,
+    narration: `Advance settlement for ${employeeName}`,
+    employeeId: normalizedId,
+    costCenter: employee.site || 'General'
+  });
+  
+  return {
+    id: `TXN_SETT_${Date.now()}_${normalizedId}`,
+    voucherNo: voucherNo,
+    voucherType: "Journal Voucher",
+    date: settlement.submittedAt ? new Date(settlement.submittedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    settlementId: settlement.id,
+    entries: entries,
+    totalDebit: totalAmount,
+    totalCredit: totalAmount,
+    narration: `Advance settlement for ${employeeName}`,
+    approvedBy: "ae1", // This will be set dynamically
+    approvedDate: new Date().toISOString()
+  };
+};
+
+/**
+ * Helper function to get GL name from code
+ */
+const getGLName = (glCode) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const account = chartOfAccounts.find(acc => acc.code === glCode);
+    return account?.name || null;
+  } catch (error) {
+    console.error('Error getting GL name:', error);
+    return null;
+  }
+};
+
+/**
+ * Enhanced voucher number generation for settlements
+ */
+export const generateSettlementVoucherNumber = (site) => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `SETTLEMENT/${site}/${year}`;
+    
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+    
+    if (DEBUG) console.log(`🎫 Generated settlement voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating settlement voucher:', error);
+    throw new Error(`Failed to generate settlement voucher: ${error.message}`);
+  }
+};
+
 export const formatDate = (dateString) => {
   try {
     return new Date(dateString).toLocaleDateString('en-IN', {

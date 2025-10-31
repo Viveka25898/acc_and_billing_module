@@ -1,0 +1,196 @@
+// src/data/foodRefreshmentData.js
+export const foodRefreshmentData = {
+  header: {
+    expenseHeadCode: "X1001001001",
+    expenseHeadName: "FOOD & REFRESHMENT EXPENSE",
+    parentAccount: "OTHER PRODUCTION COST (X1001001)",
+    accountType: "EXPENSE - DIRECT",
+    financialYear: "2024-25",
+    period: "Apr 2024 to May 2024",
+    costCenter: "All Operations",
+    department: "Operations"
+  },
+  balances: {
+    opening: { amount: "₹0.00", type: "Debit Balance" },
+    periodExpenses: { amount: "₹68,500.00", type: "Total Debits" },
+    closing: { amount: "₹68,500.00", type: "Debit Balance" }
+  },
+  stats: [
+    { label: "Total Transactions", value: "8" },
+    { label: "Employees", value: "4" },
+    { label: "Avg per Transaction", value: "₹8,563" },
+    { label: "Team Events", value: "3" }
+  ],
+  transactions: [
+    {
+      id: 1,
+      date: "01-Apr-24",
+      voucherNo: "OB-2024",
+      entryType: "opening",
+      debit: "0.00",
+      credit: "-",
+      balance: "0.00 DR",
+      narration: "Opening Balance B/F FY 2024-25",
+      settlementRef: "-",
+      employee: { name: "-", id: "" },
+      glAccount: "-",
+      costCenter: "All",
+      approvedBy: "System",
+      attachments: 0,
+      status: "posted",
+      rowType: "opening"
+    },
+    {
+      id: 2,
+      date: "03-Apr-24",
+      voucherNo: "JV-2024-0078",
+      entryType: "settlement",
+      debit: "12,500.00",
+      credit: "-",
+      balance: "12,500.00 DR",
+      narration: "Team lunch: Client meeting at Taj Hotel - Food & beverages",
+      settlementRef: "ADV-SETTLE-2024-002",
+      employee: { name: "Priya Sharma", id: "EMP-006" },
+      glAccount: "A3002-EMP-006",
+      costCenter: "Head Office",
+      approvedBy: "Rajesh Kumar (AM)",
+      attachments: 2,
+      status: "posted",
+      rowType: "normal"
+    },
+    {
+      id: 3,
+      date: "10-Apr-24",
+      voucherNo: "JV-2024-0091",
+      entryType: "settlement",
+      debit: "8,000.00",
+      credit: "-",
+      balance: "20,500.00 DR",
+      narration: "Refreshments: Office snacks & beverages for team meeting",
+      settlementRef: "ADV-SETTLE-2024-005",
+      employee: { name: "Amit Patel", id: "EMP-007" },
+      glAccount: "A3002-EMP-007",
+      costCenter: "Mumbai Branch",
+      approvedBy: "Rajesh Kumar (AM)",
+      attachments: 1,
+      status: "posted",
+      rowType: "normal"
+    },
+    {
+      id: 4,
+      date: "18-Apr-24",
+      voucherNo: "JV-2024-0115",
+      entryType: "settlement",
+      debit: "15,000.00",
+      credit: "-",
+      balance: "35,500.00 DR",
+      narration: "Team dinner: Project completion celebration at Barbeque Nation",
+      settlementRef: "ADV-SETTLE-2024-012",
+      employee: { name: "Neha Singh", id: "EMP-008" },
+      glAccount: "A3002-EMP-008",
+      costCenter: "Delhi Branch",
+      approvedBy: "Rajesh Kumar (AM)",
+      attachments: 3,
+      status: "posted",
+      rowType: "normal"
+    },
+    {
+      id: 5,
+      date: "25-Apr-24",
+      voucherNo: "JV-2024-0132",
+      entryType: "settlement",
+      debit: "10,000.00",
+      credit: "-",
+      balance: "45,500.00 DR",
+      narration: "Refreshments: Coffee & snacks for training session participants",
+      settlementRef: "ADV-SETTLE-2024-018",
+      employee: { name: "Rohan Mehta", id: "EMP-009" },
+      glAccount: "A3002-EMP-009",
+      costCenter: "Bangalore Branch",
+      approvedBy: "Rajesh Kumar (AM)",
+      attachments: 2,
+      status: "posted",
+      rowType: "normal"
+    },
+    {
+      id: 6,
+      date: "06-May-24",
+      voucherNo: "JV-2024-0162",
+      entryType: "settlement",
+      debit: "13,000.00",
+      credit: "-",
+      balance: "58,500.00 DR",
+      narration: "Team lunch: Monthly review meeting at Mainland China",
+      settlementRef: "ADV-SETTLE-2024-027",
+      employee: { name: "Priya Sharma", id: "EMP-006" },
+      glAccount: "A3002-EMP-006",
+      costCenter: "Head Office",
+      approvedBy: "Rajesh Kumar (AM)",
+      attachments: 2,
+      status: "posted",
+      rowType: "normal"
+    },
+    {
+      id: 7,
+      date: "20-May-24",
+      voucherNo: "JV-2024-0191",
+      entryType: "settlement",
+      debit: "10,000.00",
+      credit: "-",
+      balance: "68,500.00 DR",
+      narration: "Refreshments: Office pantry supplies - Coffee, tea, biscuits",
+      settlementRef: "ADV-SETTLE-2024-035",
+      employee: { name: "Amit Patel", id: "EMP-007" },
+      glAccount: "A3002-EMP-007",
+      costCenter: "Mumbai Branch",
+      approvedBy: "Rajesh Kumar (AM)",
+      attachments: 1,
+      status: "posted",
+      rowType: "normal"
+    },
+    {
+      id: 8,
+      date: "31-May-24",
+      voucherNo: "CL-2024",
+      entryType: "closing",
+      debit: "-",
+      credit: "-",
+      balance: "68,500.00 DR",
+      narration: "Closing Balance C/F to Jun 2024",
+      settlementRef: "-",
+      employee: { name: "-", id: "" },
+      glAccount: "-",
+      costCenter: "All",
+      approvedBy: "System",
+      attachments: 0,
+      status: "posted",
+      rowType: "closing"
+    }
+  ],
+  summary: {
+    totalDebit: "₹68,500.00",
+    totalCredit: "₹0.00",
+    closingBalance: "₹68,500.00 DR"
+  },
+  filterOptions: {
+    employees: [
+      { value: "", label: "All Employees" },
+      { value: "emp6", label: "EMP-006 - Priya Sharma" },
+      { value: "emp7", label: "EMP-007 - Amit Patel" },
+      { value: "emp8", label: "EMP-008 - Neha Singh" },
+      { value: "emp9", label: "EMP-009 - Rohan Mehta" }
+    ],
+    costCenters: [
+      { value: "", label: "All" },
+      { value: "mumbai", label: "Mumbai Branch" },
+      { value: "delhi", label: "Delhi Branch" },
+      { value: "hq", label: "Head Office" },
+      { value: "bangalore", label: "Bangalore Branch" }
+    ],
+    entryTypes: [
+      { value: "", label: "All" },
+      { value: "settlement", label: "Settlement" },
+      { value: "journal", label: "Journal" }
+    ]
+  }
+};

@@ -1,290 +1,3 @@
-// /* eslint-disable no-unused-vars */
-// import React, { useEffect, useState } from 'react';
-// import { toast } from 'react-toastify';
-// import 'react-toastify/dist/ReactToastify.css';
-// import AEFilter from '../Components/AEFilter';
-// import AERequestTable from '../Components/AERequestTable';
-// import AdvanceRequestPaymentEntryModal from '../Components/AdvanceRequestPaymentEntryModal';
-// import AEBankSelectionModal from '../Components/AEBankSelectionModal';
-
-// export default function AEAdvanceApprovalPage() {
-//   const [requests, setRequests] = useState([]);
-//   const [filter, setFilter] = useState({ name: '', empId: '', date: '', requestId: '' });
-  
-//   // Modal states
-//   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-//   const [isBankModalOpen, setIsBankModalOpen] = useState(false); // NEW STATE
-//   const [selectedRequest, setSelectedRequest] = useState(null);
-//   const [approvedRequests, setApprovedRequests] = useState([]);
-//   const [pendingApprovalData, setPendingApprovalData] = useState(null); // NEW STATE - stores request until bank is selected
-
-//   useEffect(() => {
-//     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-//     const aeRequests = allRequests.filter(req => 
-//       req.status === 'Pending AE Approval' || 
-//       req.status === 'Approved' ||
-//       req.status === 'Rejected by AE'
-//     );
-//     setRequests(aeRequests);
-//   }, []);
-
-//   // NEW FUNCTION - Opens bank selection modal first
-//   const handleApprove = (submittedAt) => {
-//     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-//     const requestIndex = allRequests.findIndex(req => req.submittedAt === submittedAt);
-    
-//     if (requestIndex === -1) {
-//       toast.error('Request not found');
-//       return;
-//     }
-
-//     const request = allRequests[requestIndex];
-
-//     // Check VP deadline
-//     if (request.isVPRequest && !request.vpApprovedBeforeDeadline) {
-//       toast.error('Cannot approve: VP request was approved after 15:59 deadline');
-//       return;
-//     }
-
-//     // Store request data and open bank selection modal
-//     setPendingApprovalData({ type: 'single', request, requestIndex });
-//     setIsBankModalOpen(true);
-//   };
-
-//   // NEW FUNCTION - Handle multiple approvals
-//   const handleApproveMultiple = (requestsData) => {
-//     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-    
-//     const requestsToApprove = requestsData
-//       .map(submittedAt => {
-//         const index = allRequests.findIndex(req => req.submittedAt === submittedAt);
-//         return index !== -1 ? { request: allRequests[index], index } : null;
-//       })
-//       .filter(item => item !== null)
-//       .filter(item => !item.request.isVPRequest || item.request.vpApprovedBeforeDeadline);
-
-//     if (requestsToApprove.length === 0) {
-//       toast.error('No eligible requests to approve');
-//       return;
-//     }
-
-//     // Store multiple requests and open bank selection modal
-//     setPendingApprovalData({ type: 'multiple', requests: requestsToApprove });
-//     setIsBankModalOpen(true);
-//   };
-
-//   // NEW FUNCTION - Called after bank is selected
-//   const handleBankSelected = (bankData) => {
-//     if (!pendingApprovalData) return;
-
-//     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-//     const approvalTime = new Date();
-//     const isBeforeDeadline = approvalTime.getHours() < 19 || 
-//                            (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59);
-
-//     let updatedRequests = [...allRequests];
-//     const approvedRequestsData = [];
-
-//     if (pendingApprovalData.type === 'single') {
-//       // Single approval
-//       const { request, requestIndex } = pendingApprovalData;
-      
-//       updatedRequests[requestIndex] = {
-//         ...updatedRequests[requestIndex],
-//         status: 'Approved',
-//         approvedAt: approvalTime.toISOString(),
-//         aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
-//         aeApprovedBeforeDeadline: isBeforeDeadline,
-//         // Add bank details
-//         bankCode: bankData.bankCode,
-//         bankName: bankData.bankName,
-//         bankId: bankData.bankId
-//       };
-
-//       approvedRequestsData.push(updatedRequests[requestIndex]);
-
-//       localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
-      
-//       // Update local state
-//       const filteredRequests = updatedRequests.filter(req => 
-//         req.status === 'Pending AE Approval' || 
-//         req.status === 'Approved' ||
-//         req.status === 'Rejected by AE'
-//       );
-//       setRequests(filteredRequests);
-      
-//       // Show payment modal with single request
-//       setSelectedRequest(updatedRequests[requestIndex]);
-//       setApprovedRequests([]);
-      
-//       toast.success(
-//         isBeforeDeadline 
-//           ? 'Request Approved - Eligible for same-day processing'
-//           : 'Request Approved - Will be processed next working day'
-//       );
-
-//     } else if (pendingApprovalData.type === 'multiple') {
-//       // Multiple approvals
-//       pendingApprovalData.requests.forEach(({ request, index }) => {
-//         updatedRequests[index] = {
-//           ...updatedRequests[index],
-//           status: 'Approved',
-//           approvedAt: approvalTime.toISOString(),
-//           aeApprovedBy: JSON.parse(localStorage.getItem('user')).username,
-//           aeApprovedBeforeDeadline: isBeforeDeadline,
-//           // Add bank details
-//           bankCode: bankData.bankCode,
-//           bankName: bankData.bankName,
-//           bankId: bankData.bankId
-//         };
-
-//         approvedRequestsData.push(updatedRequests[index]);
-//       });
-
-//       localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
-      
-//       // Update local state
-//       const filteredRequests = updatedRequests.filter(req => 
-//         req.status === 'Pending AE Approval' || 
-//         req.status === 'Approved' ||
-//         req.status === 'Rejected by AE'
-//       );
-//       setRequests(filteredRequests);
-      
-//       // Show payment modal with multiple requests
-//       setSelectedRequest(null);
-//       setApprovedRequests(approvedRequestsData);
-      
-//       toast.success(`${approvedRequestsData.length} requests approved successfully`);
-//     }
-
-//     // Close bank modal and open payment modal
-//     setIsBankModalOpen(false);
-//     setIsPaymentModalOpen(true);
-//     setPendingApprovalData(null);
-//   };
-
-//   const handleReject = (submittedAt, reason) => {
-//     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-//     const requestIndex = allRequests.findIndex(req => req.submittedAt === submittedAt);
-    
-//     if (requestIndex === -1) {
-//       toast.error('Request not found');
-//       return;
-//     }
-
-//     const updatedRequests = [...allRequests];
-//     updatedRequests[requestIndex] = {
-//       ...updatedRequests[requestIndex],
-//       status: 'Rejected by AE',
-//       remarks: reason,
-//       rejectedAt: new Date().toISOString(),
-//       aeRejectedBy: JSON.parse(localStorage.getItem('user')).username
-//     };
-
-//     localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests));
-    
-//     const filteredRequests = updatedRequests.filter(
-//       req => req.status === 'Pending AE Approval' || 
-//              (req.status === 'Rejected by AE' && req.clarification) ||
-//              (req.status === 'Approved' && req.currentLevel === 'account-executive')
-//     );
-    
-//     setRequests(filteredRequests);
-//     toast.error('Request Rejected');
-//   };
-
-//   const handleDownloadComplete = (downloadedRequestIds) => {
-//     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-//     const remainingRequests = allRequests.filter(req => 
-//       !downloadedRequestIds.includes(req.submittedAt)
-//     );
-    
-//     localStorage.setItem('advanceRequests', JSON.stringify(remainingRequests));
-    
-//     const filteredRequests = remainingRequests.filter(req => 
-//       req.status === 'Pending AE Approval' || 
-//       req.status === 'Approved' ||
-//       req.status === 'Rejected by AE'
-//     );
-    
-//     setRequests(filteredRequests);
-//     toast.success(`${downloadedRequestIds.length} approved requests downloaded and removed from table`);
-//   };
-
-//   const filteredRequests = requests.filter(r =>
-//     r.employeeName.toLowerCase().includes(filter.name.toLowerCase()) &&
-//     r.employeeId.toLowerCase().includes(filter.empId.toLowerCase()) &&
-//     (filter.date === '' || r.requestDate.includes(filter.date)) &&
-//     (filter.requestId === '' || (r.requestId && r.requestId.toLowerCase().includes(filter.requestId.toLowerCase())))
-//   );
-
-//   const getCurrentTimeStatus = () => {
-//     const now = new Date();
-//     const isBeforeDeadline = now.getHours() < 15 || (now.getHours() === 15 && now.getMinutes() <= 59);
-//     return isBeforeDeadline;
-//   };
-
-//   const closePaymentModal = () => {
-//     setIsPaymentModalOpen(false);
-//     setSelectedRequest(null);
-//     setApprovedRequests([]);
-//   };
-
-//   const closeBankModal = () => {
-//     setIsBankModalOpen(false);
-//     setPendingApprovalData(null);
-//   };
-
-//   return (
-//     <div className="p-4 bg-white shadow-md rounded-md">
-//       <div className="flex justify-between items-center mb-4">
-//         <h1 className="text-2xl font-bold text-green-600">AE Dashboard - Advance Requests</h1>
-//         <div className={`text-sm px-3 py-1 rounded ${
-//           getCurrentTimeStatus() 
-//             ? 'bg-green-100 text-green-800' 
-//             : 'bg-red-100 text-red-800'
-//         }`}>
-//           {getCurrentTimeStatus() 
-//             ? '🟢 Before 15:59 - Same day processing' 
-//             : '🔴 After 15:59 - Next day processing only'
-//           }
-//         </div>
-//       </div>
-      
-//       <AEFilter filter={filter} setFilter={setFilter} />
-//       <AERequestTable 
-//         data={filteredRequests} 
-//         onApprove={handleApprove} 
-//         onReject={handleReject}
-//         onDownloadComplete={handleDownloadComplete}
-//         onApproveMultiple={handleApproveMultiple}
-//       />
-
-//       {/* Bank Selection Modal - Opens FIRST */}
-//       <AEBankSelectionModal
-//         isOpen={isBankModalOpen}
-//         onClose={closeBankModal}
-//         onBankSelect={handleBankSelected}
-//         requestData={
-//           pendingApprovalData?.type === 'single' 
-//             ? pendingApprovalData.request 
-//             : pendingApprovalData?.requests.map(r => r.request)
-//         }
-//       />
-
-//       {/* Payment Entry Modal - Opens AFTER bank selection */}
-//       <AdvanceRequestPaymentEntryModal
-//         isOpen={isPaymentModalOpen}
-//         onClose={closePaymentModal}
-//         requestData={selectedRequest}
-//         approvedRequests={approvedRequests}
-//       />
-//     </div>
-//   );
-// }
-
-/* eslint-disable no-unused-vars */
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-toastify';
@@ -346,6 +59,24 @@ export default function AEAdvanceApprovalPage() {
       toast.error('Failed to load requests');
     }
   };
+
+  const getEmployeeOSBalance = (employeeId) => {
+  try {
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    
+    // Find the employee by employeeId
+    const employee = users.find(user => 
+      user.empId === employeeId || 
+      user.username === employeeId ||
+      (user.empId && user.empId.toString() === employeeId.toString())
+    );
+    
+    return employee?.osBalance || 0;
+  } catch (error) {
+    console.error('Error getting employee O/S balance:', error);
+    return 0;
+  }
+};
 
   // Opens bank selection modal first
   const handleApprove = (submittedAt) => {
@@ -710,6 +441,7 @@ export default function AEAdvanceApprovalPage() {
         onReject={handleReject}
         onDownloadComplete={handleDownloadComplete}
         onApproveMultiple={handleApproveMultiple}
+        getEmployeeOSBalance={getEmployeeOSBalance}
       />
 
       {/* Bank Selection Modal - Opens FIRST */}

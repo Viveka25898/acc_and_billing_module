@@ -151,11 +151,11 @@
             reportingManager: employee?.reportsTo || 'N/A',
             glAccountCode: accountCode,
             accountName: account.name,
-            financialYear: '2024-2025',
-            period: 'Apr 2024 - Mar 2025',
+            financialYear: '2025-2026',
+            period: 'Apr 2025 - Mar 2026',
             openingBalance: {
                 amount: 0, // You can calculate this from older transactions
-                date: '2024-04-01',
+                date: '2025-04-01',
                 type: 'CR'
             }
             };
@@ -169,11 +169,11 @@
             reportingManager: 'N/A',
             glAccountCode: accountCode,
             accountName: account.name,
-            financialYear: '2024-2025',
-            period: 'Apr 2024 - Mar 2025',
+            financialYear: '2025-2026',
+            period: 'Apr 2025 - Mar 2026',
             openingBalance: {
             amount: ledgerBalances[accountCode]?.balance || 0,
-            date: '2024-04-01',
+            date: '2025-04-01',
             type: ledgerBalances[accountCode]?.balance >= 0 ? 'DR' : 'CR'
             }
         };
