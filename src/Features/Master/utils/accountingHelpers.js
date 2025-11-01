@@ -304,6 +304,159 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
 };
 
 // ========================================
+// 6A. CONVEYANCE APPROVAL TRANSACTION
+// ========================================
+
+/**
+ * Resolve GL codes for Conveyance Expense and Payable from COA with safe fallbacks
+ */
+const resolveConveyanceGLs = () => {
+  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+
+  // Try to find specific Conveyance Expense under Expenses
+  const expenseCandidates = [
+    'X2001003', // Branch Conveyance Expense (you mentioned created)
+    'X2001004', // Branch Conveyance (recommended if exists)
+    'X2002001006', // Corporate Conveyance (if present)
+    'X2001002', // Other Branch Expenses (fallback)
+    'X2002002001' // Other Corporate Expenses (last resort)
+  ];
+
+  const payableCandidates = [
+    'L2001003', // Conveyance Payable (if created)
+    'L2001004'  // Other Employee Dues (fallback)
+  ];
+
+  const hasCode = (code) => chartOfAccounts.some(acc => acc.code === code);
+
+  const expenseGLCode = expenseCandidates.find(hasCode);
+  let payableGLCode = payableCandidates.find(hasCode);
+
+  // Auto-create Conveyance Payable if missing
+  if (!payableGLCode) {
+    const newLedger = {
+      id: `AUTO_${Date.now()}_L2001003`,
+      code: 'L2001003',
+      name: 'CONVEYANCE PAYABLE',
+      type: 'ACCOUNT',
+      parentAccount: 'LIABILITY - EMPLOYEES',
+      parentCode: 'L2001'
+    };
+    chartOfAccounts.push(newLedger);
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to create Conveyance Payable ledger');
+    }
+    payableGLCode = 'L2001003';
+  }
+
+  if (!expenseGLCode) {
+    throw new Error('Expense GL for Conveyance not found in Chart of Accounts');
+  }
+
+  const getName = (code) => {
+    const acc = chartOfAccounts.find(a => a.code === code);
+    return acc?.name || code;
+  };
+
+  return {
+    expense: { code: expenseGLCode, name: getName(expenseGLCode) },
+    payable: { code: payableGLCode, name: getName(payableGLCode) }
+  };
+};
+
+/**
+ * Create conveyance expense transaction (Dr Expense, Cr Liability)
+ */
+export const createConveyanceExpenseTransaction = (claim, voucherNo) => {
+  const employee = getEmployeeDetails(claim.employeeId);
+  if (!employee) throw new Error(`Employee ${claim.employeeId} not found`);
+
+  const { expense, payable } = resolveConveyanceGLs();
+  const amount = parseFloat(claim.amount);
+
+  return {
+    id: `TXN_CONV_${Date.now()}_${claim.id}`,
+    voucherNo: voucherNo,
+    voucherType: 'Expense Voucher',
+    date: new Date().toISOString().split('T')[0],
+    conveyanceClaimId: claim.id,
+    entries: [
+      {
+        lineNo: 1,
+        glCode: expense.code,
+        glName: expense.name,
+        debit: amount,
+        credit: 0,
+        narration: `Conveyance claim - ${employee.fullName}`,
+        employeeId: employee.empId,
+        costCenter: employee.site || 'General'
+      },
+      {
+        lineNo: 2,
+        glCode: payable.code,
+        glName: payable.name,
+        debit: 0,
+        credit: amount,
+        narration: `Conveyance payable - ${employee.fullName}`,
+        employeeId: employee.empId,
+        costCenter: employee.site || 'General'
+      }
+    ],
+    totalDebit: amount,
+    totalCredit: amount,
+    narration: `Conveyance reimbursement for ${employee.fullName}`,
+    approvedBy: claim.aeApprovedBy || 'ae1',
+    approvedDate: new Date().toISOString()
+  };
+};
+
+/**
+ * Process Conveyance Approval: create voucher number, post transaction, update balances
+ */
+export const processConveyanceApproval = (claim) => {
+  try {
+    if (DEBUG) console.log('🚀 Processing conveyance approval...');
+
+    const employee = getEmployeeDetails(claim.employeeId);
+    if (!employee) throw new Error(`Employee ${claim.employeeId} not found`);
+
+    // Ensure employee ledger exists (for consistent reporting)
+    const ledgerExists = checkEmployeeLedgerExists(employee.empId);
+    if (!ledgerExists) {
+      createEmployeeLedger(employee.empId, employee.fullName);
+    }
+
+    const site = employee.site || getSiteByEmpId(employee.empId);
+    // Reuse generic voucher generator; categorized under EXP for readability
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `EXP/CONV/${site}/${year}`;
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+
+    const transaction = createConveyanceExpenseTransaction(claim, voucherNo);
+    const postResult = postTransaction(transaction);
+    if (!postResult.success) throw new Error(postResult.error);
+
+    updateLedgerBalances(transaction.entries);
+
+    return {
+      success: true,
+      voucherNo,
+      transactionId: postResult.transaction.id,
+      amount: parseFloat(claim.amount),
+      message: `Conveyance of ₹${parseFloat(claim.amount).toLocaleString()} posted`
+    };
+  } catch (error) {
+    console.error('❌ ERROR in processConveyanceApproval:', error);
+    return { success: false, error: error.message, message: error.message };
+  }
+};
+
+// ========================================
 // 7. LEDGER BALANCE FUNCTIONS
 // ========================================
 
@@ -896,10 +1049,12 @@ export default {
   validateTransaction,
   postTransaction,
   createAdvancePaymentTransaction,
+  createConveyanceExpenseTransaction,
   updateLedgerBalances,
   getLedgerBalance,
   updateEmployeeOSBalance,
   processAdvanceApproval,
+  processConveyanceApproval,
   processMultipleAdvanceApprovals,
   getAllTransactions,
   getTransactionsByEmployee,

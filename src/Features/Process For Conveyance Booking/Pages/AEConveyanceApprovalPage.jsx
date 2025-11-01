@@ -6,6 +6,7 @@ import Table from "../Components/Table";
 import RejectionModal from "../Components/RejectionModal";
 import DocumentPreviewModal from "../Components/DocumentPreviewModal";
 import ConveyanceExpenseVoucher from "../Components/ConveyanceExpenseVoucher";
+import { processConveyanceApproval } from "../../Master/utils/accountingHelpers";
 
 export default function AEConveyanceApprovalPage() {
   const [claims, setClaims] = useState([]);
@@ -85,12 +86,21 @@ export default function AEConveyanceApprovalPage() {
         toast.error("Request not found");
         return;
       }
+      // Process GL posting (Dr Expense, Cr Liability)
+      const accounting = processConveyanceApproval({
+        ...claimToApprove,
+        aeApprovedBy: currentUser.username
+      });
 
-      // Create voucher data
+      if (!accounting.success) {
+        throw new Error(accounting.message || 'Accounting failed');
+      }
+
+      // Create voucher data for display using accounting voucher number
       const voucherData = {
         header: {
           company: "ISmart",
-          voucherNo: `EV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          voucherNo: accounting.voucherNo,
           financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
           date: new Date().toISOString().split('T')[0],
           reference: `Conveyance Reimbursement - ${claimToApprove.employeeName}`,
@@ -139,6 +149,7 @@ export default function AEConveyanceApprovalPage() {
           aeApprovedBy: currentUser.username,
           currentLevel: "completed",
           voucherNumber: voucherData.header.voucherNo,
+          transactionId: accounting.transactionId,
           approvers: [...(request.approvers || []), {
             level: "account-executive",
             user: currentUser.username,
@@ -171,7 +182,7 @@ export default function AEConveyanceApprovalPage() {
       setShowVoucher(true);
       setClaims(prev => prev.filter(c => c.id !== id));
       
-      toast.success("Request approved and voucher generated");
+      toast.success("Request approved, GL posted and voucher generated");
     } catch (error) {
       toast.error("Approval failed");
       console.error(error);
