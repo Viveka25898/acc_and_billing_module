@@ -117,7 +117,8 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         return '📄';
     }
   };
- const handleAccountClick = (account) => {
+ // Add this condition in the handleAccountClick function
+const handleAccountClick = (account) => {
   if (account.type === 'ACCOUNT') {
     // Determine account type based on code pattern
     const isVendorAccount = account.code.startsWith('L2005') || 
@@ -153,6 +154,14 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                                    account.name.toLowerCase().includes('office supplies') ||
                                    account.name.toLowerCase().includes('stationery');
 
+    // Conveyance Expense Account condition (X2001003)
+    const isConveyanceExpenseAccount = account.code === 'X2001003' || 
+                                      (account.code.startsWith('X2001003') && account.name.toLowerCase().includes('conveyance expense'));
+    
+    // Conveyance Payable Account condition (L2001001)
+    const isConveyancePayableAccount = account.code === 'L2001001' || 
+                                      (account.code.startsWith('L2001001') && account.name.toLowerCase().includes('conveyance payable'));
+
     if (isVendorAccount) {
       navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);
     } else if (isTDSAccount) {
@@ -168,6 +177,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       navigate(`/dashboard/account-manager/food-refreshment-ledger`);
     } else if (isOfficeSuppliesAccount) {
       navigate(`/dashboard/account-manager/office-supplies-ledger`);
+    } else if (isConveyanceExpenseAccount) {
+      // Navigate to conveyance expense ledger
+      navigate(`/dashboard/account-manager/conveyance-expense-ledger`);
+    } else if (isConveyancePayableAccount) {
+      // Navigate to conveyance payable (liability) ledger
+      navigate(`/dashboard/account-manager/conveyance-payable-ledger`);
     } else {
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
     }

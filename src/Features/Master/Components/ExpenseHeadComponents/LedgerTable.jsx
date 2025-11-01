@@ -1,4 +1,4 @@
-// src/components/LedgerTable.jsx
+// src/components/ExpenseHeadComponents/LedgerTable.jsx
 import React from 'react';
 
 const LedgerTable = ({ transactions }) => {

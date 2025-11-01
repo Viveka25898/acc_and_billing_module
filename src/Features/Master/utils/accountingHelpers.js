@@ -12,6 +12,11 @@ const DEBUG = import.meta.env.MODE === 'development';
 // 0. UTILITY FUNCTIONS
 // ========================================
 
+// 1. Add this helper function at the top of accountingHelpers.js
+export const getCurrentDate = () => {
+  return new Date().toISOString().split('T')[0];
+};
+
 export const normalizeEmployeeId = (employeeId) => {
   if (!employeeId) return null;
   const id = String(employeeId);
@@ -266,7 +271,7 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
       id: `TXN_${Date.now()}_${normalizedId}`,
       voucherNo: voucherNo,
       voucherType: "Payment Voucher",
-      date: advanceRequest.requestDate || new Date().toISOString().split('T')[0],
+      date: getCurrentDate(), // ✅ FIXED: Always use current date for posting
       advanceRequestId: advanceRequest.requestId,
       
       entries: [
@@ -295,7 +300,7 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
       totalCredit: amount,
       narration: `Advance payment to ${employeeName}`,
       approvedBy: advanceRequest.aeApprovedBy || 'ae1',
-      approvedDate: advanceRequest.approvedAt || new Date().toISOString()
+      approvedDate: new Date().toISOString()
     };
   } catch (error) {
     console.error('Error creating transaction:', error);
@@ -309,48 +314,84 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
 
 /**
  * Resolve GL codes for Conveyance Expense and Payable from COA with safe fallbacks
+ * Uses shared L2001001 Conveyance Payable (not per-employee)
  */
 const resolveConveyanceGLs = () => {
   const chartOfAccounts = safeGetItem('chartOfAccounts', []);
 
   // Try to find specific Conveyance Expense under Expenses
   const expenseCandidates = [
-    'X2001003', // Branch Conveyance Expense (you mentioned created)
-    'X2001004', // Branch Conveyance (recommended if exists)
+    'X2001003', // Branch Conveyance Expense (primary - you mentioned created)
+    'X2001004', // Branch Conveyance (if exists)
     'X2002001006', // Corporate Conveyance (if present)
     'X2001002', // Other Branch Expenses (fallback)
     'X2002002001' // Other Corporate Expenses (last resort)
   ];
 
   const payableCandidates = [
-    'L2001003', // Conveyance Payable (if created)
+    'L2001001', // Conveyance Payable (shared for all employees)
+    'L2001003', // Old code (if exists, will migrate)
     'L2001004'  // Other Employee Dues (fallback)
   ];
 
   const hasCode = (code) => chartOfAccounts.some(acc => acc.code === code);
 
-  const expenseGLCode = expenseCandidates.find(hasCode);
+  let expenseGLCode = expenseCandidates.find(hasCode);
+  
+  // Auto-create X2001003 if missing
+  if (!expenseGLCode) {
+    const newExpenseLedger = {
+      id: `AUTO_${Date.now()}_X2001003`,
+      code: 'X2001003',
+      name: 'BRANCH CONVEYANCE EXPENSE',
+      type: 'ACCOUNT',
+      parentAccount: 'BRANCH MANAGEMENT',
+      parentCode: 'X2001'
+    };
+    chartOfAccounts.push(newExpenseLedger);
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to create Branch Conveyance Expense ledger');
+    }
+    expenseGLCode = 'X2001003';
+  }
+
   let payableGLCode = payableCandidates.find(hasCode);
 
-  // Auto-create Conveyance Payable if missing
+  // Auto-create L2001001 Conveyance Payable if missing (shared for all employees)
   if (!payableGLCode) {
-    const newLedger = {
-      id: `AUTO_${Date.now()}_L2001003`,
-      code: 'L2001003',
+    const newPayableLedger = {
+      id: `AUTO_${Date.now()}_L2001001`,
+      code: 'L2001001',
       name: 'CONVEYANCE PAYABLE',
       type: 'ACCOUNT',
       parentAccount: 'LIABILITY - EMPLOYEES',
       parentCode: 'L2001'
     };
-    chartOfAccounts.push(newLedger);
+    chartOfAccounts.push(newPayableLedger);
     if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
       throw new Error('Failed to create Conveyance Payable ledger');
     }
-    payableGLCode = 'L2001003';
-  }
-
-  if (!expenseGLCode) {
-    throw new Error('Expense GL for Conveyance not found in Chart of Accounts');
+    payableGLCode = 'L2001001';
+  } else if (payableGLCode === 'L2001003') {
+    // If old code exists, prefer L2001001 going forward
+    // But still use L2001003 if L2001001 doesn't exist
+    if (!hasCode('L2001001')) {
+      // Create L2001001 for future use
+      const newPayableLedger = {
+        id: `AUTO_${Date.now()}_L2001001`,
+        code: 'L2001001',
+        name: 'CONVEYANCE PAYABLE',
+        type: 'ACCOUNT',
+        parentAccount: 'LIABILITY - EMPLOYEES',
+        parentCode: 'L2001'
+      };
+      chartOfAccounts.push(newPayableLedger);
+      if (safeSetItem('chartOfAccounts', chartOfAccounts)) {
+        payableGLCode = 'L2001001';
+      }
+    } else {
+      payableGLCode = 'L2001001';
+    }
   }
 
   const getName = (code) => {
@@ -378,7 +419,7 @@ export const createConveyanceExpenseTransaction = (claim, voucherNo) => {
     id: `TXN_CONV_${Date.now()}_${claim.id}`,
     voucherNo: voucherNo,
     voucherType: 'Expense Voucher',
-    date: new Date().toISOString().split('T')[0],
+    date: getCurrentDate(), // ✅ FIXED: Use approval date, not claim date
     conveyanceClaimId: claim.id,
     entries: [
       {
@@ -420,11 +461,8 @@ export const processConveyanceApproval = (claim) => {
     const employee = getEmployeeDetails(claim.employeeId);
     if (!employee) throw new Error(`Employee ${claim.employeeId} not found`);
 
-    // Ensure employee ledger exists (for consistent reporting)
-    const ledgerExists = checkEmployeeLedgerExists(employee.empId);
-    if (!ledgerExists) {
-      createEmployeeLedger(employee.empId, employee.fullName);
-    }
+    // Note: We use shared L2001001 Conveyance Payable for all employees
+    // No need to create per-employee ledgers like we do for advances
 
     const site = employee.site || getSiteByEmpId(employee.empId);
     // Reuse generic voucher generator; categorized under EXP for readability
@@ -916,13 +954,12 @@ const createSettlementTransaction = (settlement, employee, voucherNo, totalAmoun
   const normalizedId = normalizeEmployeeId(settlement.employeeId);
   const employeeName = employee.fullName;
   
-  // Map expense heads to proper GL codes (same as above)
   const expenseGLMapping = {
-  'Travel': 'X1001002001', // TRAVEL EXPENSE
-  'Food & Refreshments': 'X1001003001', // FOOD & REFRESHMENT
-  'Accommodation': 'X1001002002', // ACCOMODATION
-  'Other': 'X2002002001' // OTHER EXPENSE
-};
+    'Travel': 'X1001002001',
+    'Food & Refreshments': 'X1001003001',
+    'Accommodation': 'X1001002002',
+    'Other': 'X2002002001'
+  };
   
   // Group expenses by expense head
   const expenseGroups = {};
@@ -973,13 +1010,13 @@ const createSettlementTransaction = (settlement, employee, voucherNo, totalAmoun
     id: `TXN_SETT_${Date.now()}_${normalizedId}`,
     voucherNo: voucherNo,
     voucherType: "Journal Voucher",
-    date: settlement.submittedAt ? new Date(settlement.submittedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: getCurrentDate(), // ✅ FIXED: Use current approval date, not submission date
     settlementId: settlement.id,
     entries: entries,
     totalDebit: totalAmount,
     totalCredit: totalAmount,
-    narration: `Advance settlement for ${employeeName}`,
-    approvedBy: "ae1", // This will be set dynamically
+    narration: `Advance settlement for ${employeeName} (Submitted: ${settlement.submittedAt || 'N/A'})`,
+    approvedBy: "ae1",
     approvedDate: new Date().toISOString()
   };
 };

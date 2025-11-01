@@ -149,6 +149,8 @@ import BankLedgerPage from "../Features/Master/Bank Ledger/Pages/BankLedgerPage"
 import TravelExpenseLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Travel Expense/Pages/TravelExpenseLedgerPage"
 import FoodRefreshmentLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/FoodsAndRefreshments/Pages/FoodRefreshmentLedgerPage"
 import OfficeSuppliesLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Office Supplies/Pages/OfficeSuppliesLedgerPage"
+import ConveyancePayblePage from "../Features/Master/Conveyance/Pages/ConveyancePayblePage"
+import ConveyanceExpenseLedgerPage from "../Features/Master/Conveyance/Pages/ConveyanceExpenseLedgerPage"
 
 
 export const router=createBrowserRouter([
@@ -849,7 +851,15 @@ export const router=createBrowserRouter([
             {
             path: "office-supplies-ledger", 
             element: <OfficeSuppliesLedgerPage/>
-           }
+           },
+           {
+            path: "conveyance-payable-ledger",
+            element: <ConveyancePayblePage/>
+           },
+           {
+            path: "conveyance-expense-ledger",
+            element: <ConveyanceExpenseLedgerPage/>
+            }
 
         ]
     },

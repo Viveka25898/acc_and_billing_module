@@ -40,28 +40,50 @@ const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
     billAttached: data.receipts && data.receipts.length > 0 ? "Yes" : "No"
   }];
 
-  const totalConveyanceAmount = conveyanceDetails.reduce((sum, item) => sum + item.amount, 0);
+  const totalConveyanceAmount = conveyanceDetails.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
-  const lines = data.entries || [
-    {
-      id: 1,
-      particulars: "Conveyance & Travel Expense",
-      gl: "5001",
-      costCenter: "SALES",
-      debit: totalConveyanceAmount,
-      credit: 0,
-      note: `Employee: ${employeeDetails.employeeName} (${employeeDetails.employeeId})`,
-    },
-    {
-      id: 2,
-      particulars: "Employee Advance/Petty Cash",
-      gl: "1500",
-      costCenter: "",
-      debit: 0,
-      credit: totalConveyanceAmount,
-      note: "Reimbursement to employee for conveyance expenses",
-    }
-  ];
+  // Get real GL entries from transaction or use provided glEntries
+  const glEntriesFromTransaction = data.glEntries || data.entries || [];
+  
+  // Get chart of accounts for GL names
+  const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
+  const getGLName = (glCode) => {
+    const account = chartOfAccounts.find(acc => acc.code === glCode);
+    return account?.name || glCode || 'N/A';
+  };
+
+  // Convert transaction entries to voucher lines format
+  const lines = glEntriesFromTransaction.length > 0 
+    ? glEntriesFromTransaction.map((entry, index) => ({
+        id: index + 1,
+        particulars: entry.glName || getGLName(entry.glCode) || 'Account',
+        gl: entry.glCode || 'N/A',
+        costCenter: entry.costCenter || 'General',
+        debit: parseFloat(entry.debit || 0),
+        credit: parseFloat(entry.credit || 0),
+        note: entry.narration || `Entry ${index + 1}`
+      }))
+    : [
+        // Fallback if no GL entries available
+        {
+          id: 1,
+          particulars: "Branch Conveyance Expense",
+          gl: "X2001003",
+          costCenter: employeeDetails.department || "General",
+          debit: totalConveyanceAmount,
+          credit: 0,
+          note: `Employee: ${employeeDetails.employeeName} (${employeeDetails.employeeId})`,
+        },
+        {
+          id: 2,
+          particulars: "Conveyance Payable",
+          gl: "L2001001",
+          costCenter: "",
+          debit: 0,
+          credit: totalConveyanceAmount,
+          note: "Reimbursement to employee for conveyance expenses",
+        }
+      ];
 
   const approvals = data.approvals || {
     preparer: data.preparedBy || "Billing Executive",
@@ -70,19 +92,19 @@ const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
     date: new Date().toISOString().split('T')[0]
   };
 
-  // Calculate totals correctly
+  // Calculate totals correctly (using parseFloat for decimal support)
   const totals = {
-    debit: lines.reduce((sum, line) => sum + (parseInt(line.debit) || 0), 0),
-    credit: lines.reduce((sum, line) => sum + (parseInt(line.credit) || 0), 0)
+    debit: lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0),
+    credit: lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0)
   };
 
   
 
-  // Format amount without leading zeros
+  // Format amount with proper decimals
   const formatAmount = (amount) => {
     if (!amount && amount !== 0) return "-";
-    const numAmount = parseInt(amount);
-    return `₹${numAmount.toLocaleString()}`;
+    const numAmount = parseFloat(amount);
+    return `₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
@@ -264,14 +286,53 @@ const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
                     </tr>
                   ))}
                   <tr className="bg-indigo-50 font-bold">
-                    <td colSpan={3} className="px-2 sm:px-4 py-2 border text-right hidden sm:table-cell">Total</td>
-                    <td className="px-2 sm:px-4 py-2 border text-right text-green-700">{formatAmount(totals.debit)}</td>
-                    <td className="px-2 sm:px-4 py-2 border text-right text-red-700">{formatAmount(totals.credit)}</td>
+                    <td colSpan={2} className="px-2 sm:px-4 py-2 border text-right hidden sm:table-cell"></td>
+                    <td className="px-2 sm:px-4 py-2 border text-right hidden sm:table-cell">Total</td>
+                    <td className="px-2 sm:px-4 py-2 border text-right text-red-700 font-semibold">{formatAmount(totals.debit)}</td>
+                    <td className="px-2 sm:px-4 py-2 border text-right text-green-700 font-semibold">{formatAmount(totals.credit)}</td>
                   </tr>
+                  {lines.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-2 sm:px-4 py-2 border text-center text-gray-500 text-xs">
+                        No GL entries found. Transaction may not be posted yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
+
+          {/* GL Transaction Details */}
+          {glEntriesFromTransaction.length > 0 && (
+            <div className="mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+              <div className="text-xs sm:text-sm">
+                <div className="font-semibold text-blue-800 mb-2 sm:mb-3">GL Transaction Details</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Transaction ID:</span>
+                    <span className="font-medium font-mono text-blue-700">{data.header.transactionId || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Voucher Number:</span>
+                    <span className="font-medium font-mono text-blue-700">{header.voucherNo}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Debit:</span>
+                    <span className="font-medium text-red-600">{formatAmount(totals.debit)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Credit:</span>
+                    <span className="font-medium text-green-600">{formatAmount(totals.credit)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">GL Entries:</span>
+                    <span className="font-medium">{lines.length} entries</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Expense Analysis */}
           <div className="mb-4 sm:mb-6 bg-slate-50 p-3 sm:p-4 rounded-lg border">

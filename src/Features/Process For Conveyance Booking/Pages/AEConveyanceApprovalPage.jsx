@@ -97,6 +97,13 @@ export default function AEConveyanceApprovalPage() {
       }
 
       // Create voucher data for display using accounting voucher number
+      // Get GL codes for voucher display (transaction was saved by processConveyanceApproval)
+      const allTransactions = JSON.parse(localStorage.getItem('transactions')) || [];
+      const thisTransaction = allTransactions.find(t => t.id === accounting.transactionId);
+      
+      // Extract GL entries from transaction for voucher display
+      const glEntries = thisTransaction?.entries || [];
+      
       const voucherData = {
         header: {
           company: "ISmart",
@@ -107,7 +114,9 @@ export default function AEConveyanceApprovalPage() {
           preparedBy: currentUser.username,
           expenseType: "Conveyance Expense",
           department: claimToApprove.department || "Not specified",
-          approvalChain: "Manager → VP → Billing Executive"
+          approvalChain: "Manager → VP → Account Executive",
+          voucherType: "Expense Voucher",
+          transactionId: accounting.transactionId
         },
         employeeDetails: {
           employeeId: claimToApprove.employeeId || "N/A",
@@ -137,7 +146,8 @@ export default function AEConveyanceApprovalPage() {
           reviewer: claimToApprove.approvers?.find(a => a.level === "manager")?.user || "Manager",
           approver: "VP Operations",
           date: new Date().toISOString().split('T')[0]
-        }
+        },
+        glEntries: glEntries
       };
 
       // Update the request status

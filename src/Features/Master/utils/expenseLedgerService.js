@@ -17,6 +17,7 @@ export class ExpenseLedgerService {
       const allTransactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
       const users = JSON.parse(localStorage.getItem('users')) || [];
+      const conveyanceRequests = JSON.parse(localStorage.getItem('conveyanceRequests')) || [];
       
       // Filter transactions for this expense head
       const expenseTransactions = allTransactions.filter(txn => 
@@ -35,7 +36,8 @@ export class ExpenseLedgerService {
       const ledgerTransactions = this.transformTransactionsToLedgerFormat(
         expenseTransactions, 
         expenseHeadCode,
-        users
+        users,
+        conveyanceRequests
       );
       
       // Calculate balances and stats
@@ -63,20 +65,28 @@ export class ExpenseLedgerService {
   /**
    * Transform real transactions to ledger display format
    */
-  static transformTransactionsToLedgerFormat(transactions, expenseHeadCode, users) {
+  static transformTransactionsToLedgerFormat(transactions, expenseHeadCode, users, conveyanceRequests = []) {
     const ledgerEntries = [];
     let runningBalance = 0;
+    
+    // Get current date for dynamic period calculation
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    // Calculate period start and end dates
+    const periodStart = `01-Apr-${currentYear.toString().slice(-2)}`;
+    const periodEnd = this.calculatePeriodEnd(currentDate);
     
     // Add opening balance
     ledgerEntries.push({
       id: 1,
-      date: '01-Apr-25',
-      voucherNo: 'OB-2025',
+      date: periodStart,
+      voucherNo: `OB-${currentYear}`,
       entryType: 'opening',
       debit: '0.00',
       credit: '-',
       balance: '0.00 DR',
-      narration: 'Opening Balance B/F FY 2025-26',
+      narration: `Opening Balance B/F FY ${currentYear}-${(currentYear + 1).toString().slice(-2)}`,
       settlementRef: '-',
       employee: { name: '-', id: '' },
       glAccount: '-',
@@ -96,11 +106,49 @@ export class ExpenseLedgerService {
         const amount = expenseEntry.debit || 0;
         runningBalance += amount;
         
-        // Get employee details
-        const employee = this.getEmployeeDetails(employeeEntry, users);
+        // Get employee details - check expenseEntry first (for conveyance), then employeeEntry
+        let employee = { name: 'System', id: '' };
+        if (expenseEntry.employeeId) {
+          // Conveyance transactions have employeeId in expense entry
+          const emp = users.find(u => u.empId === expenseEntry.employeeId || u.username === expenseEntry.employeeId);
+          if (emp) {
+            employee = {
+              name: emp.fullName || emp.username,
+              id: `EMP-${emp.empId}`
+            };
+          }
+        } else {
+          // Other transactions might have employee in separate entry
+          employee = this.getEmployeeDetails(employeeEntry, users);
+        }
         
         // Determine entry type
-        const entryType = txn.voucherType?.includes('Journal') ? 'settlement' : 'purchase';
+        let entryType = 'purchase';
+        if (txn.voucherType?.includes('Journal')) {
+          entryType = 'settlement';
+        } else if (txn.voucherType?.includes('Expense') && txn.conveyanceClaimId) {
+          entryType = 'expense'; // Conveyance expense voucher
+        } else if (txn.voucherType?.includes('Expense')) {
+          entryType = 'expense';
+        }
+        
+        // Get settlement/claim reference - check for conveyance claim ID first
+        const settlementRef = txn.conveyanceClaimId 
+          ? `CONV-${txn.conveyanceClaimId?.slice(-6)}` 
+          : txn.settlementId || txn.advanceRequestId || `TXN-${txn.id?.slice(-6)}`;
+        
+        // Get attachment count from conveyance request if it's a conveyance transaction
+        let attachmentCount = 0;
+        if (txn.conveyanceClaimId || expenseHeadCode === 'X2001003') {
+          const conveyanceReq = conveyanceRequests.find(req => 
+            req.id === txn.conveyanceClaimId || 
+            req.transactionId === txn.id || 
+            req.voucherNumber === txn.voucherNo
+          );
+          if (conveyanceReq) {
+            attachmentCount = (conveyanceReq.reports?.length || 0) + (conveyanceReq.receipts?.length || 0);
+          }
+        }
         
         ledgerEntries.push({
           id: index + 2, // Start from 2 after opening balance
@@ -111,29 +159,29 @@ export class ExpenseLedgerService {
           credit: '-',
           balance: `${runningBalance.toFixed(2)} DR`,
           narration: expenseEntry.narration || txn.narration,
-          settlementRef: txn.settlementId || txn.advanceRequestId || `TXN-${txn.id?.slice(-6)}`,
+          settlementRef: settlementRef,
           employee: employee,
-          glAccount: employeeEntry?.glCode || '-',
+          glAccount: employeeEntry?.glCode || expenseEntry.employeeId ? `EMP-${expenseEntry.employeeId}` : '-',
           costCenter: expenseEntry.costCenter || 'General',
           approvedBy: txn.approvedBy || 'System',
-          attachments: 0, // You can enhance this with actual attachment count
+          attachments: attachmentCount,
           status: 'posted',
           rowType: 'normal'
         });
       }
     });
     
-    // Add closing balance
+    // Add closing balance with dynamic date
     if (ledgerEntries.length > 1) {
       ledgerEntries.push({
         id: ledgerEntries.length + 1,
-        date: '31-May-25',
-        voucherNo: 'CL-2025',
+        date: periodEnd,
+        voucherNo: `CL-${currentYear}`,
         entryType: 'closing',
         debit: '-',
         credit: '-',
         balance: `${runningBalance.toFixed(2)} DR`,
-        narration: 'Closing Balance C/F to Jun 2025',
+        narration: `Closing Balance C/F to ${this.getNextPeriod(currentDate)}`,
         settlementRef: '-',
         employee: { name: '-', id: '' },
         glAccount: '-',
@@ -146,6 +194,38 @@ export class ExpenseLedgerService {
     }
     
     return ledgerEntries;
+  }
+  
+  /**
+   * Calculate period end date based on current date
+   */
+  static calculatePeriodEnd(currentDate) {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const day = currentDate.getDate();
+    
+    // If it's before the 25th of the month, show current month end
+    // If it's after the 25th, show next month end
+    const targetMonth = day > 25 ? month + 1 : month;
+    const targetYear = targetMonth > 11 ? year + 1 : year;
+    const adjustedMonth = targetMonth % 12;
+    
+    const lastDay = new Date(targetYear, adjustedMonth + 1, 0).getDate();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    return `${lastDay}-${monthNames[adjustedMonth]}-${targetYear.toString().slice(-2)}`;
+  }
+  
+  /**
+   * Get next period for narration
+   */
+  static getNextPeriod(currentDate) {
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    return `${monthNames[nextMonth.getMonth()]} ${nextMonth.getFullYear()}`;
   }
   
   /**
@@ -262,6 +342,7 @@ export class ExpenseLedgerService {
       { value: "", label: "All" },
       { value: "settlement", label: "Settlement" },
       { value: "purchase", label: "Purchase" },
+      { value: "expense", label: "Expense" },
       { value: "journal", label: "Journal" }
     ];
     
@@ -276,6 +357,9 @@ export class ExpenseLedgerService {
    * Get header data for expense head
    */
   static getHeaderData(expenseHead, expenseHeadCode) {
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    
     const expenseHeadConfig = {
       'X1001002001': {
         name: 'TRAVEL EXPENSE',
@@ -291,6 +375,11 @@ export class ExpenseLedgerService {
         name: 'OFFICE SUPPLIES EXPENSE',
         parent: 'OTHER BRANCH EXPENSES (X2001002)',
         department: 'Administration'
+      },
+      'X2001003': {
+        name: 'BRANCH CONVEYANCE EXPENSE',
+        parent: 'BRANCH MANAGEMENT (X2001)',
+        department: 'Operations'
       }
     };
     
@@ -305,8 +394,8 @@ export class ExpenseLedgerService {
       expenseHeadName: config.name,
       parentAccount: config.parent,
       accountType: "EXPENSE - DIRECT",
-      financialYear: "2025-26",
-      period: "Apr 2025 to May 2026",
+      financialYear: `${currentYear}-${nextYear.toString().slice(-2)}`,
+      period: `Apr ${currentYear} to ${new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`,
       costCenter: "All Operations",
       department: config.department
     };
@@ -332,6 +421,9 @@ export class ExpenseLedgerService {
    * Return empty structure when no data found
    */
   static getEmptyLedgerData(expenseHeadCode, errorMessage = '') {
+    const currentYear = new Date().getFullYear();
+    const periodEnd = this.calculatePeriodEnd(new Date());
+    
     const header = this.getHeaderData(null, expenseHeadCode);
     
     return {
@@ -350,13 +442,13 @@ export class ExpenseLedgerService {
       transactions: [
         {
           id: 1,
-          date: "01-Apr-25",
-          voucherNo: "OB-2025",
+          date: `01-Apr-${currentYear.toString().slice(-2)}`,
+          voucherNo: `OB-${currentYear}`,
           entryType: "opening",
           debit: "0.00",
           credit: "-",
           balance: "0.00 DR",
-          narration: "Opening Balance B/F FY 2025-26",
+          narration: `Opening Balance B/F FY ${currentYear}-${(currentYear + 1).toString().slice(-2)}`,
           settlementRef: "-",
           employee: { name: "-", id: "" },
           glAccount: "-",
@@ -368,8 +460,8 @@ export class ExpenseLedgerService {
         },
         {
           id: 2,
-          date: "31-May-26",
-          voucherNo: "CL-2025",
+          date: periodEnd,
+          voucherNo: `CL-${currentYear}`,
           entryType: "closing",
           debit: "-",
           credit: "-",
