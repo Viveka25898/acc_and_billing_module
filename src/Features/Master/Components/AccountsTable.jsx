@@ -120,73 +120,121 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
  // Add this condition in the handleAccountClick function
 const handleAccountClick = (account) => {
   if (account.type === 'ACCOUNT') {
-    // Determine account type based on code pattern
-    const isVendorAccount = account.code.startsWith('L2005') || 
-                           account.code.includes('VEN') || 
-                           account.name.toLowerCase().includes('vendor');
+    console.log('🔍 Clicked Account:', account.code, account.name); // Debug log
     
-    const isTDSAccount = account.code.startsWith('L2003') || 
-                        account.code.includes('TDS') || 
-                        account.name.toLowerCase().includes('tds');
+    // PRIORITY ORDER: Check most specific accounts first!
     
-    const isEmployeeAccount = account.code.startsWith('A3002') || 
-                             account.name.toLowerCase().includes('employee');
-
-    const isBankAccount = account.code.startsWith('A3004') || 
-                         account.name.toLowerCase().includes('bank') ||
-                         account.name.toLowerCase().includes('hdfc') ||
-                         account.name.toLowerCase().includes('sbi') ||
-                         account.name.toLowerCase().includes('icici');
-
-    // Add Travel Expense Account condition
-    const isTravelExpenseAccount = account.code.startsWith('X1001002') || 
-                                  account.name.toLowerCase().includes('travel') ||
-                                  account.name.toLowerCase().includes('travel expense');
+    // 1. Reliever Payment Account - CHECK FIRST (Most Specific)
+    const isRelieverPaymentAccount = 
+      account.code === 'X100101003' ||
+      account.code === 'X1001001003' || // Alternative code format
+      (account.code.startsWith('X10010100') && account.name.toLowerCase().includes('reliever'));
     
-
-    // Add Food & Refreshment condition
-    const isFoodRefreshmentAccount = account.code.startsWith('X1001001') || 
-                                   account.name.toLowerCase().includes('food') ||
-                                   account.name.toLowerCase().includes('refreshment');
-
-    // Add Office Supplies condition  
-    const isOfficeSuppliesAccount = account.code.startsWith('X1001003') || 
-                                   account.name.toLowerCase().includes('office supplies') ||
-                                   account.name.toLowerCase().includes('stationery');
-
-    // Conveyance Expense Account condition (X2001003)
-    const isConveyanceExpenseAccount = account.code === 'X2001003' || 
-                                      (account.code.startsWith('X2001003') && account.name.toLowerCase().includes('conveyance expense'));
+    // 2. Conveyance Expense Account
+    const isConveyanceExpenseAccount = 
+      account.code === 'X2001003' || 
+      (account.code.startsWith('X2001003') && account.name.toLowerCase().includes('conveyance expense'));
     
-    // Conveyance Payable Account condition (L2001001)
-    const isConveyancePayableAccount = account.code === 'L2001001' || 
-                                      (account.code.startsWith('L2001001') && account.name.toLowerCase().includes('conveyance payable'));
-
-    if (isVendorAccount) {
-      navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);
-    } else if (isTDSAccount) {
-      const sectionCode = account.code.replace('L2003', '').replace(/^0+/, '') || '194C';
-      navigate(`/dashboard/account-manager/tds-ledger/${sectionCode}`);
-    } else if (isEmployeeAccount) {
-      navigate(`/dashboard/account-manager/ledger/${account.code}`);
-    } else if (isBankAccount) {
-      navigate(`/dashboard/account-manager/bank-ledger/${account.code}`);
-    } else if (isTravelExpenseAccount) {
-      navigate(`/dashboard/account-manager/travel-expense-ledger`);
-    } else if (isFoodRefreshmentAccount) {
-      navigate(`/dashboard/account-manager/food-refreshment-ledger`);
-    } else if (isOfficeSuppliesAccount) {
-      navigate(`/dashboard/account-manager/office-supplies-ledger`);
-    } else if (isConveyanceExpenseAccount) {
-      // Navigate to conveyance expense ledger
+    // 3. Conveyance Payable Account
+    const isConveyancePayableAccount = 
+      account.code === 'L2001001' || 
+      (account.code.startsWith('L2001001') && account.name.toLowerCase().includes('conveyance payable'));
+    
+    // 4. Employee Account
+    const isEmployeeAccount = 
+      account.code.startsWith('A3002') || 
+      account.name.toLowerCase().includes('employee advance');
+    
+    // 5. Vendor Account
+    const isVendorAccount = 
+      account.code.startsWith('L2005') || 
+      account.code.includes('VEN') || 
+      account.name.toLowerCase().includes('vendor');
+    
+    // 6. TDS Account
+    const isTDSAccount = 
+      account.code.startsWith('L2003') || 
+      account.code.includes('TDS') || 
+      account.name.toLowerCase().includes('tds');
+    
+    // 7. Bank Account
+    const isBankAccount = 
+      account.code.startsWith('A3004') || 
+      account.name.toLowerCase().includes('bank') ||
+      account.name.toLowerCase().includes('hdfc') ||
+      account.name.toLowerCase().includes('sbi') ||
+      account.name.toLowerCase().includes('icici');
+    
+    // 8. Travel Expense Account
+    const isTravelExpenseAccount = 
+      account.code.startsWith('X1001002') || 
+      (account.code.includes('X1001002') && account.name.toLowerCase().includes('travel'));
+    
+    // 9. Food & Refreshment
+    const isFoodRefreshmentAccount = 
+      account.code.startsWith('X1001003') || // Changed from X1001001
+      (account.code.includes('X1001003') && account.name.toLowerCase().includes('food'));
+    
+    // 10. Office Supplies  
+    const isOfficeSuppliesAccount = 
+      account.code.startsWith('X2001002001') || 
+      (account.code.includes('X2001002') && account.name.toLowerCase().includes('office supplies'));
+    
+    // NAVIGATION LOGIC - PRIORITY ORDER
+    console.log('🎯 Account Classification:', {
+      isRelieverPaymentAccount,
+      isConveyanceExpenseAccount,
+      isConveyancePayableAccount,
+      isEmployeeAccount
+    });
+    
+    if (isRelieverPaymentAccount) {
+      console.log('✅ Navigating to Reliever Payment Page');
+      navigate(`/dashboard/account-manager/reliever-payment-page`);
+    } 
+    else if (isConveyanceExpenseAccount) {
+      console.log('✅ Navigating to Conveyance Expense Ledger');
       navigate(`/dashboard/account-manager/conveyance-expense-ledger`);
-    } else if (isConveyancePayableAccount) {
-      // Navigate to conveyance payable (liability) ledger
+    } 
+    else if (isConveyancePayableAccount) {
+      console.log('✅ Navigating to Conveyance Payable Ledger');
       navigate(`/dashboard/account-manager/conveyance-payable-ledger`);
-    } else {
+    } 
+    else if (isEmployeeAccount) {
+      console.log('✅ Navigating to Employee Ledger');
+      navigate(`/dashboard/account-manager/ledger/${account.code}`);
+    } 
+    else if (isVendorAccount) {
+      console.log('✅ Navigating to Vendor Ledger');
+      navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);
+    } 
+    else if (isTDSAccount) {
+      const sectionCode = account.code.replace('L2003', '').replace(/^0+/, '') || '194C';
+      console.log('✅ Navigating to TDS Ledger');
+      navigate(`/dashboard/account-manager/tds-ledger/${sectionCode}`);
+    } 
+    else if (isBankAccount) {
+      console.log('✅ Navigating to Bank Ledger');
+      navigate(`/dashboard/account-manager/bank-ledger/${account.code}`);
+    } 
+    else if (isTravelExpenseAccount) {
+      console.log('✅ Navigating to Travel Expense Ledger');
+      navigate(`/dashboard/account-manager/travel-expense-ledger`);
+    } 
+    else if (isFoodRefreshmentAccount) {
+      console.log('✅ Navigating to Food & Refreshment Ledger');
+      navigate(`/dashboard/account-manager/food-refreshment-ledger`);
+    } 
+    else if (isOfficeSuppliesAccount) {
+      console.log('✅ Navigating to Office Supplies Ledger');
+      navigate(`/dashboard/account-manager/office-supplies-ledger`);
+    } 
+    else {
+      console.log('✅ Navigating to Generic Ledger');
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
     }
   } else {
+    // Non-ACCOUNT types
     if (onAccountClick) {
       onAccountClick(account);
     }

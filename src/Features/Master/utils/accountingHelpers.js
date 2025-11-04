@@ -1070,6 +1070,266 @@ export const formatDate = (dateString) => {
     return dateString;
   }
 };
+// Add these functions to your existing accountingHelpers.js file
+
+// ========================================
+// RELIEVER PAYMENT FUNCTIONS
+// ========================================
+
+/**
+ * Create reliever payment transaction (Dr Reliever Wages, Cr Bank)
+ */
+export const createRelieverPaymentTransaction = (relieverRequest, bankData, voucherNo) => {
+  try {
+    const amount = parseFloat(relieverRequest.amount);
+    const bank = getBankDetails(bankData.bankCode);
+    
+    const relieverGLCode = 'X1001001003'; // Reliever Wages Expense
+    const bankGLCode = bankData.bankCode;
+    const bankName = bank?.name || bankData.bankName;
+    
+    // Get site from request or use default
+    const site = relieverRequest.site || 'General';
+    
+    return {
+      id: `TXN_REL_${Date.now()}_${relieverRequest.id}`,
+      voucherNo: voucherNo,
+      voucherType: "Payment Voucher",
+      date: getCurrentDate(),
+      relieverRequestId: relieverRequest.id,
+      
+      entries: [
+        {
+          lineNo: 1,
+          glCode: relieverGLCode,
+          glName: "RELIEVER WAGES",
+          debit: amount,
+          credit: 0,
+          narration: `Reliever payment - ${relieverRequest.name} - ${relieverRequest.narration || 'Temporary staff coverage'}`,
+          employeeId: relieverRequest.relieverId,
+          costCenter: site,
+          site: site,
+          days: relieverRequest.days || 1,
+          ratePerDay: relieverRequest.ratePerDay || amount
+        },
+        {
+          lineNo: 2,
+          glCode: bankGLCode,
+          glName: bankName,
+          debit: 0,
+          credit: amount,
+          narration: `Payment to ${relieverRequest.name} - Reliever`,
+          costCenter: 'HEAD OFFICE'
+        }
+      ],
+      
+      totalDebit: amount,
+      totalCredit: amount,
+      narration: `Reliever payment to ${relieverRequest.name} for ${relieverRequest.days || 1} day(s)`,
+      approvedBy: relieverRequest.aeApprovedBy || 'ae1',
+      approvedDate: new Date().toISOString(),
+      relieverDetails: {
+        name: relieverRequest.name,
+        replacedEmployee: relieverRequest.replacedEmployee,
+        site: site,
+        days: relieverRequest.days || 1,
+        ratePerDay: relieverRequest.ratePerDay || amount
+      }
+    };
+  } catch (error) {
+    console.error('Error creating reliever transaction:', error);
+    throw new Error(`Failed to create reliever transaction: ${error.message}`);
+  }
+};
+
+/**
+ * Process single reliever payment approval
+ */
+export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
+  try {
+    if (DEBUG) console.log('🚀 Starting reliever payment approval...');
+    
+    // Validate inputs
+    if (!relieverRequest.name) {
+      throw new Error('Reliever name is required');
+    }
+    
+    if (!relieverRequest.amount || parseFloat(relieverRequest.amount) <= 0) {
+      throw new Error('Invalid payment amount');
+    }
+    
+     const bankValidation = validateBankData(bankData);
+    if (!bankValidation.isValid) {
+      throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
+    }
+    
+    // Generate voucher number
+    const site = relieverRequest.site || 'General';
+    const voucherNo = generateRelieverVoucherNumber(site);
+    
+    // Create and post transaction
+    const transaction = createRelieverPaymentTransaction(relieverRequest, bankData, voucherNo);
+    const postResult = postTransaction(transaction);
+    
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+    
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+    
+    console.log('✅ Reliever payment completed!');
+    
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      relieverGLCode: 'X100101003',
+      bankGLCode: bankData.bankCode,
+      amount: parseFloat(relieverRequest.amount),
+      relieverName: relieverRequest.name,
+      site: site,
+      days: relieverRequest.days || 1,
+      message: `Reliever payment of ₹${parseFloat(relieverRequest.amount).toLocaleString()} processed for ${relieverRequest.name}`
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR in processRelieverPaymentApproval:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process reliever payment: ${error.message}`
+    };
+  }
+};
+
+/**
+ * Process multiple reliever payments (batch approval)
+ */
+export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
+  try {
+    if (DEBUG) console.log(`🚀 Starting batch reliever payment for ${relieverRequests.length} requests...`);
+    
+    // Validate bank data
+    const bankValidation = validateBankData(bankData);
+    if (!bankValidation.isValid) {
+      throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
+    }
+    
+    const results = [];
+    let totalAmount = 0;
+    let successCount = 0;
+    let failureCount = 0;
+    
+    // Process each request individually
+    for (let i = 0; i < relieverRequests.length; i++) {
+      const request = relieverRequests[i];
+      
+      try {
+        console.log(`📝 Processing reliever payment ${i + 1}/${relieverRequests.length}...`);
+        
+        // Process this single reliever payment
+        const result = processRelieverPaymentApproval(request, bankData);
+        
+        if (result.success) {
+          results.push({
+            relieverName: request.name,
+            amount: result.amount,
+            voucherNo: result.voucherNo,
+            transactionId: result.transactionId,
+            site: result.site,
+            days: result.days,
+            success: true
+          });
+          
+          totalAmount += result.amount;
+          successCount++;
+          
+          console.log(`✅ Reliever payment ${i + 1} processed successfully`);
+        } else {
+          results.push({
+            relieverName: request.name,
+            amount: parseFloat(request.amount),
+            error: result.error,
+            success: false
+          });
+          
+          failureCount++;
+          console.error(`❌ Reliever payment ${i + 1} failed: ${result.error}`);
+        }
+        
+      } catch (error) {
+        console.error(`❌ Error processing reliever payment ${i + 1}:`, error);
+        results.push({
+          relieverName: request.name,
+          amount: parseFloat(request.amount),
+          error: error.message,
+          success: false
+        });
+        failureCount++;
+      }
+    }
+    
+    console.log(`\n✅ Batch reliever processing complete: ${successCount} succeeded, ${failureCount} failed`);
+    
+    return {
+      success: successCount > 0,
+      batchSize: relieverRequests.length,
+      successCount: successCount,
+      failureCount: failureCount,
+      totalAmount: totalAmount,
+      bankGLCode: bankData.bankCode,
+      payments: results,
+      message: failureCount === 0 
+        ? `All ${successCount} reliever payments processed successfully (Total: ₹${totalAmount.toLocaleString()})`
+        : `${successCount} of ${relieverRequests.length} payments processed. ${failureCount} failed.`
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in batch reliever payment:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Batch reliever processing failed: ${error.message}`
+    };
+  }
+};
+
+/**
+ * Generate voucher number for reliever payments
+ */
+export const generateRelieverVoucherNumber = (site) => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `PAY/REL/${site}/${year}`;
+    
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+    
+    if (DEBUG) console.log(`🎫 Generated reliever voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating reliever voucher:', error);
+    throw new Error(`Failed to generate reliever voucher: ${error.message}`);
+  }
+};
+
+/**
+ * Validate reliever request data
+ */
+export const validateRelieverRequest = (relieverRequest) => {
+  const errors = [];
+  
+  if (!relieverRequest.name) errors.push('Reliever name is required');
+  if (!relieverRequest.amount || parseFloat(relieverRequest.amount) <= 0) errors.push('Invalid amount');
+  return { isValid: errors.length === 0, errors };
+};
+
 
 // Export all functions
 export default {
@@ -1098,5 +1358,7 @@ export default {
   getTransactionsByGLCode,
   getTransactionsByDateRange,
   formatAmount,
-  formatDate
+  formatDate,
+  processRelieverPaymentApproval, 
+  processMultipleRelieverPayments 
 };

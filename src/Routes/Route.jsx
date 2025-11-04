@@ -151,6 +151,7 @@ import FoodRefreshmentLedgerPage from "../Features/Master/EmployeeAdvanceAndSett
 import OfficeSuppliesLedgerPage from "../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Office Supplies/Pages/OfficeSuppliesLedgerPage"
 import ConveyancePayblePage from "../Features/Master/Conveyance/Pages/ConveyancePayblePage"
 import ConveyanceExpenseLedgerPage from "../Features/Master/Conveyance/Pages/ConveyanceExpenseLedgerPage"
+import RelieverPaymentPage from "../Features/Master/Reliever/Pages/RelieverPaymentPage"
 
 
 export const router=createBrowserRouter([
@@ -859,6 +860,10 @@ export const router=createBrowserRouter([
            {
             path: "conveyance-expense-ledger",
             element: <ConveyanceExpenseLedgerPage/>
+            },
+            {
+                path:"reliever-payment-page",
+                element:<RelieverPaymentPage/>
             }
 
         ]

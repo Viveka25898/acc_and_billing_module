@@ -20,7 +20,7 @@ import {
   FaMapMarkerAlt
 } from 'react-icons/fa';
 
-const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedRequests }) => {
+const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedRequests, selectedBank, accountingResult }) => {
   if (!isOpen) return null;
 
   // Determine if this is single or multiple requests
@@ -59,7 +59,7 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
     }
   };
 
-  // Generate GL entries for all approved reliever requests
+  // Generate GL entries for all approved reliever requests with REAL GL CODES
   const generateAllGLEntries = (requests) => {
     const glEntries = [];
     let totalAmount = 0;
@@ -68,26 +68,31 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
       const amount = parseFloat(request.amount);
       totalAmount += amount;
 
-      // Debit entry for each request
+      // REAL GL CODE: Reliever Wages Expense (Debit)
       glEntries.push({
-        glCode: 'E301001',
-        glDescription: `Reliever Payments - ${request.name}`,
-        costCenter: request.site || 'CC001',
+        glCode: 'X100101003', // REAL GL CODE for Reliever Wages
+        glDescription: `Reliever Wages - ${request.name}`,
+        costCenter: request.site || 'Operations',
         department: request.site || 'Operations',
         debitAmount: amount,
         creditAmount: 0,
         employeeName: request.name,
         employeeId: request.id?.slice(-6) || 'N/A',
-        site: request.site
+        site: request.site,
+        days: request.days || 1,
+        ratePerDay: request.ratePerDay || amount
       });
     });
 
-    // Single credit entry for total
+    // REAL GL CODE: Bank Account (Credit) - Use selected bank's GL code
+    const bankGLCode = selectedBank?.bankCode || 'A3004003001'; // Default bank GL code
+    const bankName = selectedBank?.bankName || 'HDFC Bank - Current Account';
+    
     glEntries.push({
-      glCode: 'L101001', 
-      glDescription: 'Cash/Bank Account - Batch Payment',
-      costCenter: 'CC001',
-      department: 'Operations',
+      glCode: bankGLCode, // REAL BANK GL CODE
+      glDescription: bankName,
+      costCenter: 'HEAD OFFICE',
+      department: 'Finance',
       debitAmount: 0,
       creditAmount: totalAmount,
       employeeName: null,
@@ -101,6 +106,10 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
   const glEntries = generateAllGLEntries(requests);
   const totalAmount = requests.reduce((sum, req) => sum + parseFloat(req.amount), 0);
 
+  // Get accounting details from accountingResult
+  const voucherNo = accountingResult?.voucherNo || `PAY/REL/${requests[0]?.site || 'GEN'}/${new Date().getFullYear()}/${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`;
+  const transactionId = accountingResult?.transactionId || `TXN_REL_${Date.now()}`;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-y-auto">
@@ -112,27 +121,27 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 {isMultipleRequests ? (
                   <>
                     <FaUsers className="text-blue-600" />
-                    Reliever Requests - Approved
+                    Reliever Payments - Processed Successfully
                     <span className="bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-lg text-sm">
                       <FaCheck className="inline mr-1" size={12} />
-                      {requests.length} Requests Approved
+                      {requests.length} Payments Posted
                     </span>
                   </>
                 ) : (
                   <>
                     <FaCreditCard className="text-blue-600" />
-                    Reliever Request - Approved
+                    Reliever Payment - Processed Successfully
                     <span className={`px-3 py-1 rounded-lg text-sm border ${getStatusColor(requests[0].status)}`}>
                       <FaCheck className="inline mr-1" size={12} />
-                      {requests[0].status}
+                      Accounting Entries Posted
                     </span>
                   </>
                 )}
               </h1>
               <p className="text-gray-600 mt-1">
                 {isMultipleRequests 
-                  ? `Batch Approval - ${requests.length} requests processed`
-                  : `Request ID: ${requests[0].id?.slice(-6) || 'AUTO-' + Date.now().toString().slice(-8)}`
+                  ? `Batch Payment - ${requests.length} reliever payments processed and posted to GL`
+                  : `Voucher: ${voucherNo} | Transaction: ${transactionId?.slice(0, 12)}...`
                 }
               </p>
             </div>
@@ -158,11 +167,11 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <FaUsers className="text-blue-600" size={20} />
-                    Batch Summary
+                    Batch Payment Summary
                   </h2>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Total Requests:</span>
+                      <span className="text-gray-600">Total Payments:</span>
                       <span className="font-medium">{requests.length}</span>
                     </div>
                     <div className="flex justify-between">
@@ -170,12 +179,12 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-medium text-lg">₹ {totalAmount.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Approval Date:</span>
-                      <span className="font-medium">{formatDate(new Date().toISOString())}</span>
+                      <span className="text-gray-600">Voucher Number:</span>
+                      <span className="font-medium font-mono text-blue-600">{voucherNo}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Approved By:</span>
-                      <span className="font-medium">Account Executive</span>
+                      <span className="text-gray-600">Bank Account:</span>
+                      <span className="font-medium">{selectedBank?.bankName || 'HDFC Bank'}</span>
                     </div>
                   </div>
                 </div>
@@ -191,16 +200,16 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-medium">{requests[0].name}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Request ID:</span>
-                      <span className="font-medium">#{requests[0].id?.slice(-6)}</span>
+                      <span className="text-gray-600">Voucher No:</span>
+                      <span className="font-medium font-mono text-blue-600">{voucherNo}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Site:</span>
                       <span className="font-medium">{requests[0].site}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Type:</span>
-                      <span className="font-medium">{requests[0].type}</span>
+                      <span className="text-gray-600">Days Worked:</span>
+                      <span className="font-medium">{requests[0].days || 1} day(s)</span>
                     </div>
                   </div>
                 </div>
@@ -211,17 +220,17 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <FaFileAlt className="text-blue-600" size={20} />
-                    Request Details
+                    Payment Details
                   </h2>
                   <div className="overflow-x-auto max-h-80 overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-100 sticky top-0">
                         <tr>
-                          <th className="text-left p-2 border">Name</th>
+                          <th className="text-left p-2 border">Reliever Name</th>
                           <th className="text-left p-2 border">Site</th>
+                          <th className="text-center p-2 border">Days</th>
                           <th className="text-right p-2 border">Amount</th>
-                          <th className="text-left p-2 border">Type</th>
-                          <th className="text-left p-2 border">Date</th>
+                          <th className="text-left p-2 border">Replaced Employee</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -229,17 +238,20 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                           <tr key={index} className="border-b hover:bg-gray-50">
                             <td className="p-2 border font-medium">{req.name}</td>
                             <td className="p-2 border">{req.site}</td>
+                            <td className="p-2 border text-center">{req.days || 1}</td>
                             <td className="p-2 border text-right font-medium">₹ {parseFloat(req.amount).toLocaleString()}</td>
-                            <td className="p-2 border text-xs">{req.type}</td>
-                            <td className="p-2 border text-xs">{new Date(req.date).toLocaleDateString('en-GB')}</td>
+                            <td className="p-2 border text-xs">{req.replacedEmployee || 'N/A'}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot className="bg-gray-100">
                         <tr>
                           <td colSpan="2" className="p-2 border font-bold">TOTAL</td>
+                          <td className="p-2 border text-center font-bold">
+                            {requests.reduce((sum, req) => sum + (req.days || 1), 0)}
+                          </td>
                           <td className="p-2 border text-right font-bold">₹ {totalAmount.toLocaleString()}</td>
-                          <td colSpan="2" className="p-2 border"></td>
+                          <td className="p-2 border"></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -249,12 +261,12 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <FaCalendarAlt className="text-blue-600" size={20} />
-                    Request Details
+                    Payment Details
                   </h2>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Request Date:</span>
-                      <span className="font-medium">{new Date(requests[0].date).toLocaleDateString('en-GB')}</span>
+                      <span className="text-gray-600">Transaction ID:</span>
+                      <span className="font-medium font-mono text-sm">{transactionId}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Account Number:</span>
@@ -265,7 +277,7 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-medium">{requests[0].ifscCode || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Approved At:</span>
+                      <span className="text-gray-600">Posted At:</span>
                       <span className="font-medium text-sm text-green-600">
                         {formatDate(new Date().toISOString())}
                       </span>
@@ -274,36 +286,56 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 </div>
               )}
 
-              {/* GL Entries Table */}
+              {/* GL Entries Table - UPDATED WITH REAL GL CODES */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FaTag className="text-blue-600" size={20} />
-                  GL Entries & Accounting
+                  General Ledger Entries
                 </h2>
                 <div className="overflow-x-auto max-h-64 overflow-y-auto">
                   <table className="w-full border-collapse text-sm">
                     <thead className="bg-gray-100 sticky top-0">
                       <tr className="border-b border-gray-300">
                         <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">GL Code</th>
-                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">Description</th>
-                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">Reliever</th>
-                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">Debit</th>
-                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">Credit</th>
+                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">Account Name</th>
+                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">Reliever/Site</th>
+                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">Debit (₹)</th>
+                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">Credit (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {glEntries.map((entry, index) => (
                         <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
-                          <td className="py-2 px-1 text-xs font-medium text-blue-700">{entry.glCode}</td>
-                          <td className="py-2 px-1 text-xs">{entry.glDescription}</td>
+                          <td className="py-2 px-1 text-xs font-mono font-medium text-blue-700">
+                            {entry.glCode}
+                          </td>
                           <td className="py-2 px-1 text-xs">
-                            {entry.employeeName ? `${entry.employeeName} (${entry.site})` : '-'}
+                            {entry.glDescription}
+                            {entry.days && (
+                              <span className="text-gray-500 text-xs ml-1">
+                                ({entry.days} day{entry.days > 1 ? 's' : ''})
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-1 text-xs">
+                            {entry.employeeName ? (
+                              <div>
+                                <div className="font-medium">{entry.employeeName}</div>
+                                <div className="text-gray-500 text-xs">{entry.site}</div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
                           </td>
                           <td className="py-2 px-1 text-xs text-right font-medium">
-                            {entry.debitAmount > 0 ? `₹ ${entry.debitAmount.toLocaleString()}` : '-'}
+                            {entry.debitAmount > 0 ? (
+                              <span className="text-red-600">₹ {entry.debitAmount.toLocaleString()}</span>
+                            ) : '-'}
                           </td>
                           <td className="py-2 px-1 text-xs text-right font-medium">
-                            {entry.creditAmount > 0 ? `₹ ${entry.creditAmount.toLocaleString()}` : '-'}
+                            {entry.creditAmount > 0 ? (
+                              <span className="text-green-600">₹ {entry.creditAmount.toLocaleString()}</span>
+                            ) : '-'}
                           </td>
                         </tr>
                       ))}
@@ -311,15 +343,20 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                     <tfoot className="bg-gray-100">
                       <tr className="border-t-2 border-gray-400">
                         <td colSpan="3" className="py-2 px-1 text-xs font-bold text-gray-800">TOTALS</td>
-                        <td className="py-2 px-1 text-xs font-bold text-right">
+                        <td className="py-2 px-1 text-xs font-bold text-right text-red-600">
                           ₹ {glEntries.reduce((sum, entry) => sum + entry.debitAmount, 0).toLocaleString()}
                         </td>
-                        <td className="py-2 px-1 text-xs font-bold text-right">
+                        <td className="py-2 px-1 text-xs font-bold text-right text-green-600">
                           ₹ {glEntries.reduce((sum, entry) => sum + entry.creditAmount, 0).toLocaleString()}
                         </td>
                       </tr>
                     </tfoot>
                   </table>
+                </div>
+                <div className="mt-3 text-xs text-gray-600">
+                  <div><strong>GL Codes Used:</strong></div>
+                  <div>• <strong>X100101003</strong> - Reliever Wages (Expense Account)</div>
+                  <div>• <strong>{selectedBank?.bankCode || 'A3004003001'}</strong> - {selectedBank?.bankName || 'Bank Account'} (Asset Account)</div>
                 </div>
               </div>
             </div>
@@ -337,8 +374,14 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                   {isMultipleRequests ? (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Number of Requests:</span>
+                        <span className="text-gray-600">Number of Payments:</span>
                         <span className="font-medium">{requests.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Days Worked:</span>
+                        <span className="font-medium">
+                          {requests.reduce((sum, req) => sum + (req.days || 1), 0)} days
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Average Amount:</span>
@@ -346,100 +389,92 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       </div>
                     </>
                   ) : (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Requested Amount:</span>
-                      <span className="font-medium">₹ {parseFloat(requests[0].amount).toLocaleString()}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment Amount:</span>
+                        <span className="font-medium">₹ {parseFloat(requests[0].amount).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Days Worked:</span>
+                        <span className="font-medium">{requests[0].days || 1} day(s)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Rate per Day:</span>
+                        <span className="font-medium">₹ {requests[0].ratePerDay ? requests[0].ratePerDay.toLocaleString() : parseFloat(requests[0].amount).toLocaleString()}</span>
+                      </div>
+                    </>
                   )}
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Processing Fee:</span>
-                    <span className="font-medium">₹ 0</span>
-                  </div>
                   <hr className="border-blue-300" />
                   <div className="flex justify-between text-lg font-bold text-blue-800">
-                    <span>Total Approved Amount:</span>
+                    <span>Total Amount Posted:</span>
                     <span>₹ {totalAmount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Bank Details */}
+              {/* Bank & Accounting Details */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FaBuilding className="text-blue-600" size={20} />
-                  Bank Details
+                  Bank & Accounting Details
                 </h2>
                 <div className="space-y-3">
-                  {isMultipleRequests ? (
-                    <div className="text-sm text-gray-600">
-                      <div className="font-medium mb-2">Multiple Bank Accounts:</div>
-                      <div className="max-h-32 overflow-y-auto space-y-1">
-                        {requests.map((req, index) => (
-                          <div key={index} className="bg-white p-2 rounded border">
-                            <div className="font-medium">{req.name}</div>
-                            <div>A/C: {req.accountNo || 'N/A'}</div>
-                            <div>IFSC: {req.ifscCode || 'N/A'}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Account Number:</span>
-                        <span className="font-medium">{requests[0].accountNo || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">IFSC Code:</span>
-                        <span className="font-medium">{requests[0].ifscCode || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Payment Mode:</span>
-                        <span className="font-medium">NEFT</span>
-                      </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bank Account:</span>
+                    <span className="font-medium">{selectedBank?.bankName || 'HDFC Bank'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bank GL Code:</span>
+                    <span className="font-medium font-mono">{selectedBank?.bankCode || 'A3004003001'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Voucher Type:</span>
+                    <span className="font-medium">Payment Voucher</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Payment Mode:</span>
+                    <span className="font-medium">NEFT</span>
+                  </div>
+                  {accountingResult?.message && (
+                    <div className="bg-green-50 p-2 rounded border border-green-200">
+                      <p className="text-green-800 text-sm">{accountingResult.message}</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Approval Workflow */}
+              {/* Accounting Workflow */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FaChartLine className="text-blue-600" size={20} />
-                  Approval Workflow
+                  Accounting Workflow
                 </h2>
                 <div className="space-y-4">
-                  {/* VP Operations Approval Summary */}
-                  {requests.some(req => req.history?.some(h => h.action.includes("VP Operations"))) && (
-                    <div className="border-l-4 border-green-500 pl-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <FaCheck className="text-green-600" size={14} />
-                        <span className="font-semibold text-green-700">VP Operations Approval</span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        <div>VP Approved Requests: {requests.filter(req => req.history?.some(h => h.action.includes("VP Operations"))).length}</div>
-                        <div>Status: Completed</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* AE Approval */}
+                  {/* GL Posting */}
                   <div className="border-l-4 border-green-500 pl-4">
                     <div className="flex items-center gap-2 mb-1">
                       <FaCheck className="text-green-600" size={14} />
-                      <span className="font-semibold text-green-700">
-                        AE {isMultipleRequests ? 'Batch ' : ''}Approval
-                      </span>
+                      <span className="font-semibold text-green-700">GL Entries Posted</span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>Approved by: Account Executive</div>
-                      <div>Time: {formatDate(new Date().toISOString())}</div>
+                      <div>Voucher: {voucherNo}</div>
+                      <div>Transaction: {transactionId?.slice(0, 12)}...</div>
                       <div className="text-green-600">
-                        Status: Approved for payment processing
+                        Status: Successfully posted to General Ledger
                       </div>
-                      {isMultipleRequests && (
-                        <div>Batch Size: {requests.length} requests</div>
-                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Ledger Updates */}
+                  <div className="border-l-4 border-green-500 pl-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FaCheck className="text-green-600" size={14} />
+                      <span className="font-semibold text-green-700">Ledger Balances Updated</span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <div>• Reliever Wages (X100101003) - Debit increased</div>
+                      <div>• {selectedBank?.bankName || 'Bank Account'} - Credit increased</div>
+                      <div>• All entries balanced and validated</div>
                     </div>
                   </div>
                   
@@ -450,9 +485,9 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-semibold text-blue-700">Next Steps</span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>• {isMultipleRequests ? 'All requests' : 'Request'} included in bank upload file</div>
-                      <div>• {isMultipleRequests ? 'Payments' : 'Payment'} will be processed via NEFT</div>
-                      <div>• Amount{isMultipleRequests ? 's' : ''} will be credited to reliever account{isMultipleRequests ? 's' : ''}</div>
+                      <div>• Payment{isMultipleRequests ? 's' : ''} ready for bank processing</div>
+                      <div>• Amount{isMultipleRequests ? 's' : ''} will be debited from bank account</div>
+                      <div>• Transaction reference{isMultipleRequests ? 's' : ''} will be generated</div>
                     </div>
                   </div>
                 </div>
@@ -462,20 +497,16 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FaBriefcase className="text-yellow-600" size={20} />
-                  Processing Notes
+                  Accounting Notes
                 </h2>
                 <div className="text-sm text-gray-700 space-y-2">
-                  <div>• {isMultipleRequests ? 'These payments' : 'This payment'} will be processed as reliever compensation</div>
-                  <div>• Transaction reference{isMultipleRequests ? 's' : ''} will be provided once bank processing is complete</div>
-                  <div>• All necessary documentation has been verified and approved</div>
+                  <div>• <strong>Debit:</strong> X100101003 - Reliever Wages Expense increased</div>
+                  <div>• <strong>Credit:</strong> {selectedBank?.bankCode || 'A3004003001'} - Bank Account decreased</div>
+                  <div>• Transaction follows double-entry accounting principles</div>
+                  <div>• All entries are audit-compliant with proper narration</div>
                   {isMultipleRequests && (
                     <div className="font-medium text-blue-600">
-                      • Batch processing: All {requests.length} requests processed simultaneously
-                    </div>
-                  )}
-                  {requests.some(req => req.delayed) && (
-                    <div className="text-orange-600 font-medium">
-                      • Some approvals were after 7:00 PM - those will be processed next working day
+                      • Batch accounting: {requests.length} individual payments consolidated
                     </div>
                   )}
                 </div>
