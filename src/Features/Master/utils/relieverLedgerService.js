@@ -131,65 +131,124 @@ export class RelieverLedgerService {
    * Get Reliever Wages account details for header
    */
   static getRelieverAccountDetails() {
-    try {
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
-      
-      const relieverAccount = chartOfAccounts.find(acc => acc.code === 'X1001001003');
-      
-      if (!relieverAccount) {
-        console.log('❌ Reliever Wages account (X1001001003) not found in chart of accounts');
-        return this.getDefaultRelieverDetails();
-      }
-      
-      const currentBalance = ledgerBalances['X1001001003']?.balance || 0;
-      
-      return {
-        ledgerCode: 'X1001001003',
-        accountName: relieverAccount.name || 'RELIEVER WAGES',
-        accountType: 'Expense Account (Profit & Loss)',
-        description: 'Temporary Staff Replacement Payments',
-        period: 'Apr 2024 - Jul 2024',
-        financialYear: '2024-25',
-        openingBalance: '₹0.00',
-        totalSites: this.getTotalSites(),
-        totalRelievers: this.getTotalRelievers(),
-        totalTransactions: this.getTotalTransactions(),
-        status: 'Active',
-        currency: 'INR (₹)',
-        costCenter: 'Operations - Staff Management',
-        budgetAllocated: '₹200,000.00',
-        budgetUtilized: this.calculateBudgetUtilization(currentBalance)
-      };
-      
-    } catch (error) {
-      console.error('Error getting reliever account details:', error);
+  try {
+    const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
+    const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
+    
+    const relieverAccount = chartOfAccounts.find(acc => acc.code === 'X100101003');
+    
+    if (!relieverAccount) {
+      console.log('❌ Reliever Wages account (X100101003) not found in chart of accounts');
       return this.getDefaultRelieverDetails();
     }
+    
+    const currentBalance = ledgerBalances['X100101003']?.balance || 0;
+    const financialYear = this.getCurrentFinancialYear();
+    const period = this.getCurrentFinancialPeriod();
+    const openingBalanceDate = this.getOpeningBalanceDate();
+    
+    return {
+      ledgerCode: 'X100101003',
+      accountName: relieverAccount.name || 'RELIEVER WAGES',
+      accountType: 'Expense Account (Profit & Loss)',
+      description: 'Temporary Staff Replacement Payments',
+      period: period,
+      financialYear: financialYear,
+      openingBalance: '₹0.00',
+      openingBalanceDate: openingBalanceDate,
+      totalSites: this.getTotalSites(),
+      totalRelievers: this.getTotalRelievers(),
+      totalTransactions: this.getTotalTransactions(),
+      status: 'Active',
+      currency: 'INR (₹)',
+      costCenter: 'Operations - Staff Management',
+      budgetAllocated: '₹200,000.00',
+      budgetUtilized: this.calculateBudgetUtilization(currentBalance)
+    };
+    
+  } catch (error) {
+    console.error('Error getting reliever account details:', error);
+    return this.getDefaultRelieverDetails();
   }
+}
+
+  /**
+ * Get current financial year (April to March)
+ */
+static getCurrentFinancialYear() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // January is 0
+  
+  // Financial year runs from April to March
+  // If current month is April (4) or later, FY is currentYear-nextYear
+  // If current month is January-March (1-3), FY is previousYear-currentYear
+  if (currentMonth >= 4) {
+    return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+  } else {
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
+  }
+}
+
+/**
+ * Get current financial period
+ */
+static getCurrentFinancialPeriod() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  
+  if (currentMonth >= 4) {
+    return `Apr ${currentYear} - Mar ${currentYear + 1}`;
+  } else {
+    return `Apr ${currentYear - 1} - Mar ${currentYear}`;
+  }
+}
+
+/**
+ * Get opening balance date for current financial year
+ */
+static getOpeningBalanceDate() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  
+  // Opening balance is always April 1st of the financial year
+  if (currentMonth >= 4) {
+    return `01-Apr-${currentYear}`;
+  } else {
+    return `01-Apr-${currentYear - 1}`;
+  }
+}
+
   
   /**
    * Get default details if account not found
    */
   static getDefaultRelieverDetails() {
-    return {
-      ledgerCode: 'X1001001003',
-      accountName: 'RELIEVER WAGES',
-      accountType: 'Expense Account (Profit & Loss)',
-      description: 'Temporary Staff Replacement Payments',
-      period: 'Apr 2024 - Jul 2024',
-      financialYear: '2024-25',
-      openingBalance: '₹0.00',
-      totalSites: 8,
-      totalRelievers: 15,
-      totalTransactions: 20,
-      status: 'Active',
-      currency: 'INR (₹)',
-      costCenter: 'Operations - Staff Management',
-      budgetAllocated: '₹200,000.00',
-      budgetUtilized: '62.5%'
-    };
-  }
+  const financialYear = this.getCurrentFinancialYear();
+  const period = this.getCurrentFinancialPeriod();
+  const openingBalanceDate = this.getOpeningBalanceDate();
+  
+  return {
+    ledgerCode: 'X1001001003',
+    accountName: 'RELIEVER WAGES',
+    accountType: 'Expense Account (Profit & Loss)',
+    description: 'Temporary Staff Replacement Payments',
+    period: period,
+    financialYear: financialYear,
+    openingBalance: '₹0.00',
+    openingBalanceDate: openingBalanceDate,
+    totalSites: 8,
+    totalRelievers: 15,
+    totalTransactions: 20,
+    status: 'Active',
+    currency: 'INR (₹)',
+    costCenter: 'Operations - Staff Management',
+    budgetAllocated: '₹200,000.00',
+    budgetUtilized: '62.5%'
+  };
+}
   
   /**
    * Calculate total unique sites from transactions

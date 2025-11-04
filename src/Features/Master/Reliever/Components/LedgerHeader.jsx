@@ -1,6 +1,14 @@
 import React from 'react';
 
 const LedgerHeader = ({ ledgerInfo }) => {
+  // Format currency with proper symbols
+  const formatCurrency = (amount) => {
+    if (typeof amount === 'number') {
+      return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return amount; // Return as-is if it's already formatted
+  };
+
   return (
     <div className="bg-gradient-to-br from-green-600 to-green-700 text-white p-6 lg:p-8">
       {/* Main Title */}
@@ -13,7 +21,7 @@ const LedgerHeader = ({ ledgerInfo }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="space-y-1">
           <div className="text-xs opacity-90">GL Account Code</div>
-          <div className="text-sm font-semibold">{ledgerInfo.ledgerCode}</div>
+          <div className="text-sm font-semibold font-mono">{ledgerInfo.ledgerCode}</div>
         </div>
         <div className="space-y-1">
           <div className="text-xs opacity-90">Account Name</div>
@@ -47,17 +55,37 @@ const LedgerHeader = ({ ledgerInfo }) => {
           <div className="text-xs opacity-90">Total Transactions</div>
           <div className="text-sm font-semibold">{ledgerInfo.totalTransactions}</div>
         </div>
-      </div>
-
-      {/* Opening Balance Card */}
-      <div className="bg-green-500 bg-opacity-20 rounded-lg p-4 mt-4 border border-green-400 border-opacity-30">
-        <div className="text-xs opacity-90">Opening Balance (01-Apr-2024)</div>
-        <div className="text-xl lg:text-2xl font-bold">{ledgerInfo.openingBalance}</div>
-        <div className="text-xs opacity-80 mt-1">
-          Expense Account | Temporary Staff Coverage
+        <div className="space-y-1">
+          <div className="text-xs opacity-90">Account Status</div>
+          <div className="text-sm font-semibold">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs text-g">
+              {ledgerInfo.status}
+            </span>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs opacity-90">Currency</div>
+          <div className="text-sm font-semibold">{ledgerInfo.currency}</div>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs opacity-90">Cost Center</div>
+          <div className="text-sm font-semibold">{ledgerInfo.costCenter}</div>
         </div>
       </div>
-      
+
+      {/* Budget and Balance Information */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Opening Balance Card */}
+        <div className="bg-green-500 bg-opacity-20 rounded-lg p-4 border border-green-400 border-opacity-30">
+          <div className="text-xs opacity-90">Opening Balance ({ledgerInfo.openingBalanceDate})</div>
+          <div className="text-xl lg:text-2xl font-bold">
+            {formatCurrency(ledgerInfo.openingBalance)}
+          </div>
+          <div className="text-xs opacity-80 mt-1">
+            Expense Account | Temporary Staff Coverage
+          </div>
+        </div>
+      </div>  
     </div>
   );
 };

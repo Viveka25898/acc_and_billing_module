@@ -6,7 +6,7 @@ const Summary = ({ summary }) => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-purple-400 to-pink-500 text-white p-6 md:p-8">
+    <div className="bg-gradient-to-r from-green-400 to-green-500 text-white p-6 md:p-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <div className="text-center">
           <h4 className="text-xs md:text-sm opacity-90 mb-2 uppercase tracking-wide">

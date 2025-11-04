@@ -4,7 +4,7 @@ export const ledgerData = {
     accountName: 'RELIEVER WAGES',
     accountType: 'Expense Account (Profit & Loss)',
     description: 'Temporary Staff Replacement Payments',
-    period: 'Apr-Jul 2024',
+    period: 'Oct-Dec 2025',
     financialYear: '2025-26',
     openingBalance: '₹0.00',
     totalSites: 8,
