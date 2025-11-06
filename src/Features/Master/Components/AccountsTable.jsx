@@ -1,4 +1,6 @@
+/* eslint-disable no-unused-vars */
 import { useNavigate } from "react-router-dom";
+import { RentLedgerService } from "../utils/rentLedgerService";
 
 const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick }) => {
   const navigate=useNavigate()
@@ -179,7 +181,38 @@ const handleAccountClick = (account) => {
     const isOfficeSuppliesAccount = 
       account.code.startsWith('X2001002001') || 
       (account.code.includes('X2001002') && account.name.toLowerCase().includes('office supplies'));
-    
+      // 11. Rent Expense  
+    const isRentExpenseAccount = 
+      account.code.startsWith('X2001002002') || 
+      (account.code.includes('X2001002') && account.name.toLowerCase().includes('branch office rent'));
+
+      // GST Input Accounts
+          const isCGSTInputAccount = 
+            account.code === 'A300701001' || 
+            account.name.toLowerCase().includes('cgst input');
+
+          const isSGSTInputAccount = 
+            account.code === 'A300701002' || 
+            account.name.toLowerCase().includes('sgst input');
+
+          const isIGSTInputAccount = 
+            account.code === 'A300701003' || 
+            account.name.toLowerCase().includes('igst input');
+      
+      // 11. Rent Vendor (Owner) Ledger Account - robust detection
+      const parentHasRent = (account.parentAccount || '').toLowerCase().includes('rent');
+      const isRentVendorAccount =
+        account.code.startsWith("L2005") &&
+        (
+          parentHasRent ||
+          account.name.toLowerCase().includes("owner") ||
+          account.name.toLowerCase().includes("landlord") ||
+          account.name.toLowerCase().includes("rent vendor") ||
+          account.name.toLowerCase().includes("rent -") ||
+          account.name.toLowerCase().includes("branch office rent")
+        );
+            
+            
     // NAVIGATION LOGIC - PRIORITY ORDER
     console.log('🎯 Account Classification:', {
       isRelieverPaymentAccount,
@@ -188,6 +221,15 @@ const handleAccountClick = (account) => {
       isEmployeeAccount
     });
     
+    // Check if this vendor has rent-specific entries to force rent vendor ledger
+    const hasRentVendorEntries = (() => {
+      try {
+        return RentLedgerService.getVendorLedgerEntries(account.code).length > 0;
+      } catch (e) {
+        return false;
+      }
+    })();
+
     if (isRelieverPaymentAccount) {
       console.log('✅ Navigating to Reliever Payment Page');
       navigate(`/dashboard/account-manager/reliever-payment-page`);
@@ -204,6 +246,10 @@ const handleAccountClick = (account) => {
       console.log('✅ Navigating to Employee Ledger');
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
     } 
+    else if (isRentVendorAccount || (isVendorAccount && hasRentVendorEntries)) {
+      console.log('✅ Navigating to Rent Vendor Ledger');
+      navigate(`/dashboard/account-manager/rent-vendor-ledger/${account.code}`);
+    }
     else if (isVendorAccount) {
       console.log('✅ Navigating to Vendor Ledger');
       navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);
@@ -228,7 +274,24 @@ const handleAccountClick = (account) => {
     else if (isOfficeSuppliesAccount) {
       console.log('✅ Navigating to Office Supplies Ledger');
       navigate(`/dashboard/account-manager/office-supplies-ledger`);
+    }
+    else if (isRentExpenseAccount){
+      console.log("✅ Navigating to Rent Expense Ledger");
+      navigate(`/dashboard/account-manager/rent-expense-account`)
     } 
+    else if (isCGSTInputAccount) {
+        console.log("✅ Navigating to CGST Input Ledger");
+        navigate(`/dashboard/account-manager/cgst-input-ledger`);
+      } 
+      else if (isSGSTInputAccount) {
+        console.log("✅ Navigating to SGST Input Ledger");
+        navigate(`/dashboard/account-manager/sgst-input-ledger`);
+      } 
+      else if (isIGSTInputAccount) {
+        console.log("✅ Navigating to IGST Input Ledger");
+        navigate(`/dashboard/account-manager/igst-input-ledger`);
+      }
+     
     else {
       console.log('✅ Navigating to Generic Ledger');
       navigate(`/dashboard/account-manager/ledger/${account.code}`);

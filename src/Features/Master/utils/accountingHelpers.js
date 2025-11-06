@@ -1320,6 +1320,260 @@ export const generateRelieverVoucherNumber = (site) => {
 };
 
 /**
+ * Rent Expense Booking
+ */
+
+// Add to your accountingHelpers.js - Following your employee ledger pattern
+export const createVendorLedger = (vendorId, vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    
+    // Generate proper vendor GL code (L2005001, L2005002, etc.)
+    const glCode = generateVendorGLCode();
+    
+    const newLedger = {
+      id: `VENDOR_${Date.now()}_${vendorId}`,
+      code: glCode,
+      name: `VENDOR-${vendorId} - ${vendorName}`,
+      type: "ACCOUNT",
+      parentAccount: "SUNDRY CREDITORS",
+      parentCode: "L2005001",
+      accountCategory: "LIABILITIES",
+      debitCreditNature: "CREDIT",
+      openingBalance: 0,
+      currentBalance: 0,
+      isActive: true
+    };
+    
+    console.log(`✅ Creating vendor ledger:`, newLedger);
+    
+    chartOfAccounts.push(newLedger);
+    
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to save chart of accounts');
+    }
+    
+    console.log(`✅ Created vendor ledger: ${glCode} for ${vendorName}`);
+    return glCode;
+  } catch (error) {
+    console.error('❌ Error creating vendor ledger:', error);
+    throw new Error(`Failed to create vendor ledger: ${error.message}`);
+  }
+};
+
+const generateVendorGLCode = () => {
+  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+  
+  // Find all existing vendor GL codes under L2005
+  const vendorGLs = chartOfAccounts
+    .filter(acc => acc.code.startsWith('L2005001'))
+    .map(acc => {
+      // Extract the number part after L2005
+      const numberPart = acc.code.replace('L2005001', '');
+      return parseInt(numberPart) || 0;
+    })
+    .filter(num => !isNaN(num));
+  
+  const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
+  const nextNumber = lastNumber + 1;
+  
+  return `L2005001${String(nextNumber).padStart(3, '0')}`; // L2005001, L2005002, etc.
+};
+
+// Rent transaction creator - following your advance pattern
+export const createRentPaymentTransaction = (rentData, vendorGL, bankData, voucherNo) => {
+  try {
+    const amount = parseFloat(rentData.amount);
+    const bank = getBankDetails(bankData.bankCode);
+    
+  // Create entries array following your double-entry pattern
+    const entries = [
+      // Rent Expense Debit
+      {
+        lineNo: 1,
+        glCode: "X2001002002", // BRANCH OFFICE RENT (correct GL)
+        glName: "BRANCH OFFICE RENT",
+        debit: rentData.breakdown.baseRent,
+        credit: 0,
+        narration: `Rent for ${rentData.month} - ${rentData.siteName}`,
+        costCenter: rentData.siteLocation || 'General',
+        site: rentData.siteName
+      }
+    ];
+    
+  // Add GST entries automatically if agreement/site indicates GST
+  {
+    // derive GST applicability and split
+    const agreements = JSON.parse(localStorage.getItem('agreements') || '[]');
+    const company = JSON.parse(localStorage.getItem('companyProfile') || '{}');
+    const agreement = agreements.find(a => a.agreementId === rentData.agreementId || a.siteId === rentData.siteId);
+    const gstApplicable = (rentData.gstDetails && rentData.gstDetails.applicable) || rentData.withGST || agreement?.withGST;
+
+    if (gstApplicable) {
+      // Determine GST type: default CGST+SGST unless cross-state
+      const siteState = rentData.siteState || agreement?.siteState || rentData.siteDetails?.state;
+      const companyState = company?.state || company?.registeredState;
+      const gstType = rentData.gstDetails?.type || ((siteState && companyState && siteState !== companyState) ? 'IGST' : 'CGST+SGST');
+
+      // Determine base and gst amounts
+      const baseRent = (rentData.breakdown?.baseRent ?? agreement?.monthlyBaseRent ?? rentData.amount);
+      const totalGST = (rentData.breakdown?.gst ?? agreement?.monthlyGST ?? 0);
+
+      if (gstType === 'CGST+SGST') {
+        const half = Number((Number(totalGST) / 2).toFixed(2));
+        entries.push(
+          {
+            lineNo: entries.length + 1,
+            glCode: "A3007001001", // CGST INPUT
+            glName: "CGST INPUT",
+            debit: half,
+            credit: 0,
+            narration: `CGST on rent - ${rentData.month}`
+          },
+          {
+            lineNo: entries.length + 2,
+            glCode: "A3007001002", // SGST INPUT
+            glName: "SGST INPUT",
+            debit: half,
+            credit: 0,
+            narration: `SGST on rent - ${rentData.month}`
+          }
+        );
+      } else {
+        entries.push({
+          lineNo: entries.length + 1,
+          glCode: "A3007001003", // IGST INPUT
+          glName: "IGST INPUT",
+          debit: Number(totalGST),
+          credit: 0,
+          narration: `IGST on rent - ${rentData.month}`
+        });
+      }
+    }
+  }
+    
+    // Vendor Payable Credit
+    entries.push({
+      lineNo: entries.length + 1,
+      glCode: vendorGL,
+      glName: `Rent Payable - ${rentData.ownerName}`,
+      debit: 0,
+      credit: amount,
+      narration: `Rent payable to ${rentData.ownerName} for ${rentData.month}`,
+      vendorId: rentData.ownerId
+    });
+    
+    return {
+      id: `TXN_RENT_${Date.now()}_${rentData.voucherId}`,
+      voucherNo: voucherNo,
+      voucherType: "Payment Voucher",
+      date: getCurrentDate(),
+      rentVoucherId: rentData.voucherId,
+      entries: entries,
+      totalDebit: amount,
+      totalCredit: amount,
+      narration: `Rent payment for ${rentData.siteName} - ${rentData.month}`,
+      approvedBy: "Billing Manager",
+      approvedDate: new Date().toISOString(),
+      siteDetails: {
+        siteId: rentData.siteId,
+        siteName: rentData.siteName,
+        location: rentData.siteLocation
+      }
+    };
+  } catch (error) {
+    console.error('Error creating rent transaction:', error);
+    throw new Error(`Failed to create rent transaction: ${error.message}`);
+  }
+};
+
+// Main rent processing - following your processAdvanceApproval pattern
+export const processRentApproval = (rentVoucher, bankData) => {
+  try {
+    console.log('🚀 Starting rent voucher processing...');
+    
+    // Validate inputs
+    if (!rentVoucher.ownerName) {
+      throw new Error('Owner name is required');
+    }
+    
+    // ✅ FIX: Check if vendor GL exists, if not create it
+    let vendorGL = rentVoucher.ownerGLCode;
+    
+    // Validate if GL code actually exists in COA
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const glExists = chartOfAccounts.some(acc => acc.code === vendorGL);
+    
+    if (!vendorGL || !glExists) {
+      console.log('📝 Creating vendor ledger for:', rentVoucher.ownerName);
+      const vendorId = rentVoucher.ownerId || `VEND-${Date.now()}`;
+      vendorGL = createVendorLedger(vendorId, rentVoucher.ownerName);
+      
+      // Update the rent voucher with the new valid GL code
+      rentVoucher.ownerGLCode = vendorGL;
+    }
+    
+    // Rest of your processing logic...
+    const siteCode = rentVoucher.siteName?.substring(0, 3).toUpperCase() || 'GEN';
+    const voucherNo = generateRentVoucherNumber(siteCode);
+    
+    // Create and post transaction
+    const transaction = createRentPaymentTransaction(rentVoucher, vendorGL, bankData, voucherNo);
+    const postResult = postTransaction(transaction);
+    
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+    
+    updateLedgerBalances(transaction.entries);
+    
+    console.log('✅ Rent voucher processing completed!');
+    
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      vendorGL: vendorGL, // Return the VALID GL code
+      bankGLCode: bankData.bankCode,
+      amount: parseFloat(rentVoucher.amount),
+      ownerName: rentVoucher.ownerName,
+      siteName: rentVoucher.siteName,
+      month: rentVoucher.month,
+      message: `Rent voucher for ${rentVoucher.month} processed successfully - ₹${parseFloat(rentVoucher.amount).toLocaleString()}`
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR in processRentApproval:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process rent voucher: ${error.message}`
+    };
+  }
+};
+
+// Voucher number generator for rent
+export const generateRentVoucherNumber = (site) => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `RENT/${site}/${year}`;
+    
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+    
+    console.log(`🎫 Generated rent voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating rent voucher:', error);
+    throw new Error(`Failed to generate rent voucher: ${error.message}`);
+  }
+};
+/**
  * Validate reliever request data
  */
 export const validateRelieverRequest = (relieverRequest) => {
@@ -1360,5 +1614,8 @@ export default {
   formatAmount,
   formatDate,
   processRelieverPaymentApproval, 
-  processMultipleRelieverPayments 
+  processMultipleRelieverPayments,
+  processRentApproval,
+
+
 };

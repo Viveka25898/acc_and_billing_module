@@ -152,6 +152,12 @@ import OfficeSuppliesLedgerPage from "../Features/Master/EmployeeAdvanceAndSettl
 import ConveyancePayblePage from "../Features/Master/Conveyance/Pages/ConveyancePayblePage"
 import ConveyanceExpenseLedgerPage from "../Features/Master/Conveyance/Pages/ConveyanceExpenseLedgerPage"
 import RelieverPaymentPage from "../Features/Master/Reliever/Pages/RelieverPaymentPage"
+import RentExpenseBookingLedgerPage from "../Features/Master/Rent Expense/Pages/RentExpenseBookingLedgerPage"
+import GSTLedgersPage from "../Features/Master/GST/Pages/GSTLedgerPage"
+import CGSTInputLedgerPage from "../Features/Master/GST/Pages/CGSTInputLedgerPage"
+import SGSTInputLedgerPage from "../Features/Master/GST/Pages/SGSTInputLedgerPage"
+import IGSTInputLedgerPage from "../Features/Master/GST/Pages/IGSTInputLedgerPage"
+import RentVendorLedgerPage from "../Features/Master/Rent Vendor/Pages/RentVendorLedgerPage"
 
 
 export const router=createBrowserRouter([
@@ -864,6 +870,26 @@ export const router=createBrowserRouter([
             {
                 path:"reliever-payment-page",
                 element:<RelieverPaymentPage/>
+            },
+            {
+                path:"rent-expense-account",
+                element:<RentExpenseBookingLedgerPage/>
+            },
+            {
+            path:"cgst-input-ledger",
+            element:<CGSTInputLedgerPage/>
+            },
+            {
+            path:"sgst-input-ledger",
+            element:<SGSTInputLedgerPage/>
+            },
+            {
+            path:"igst-input-ledger",
+            element:<IGSTInputLedgerPage/>
+            },
+            {
+                path:"rent-vendor-ledger/:accountCode",
+                element:<RentVendorLedgerPage/>
             }
 
         ]
