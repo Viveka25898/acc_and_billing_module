@@ -90,6 +90,27 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
             ></textarea>
           </div>
 
+          {/* GL Mappings Display */}
+          {invoice.vendor_gl_mappings && (
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-base mb-2 text-green-800">GL Mappings</h3>
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <label className="block font-medium">Expense Account</label>
+                  <div className="border rounded px-3 py-2 bg-gray-50">
+                    {invoice.vendor_gl_mappings.expense_gl_code} - HK MATERIALS
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-medium">Payable Account</label>
+                  <div className="border rounded px-3 py-2 bg-gray-50">
+                    {invoice.vendor_gl_mappings.payable_gl_code}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Fixed Asset Info */}
           {invoice.type === "Fixed Asset" && invoice.assetDetails && (
             <div className="border-t pt-4">

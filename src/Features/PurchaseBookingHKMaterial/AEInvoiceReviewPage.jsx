@@ -28,7 +28,7 @@ const InvoiceReviewPage = () => {
         invoiceNumber: "INV-001",
         vendorName: "ABC Enterprises",
         totalAmount: 125000,
-        status: "Pending GST Verification", // Step 10: AE needs to verify GST
+        status: "Pending GST Verification",
         gstRate: 18,
         hsnCode: "998314",
         hsnSummary: "Construction Services",
@@ -149,10 +149,12 @@ const InvoiceReviewPage = () => {
 
     // Initialize localStorage with invoice data
     localStorage.setItem("pending_ae_invoices", JSON.stringify(initialInvoicesForAE));
-    localStorage.setItem("pending_am_invoices", JSON.stringify([])); // Empty AM queue initially
+    localStorage.setItem("pending_am_invoices", JSON.stringify([]));
     localStorage.setItem("processed_invoices", JSON.stringify([]));
     localStorage.setItem("rejected_invoices", JSON.stringify([]));
     localStorage.setItem("invoice_counter", "1006");
+    localStorage.setItem("vendor_counter", "0");
+    localStorage.setItem("vendor_master", JSON.stringify({}));
     localStorage.setItem("last_data_refresh", new Date().toISOString());
     
     return initialInvoicesForAE;
@@ -196,6 +198,40 @@ const InvoiceReviewPage = () => {
     const randomType = types[Math.floor(Math.random() * types.length)];
     const randomPriority = priorities[Math.floor(Math.random() * priorities.length)];
     
+    // Vendor Master Creation with Auto-Increment
+    const vendorMaster = JSON.parse(localStorage.getItem("vendor_master") || "{}");
+    const vendorCounter = parseInt(localStorage.getItem("vendor_counter") || "0");
+    
+    if (!vendorMaster[randomVendor]) {
+      // Increment vendor counter
+      const newVendorNumber = vendorCounter + 1;
+      const vendorCode = String(newVendorNumber).padStart(3, '0');
+      
+      // Create vendor-specific payable GL code with auto-increment
+      const payableGlCode = `L2005002_${vendorCode}_${randomVendor.replace(/\s+/g, '_')}`;
+      
+      vendorMaster[randomVendor] = {
+        vendor_id: `VEND_${vendorCode}`,
+        vendor_name: randomVendor,
+        vendor_number: vendorCode,
+        created_date: new Date().toISOString(),
+        
+        // GL MAPPINGS:
+        expense_gl_code: "X1001004001", // Shared HK MATERIALS expense
+        payable_gl_code: payableGlCode, // Vendor-specific with increment
+        
+        // Track invoices
+        total_invoices: 0,
+        total_amount: 0
+      };
+      
+      // Save updated vendor master and counter
+      localStorage.setItem("vendor_master", JSON.stringify(vendorMaster));
+      localStorage.setItem("vendor_counter", String(newVendorNumber));
+      
+      console.log(`New vendor created: ${randomVendor} with code ${vendorCode}`);
+    }
+
     const currentCounter = parseInt(localStorage.getItem("invoice_counter") || "1006");
     const newInvoiceId = `INV-${String(currentCounter).padStart(3, '0')}`;
     
@@ -218,7 +254,13 @@ const InvoiceReviewPage = () => {
       priority: randomPriority,
       poDocuments: [
         { name: `PO-${currentCounter}`, url: `https://example.com/po-${currentCounter}.pdf` }
-      ]
+      ],
+      // ADD GL MAPPINGS TO THE NEW INVOICE
+      vendor_gl_mappings: {
+        expense_gl_code: vendorMaster[randomVendor].expense_gl_code,
+        payable_gl_code: vendorMaster[randomVendor].payable_gl_code,
+        vendor_number: vendorMaster[randomVendor].vendor_number
+      }
     };
     
     if (randomType === "Fixed Asset") {
@@ -253,6 +295,8 @@ const InvoiceReviewPage = () => {
       localStorage.removeItem("processed_invoices");
       localStorage.removeItem("rejected_invoices");
       localStorage.removeItem("invoice_counter");
+      localStorage.removeItem("vendor_counter");
+      localStorage.removeItem("vendor_master");
       localStorage.removeItem("last_data_refresh");
       
       const initialData = initializeInvoiceData();
@@ -271,19 +315,17 @@ const InvoiceReviewPage = () => {
   // Auto-refresh mechanism (optional)
   useEffect(() => {
     const interval = setInterval(() => {
-      // Check if we should add new invoices (simulate procurement team adding invoices)
       const lastRefresh = localStorage.getItem("last_data_refresh");
       if (lastRefresh) {
         const timeDiff = new Date() - new Date(lastRefresh);
-        // Add new invoice every 5 minutes (for demo purposes)
         if (timeDiff > 5 * 60 * 1000) {
-          const shouldAdd = Math.random() > 0.7; // 30% chance to add new invoice
+          const shouldAdd = Math.random() > 0.7;
           if (shouldAdd) {
             generateNewInvoice();
           }
         }
       }
-    }, 60000); // Check every minute
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);

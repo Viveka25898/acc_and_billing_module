@@ -1147,6 +1147,7 @@ import { useNavigate } from "react-router-dom";
 import AMInvoiceFilter from "./AccountManagerInvoiceFilter";
 import AMInvoiceVerifyModal from "./AccountManagerInvoiceVerifyModal";
 import InvoiceJVDisplay from "../Components/InvoiceJVDisplay";
+import { processHKMaterialInvoice } from "../../Master/utils/accountingHelpers";
 
 // Prepaid Period Selection Modal Component
 const PrepaidPeriodModal = ({ invoice, onClose, onConfirm }) => {
@@ -1478,93 +1479,152 @@ Invoice Processing Summary:
   };
 
   // Handle Update Invoice (Modified for different invoice types)
-  const handleUpdateInvoice = (id, status, remark = "") => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const timestamp = new Date().toISOString();
+  // Handle Update Invoice (Modified for different invoice types)
+const handleUpdateInvoice = async (id, status, remark = "") => {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  const timestamp = new Date().toISOString();
 
-    // Get current invoice data from AM queue
-    const currentAMInvoices = JSON.parse(localStorage.getItem("pending_am_invoices") || "[]");
-    const invoiceToUpdate = currentAMInvoices.find(inv => inv.id === id);
-    
-    if (!invoiceToUpdate) return;
+  // Get current invoice data from AM queue
+  const currentAMInvoices = JSON.parse(localStorage.getItem("pending_am_invoices") || "[]");
+  const invoiceToUpdate = currentAMInvoices.find(inv => inv.id === id);
+  
+  if (!invoiceToUpdate) return;
 
-    if (status === "Approved") {
-      // Check invoice type and handle differently
-      if (invoiceToUpdate.type === "Procurement Prepaid") {
-        // For Procurement Prepaid: DON'T close the modal, just open prepaid period selection
-        setIsPrepaidModalOpen(true);
-        // The invoice will be processed when prepaid period is confirmed
-        return; // Don't close the main modal or do anything else yet
-        
-      } else {
-        // For Material and Fixed Asset: Show buttons temporarily
-        const updatedLocalInvoices = invoices.map(inv => {
-          if (inv.id === id) {
-            return {
-              ...inv,
-              accountManagerStatus: "Approved",
-              amRemarks: remark,
-              processedByAM: currentUser.username || "am1",
-              processedAtAM: timestamp,
-              showButtons: true // Flag to show buttons temporarily
-            };
-          }
-          return inv;
+  if (status === "Approved") {
+    // Check invoice type and handle differently
+    if (invoiceToUpdate.type === "Procurement Prepaid") {
+      // For Procurement Prepaid: DON'T close the modal, just open prepaid period selection
+      setIsPrepaidModalOpen(true);
+      // The invoice will be processed when prepaid period is confirmed
+      return; // Don't close the main modal or do anything else yet
+      
+    } else if (invoiceToUpdate.type === "Material") {
+      // ========================================
+      // HK MATERIAL INVOICE - AUTO GL POSTING
+      // ========================================
+      try {
+        // Process HK Material invoice with auto-GL posting
+        const glResult = await processHKMaterialInvoice(invoiceToUpdate, {
+          bankCode: "A3004003001", // Default bank for now
+          bankName: "SBI Current Account"
         });
-
-        setInvoices(updatedLocalInvoices);
-        setFilteredInvoices(updatedLocalInvoices);
-
-        // Find the updated invoice for JV preparation
-        const updatedInvoice = updatedLocalInvoices.find(inv => inv.id === id);
         
-        // Close the verify modal first
-        closeModal();
-        
-        // Prepare JV data if approved for Material or Fixed Asset
-        if (updatedInvoice && (updatedInvoice.type === "Material" || updatedInvoice.type === "Fixed Asset")) {
-          const jvDataPrepared = prepareJVData(updatedInvoice);
-          setTimeout(() => {
-            setJvData(jvDataPrepared);
-            setIsJVModalOpen(true);
-          }, 300);
+        if (glResult.success) {
+          // Move to processed queue with GL reference
+          const processedInvoices = JSON.parse(localStorage.getItem("processed_invoices") || "[]");
+          const processedInvoice = {
+            ...invoiceToUpdate,
+            accountManagerStatus: "Approved",
+            finalStatus: "GL Posted - Completed",
+            amRemarks: remark || "HK Material invoice processed with auto-GL posting",
+            processedByAM: currentUser.username || "am1",
+            processedAtAM: timestamp,
+            voucher_id: glResult.voucherNo,
+            vendor_gl_code: glResult.vendorGLCode,
+            gl_entries: glResult.transactionId,
+            accounting_result: glResult
+          };
+          
+          const updatedProcessedQueue = [...processedInvoices, processedInvoice];
+          localStorage.setItem("processed_invoices", JSON.stringify(updatedProcessedQueue));
+          
+          // Remove from AM queue
+          const updatedAMQueue = currentAMInvoices.filter(inv => inv.id !== id);
+          localStorage.setItem("pending_am_invoices", JSON.stringify(updatedAMQueue));
+          
+          // Update local state
+          setInvoices(updatedAMQueue);
+          setFilteredInvoices(updatedAMQueue);
+          
+          // Show success message
+          alert(`✅ HK Material invoice ${invoiceToUpdate.invoiceNumber} approved and GL entries posted!\nVoucher: ${glResult.voucherNo}\nVendor GL: ${glResult.vendorGLCode}`);
+          
+          closeModal();
+          return;
+        } else {
+          // GL posting failed - keep invoice in AM queue and show error
+          alert(`❌ HK Material invoice approval failed: ${glResult.message}\nInvoice remains in queue for retry.`);
+          // Don't close modal - let user see the error and potentially retry
+          return;
         }
-
-        alert(`Invoice ${updatedInvoice.invoiceNumber} approved! Use the Purchase Entry or Fixed Asset Entry buttons to complete processing.`);
+        
+      } catch (error) {
+        console.error('❌ Error in HK Material approval:', error);
+        alert(`❌ HK Material invoice approval failed: ${error.message}\nInvoice remains in queue.`);
+        return; // Keep invoice in queue
       }
       
-    } else if (status === "Rejected") {
-      // AM Rejected - Move to rejected queue
-      const rejectedInvoices = JSON.parse(localStorage.getItem("rejected_invoices") || "[]");
-      const rejectedInvoice = {
-        ...invoiceToUpdate,
-        accountManagerStatus: status,
-        finalStatus: "Rejected by Account Manager",
-        status: "Rejected - Return to Vendor",
-        amRemarks: remark,
-        processedByAM: currentUser.username || "am1",
-        processedAtAM: timestamp,
-        rejectedAtAM: timestamp
-      };
+    } else if (invoiceToUpdate.type === "Fixed Asset") {
+      // ========================================
+      // FIXED ASSET - KEEP EXISTING BUTTON LOGIC
+      // ========================================
+      const updatedLocalInvoices = invoices.map(inv => {
+        if (inv.id === id) {
+          return {
+            ...inv,
+            accountManagerStatus: "Approved",
+            amRemarks: remark,
+            processedByAM: currentUser.username || "am1",
+            processedAtAM: timestamp,
+            showButtons: true // Flag to show buttons temporarily
+          };
+        }
+        return inv;
+      });
+
+      setInvoices(updatedLocalInvoices);
+      setFilteredInvoices(updatedLocalInvoices);
+
+      // Find the updated invoice for JV preparation
+      const updatedInvoice = updatedLocalInvoices.find(inv => inv.id === id);
       
-      // Add to rejected queue
-      const updatedRejectedQueue = [...rejectedInvoices, rejectedInvoice];
-      localStorage.setItem("rejected_invoices", JSON.stringify(updatedRejectedQueue));
-      
-      // Remove from AM queue
-      const updatedAMQueue = currentAMInvoices.filter(inv => inv.id !== id);
-      localStorage.setItem("pending_am_invoices", JSON.stringify(updatedAMQueue));
-      
-      // Update local state
-      setInvoices(updatedAMQueue);
-      setFilteredInvoices(updatedAMQueue);
-      
-      alert(`Invoice ${invoiceToUpdate.invoiceNumber} rejected by Account Manager and returned to vendor.`);
-      
-      // Close modal for rejections
+      // Close the verify modal first
       closeModal();
+      
+      // Prepare JV data for Fixed Asset
+      if (updatedInvoice) {
+        const jvDataPrepared = prepareJVData(updatedInvoice);
+        setTimeout(() => {
+          setJvData(jvDataPrepared);
+          setIsJVModalOpen(true);
+        }, 300);
+      }
+
+      alert(`Fixed Asset invoice ${updatedInvoice.invoiceNumber} approved! Use the Fixed Asset Entry button to complete processing.`);
     }
-  };
+    
+  } else if (status === "Rejected") {
+    // AM Rejected - Move to rejected queue (same for all types)
+    const rejectedInvoices = JSON.parse(localStorage.getItem("rejected_invoices") || "[]");
+    const rejectedInvoice = {
+      ...invoiceToUpdate,
+      accountManagerStatus: status,
+      finalStatus: "Rejected by Account Manager",
+      status: "Rejected - Return to Vendor",
+      amRemarks: remark,
+      processedByAM: currentUser.username || "am1",
+      processedAtAM: timestamp,
+      rejectedAtAM: timestamp
+    };
+    
+    // Add to rejected queue
+    const updatedRejectedQueue = [...rejectedInvoices, rejectedInvoice];
+    localStorage.setItem("rejected_invoices", JSON.stringify(updatedRejectedQueue));
+    
+    // Remove from AM queue
+    const updatedAMQueue = currentAMInvoices.filter(inv => inv.id !== id);
+    localStorage.setItem("pending_am_invoices", JSON.stringify(updatedAMQueue));
+    
+    // Update local state
+    setInvoices(updatedAMQueue);
+    setFilteredInvoices(updatedAMQueue);
+    
+    alert(`Invoice ${invoiceToUpdate.invoiceNumber} rejected by Account Manager and returned to vendor.`);
+    
+    // Close modal for rejections
+    closeModal();
+  }
+};
 
   // Handle Filter
   const handleFilter = (newFilters) => {
@@ -1757,17 +1817,6 @@ Invoice Processing Summary:
                         <span className="bg-green-200 rounded-full px-2 py-1 text-xs">
                           Approved
                         </span>
-
-                        {/* Show buttons based on invoice type and showButtons flag */}
-                        {inv.type === "Material" && inv.showButtons && (
-                          <button
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"
-                            onClick={() => handleButtonClick("purchase", inv)}
-                          >
-                            Purchase Entry
-                          </button>
-                        )}
-
                         {inv.type === "Fixed Asset" && inv.showButtons && (
                           <button
                             className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"

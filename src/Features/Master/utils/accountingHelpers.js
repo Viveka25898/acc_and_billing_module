@@ -1573,6 +1573,252 @@ export const generateRentVoucherNumber = (site) => {
     throw new Error(`Failed to generate rent voucher: ${error.message}`);
   }
 };
+
+// HK Material 
+export const createHKMaterialVendorLedger = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const glCode = generateHKMaterialVendorGLCode(vendorName);
+    
+    if (chartOfAccounts.some(acc => acc.code === glCode)) {
+      console.log(`⚠️ HK Material Vendor ledger ${glCode} already exists`);
+      return glCode;
+    }
+    
+    const newLedger = {
+      id: `HK_VENDOR_${Date.now()}_${vendorName.replace(/\s+/g, '_')}`,
+      code: glCode,
+      name: `HK MATERIAL VENDOR - ${vendorName}`,
+      type: "ACCOUNT",
+      parentAccount: "HK MATERIAL",
+      parentCode: "L2005002",
+      accountCategory: "LIABILITIES",
+      debitCreditNature: "CREDIT",
+      openingBalance: 0,
+      currentBalance: 0,
+      isActive: true
+    };
+    
+    chartOfAccounts.push(newLedger);
+    
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to save chart of accounts');
+    }
+    
+    console.log(`✅ Created HK Material Vendor ledger: ${glCode} for ${vendorName}`);
+    return glCode;
+  } catch (error) {
+    console.error('❌ Error creating HK Material Vendor ledger:', error);
+    throw new Error(`Failed to create HK Material Vendor ledger: ${error.message}`);
+  }
+};
+export const generateHKMaterialVendorGLCode = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    
+    // Find all existing HK Material vendor GL codes under L2005002
+    const vendorGLs = chartOfAccounts
+      .filter(acc => acc.code.startsWith('L2005002_'))
+      .map(acc => {
+        const numberPart = acc.code.replace('L2005002_', '').split('_')[0];
+        return parseInt(numberPart) || 0;
+      })
+      .filter(num => !isNaN(num));
+    
+    const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
+    const nextNumber = lastNumber + 1;
+    const vendorCode = String(nextNumber).padStart(3, '0');
+    
+    return `L2005002_${vendorCode}_${vendorName.replace(/\s+/g, '_')}`;
+  } catch (error) {
+    console.error('Error generating HK Material Vendor GL code:', error);
+    throw new Error(`Failed to generate HK Material Vendor GL code: ${error.message}`);
+  }
+};
+export const checkHKMaterialVendorLedgerExists = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const glCode = generateHKMaterialVendorGLCode(vendorName);
+    return chartOfAccounts.some(acc => acc.code === glCode);
+  } catch (error) {
+    console.error('Error checking HK Material vendor ledger:', error);
+    return false;
+  }
+};
+export const getHKMaterialVendorGLCode = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const vendorNameNormalized = vendorName.replace(/\s+/g, '_');
+    
+    // Find existing ledger for this vendor
+    const existingLedger = chartOfAccounts.find(acc => 
+      acc.code.startsWith('L2005002_') && 
+      acc.code.endsWith(`_${vendorNameNormalized}`)
+    );
+    
+    if (existingLedger) {
+      return existingLedger.code;
+    }
+    
+    // If not found, return null (will need to create)
+    return null;
+  } catch (error) {
+    console.error('Error getting HK Material vendor GL code:', error);
+    return null;
+  }
+};
+export const createHKMaterialTransaction = (invoice, vendorGLCode, expenseGLCode, bankData, voucherNo, taxableAmount, cgstAmount, sgstAmount) => {
+  try {
+    return {
+      id: `TXN_HK_MAT_${Date.now()}_${invoice.id}`,
+      voucherNo: voucherNo,
+      voucherType: "Purchase Voucher",
+      date: getCurrentDate(),
+      invoiceNumber: invoice.invoiceNumber,
+      
+      entries: [
+        {
+          lineNo: 1,
+          glCode: expenseGLCode,
+          glName: "HK MATERIALS",
+          debit: taxableAmount,
+          credit: 0,
+          narration: `HK Material purchase - ${invoice.vendorName}`,
+          vendorId: invoice.vendorName,
+          costCenter: "Operations"
+        },
+        {
+          lineNo: 2,
+          glCode: "A3007001001",
+          glName: "CGST Input",
+          debit: cgstAmount,
+          credit: 0,
+          narration: `CGST @${invoice.gstRate/2}% on HK Materials`
+        },
+        {
+          lineNo: 3,
+          glCode: "A3007001002",
+          glName: "SGST Input", 
+          debit: sgstAmount,
+          credit: 0,
+          narration: `SGST @${invoice.gstRate/2}% on HK Materials`
+        },
+        {
+          lineNo: 4,
+          glCode: vendorGLCode,
+          glName: `HK MATERIAL VENDOR - ${invoice.vendorName}`,
+          debit: 0,
+          credit: invoice.totalAmount,
+          narration: `Invoice ${invoice.invoiceNumber} - HK Materials`
+        }
+      ],
+      
+      totalDebit: invoice.totalAmount,
+      totalCredit: invoice.totalAmount,
+      narration: `HK Material purchase from ${invoice.vendorName}`,
+      approvedBy: invoice.processedByAM || "am1",
+      approvedDate: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating HK Material transaction:', error);
+    throw new Error(`Failed to create HK Material transaction: ${error.message}`);
+  }
+};
+export const generateHKMaterialVoucherNumber = () => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `PINV/HK/${year}`;
+    
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+    
+    console.log(`🎫 Generated HK Material voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating HK Material voucher:', error);
+    throw new Error(`Failed to generate HK Material voucher: ${error.message}`);
+  }
+};
+export const processHKMaterialInvoice = (invoice, bankData) => {
+  try {
+    console.log('🚀 Starting HK Material invoice processing...');
+    
+    // Validate inputs
+    if (!invoice.vendorName) {
+      throw new Error('Vendor name is required for HK Material invoice');
+    }
+    
+    if (!invoice.totalAmount || parseFloat(invoice.totalAmount) <= 0) {
+      throw new Error('Invalid invoice amount');
+    }
+    
+    // Check/create HK Material Vendor ledger
+    let vendorGLCode = getHKMaterialVendorGLCode(invoice.vendorName);
+    
+    if (!vendorGLCode) {
+      console.log(`📝 Creating HK Material Vendor ledger for ${invoice.vendorName}...`);
+      vendorGLCode = createHKMaterialVendorLedger(invoice.vendorName);
+    } else {
+      console.log(`✅ Using existing HK Material Vendor ledger: ${vendorGLCode}`);
+    }
+    const expenseGLCode = "X1001004001"; // HK MATERIALS expense account
+    
+    // Calculate amounts
+    const taxableAmount = Math.round(invoice.totalAmount / (1 + (invoice.gstRate / 100)));
+    const gstAmount = invoice.totalAmount - taxableAmount;
+    const cgstAmount = Math.floor(gstAmount / 2);
+    const sgstAmount = gstAmount - cgstAmount;
+    
+    // Generate voucher number
+    const voucherNo = generateHKMaterialVoucherNumber();
+    
+    // Create and post transaction
+    const transaction = createHKMaterialTransaction(
+      invoice, 
+      vendorGLCode, 
+      expenseGLCode, 
+      bankData, 
+      voucherNo,
+      taxableAmount,
+      cgstAmount,
+      sgstAmount
+    );
+    
+    const postResult = postTransaction(transaction);
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+    
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+    
+    console.log('✅ HK Material invoice processing completed!');
+    
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      vendorGLCode: vendorGLCode,
+      expenseGLCode: expenseGLCode,
+      amount: parseFloat(invoice.totalAmount),
+      vendorName: invoice.vendorName,
+      message: `HK Material invoice processed successfully - ₹${parseFloat(invoice.totalAmount).toLocaleString()}`
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR in processHKMaterialInvoice:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process HK Material invoice: ${error.message}`
+    };
+  }
+};
 /**
  * Validate reliever request data
  */
