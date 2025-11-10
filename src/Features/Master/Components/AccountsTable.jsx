@@ -199,9 +199,17 @@ const handleAccountClick = (account) => {
             account.code === 'A300701003' || 
             account.name.toLowerCase().includes('igst input');
       
-      // 12. Rent Vendor (Owner) Ledger Account - robust detection
+      // 12. HK MATERIAL Vendor (Check FIRST - more specific)
+      const isHKVendorAccount =
+        account.code.startsWith("L2005002_") ||
+        account.parentCode === "L2005002" ||
+        account.name.toLowerCase().includes('hk material vendor') ||
+        (account.parentAccount && account.parentAccount.toLowerCase().includes('hk material'));
+      
+      // 13. Rent Vendor (Owner) Ledger Account - robust detection (exclude HK Material vendors)
       const parentHasRent = (account.parentAccount || '').toLowerCase().includes('rent');
       const isRentVendorAccount =
+        !isHKVendorAccount && // Exclude HK Material vendors
         account.code.startsWith("L2005") &&
         (
           parentHasRent ||
@@ -211,10 +219,6 @@ const handleAccountClick = (account) => {
           account.name.toLowerCase().includes("rent -") ||
           account.name.toLowerCase().includes("branch office rent")
         );
-        // 13 HK MATERIAL Vendor (Specific)
-          const isHKVendorAccount =
-            account.code === 'L2005002_001' ||
-            account.name.toLowerCase().includes('hk material');
 
 
         
@@ -253,14 +257,14 @@ const handleAccountClick = (account) => {
       console.log('✅ Navigating to Employee Ledger');
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
     } 
+    else if (isHKVendorAccount) {
+      console.log("✅ Navigating to HK Vendor Ledger");
+      navigate(`/dashboard/account-manager/hk-vendor-ledger/${account.code}`);
+    }
     else if (isRentVendorAccount || (isVendorAccount && hasRentVendorEntries)) {
       console.log('✅ Navigating to Rent Vendor Ledger');
       navigate(`/dashboard/account-manager/rent-vendor-ledger/${account.code}`);
     }
-    else if (isHKVendorAccount) {
-        console.log("✅ Navigating to HK Vendor Ledger");
-        navigate(`/dashboard/account-manager/hk-vendor-ledger/${account.code}`);
-      }
     else if (isVendorAccount) {
       console.log('✅ Navigating to Vendor Ledger');
       navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`);

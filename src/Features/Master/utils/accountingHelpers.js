@@ -1578,8 +1578,18 @@ export const generateRentVoucherNumber = (site) => {
 export const createHKMaterialVendorLedger = (vendorName) => {
   try {
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    
+    // First check if a ledger already exists for this vendor by name
+    const existingLedger = getHKMaterialVendorGLCode(vendorName);
+    if (existingLedger) {
+      console.log(`⚠️ HK Material Vendor ledger already exists for ${vendorName}: ${existingLedger}`);
+      return existingLedger;
+    }
+    
+    // Generate new GL code only if vendor doesn't exist
     const glCode = generateHKMaterialVendorGLCode(vendorName);
     
+    // Double-check the generated code doesn't exist (safety check)
     if (chartOfAccounts.some(acc => acc.code === glCode)) {
       console.log(`⚠️ HK Material Vendor ledger ${glCode} already exists`);
       return glCode;
@@ -1638,8 +1648,38 @@ export const generateHKMaterialVendorGLCode = (vendorName) => {
 export const checkHKMaterialVendorLedgerExists = (vendorName) => {
   try {
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    const glCode = generateHKMaterialVendorGLCode(vendorName);
-    return chartOfAccounts.some(acc => acc.code === glCode);
+    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
+    const vendorNameForCode = vendorNameNormalized.replace(/\s+/g, '_');
+    
+    // Check if a ledger exists for this vendor by name (more reliable than code)
+    const existingLedger = chartOfAccounts.find(acc => {
+      if (!acc.code.startsWith('L2005002_')) return false;
+      
+      // Check by account name - extract vendor name from "HK MATERIAL VENDOR - {VendorName}"
+      const accountName = (acc.name || '').toLowerCase();
+      if (accountName.includes('hk material vendor')) {
+        // Extract vendor name from account name
+        const vendorInAccountName = accountName.replace('hk material vendor -', '').trim();
+        if (vendorInAccountName === vendorNameNormalized || 
+            vendorInAccountName.replace(/\s+/g, '_') === vendorNameForCode) {
+          return true;
+        }
+      }
+      
+      // Also check by code pattern (vendor name in code after the number)
+      // Format: L2005002_XXX_Vendor_Name_Here
+      const parts = acc.code.split('_');
+      if (parts.length >= 3) {
+        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
+        if (vendorNameInCode === vendorNameForCode) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    return !!existingLedger;
   } catch (error) {
     console.error('Error checking HK Material vendor ledger:', error);
     return false;
@@ -1648,15 +1688,39 @@ export const checkHKMaterialVendorLedgerExists = (vendorName) => {
 export const getHKMaterialVendorGLCode = (vendorName) => {
   try {
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    const vendorNameNormalized = vendorName.replace(/\s+/g, '_');
+    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
+    const vendorNameForCode = vendorNameNormalized.replace(/\s+/g, '_');
     
-    // Find existing ledger for this vendor
-    const existingLedger = chartOfAccounts.find(acc => 
-      acc.code.startsWith('L2005002_') && 
-      acc.code.endsWith(`_${vendorNameNormalized}`)
-    );
+    // Find existing ledger for this vendor by name (more reliable)
+    const existingLedger = chartOfAccounts.find(acc => {
+      if (!acc.code.startsWith('L2005002_')) return false;
+      
+      // Check by account name - extract vendor name from "HK MATERIAL VENDOR - {VendorName}"
+      const accountName = (acc.name || '').toLowerCase();
+      if (accountName.includes('hk material vendor')) {
+        // Extract vendor name from account name
+        const vendorInAccountName = accountName.replace('hk material vendor -', '').trim();
+        if (vendorInAccountName === vendorNameNormalized || 
+            vendorInAccountName.replace(/\s+/g, '_') === vendorNameForCode) {
+          return true;
+        }
+      }
+      
+      // Also check by code pattern (vendor name in code after the number)
+      // Format: L2005002_XXX_Vendor_Name_Here
+      const parts = acc.code.split('_');
+      if (parts.length >= 3) {
+        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
+        if (vendorNameInCode === vendorNameForCode) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
     
     if (existingLedger) {
+      console.log(`✅ Found existing HK Material vendor ledger: ${existingLedger.code} for ${vendorName}`);
       return existingLedger.code;
     }
     
@@ -1757,6 +1821,11 @@ export const processHKMaterialInvoice = (invoice, bankData) => {
       throw new Error('Invalid invoice amount');
     }
     
+    // ✅ Validate GST Rate
+    if (!invoice.gstRate || invoice.gstRate <= 0) {
+      throw new Error('Invalid GST rate');
+    }
+    
     // Check/create HK Material Vendor ledger
     let vendorGLCode = getHKMaterialVendorGLCode(invoice.vendorName);
     
@@ -1766,13 +1835,31 @@ export const processHKMaterialInvoice = (invoice, bankData) => {
     } else {
       console.log(`✅ Using existing HK Material Vendor ledger: ${vendorGLCode}`);
     }
+    
     const expenseGLCode = "X1001004001"; // HK MATERIALS expense account
     
-    // Calculate amounts
-    const taxableAmount = Math.round(invoice.totalAmount / (1 + (invoice.gstRate / 100)));
-    const gstAmount = invoice.totalAmount - taxableAmount;
-    const cgstAmount = Math.floor(gstAmount / 2);
-    const sgstAmount = gstAmount - cgstAmount;
+    // ✅ IMPROVED GST CALCULATION
+    const totalAmount = parseFloat(invoice.totalAmount);
+    const gstRate = parseFloat(invoice.gstRate);
+    
+    // Calculate taxable amount (base amount before GST)
+    const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
+    
+    // Calculate total GST (ensure it matches total - taxable)
+    const totalGST = totalAmount - taxableAmount;
+    
+    // Split GST equally for CGST and SGST
+    const halfGST = totalGST / 2;
+    const cgstAmount = Math.round(halfGST * 100) / 100; // Round to 2 decimals
+    const sgstAmount = totalGST - cgstAmount; // Remainder ensures total matches
+    
+    // ✅ Validation check
+    const calculatedTotal = taxableAmount + cgstAmount + sgstAmount;
+    if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+      console.warn(`⚠️ GST calculation mismatch: Expected ${totalAmount}, Got ${calculatedTotal}`);
+    }
+    
+    console.log(`📊 GST Breakdown: Taxable: ₹${taxableAmount}, CGST: ₹${cgstAmount}, SGST: ₹${sgstAmount}`);
     
     // Generate voucher number
     const voucherNo = generateHKMaterialVoucherNumber();
@@ -1805,9 +1892,15 @@ export const processHKMaterialInvoice = (invoice, bankData) => {
       transactionId: postResult.transaction.id,
       vendorGLCode: vendorGLCode,
       expenseGLCode: expenseGLCode,
-      amount: parseFloat(invoice.totalAmount),
+      amount: totalAmount,
       vendorName: invoice.vendorName,
-      message: `HK Material invoice processed successfully - ₹${parseFloat(invoice.totalAmount).toLocaleString()}`
+      breakdown: {
+        taxable: taxableAmount,
+        cgst: cgstAmount,
+        sgst: sgstAmount,
+        total: totalAmount
+      },
+      message: `HK Material invoice processed successfully - ₹${totalAmount.toLocaleString()}`
     };
     
   } catch (error) {
