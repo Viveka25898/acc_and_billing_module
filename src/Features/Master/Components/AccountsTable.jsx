@@ -206,10 +206,19 @@ const handleAccountClick = (account) => {
         account.name.toLowerCase().includes('hk material vendor') ||
         (account.parentAccount && account.parentAccount.toLowerCase().includes('hk material'));
       
-      // 13. Rent Vendor (Owner) Ledger Account - robust detection (exclude HK Material vendors)
+      // 12A. Prepaid Uniform Vendor (Check BEFORE Fixed Asset Vendor)
+      const isPrepaidUniformVendorAccount =
+        account.code.startsWith("L2005004_") ||
+        account.parentCode === "L2005004" ||
+        account.name.toLowerCase().includes('uniform vendor') ||
+        account.name.toLowerCase().includes('prepaid vendor') ||
+        (account.parentAccount && account.parentAccount.toLowerCase().includes('uniform procurement'));
+      
+      // 13. Rent Vendor (Owner) Ledger Account - robust detection (exclude HK Material and Prepaid Uniform vendors)
       const parentHasRent = (account.parentAccount || '').toLowerCase().includes('rent');
       const isRentVendorAccount =
         !isHKVendorAccount && // Exclude HK Material vendors
+        !isPrepaidUniformVendorAccount && // Exclude Prepaid Uniform vendors
         account.code.startsWith("L2005") &&
         (
           parentHasRent ||
@@ -241,8 +250,18 @@ const handleAccountClick = (account) => {
           account.name.toLowerCase().includes('fixed asset');
 
 
-        
+        // 15. Uniform Prepaid Expense Account (Your New Account)
+            const isUniformPrepaidExpenseAccount =
+              account.code === "A3005001" ||
+              account.name.toLowerCase().includes("uniform") ||
+              account.parentAccount?.toLowerCase().includes("prepaid expenses");
             
+        // 16. Uniform Expense Account (Expense side)
+              const isUniformExpenseAccount =
+                account.code === "X2001004" || // Actual Code
+                account.name.toLowerCase().includes("uniform expense") ||
+                account.parentAccount?.toLowerCase().includes("branch management");
+                          
             
     // NAVIGATION LOGIC - PRIORITY ORDER
     console.log('🎯 Account Classification:', {
@@ -289,6 +308,11 @@ const handleAccountClick = (account) => {
     else if (isHKVendorAccount) {
       console.log("✅ Navigating to HK Vendor Ledger");
       navigate(`/dashboard/account-manager/hk-vendor-ledger/${account.code}`);
+    }
+    // Prepaid Uniform Vendor (under L2005004)
+    else if (isPrepaidUniformVendorAccount) {
+      console.log('✅ Navigating to Prepaid Uniform Vendor Ledger');
+      navigate(`/dashboard/account-manager/prepaid-uniform-vendor-ledger/${account.code}`);
     }
     // Fixed Asset Vendor (under L2005003)
     else if (
@@ -344,6 +368,14 @@ const handleAccountClick = (account) => {
         console.log("✅ Navigating to IGST Input Ledger");
         navigate(`/dashboard/account-manager/igst-input-ledger`);
       }
+      else if (isUniformExpenseAccount) {
+          console.log("✅ Navigating to Uniform Expense Ledger");
+          navigate(`/dashboard/account-manager/uniform-expense-ledger`);
+        }
+      else if (isUniformPrepaidExpenseAccount) {
+          console.log("✅ Navigating to Uniform Prepaid Expense Ledger");
+          navigate(`/dashboard/account-manager/fa-uniform-expense`);
+        }
       
      
     else {

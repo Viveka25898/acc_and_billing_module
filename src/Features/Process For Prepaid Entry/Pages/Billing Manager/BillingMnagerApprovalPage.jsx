@@ -5,6 +5,7 @@ import BillingManagerModal from "../../Components/BillingManagerModal";
 import PurchaseVoucherModal from "../../Components/PurchaseVoucherModal";
 import JournalVoucherModal from "../../Components/JournalVoucherModal";
 import { toast } from "react-toastify";
+import { processPrepaidUniformInvoice } from "../../../Master/utils/accountingHelpers";
 
 export default function BillingManagerApprovalPage() {
   const [filterText, setFilterText] = useState("");
@@ -158,16 +159,36 @@ Invoice Processing Summary:
     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
     const timestamp = new Date().toISOString();
 
-    // Update local state first
+    // Find the invoice to approve
+    const invoiceToApprove = invoices.find(inv => inv.id === id);
+    if (!invoiceToApprove) {
+      toast.error("Invoice not found!");
+      return;
+    }
+
+    // Process Prepaid Uniform invoice - automatically create Purchase Voucher and ledger entries
+    const glResult = processPrepaidUniformInvoice(invoiceToApprove);
+    
+    if (!glResult.success) {
+      toast.error(`Failed to process invoice: ${glResult.error}`);
+      return;
+    }
+
+    // Update local state with approval and GL result
     const updated = invoices.map((inv) => {
       if (inv.id === id) {
         return {
           ...inv,
           billingManagerStatus: "Approved",
-          bmRemarks: "Approved for Purchase and Journal Entry",
+          bmRemarks: `Approved - Purchase Voucher ${glResult.purchaseVoucherNo} created`,
           processedByBM: currentUser.username || "bm1",
           processedAtBM: timestamp,
-          approved: true
+          approved: true,
+          purchaseVoucherNo: glResult.purchaseVoucherNo,
+          purchaseTransactionId: glResult.purchaseTransactionId,
+          vendorGLCode: glResult.vendorGLCode,
+          uniformPrepaidGLCode: glResult.uniformPrepaidGLCode,
+          accountingResult: glResult
         };
       }
       return inv;
@@ -183,10 +204,15 @@ Invoice Processing Summary:
         return {
           ...inv,
           billingManagerStatus: "Approved",
-          bmRemarks: "Approved for Purchase and Journal Entry",
+          bmRemarks: `Approved - Purchase Voucher ${glResult.purchaseVoucherNo} created`,
           processedByBM: currentUser.username || "bm1",
           processedAtBM: timestamp,
-          approved: true
+          approved: true,
+          purchaseVoucherNo: glResult.purchaseVoucherNo,
+          purchaseTransactionId: glResult.purchaseTransactionId,
+          vendorGLCode: glResult.vendorGLCode,
+          uniformPrepaidGLCode: glResult.uniformPrepaidGLCode,
+          accountingResult: glResult
         };
       }
       return inv;
@@ -202,14 +228,14 @@ Invoice Processing Summary:
       const finalProcessed = JSON.parse(localStorage.getItem("final_processed_invoices") || "[]");
       const finalInvoice = {
         ...approvedInvoice,
-        finalStatus: "Completed - Vouchers Created",
+        finalStatus: "Completed - Purchase Voucher Created",
         completedAt: timestamp
       };
       
       const updatedFinalProcessed = [...finalProcessed, finalInvoice];
       localStorage.setItem("final_processed_invoices", JSON.stringify(updatedFinalProcessed));
       
-      toast.success(`Invoice ${approvedInvoice.invoiceNumber} approved! Purchase and Journal vouchers will be created.`);
+      toast.success(`Invoice ${approvedInvoice.invoiceNumber} approved! Purchase Voucher ${glResult.purchaseVoucherNo} created successfully.`);
     }
   };
 

@@ -161,6 +161,9 @@ import RentVendorLedgerPage from "../Features/Master/Rent Vendor/Pages/RentVendo
 import HKVendorLedgerPage from "../Features/Master/Process For HK Material/Pages/HKVendorLedgerPage"
 import FixedAssetLedgerPage from "../Features/Master/Process for Fixed Assets/Pages/FixedAssetLedgerPage"
 import FAVendorLedgerPage from "../Features/Master/Process for Fixed Assets/Pages/FAVendorLedgerPage"
+import UniformPrepaidExpenseLedger from "../Features/Master/Process of Prepaid/Pages/UniformPrepaidExpenseLedgerPage"
+import UniformExpenseLedgerPage from "../Features/Master/Process of Prepaid/Pages/UniformExpenseLedgerPage"
+import PrepaidUniformVendorLedgerPage from "../Features/Master/Process of Prepaid/Pages/PrepaidUniformVendorLedgerPage"
 
 
 export const router=createBrowserRouter([
@@ -906,14 +909,19 @@ export const router=createBrowserRouter([
             {
             path: "fa-vendor-ledger/:accountCode",
             element: <FAVendorLedgerPage/>
+            },
+            {
+            path: "prepaid-uniform-vendor-ledger/:accountCode",
+            element: <PrepaidUniformVendorLedgerPage/>
+            },
+            {
+            path:"fa-uniform-expense",
+            element:<UniformPrepaidExpenseLedger/>
+            },
+            {
+            path: "uniform-expense-ledger",
+            element: <UniformExpenseLedgerPage />,
             }
-
         ]
     },
-
-    
-
-    {
-
-    }
 ])

@@ -2312,6 +2312,345 @@ export const processFixedAssetInvoice = (invoice) => {
 };
 
 /**
+ * ========================================
+ * PREPAID UNIFORM (UNIFORM PROCUREMENT) FUNCTIONS
+ * ========================================
+ */
+
+/**
+ * Get Prepaid Uniform vendor GL code by vendor name
+ */
+export const getPrepaidUniformVendorGLCode = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
+    const vendorNameForCode = vendorName.trim().replace(/\s+/g, '_').toLowerCase();
+    
+    // Find existing ledger for this vendor by name (under L2005004)
+    const existingLedger = chartOfAccounts.find(acc => {
+      if (!acc.code.startsWith('L2005004_')) return false;
+      
+      // Check by account name - extract vendor name from "UNIFORM VENDOR - {VendorName}"
+      const accountName = (acc.name || '').toLowerCase();
+      if (accountName.includes('uniform vendor -') || accountName.includes('prepaid vendor -')) {
+        const vendorInAccountName = accountName.replace('uniform vendor -', '').replace('prepaid vendor -', '').trim();
+        if (vendorInAccountName === vendorNameNormalized) {
+          return true;
+        }
+      }
+      
+      // Also check by code pattern (vendor name in code after the number)
+      const parts = acc.code.split('_');
+      if (parts.length >= 3) {
+        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
+        if (vendorNameInCode === vendorNameForCode) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    if (existingLedger) {
+      console.log(`✅ Found existing Prepaid Uniform vendor ledger: ${existingLedger.code} for ${vendorName}`);
+      return existingLedger.code;
+    }
+    
+    // If not found, return null (will need to create)
+    return null;
+  } catch (error) {
+    console.error('Error getting Prepaid Uniform vendor GL code:', error);
+    return null;
+  }
+};
+
+/**
+ * Generate Prepaid Uniform vendor GL code (L2005004_XXX_VendorName format)
+ */
+export const generatePrepaidUniformVendorGLCode = (vendorName) => {
+  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+  const vendorNameNormalized = vendorName.trim().replace(/\s+/g, '_');
+  
+  // Find all existing Prepaid Uniform vendor GL codes (L2005004_*)
+  const vendorGLs = chartOfAccounts
+    .filter(acc => acc.code.startsWith('L2005004_'))
+    .map(acc => {
+      const parts = acc.code.split('_');
+      if (parts.length >= 2) {
+        const numberPart = parseInt(parts[1], 10);
+        return isNaN(numberPart) ? 0 : numberPart;
+      }
+      return 0;
+    })
+    .filter(num => !isNaN(num) && num > 0);
+  
+  const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
+  const nextNumber = lastNumber + 1;
+  
+  const vendorCode = String(nextNumber).padStart(3, '0');
+  
+  // Format: L2005004_001_Vendor_Name
+  return `L2005004_${vendorCode}_${vendorNameNormalized}`;
+};
+
+/**
+ * Create Prepaid Uniform vendor ledger (L2005004_XXX_VendorName format)
+ */
+export const createPrepaidUniformVendorLedger = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    
+    // First check if a ledger already exists for this vendor by name
+    const existingLedger = getPrepaidUniformVendorGLCode(vendorName);
+    if (existingLedger) {
+      console.log(`⚠️ Prepaid Uniform Vendor ledger already exists for ${vendorName}: ${existingLedger}`);
+      return existingLedger;
+    }
+    
+    // Generate new GL code only if vendor doesn't exist
+    const glCode = generatePrepaidUniformVendorGLCode(vendorName);
+    
+    // Double-check the generated code doesn't exist (safety check)
+    if (chartOfAccounts.some(acc => acc.code === glCode)) {
+      console.log(`⚠️ Prepaid Uniform Vendor ledger ${glCode} already exists`);
+      return glCode;
+    }
+    
+    const newLedger = {
+      id: `PREPAID_UNIFORM_VENDOR_${Date.now()}_${vendorName.replace(/\s+/g, '_')}`,
+      code: glCode,
+      name: `UNIFORM VENDOR - ${vendorName}`,
+      type: "ACCOUNT",
+      parentAccount: "UNIFORM PROCUREMENT",
+      parentCode: "L2005004",
+      accountCategory: "LIABILITIES",
+      debitCreditNature: "CREDIT",
+      openingBalance: 0,
+      currentBalance: 0,
+      isActive: true
+    };
+    
+    chartOfAccounts.push(newLedger);
+    
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to save chart of accounts');
+    }
+    
+    console.log(`✅ Created Prepaid Uniform Vendor ledger: ${glCode} for ${vendorName}`);
+    return glCode;
+  } catch (error) {
+    console.error('❌ Error creating Prepaid Uniform Vendor ledger:', error);
+    throw new Error(`Failed to create Prepaid Uniform Vendor ledger: ${error.message}`);
+  }
+};
+
+/**
+ * Generate Prepaid Uniform voucher number
+ */
+export const generatePrepaidUniformVoucherNumber = () => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `PREPAID/PUR/${year}`;
+    
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+    
+    console.log(`🎫 Generated Prepaid Uniform voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating Prepaid Uniform voucher:', error);
+    throw new Error(`Failed to generate Prepaid Uniform voucher: ${error.message}`);
+  }
+};
+
+/**
+ * Create Prepaid Uniform Purchase Voucher transaction
+ */
+export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo, taxableAmount, cgstAmount, sgstAmount) => {
+  try {
+    return {
+      id: `TXN_PREPAID_UNIFORM_${Date.now()}_${invoice.id}`,
+      voucherNo: voucherNo,
+      voucherType: "Purchase Voucher",
+      date: getCurrentDate(),
+      invoiceNumber: invoice.invoiceNumber,
+      
+      entries: [
+        {
+          lineNo: 1,
+          glCode: "A3005001",
+          glName: "UNIFORM EXPENSE",
+          debit: taxableAmount,
+          credit: 0,
+          narration: `Prepaid Uniform purchase - ${invoice.vendorName}`,
+          vendorId: invoice.vendorName,
+          costCenter: invoice.site || "Operations",
+          prepaidPeriod: invoice.prepaidPeriod || 12,
+          prepaidStartMonth: invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7)
+        },
+        {
+          lineNo: 2,
+          glCode: "A3007001001",
+          glName: "CGST Input",
+          debit: cgstAmount,
+          credit: 0,
+          narration: `CGST @${invoice.gstRate/2}% on Prepaid Uniform`
+        },
+        {
+          lineNo: 3,
+          glCode: "A3007001002",
+          glName: "SGST Input", 
+          debit: sgstAmount,
+          credit: 0,
+          narration: `SGST @${invoice.gstRate/2}% on Prepaid Uniform`
+        },
+        {
+          lineNo: 4,
+          glCode: vendorGLCode,
+          glName: `UNIFORM VENDOR - ${invoice.vendorName}`,
+          debit: 0,
+          credit: invoice.totalAmount,
+          narration: `Invoice ${invoice.invoiceNumber} - Prepaid Uniform`
+        }
+      ],
+      
+      totalDebit: invoice.totalAmount,
+      totalCredit: invoice.totalAmount,
+      narration: `Prepaid Uniform purchase from ${invoice.vendorName}`,
+      approvedBy: invoice.processedByBM || "bm1",
+      approvedDate: new Date().toISOString(),
+      prepaidDetails: {
+        prepaidPeriod: invoice.prepaidPeriod || 12,
+        prepaidStartMonth: invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7),
+        monthlyAmortization: invoice.monthlyAmortization || (taxableAmount / (invoice.prepaidPeriod || 12))
+      }
+    };
+  } catch (error) {
+    console.error('Error creating Prepaid Uniform transaction:', error);
+    throw new Error(`Failed to create Prepaid Uniform transaction: ${error.message}`);
+  }
+};
+
+/**
+ * Process Prepaid Uniform invoice - Automatic GL posting
+ * This function creates both Purchase Voucher and initial Prepaid JV entry
+ */
+export const processPrepaidUniformInvoice = (invoice) => {
+  try {
+    console.log('🚀 Starting Prepaid Uniform invoice processing...');
+    
+    // Validate inputs
+    if (!invoice.vendorName) {
+      throw new Error('Vendor name is required for Prepaid Uniform invoice');
+    }
+    
+    if (!invoice.totalAmount || parseFloat(invoice.totalAmount) <= 0) {
+      throw new Error('Invalid invoice amount');
+    }
+    
+    // Validate GST Rate
+    if (!invoice.gstRate || invoice.gstRate <= 0) {
+      throw new Error('Invalid GST rate');
+    }
+    
+    // Check/create Prepaid Uniform Vendor ledger (L2005004)
+    let vendorGLCode = getPrepaidUniformVendorGLCode(invoice.vendorName);
+    
+    if (!vendorGLCode) {
+      console.log(`📝 Creating Prepaid Uniform Vendor ledger for ${invoice.vendorName}...`);
+      vendorGLCode = createPrepaidUniformVendorLedger(invoice.vendorName);
+    } else {
+      console.log(`✅ Using existing Prepaid Uniform Vendor ledger: ${vendorGLCode}`);
+    }
+    
+    // GST CALCULATION
+    const totalAmount = parseFloat(invoice.totalAmount);
+    const gstRate = parseFloat(invoice.gstRate);
+    
+    // Calculate taxable amount (base amount before GST)
+    const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
+    
+    // Calculate total GST (ensure it matches total - taxable)
+    const totalGST = totalAmount - taxableAmount;
+    
+    // Split GST equally for CGST and SGST
+    const halfGST = totalGST / 2;
+    const cgstAmount = Math.round(halfGST * 100) / 100; // Round to 2 decimals
+    const sgstAmount = totalGST - cgstAmount; // Remainder ensures total matches
+    
+    // Validation check
+    const calculatedTotal = taxableAmount + cgstAmount + sgstAmount;
+    if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+      console.warn(`⚠️ GST calculation mismatch: Expected ${totalAmount}, Got ${calculatedTotal}`);
+    }
+    
+    console.log(`💰 Amount breakdown: Taxable=${taxableAmount}, CGST=${cgstAmount}, SGST=${sgstAmount}, Total=${totalAmount}`);
+    
+    // Generate voucher number for Purchase Voucher
+    const purchaseVoucherNo = generatePrepaidUniformVoucherNumber();
+    
+    // Create and post Purchase Voucher transaction
+    const purchaseTransaction = createPrepaidUniformTransaction(
+      invoice, 
+      vendorGLCode, 
+      purchaseVoucherNo,
+      taxableAmount,
+      cgstAmount,
+      sgstAmount
+    );
+    
+    const postPurchaseResult = postTransaction(purchaseTransaction);
+    if (!postPurchaseResult.success) {
+      throw new Error(postPurchaseResult.error);
+    }
+    
+    // Update ledger balances for Purchase Voucher
+    updateLedgerBalances(purchaseTransaction.entries);
+    
+    console.log('✅ Prepaid Uniform Purchase Voucher posted successfully!');
+    
+    // Note: Monthly amortization JV will be created separately via button click
+    // The initial setup is complete with the Purchase Voucher
+    
+    return {
+      success: true,
+      purchaseVoucherNo: purchaseVoucherNo,
+      purchaseTransactionId: postPurchaseResult.transaction.id,
+      vendorGLCode: vendorGLCode,
+      uniformPrepaidGLCode: "A3005001",
+      uniformPrepaidGLName: "UNIFORM EXPENSE",
+      amount: totalAmount,
+      vendorName: invoice.vendorName,
+      breakdown: {
+        taxable: taxableAmount,
+        cgst: cgstAmount,
+        sgst: sgstAmount,
+        total: totalAmount
+      },
+      prepaidDetails: {
+        prepaidPeriod: invoice.prepaidPeriod || 12,
+        prepaidStartMonth: invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7),
+        monthlyAmortization: invoice.monthlyAmortization || (taxableAmount / (invoice.prepaidPeriod || 12))
+      },
+      message: `Prepaid Uniform invoice processed successfully - ₹${totalAmount.toLocaleString()}`
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR in processPrepaidUniformInvoice:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process Prepaid Uniform invoice: ${error.message}`
+    };
+  }
+};
+
+/**
  * Validate reliever request data
  */
 export const validateRelieverRequest = (relieverRequest) => {
@@ -2354,6 +2693,13 @@ export default {
   processRelieverPaymentApproval, 
   processMultipleRelieverPayments,
   processRentApproval,
+  processFixedAssetInvoice,
+  processPrepaidUniformInvoice,
+  createPrepaidUniformVendorLedger,
+  getPrepaidUniformVendorGLCode,
+  generatePrepaidUniformVendorGLCode,
+  createPrepaidUniformTransaction,
+  generatePrepaidUniformVoucherNumber
 
 
 };
