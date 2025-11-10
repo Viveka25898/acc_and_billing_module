@@ -64,6 +64,7 @@ const InvoiceReviewPage = () => {
           { name: "PO-002", url: "https://example.com/po-002.pdf" }
         ],
         assetDetails: {
+          assetCategory: "Computer",
           assetTag: "FA-2024-001",
           serialNumber: "SN-AX2390",
           warranty: "3 Years",
@@ -91,6 +92,7 @@ const InvoiceReviewPage = () => {
           { name: "PO-002", url: "https://example.com/po-002.pdf" }
         ],
         assetDetails: {
+          assetCategory: "Machinery",
           assetTag: "FA-2024-002",
           serialNumber: "SN-BX4591",
           warranty: "2 Years",
@@ -139,6 +141,7 @@ const InvoiceReviewPage = () => {
           { name: "PO-002", url: "https://example.com/po-002.pdf" }
         ],
         assetDetails: {
+          assetCategory: "Office Equipment",
           assetTag: "FA-2024-003",
           serialNumber: "SN-CY1234",
           warranty: "5 Years",
@@ -264,7 +267,11 @@ const InvoiceReviewPage = () => {
     };
     
     if (randomType === "Fixed Asset") {
+      const assetCategories = ["Computer", "Machinery", "Furniture", "Software", "Office Equipment"];
+      const randomCategory = assetCategories[Math.floor(Math.random() * assetCategories.length)];
+      
       newInvoice.assetDetails = {
+        assetCategory: randomCategory,
         assetTag: `FA-2024-${String(currentCounter).padStart(3, '0')}`,
         serialNumber: `SN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
         warranty: `${Math.floor(Math.random() * 5) + 1} Years`,

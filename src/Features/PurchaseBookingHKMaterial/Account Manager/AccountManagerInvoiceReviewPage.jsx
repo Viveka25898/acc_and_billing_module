@@ -1147,7 +1147,7 @@ import { useNavigate } from "react-router-dom";
 import AMInvoiceFilter from "./AccountManagerInvoiceFilter";
 import AMInvoiceVerifyModal from "./AccountManagerInvoiceVerifyModal";
 import InvoiceJVDisplay from "../Components/InvoiceJVDisplay";
-import { processHKMaterialInvoice } from "../../Master/utils/accountingHelpers";
+import { processHKMaterialInvoice, processFixedAssetInvoice } from "../../Master/utils/accountingHelpers";
 
 // Prepaid Period Selection Modal Component
 const PrepaidPeriodModal = ({ invoice, onClose, onConfirm }) => {
@@ -1556,41 +1556,59 @@ const handleUpdateInvoice = async (id, status, remark = "") => {
       
     } else if (invoiceToUpdate.type === "Fixed Asset") {
       // ========================================
-      // FIXED ASSET - KEEP EXISTING BUTTON LOGIC
+      // FIXED ASSET - AUTO GL POSTING
       // ========================================
-      const updatedLocalInvoices = invoices.map(inv => {
-        if (inv.id === id) {
-          return {
-            ...inv,
+      try {
+        // Process Fixed Asset invoice with auto-GL posting
+        const glResult = await processFixedAssetInvoice(invoiceToUpdate);
+        
+        if (glResult.success) {
+          // Move to processed queue with GL reference
+          const processedInvoices = JSON.parse(localStorage.getItem("processed_invoices") || "[]");
+          const processedInvoice = {
+            ...invoiceToUpdate,
             accountManagerStatus: "Approved",
-            amRemarks: remark,
+            finalStatus: "GL Posted - Completed",
+            amRemarks: remark || `Fixed Asset invoice processed with auto-GL posting - ${glResult.assetCategory}`,
             processedByAM: currentUser.username || "am1",
             processedAtAM: timestamp,
-            showButtons: true // Flag to show buttons temporarily
+            voucher_id: glResult.voucherNo,
+            vendor_gl_code: glResult.vendorGLCode,
+            fixed_asset_gl_code: glResult.fixedAssetGLCode,
+            fixed_asset_gl_name: glResult.fixedAssetGLName,
+            asset_category: glResult.assetCategory,
+            gl_entries: glResult.transactionId,
+            accounting_result: glResult
           };
+          
+          const updatedProcessedQueue = [...processedInvoices, processedInvoice];
+          localStorage.setItem("processed_invoices", JSON.stringify(updatedProcessedQueue));
+          
+          // Remove from AM queue
+          const updatedAMQueue = currentAMInvoices.filter(inv => inv.id !== id);
+          localStorage.setItem("pending_am_invoices", JSON.stringify(updatedAMQueue));
+          
+          // Update local state
+          setInvoices(updatedAMQueue);
+          setFilteredInvoices(updatedAMQueue);
+          
+          // Show success message
+          alert(`✅ Fixed Asset invoice ${invoiceToUpdate.invoiceNumber} approved and GL entries posted!\nVoucher: ${glResult.voucherNo}\nFixed Asset GL: ${glResult.fixedAssetGLCode} (${glResult.fixedAssetGLName})\nVendor GL: ${glResult.vendorGLCode}`);
+          
+          closeModal();
+          return;
+        } else {
+          // GL posting failed - keep invoice in AM queue and show error
+          alert(`❌ Fixed Asset invoice approval failed: ${glResult.message}\nInvoice remains in queue for retry.`);
+          // Don't close modal - let user see the error and potentially retry
+          return;
         }
-        return inv;
-      });
-
-      setInvoices(updatedLocalInvoices);
-      setFilteredInvoices(updatedLocalInvoices);
-
-      // Find the updated invoice for JV preparation
-      const updatedInvoice = updatedLocalInvoices.find(inv => inv.id === id);
-      
-      // Close the verify modal first
-      closeModal();
-      
-      // Prepare JV data for Fixed Asset
-      if (updatedInvoice) {
-        const jvDataPrepared = prepareJVData(updatedInvoice);
-        setTimeout(() => {
-          setJvData(jvDataPrepared);
-          setIsJVModalOpen(true);
-        }, 300);
+        
+      } catch (error) {
+        console.error('❌ Error in Fixed Asset approval:', error);
+        alert(`❌ Fixed Asset invoice approval failed: ${error.message}\nInvoice remains in queue.`);
+        return; // Keep invoice in queue
       }
-
-      alert(`Fixed Asset invoice ${updatedInvoice.invoiceNumber} approved! Use the Fixed Asset Entry button to complete processing.`);
     }
     
   } else if (status === "Rejected") {
@@ -1642,59 +1660,8 @@ const handleUpdateInvoice = async (id, status, remark = "") => {
     setCurrentPage(1);
   };
 
-  // Function to handle button clicks and complete invoice processing
-  const handleButtonClick = (buttonType, invoice) => {
-    if (buttonType === "purchase") {
-      // For Material invoices - open Purchase Entry form
-      navigate(`/dashboard/account-manager/invoice-purchase-entry/${invoice.id}`, {
-        state: { invoice: invoice },
-      });
-      
-      // After navigation, complete the processing
-      completeInvoiceProcessing(invoice, "Purchase Entry Completed");
-      
-    } else if (buttonType === "asset") {
-      // For Fixed Asset invoices - open Fixed Asset Entry form
-      navigate(`/dashboard/account-manager/fixed-asset-entry/${invoice.id}`, {
-        state: { invoice: invoice },
-      });
-      
-      // After navigation, complete the processing
-      completeInvoiceProcessing(invoice, "Fixed Asset Entry Completed");
-    }
-  };
-
-  // Complete invoice processing after form submission
-  const completeInvoiceProcessing = (invoice, completionStatus) => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const timestamp = new Date().toISOString();
-
-    // Move invoice to final processed queue
-    const processedInvoices = JSON.parse(localStorage.getItem("processed_invoices") || "[]");
-    const finalProcessedInvoice = {
-      ...invoice,
-      finalStatus: "Completed",
-      completionStatus: completionStatus,
-      completedByAM: currentUser.username || "am1",
-      completedAtAM: timestamp
-    };
-    
-    const updatedProcessedQueue = [...processedInvoices, finalProcessedInvoice];
-    localStorage.setItem("processed_invoices", JSON.stringify(updatedProcessedQueue));
-
-    // Remove from current AM queue after a delay to allow navigation
-    setTimeout(() => {
-      // Get current AM queue
-      const currentAMInvoices = JSON.parse(localStorage.getItem("pending_am_invoices") || "[]");
-      const updatedAMQueue = currentAMInvoices.filter(inv => inv.id !== invoice.id);
-      localStorage.setItem("pending_am_invoices", JSON.stringify(updatedAMQueue));
-
-      // Update local state
-      const updatedInvoices = invoices.filter(inv => inv.id !== invoice.id);
-      setInvoices(updatedInvoices);
-      setFilteredInvoices(updatedInvoices);
-    }, 2000); // 2 second delay to allow navigation
-  };
+  // Note: Fixed Asset invoices are now automatically processed on approval
+  // No need for manual button clicks - GL entries are posted automatically
 
   // Close prepaid modal handler
   const closePrepaidModal = () => {
@@ -1817,13 +1784,11 @@ const handleUpdateInvoice = async (id, status, remark = "") => {
                         <span className="bg-green-200 rounded-full px-2 py-1 text-xs">
                           Approved
                         </span>
-                        {inv.type === "Fixed Asset" && inv.showButtons && (
-                          <button
-                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-2 py-1 rounded cursor-pointer"
-                            onClick={() => handleButtonClick("asset", inv)}
-                          >
-                            Fixed Asset Entry
-                          </button>
+                        {/* Fixed Asset invoices are now automatically processed - no button needed */}
+                        {inv.type === "Fixed Asset" && (
+                          <span className="bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs">
+                            GL Posted
+                          </span>
                         )}
 
                         {/* For Procurement Prepaid, just show status as it goes directly to BM */}

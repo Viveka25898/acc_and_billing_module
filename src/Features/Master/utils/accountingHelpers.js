@@ -1912,6 +1912,405 @@ export const processHKMaterialInvoice = (invoice, bankData) => {
     };
   }
 };
+
+// ========================================
+// FIXED ASSET INVOICE PROCESSING
+// ========================================
+
+/**
+ * Map asset category to Fixed Asset GL code
+ */
+export const getFixedAssetGLCode = (assetCategory) => {
+  if (!assetCategory) {
+    // Default to FA COMPUTERS if no category specified
+    console.warn('⚠️ No asset category specified, defaulting to A1001 (FA COMPUTERS)');
+    return 'A1001';
+  }
+  
+  const categoryMap = {
+    'computer': 'A1001',
+    'computers': 'A1001',
+    'laptop': 'A1001',
+    'desktop': 'A1001',
+    'furniture': 'A1002',
+    'furniture & fixtures': 'A1002',
+    'furniture and fixtures': 'A1002',
+    'motor car': 'A1003',
+    'motor cars': 'A1003',
+    'vehicle': 'A1003',
+    'vehicles': 'A1003',
+    'software': 'A1004',
+    'softwares': 'A1004',
+    'office equipment': 'A1005',
+    'office equipments': 'A1005',
+    'equipment': 'A1005',
+    'building': 'A1006',
+    'premises': 'A1006',
+    'building & premises': 'A1006',
+    'building and premises': 'A1006',
+    'machinery': 'A1007',
+    'machineries': 'A1007',
+    'machine': 'A1007'
+  };
+  
+  const normalizedCategory = assetCategory.toLowerCase().trim();
+  const glCode = categoryMap[normalizedCategory];
+  
+  if (!glCode) {
+    console.warn(`⚠️ Unknown asset category "${assetCategory}", defaulting to A1001 (FA COMPUTERS)`);
+    return 'A1001'; // Default fallback
+  }
+  
+  return glCode;
+};
+
+/**
+ * Get Fixed Asset GL name from code
+ */
+export const getFixedAssetGLName = (glCode) => {
+  const assetNames = {
+    'A1001': 'FA COMPUTERS',
+    'A1002': 'FA FURNITURE & FIXTURES',
+    'A1003': 'FA MOTOR CARS',
+    'A1004': 'FA SOFTWARES',
+    'A1005': 'FA OFFICE EQUIPMENTS',
+    'A1006': 'FA BUILDING & PREMISES',
+    'A1007': 'FA MACHINERIES'
+  };
+  
+  return assetNames[glCode] || 'FA COMPUTERS';
+};
+
+/**
+ * Create Fixed Asset vendor ledger (L2005-VEN-{code} format)
+ */
+export const createFixedAssetVendorLedger = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    
+    // First check if a ledger already exists for this vendor by name
+    const existingLedger = getFixedAssetVendorGLCode(vendorName);
+    if (existingLedger) {
+      console.log(`⚠️ Fixed Asset Vendor ledger already exists for ${vendorName}: ${existingLedger}`);
+      return existingLedger;
+    }
+    
+    // Generate new GL code only if vendor doesn't exist
+    const glCode = generateFixedAssetVendorGLCode(vendorName);
+    
+    // Double-check the generated code doesn't exist (safety check)
+    if (chartOfAccounts.some(acc => acc.code === glCode)) {
+      console.log(`⚠️ Fixed Asset Vendor ledger ${glCode} already exists`);
+      return glCode;
+    }
+    
+    const newLedger = {
+      id: `FA_VENDOR_${Date.now()}_${vendorName.replace(/\s+/g, '_')}`,
+      code: glCode,
+      name: `FIXED ASSET VENDOR - ${vendorName}`,
+      type: "ACCOUNT",
+      parentAccount: "FIXED ASSET",
+      parentCode: "L2005003",
+      accountCategory: "LIABILITIES",
+      debitCreditNature: "CREDIT",
+      openingBalance: 0,
+      currentBalance: 0,
+      isActive: true
+    };
+    
+    chartOfAccounts.push(newLedger);
+    
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to save chart of accounts');
+    }
+    
+    console.log(`✅ Created Fixed Asset Vendor ledger: ${glCode} for ${vendorName}`);
+    return glCode;
+  } catch (error) {
+    console.error('❌ Error creating Fixed Asset Vendor ledger:', error);
+    throw new Error(`Failed to create Fixed Asset Vendor ledger: ${error.message}`);
+  }
+};
+
+/**
+ * Generate Fixed Asset vendor GL code (L2005-VEN-{code} format)
+ */
+export const generateFixedAssetVendorGLCode = (vendorName) => {
+  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+  const vendorNameNormalized = vendorName.trim().replace(/\s+/g, '_');
+  
+  // Find all existing Fixed Asset vendor GL codes (L2005003_*)
+  const vendorGLs = chartOfAccounts
+    .filter(acc => acc.code.startsWith('L2005003_'))
+    .map(acc => {
+      const parts = acc.code.split('_');
+      if (parts.length >= 2) {
+        const numberPart = parseInt(parts[1], 10);
+        return isNaN(numberPart) ? 0 : numberPart;
+      }
+      return 0;
+    })
+    .filter(num => !isNaN(num) && num > 0);
+  
+  const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
+  const nextNumber = lastNumber + 1;
+  
+  const vendorCode = String(nextNumber).padStart(3, '0');
+  
+  // Format: L2005003_001_Vendor_Name
+  return `L2005003_${vendorCode}_${vendorNameNormalized}`;
+};
+
+/**
+ * Get existing Fixed Asset vendor GL code by vendor name
+ */
+export const getFixedAssetVendorGLCode = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
+    const vendorNameForCode = vendorName.trim().replace(/\s+/g, '_').toLowerCase();
+    
+    // Find existing ledger for this vendor by name (new format only)
+    const existingLedger = chartOfAccounts.find(acc => {
+      if (!acc.code.startsWith('L2005003_')) return false;
+      
+      // Check by account name - extract vendor name from "FIXED ASSET VENDOR - {VendorName}"
+      const accountName = (acc.name || '').toLowerCase();
+      if (accountName.includes('fixed asset vendor -')) {
+        const vendorInAccountName = accountName.replace('fixed asset vendor -', '').trim();
+        if (vendorInAccountName === vendorNameNormalized) {
+          return true;
+        }
+      }
+      
+      // Also check by code pattern (vendor name in code after the number)
+      const parts = acc.code.split('_');
+      if (parts.length >= 3) {
+        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
+        if (vendorNameInCode === vendorNameForCode) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    if (existingLedger) {
+      console.log(`✅ Found existing Fixed Asset vendor ledger: ${existingLedger.code} for ${vendorName}`);
+      return existingLedger.code;
+    }
+    
+    // If not found, return null (will need to create)
+    return null;
+  } catch (error) {
+    console.error('Error getting Fixed Asset vendor GL code:', error);
+    return null;
+  }
+};
+
+/**
+ * Create Fixed Asset transaction
+ */
+export const createFixedAssetTransaction = (invoice, vendorGLCode, fixedAssetGLCode, fixedAssetGLName, voucherNo, taxableAmount, cgstAmount, sgstAmount) => {
+  try {
+    return {
+      id: `TXN_FA_${Date.now()}_${invoice.id}`,
+      voucherNo: voucherNo,
+      voucherType: "Purchase Voucher",
+      date: getCurrentDate(),
+      invoiceNumber: invoice.invoiceNumber,
+      
+      entries: [
+        {
+          lineNo: 1,
+          glCode: fixedAssetGLCode,
+          glName: fixedAssetGLName,
+          debit: taxableAmount,
+          credit: 0,
+          narration: `Fixed Asset purchase - ${invoice.vendorName}`,
+          vendorId: invoice.vendorName,
+          costCenter: invoice.assetDetails?.location || "Operations",
+          assetTag: invoice.assetDetails?.assetTag || '',
+          assetCategory: invoice.assetDetails?.assetCategory || ''
+        },
+        {
+          lineNo: 2,
+          glCode: "A3007001001",
+          glName: "CGST Input",
+          debit: cgstAmount,
+          credit: 0,
+          narration: `CGST @${invoice.gstRate/2}% on Fixed Asset`
+        },
+        {
+          lineNo: 3,
+          glCode: "A3007001002",
+          glName: "SGST Input", 
+          debit: sgstAmount,
+          credit: 0,
+          narration: `SGST @${invoice.gstRate/2}% on Fixed Asset`
+        },
+        {
+          lineNo: 4,
+          glCode: vendorGLCode,
+          glName: `FIXED ASSET VENDOR - ${invoice.vendorName}`,
+          debit: 0,
+          credit: invoice.totalAmount,
+          narration: `Invoice ${invoice.invoiceNumber} - Fixed Asset`
+        }
+      ],
+      
+      totalDebit: invoice.totalAmount,
+      totalCredit: invoice.totalAmount,
+      narration: `Fixed Asset purchase from ${invoice.vendorName} - ${invoice.assetDetails?.assetCategory || 'Asset'}`,
+      approvedBy: invoice.processedByAM || "am1",
+      approvedDate: new Date().toISOString(),
+      assetDetails: invoice.assetDetails || {}
+    };
+  } catch (error) {
+    console.error('Error creating Fixed Asset transaction:', error);
+    throw new Error(`Failed to create Fixed Asset transaction: ${error.message}`);
+  }
+};
+
+/**
+ * Generate Fixed Asset voucher number
+ */
+export const generateFixedAssetVoucherNumber = () => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `FA/PUR/${year}`;
+    
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+    
+    console.log(`🎫 Generated Fixed Asset voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating Fixed Asset voucher:', error);
+    throw new Error(`Failed to generate Fixed Asset voucher: ${error.message}`);
+  }
+};
+
+/**
+ * Process Fixed Asset invoice - Automatic GL posting
+ */
+export const processFixedAssetInvoice = (invoice) => {
+  try {
+    console.log('🚀 Starting Fixed Asset invoice processing...');
+    
+    // Validate inputs
+    if (!invoice.vendorName) {
+      throw new Error('Vendor name is required for Fixed Asset invoice');
+    }
+    
+    if (!invoice.totalAmount || parseFloat(invoice.totalAmount) <= 0) {
+      throw new Error('Invalid invoice amount');
+    }
+    
+    // ✅ Validate GST Rate
+    if (!invoice.gstRate || invoice.gstRate <= 0) {
+      throw new Error('Invalid GST rate');
+    }
+    
+    // Determine Fixed Asset GL code from asset category
+    const assetCategory = invoice.assetDetails?.assetCategory || invoice.assetCategory || 'Computer';
+    const fixedAssetGLCode = getFixedAssetGLCode(assetCategory);
+    const fixedAssetGLName = getFixedAssetGLName(fixedAssetGLCode);
+    
+    console.log(`📦 Asset Category: ${assetCategory} -> GL Code: ${fixedAssetGLCode} (${fixedAssetGLName})`);
+    
+    // Check/create Fixed Asset Vendor ledger
+    let vendorGLCode = getFixedAssetVendorGLCode(invoice.vendorName);
+    
+    if (!vendorGLCode) {
+      console.log(`📝 Creating Fixed Asset Vendor ledger for ${invoice.vendorName}...`);
+      vendorGLCode = createFixedAssetVendorLedger(invoice.vendorName);
+    } else {
+      console.log(`✅ Using existing Fixed Asset Vendor ledger: ${vendorGLCode}`);
+    }
+    
+    // ✅ IMPROVED GST CALCULATION
+    const totalAmount = parseFloat(invoice.totalAmount);
+    const gstRate = parseFloat(invoice.gstRate);
+    
+    // Calculate taxable amount (base amount before GST)
+    const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
+    
+    // Calculate total GST (ensure it matches total - taxable)
+    const totalGST = totalAmount - taxableAmount;
+    
+    // Split GST equally for CGST and SGST
+    const halfGST = totalGST / 2;
+    const cgstAmount = Math.round(halfGST * 100) / 100; // Round to 2 decimals
+    const sgstAmount = totalGST - cgstAmount; // Remainder ensures total matches
+    
+    // ✅ Validation check
+    const calculatedTotal = taxableAmount + cgstAmount + sgstAmount;
+    if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+      console.warn(`⚠️ GST calculation mismatch: Expected ${totalAmount}, Got ${calculatedTotal}`);
+    }
+    
+    console.log(`💰 Amount breakdown: Taxable=${taxableAmount}, CGST=${cgstAmount}, SGST=${sgstAmount}, Total=${totalAmount}`);
+    
+    // Generate voucher number
+    const voucherNo = generateFixedAssetVoucherNumber();
+    
+    // Create and post transaction
+    const transaction = createFixedAssetTransaction(
+      invoice, 
+      vendorGLCode, 
+      fixedAssetGLCode,
+      fixedAssetGLName,
+      voucherNo,
+      taxableAmount,
+      cgstAmount,
+      sgstAmount
+    );
+    
+    const postResult = postTransaction(transaction);
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+    
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+    
+    console.log('✅ Fixed Asset invoice processing completed!');
+    
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      vendorGLCode: vendorGLCode,
+      fixedAssetGLCode: fixedAssetGLCode,
+      fixedAssetGLName: fixedAssetGLName,
+      amount: totalAmount,
+      vendorName: invoice.vendorName,
+      assetCategory: assetCategory,
+      breakdown: {
+        taxable: taxableAmount,
+        cgst: cgstAmount,
+        sgst: sgstAmount,
+        total: totalAmount
+      },
+      message: `Fixed Asset invoice processed successfully - ₹${totalAmount.toLocaleString()}`
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR in processFixedAssetInvoice:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process Fixed Asset invoice: ${error.message}`
+    };
+  }
+};
+
 /**
  * Validate reliever request data
  */

@@ -159,6 +159,8 @@ import SGSTInputLedgerPage from "../Features/Master/GST/Pages/SGSTInputLedgerPag
 import IGSTInputLedgerPage from "../Features/Master/GST/Pages/IGSTInputLedgerPage"
 import RentVendorLedgerPage from "../Features/Master/Rent Vendor/Pages/RentVendorLedgerPage"
 import HKVendorLedgerPage from "../Features/Master/Process For HK Material/Pages/HKVendorLedgerPage"
+import FixedAssetLedgerPage from "../Features/Master/Process for Fixed Assets/Pages/FixedAssetLedgerPage"
+import FAVendorLedgerPage from "../Features/Master/Process for Fixed Assets/Pages/FAVendorLedgerPage"
 
 
 export const router=createBrowserRouter([
@@ -895,6 +897,15 @@ export const router=createBrowserRouter([
             {
             path: "hk-vendor-ledger/:accountCode",
             element: <HKVendorLedgerPage />,
+            },
+            {
+            path: "fixed-asset-ledger/:accountCode",
+            element: <FixedAssetLedgerPage/>
+            }
+            ,
+            {
+            path: "fa-vendor-ledger/:accountCode",
+            element: <FAVendorLedgerPage/>
             }
 
         ]

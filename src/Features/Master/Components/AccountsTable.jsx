@@ -220,6 +220,26 @@ const handleAccountClick = (account) => {
           account.name.toLowerCase().includes("branch office rent")
         );
 
+        //14. Fixed Assets
+        // ✅ ADD THIS - Fixed Asset Accounts Detection
+        const isFixedAssetAccount = 
+          account.code === 'A1001' || // FA COMPUTERS
+          account.code === 'A1002' || // FA FURNITURE & FIXTURES
+          account.code === 'A1003' || // FA MOTOR CARS
+          account.code === 'A1004' || // FA SOFTWARES
+          account.code === 'A1005' || // FA OFFICE EQUIPMENTS
+          account.code === 'A1006' || // FA BUILDING & PREMISES
+          account.code === 'A1007' || // FA MACHINERIES
+          account.code.startsWith('A100') || // Any A1xxx Fixed Asset account
+          account.name.toLowerCase().includes('fa computers') ||
+          account.name.toLowerCase().includes('fa furniture') ||
+          account.name.toLowerCase().includes('fa motor cars') ||
+          account.name.toLowerCase().includes('fa softwares') ||
+          account.name.toLowerCase().includes('fa office equipment') ||
+          account.name.toLowerCase().includes('fa building') ||
+          account.name.toLowerCase().includes('fa machineries') ||
+          account.name.toLowerCase().includes('fixed asset');
+
 
         
             
@@ -257,9 +277,27 @@ const handleAccountClick = (account) => {
       console.log('✅ Navigating to Employee Ledger');
       navigate(`/dashboard/account-manager/ledger/${account.code}`);
     } 
+    // Prevent FA Vendor accounts from being treated as Fixed Asset accounts
+    else if (isFixedAssetAccount && !(
+      account.code.startsWith("L2005003_") ||
+      account.parentCode === "L2005003" ||
+      (account.name && account.name.toLowerCase().includes("fixed asset vendor"))
+    )) {
+      console.log('✅ Navigating to Fixed Asset Ledger:', account.code);
+      navigate(`/dashboard/account-manager/fixed-asset-ledger/${account.code}`);
+    }
     else if (isHKVendorAccount) {
       console.log("✅ Navigating to HK Vendor Ledger");
       navigate(`/dashboard/account-manager/hk-vendor-ledger/${account.code}`);
+    }
+    // Fixed Asset Vendor (under L2005003)
+    else if (
+      account.code.startsWith("L2005003_") ||
+      account.parentCode === "L2005003" ||
+      (account.name && account.name.toLowerCase().includes("fixed asset vendor"))
+    ) {
+      console.log('✅ Navigating to FA Vendor Ledger');
+      navigate(`/dashboard/account-manager/fa-vendor-ledger/${account.code}`);
     }
     else if (isRentVendorAccount || (isVendorAccount && hasRentVendorEntries)) {
       console.log('✅ Navigating to Rent Vendor Ledger');
