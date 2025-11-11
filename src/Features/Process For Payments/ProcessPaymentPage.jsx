@@ -1,6 +1,6 @@
 /* eslint-disable no-debugger */
 /* eslint-disable no-unused-vars */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import UploadPaymentFile from "./Components/UploadPaymentFile";
 import PaymentPreviewModal from "./Components/PaymentPreviewModal";
 import EditPaymentDetails from "./Components/EditPaymentDetails";
@@ -11,66 +11,123 @@ import VendorInvoiceTable from "./Components/VendorInvoiceTable";
 import InvoiceViewer from "./Components/InvoiceReviewer";
 import { toast } from "react-toastify";
 import PaymentEntryModal from "./Components/PaymentEntryModal";
+import AEBankSelectionModal from "../Advance Request/Components/AEBankSelectionModal";
+import { processVendorPayments } from "../Master/utils/accountingHelpers";
 
-// Mock data for vendors and invoices - replace with API calls in production
-const mockVendorData = [
-  {
-    id: 1,
-    vendorName: "ABC Suppliers Ltd",
-    debitBankAccountNumber: "123456789012",
-    debitAmount: 40000,
-    currency: "INR",
-    beneficiaryAccountNumber: "987654321001",
-    ifscCode: "HDFC0001234",
-    narration: "ABC Suppliers Ltd",
-    invoices: [
-      { id: 101, invoiceNumber: "INV-2024-001", amount: 15000, documentUrl: "/public/DxotBTxfHn.png" },
-      { id: 102, invoiceNumber: "INV-2024-002", amount: 25000, documentUrl: "/public/DxotBTxfHn.png" },
-    ]
-  },
-  {
-    id: 2,
-    vendorName: "XYZ Services Pvt Ltd",
-    debitBankAccountNumber: "223456789012",
-    debitAmount: 45000,
-    currency: "INR",
-    beneficiaryAccountNumber: "987654321002",
-    ifscCode: "ICIC0005678",
-    narration: "XYZ Services Pvt Ltd",
-    invoices: [
-      { id: 201, invoiceNumber: "INV-2024-003", amount: 45000, documentUrl: "/public/DxotBTxfHn.png" },
-    ]
-  },
-  {
-    id: 3,
-    vendorName: "Tech Solutions Inc",
-    debitBankAccountNumber: "323456789012",
-    debitAmount: 70000,
-    currency: "INR",
-    beneficiaryAccountNumber: "987654321003",
-    ifscCode: "SBIN0007890",
-    narration: "Tech Solutions Inc",
-    invoices: [
-      { id: 301, invoiceNumber: "INV-2024-004", amount: 30000, documentUrl: "/public/DxotBTxfHn.png" },
-      { id: 302, invoiceNumber: "INV-2024-005", amount: 18000, documentUrl: "/public/DxotBTxfHn.png" },
-      { id: 303, invoiceNumber: "INV-2024-006", amount: 22000, documentUrl: "/public/DxotBTxfHn.png" },
-    ]
-  },
-  {
-    id: 4,
-    vendorName: "Global Enterprises",
-    debitBankAccountNumber: "423456789012",
-    debitAmount: 67000,
-    currency: "INR",
-    beneficiaryAccountNumber: "987654321004",
-    ifscCode: "YESB0004567",
-    narration: "Global Enterprises",
-    invoices: [
-      { id: 401, invoiceNumber: "INV-2024-007", amount: 55000, documentUrl: "/public/DxotBTxfHn.png" },
-      { id: 402, invoiceNumber: "INV-2024-008", amount: 12000, documentUrl: "/public/DxotBTxfHn.png" },
-    ]
-  },
-];
+// Function to load and transform invoices from localStorage
+const loadInvoicesFromLocalStorage = () => {
+  try {
+    // Load invoices processed by AM (Material and Fixed Asset)
+    const processedInvoicesStr = localStorage.getItem("processed_invoices");
+    const processedInvoices = processedInvoicesStr ? JSON.parse(processedInvoicesStr) : [];
+
+    // Load invoices processed by BM (Procurement Prepaid)
+    const finalProcessedInvoicesStr = localStorage.getItem("final_processed_invoices");
+    const finalProcessedInvoices = finalProcessedInvoicesStr ? JSON.parse(finalProcessedInvoicesStr) : [];
+
+    // Combine both arrays
+    const allInvoices = [...processedInvoices, ...finalProcessedInvoices];
+
+    console.log("Loaded invoices from localStorage:", allInvoices);
+
+    // Group invoices by vendor
+    const vendorMap = {};
+
+    allInvoices.forEach((invoice) => {
+      const vendorName = invoice.vendorName;
+      
+      if (!vendorMap[vendorName]) {
+        // Create new vendor entry
+        vendorMap[vendorName] = {
+          id: Object.keys(vendorMap).length + 1,
+          vendorName: vendorName,
+          debitBankAccountNumber: generateBankAccount(vendorName),
+          debitAmount: 0,
+          currency: "INR",
+          beneficiaryAccountNumber: extractBeneficiaryAccount(invoice),
+          ifscCode: extractIFSCCode(invoice),
+          narration: vendorName.substring(0, 20),
+          invoices: []
+        };
+      }
+
+      // Determine invoice type label
+      let invoiceTypeLabel = "";
+      if (invoice.type === "Material") {
+        invoiceTypeLabel = "Material Invoice";
+      } else if (invoice.type === "Fixed Asset") {
+        invoiceTypeLabel = "Fixed Asset";
+      } else if (invoice.type === "Procurement Prepaid") {
+        invoiceTypeLabel = "Uniform Prepaid";
+      } else {
+        invoiceTypeLabel = invoice.type || "Invoice";
+      }
+
+      // Add invoice to vendor
+      vendorMap[vendorName].invoices.push({
+        id: invoice.id || invoice.invoiceNumber,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: invoice.totalAmount,
+        documentUrl: invoice.documentUrl || "/public/DxotBTxfHn.png",
+        type: invoice.type,
+        invoiceTypeLabel: invoiceTypeLabel, // NEW: Add type label for display
+        gstRate: invoice.gstRate,
+        hsnCode: invoice.hsnCode,
+        processedAt: invoice.processedAt || invoice.processedAtAM || invoice.processedAtBM,
+        vendorGLCode: invoice.vendor_gl_code || invoice.vendorGLCode,
+        voucherNo: invoice.voucher_id || invoice.purchaseVoucherNo
+      });
+
+      // Update total debit amount for vendor
+      vendorMap[vendorName].debitAmount += invoice.totalAmount;
+    });
+
+    // Convert map to array
+    const vendorData = Object.values(vendorMap);
+    
+    console.log("Transformed vendor data:", vendorData);
+    
+    return vendorData;
+  } catch (error) {
+    console.error("Error loading invoices from localStorage:", error);
+    toast.error("Failed to load invoices from storage");
+    return [];
+  }
+};
+
+// Helper function to generate bank account number (for debit account)
+const generateBankAccount = (vendorName) => {
+  // Generate a pseudo-random bank account based on vendor name
+  const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return `${123456789000 + (hash % 10000)}`;
+};
+
+// Helper function to extract beneficiary account
+const extractBeneficiaryAccount = (invoice) => {
+  // Try to extract from vendor GL mappings or generate one
+  if (invoice.vendor_gl_mappings && invoice.vendor_gl_mappings.payable_gl_code) {
+    const glCode = invoice.vendor_gl_mappings.payable_gl_code;
+    const match = glCode.match(/\d+/);
+    if (match) {
+      return `987654${match[0].substring(0, 6)}`;
+    }
+  }
+  
+  // Generate based on vendor name
+  const hash = invoice.vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return `987654${String(321000 + (hash % 10000))}`;
+};
+
+// Helper function to extract IFSC code
+const extractIFSCCode = (invoice) => {
+  // Generate IFSC code based on vendor
+  const vendorHash = invoice.vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const banks = ["HDFC", "ICIC", "SBIN", "YESB", "AXIS"];
+  const bankIndex = vendorHash % banks.length;
+  const branchCode = String(1000 + (vendorHash % 9000)).padStart(4, '0');
+  
+  return `${banks[bankIndex]}0${branchCode}`;
+};
 
 export default function ProcessPaymentPage() {
   const [parsedData, setParsedData] = useState([]);
@@ -79,15 +136,31 @@ export default function ProcessPaymentPage() {
   const [editableData, setEditableData] = useState([]);
   //Payment Entry Modal
   const [showPaymentEntry, setShowPaymentEntry] = useState(false);
-const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
+  const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
   
-  // New state for vendor invoice management
-  const [vendorData, setVendorData] = useState(mockVendorData);
+  // New state for vendor invoice management - now loaded from localStorage
+  const [vendorData, setVendorData] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [invoicePayments, setInvoicePayments] = useState({});
   
   //  NEW STATE: Store approved invoices for download
   const [approvedInvoices, setApprovedInvoices] = useState([]);
+  // Bank selection flow
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [pendingAcceptedData, setPendingAcceptedData] = useState(null);
+  const [selectedBankForPayment, setSelectedBankForPayment] = useState(null);
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    const loadedVendorData = loadInvoicesFromLocalStorage();
+    setVendorData(loadedVendorData);
+    
+    if (loadedVendorData.length > 0) {
+      toast.info(`Loaded ${loadedVendorData.length} vendors with invoices from storage`);
+    } else {
+      toast.warning("No invoices found in storage");
+    }
+  }, []);
 
   const handleFileUpload = async (file) => {
     const data = await parseExcelFile(file);
@@ -293,16 +366,21 @@ const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
         const payment = currentPayments[invoice.id] || 
                        invoicePayments[invoice.id] || 
                        { amount: invoice.amount, paymentType: 'full' };
-                       
-        const paidAmount = Number(payment?.amount || invoice.amount);
+        
         const fullAmount = invoice.amount;
         const paymentType = payment?.paymentType || 'full';
+        
+        // FIXED: If payment type is 'full', always use the full invoice amount
+        const paidAmount = paymentType === 'full' 
+          ? fullAmount 
+          : Number(payment?.amount || 0);
 
         console.log(`Processing Invoice ${invoice.invoiceNumber}:`, {
           originalAmount: fullAmount,
           paidAmount,
           paymentType,
-          payment
+          payment,
+          calculationNote: paymentType === 'full' ? 'Using full amount' : 'Using payment amount'
         });
 
         // 🔥 STORE approved invoice data BEFORE processing
@@ -321,6 +399,8 @@ const [currentPaymentEntryData, setCurrentPaymentEntryData] = useState(null);
             originalAmount: fullAmount,
             paidAmount: paidAmount,
             paymentType: paymentType,
+            type: invoice.type, // preserve invoice type for GL mapping
+            invoiceTypeLabel: invoice.invoiceTypeLabel,
             approvedDate: new Date().toISOString(),
             utr: 'Bank'
           });
@@ -501,12 +581,17 @@ const handleCreatePaymentEntry = (acceptedData) => {
 
         <UploadPaymentFile onFileUpload={handleFileUpload} />
 
-       {isModalOpen && (
+      {isModalOpen && (
         <PaymentPreviewModal
           data={parsedData}
           onClose={handleCloseModal}
           onRequestChanges={handleRequestChanges}
-          onAccept={handleCreatePaymentEntry} // Add this new prop
+          onAccept={(acceptedData) => {
+            // Store accepted data and open bank selection
+            setPendingAcceptedData(acceptedData);
+            setIsModalOpen(false);
+            setIsBankModalOpen(true);
+          }} // bank first
         />
       )}
 
@@ -527,7 +612,7 @@ const handleCreatePaymentEntry = (acceptedData) => {
             <div className="border-r border-gray-200 h-full">
             <div className="p-2 bg-gray-100 border-b border-gray-200">
               <h2 className="text-sm font-semibold text-gray-800">
-                Vendor Invoice Management
+                Vendor Invoice Management ({vendorData.length} vendors)
               </h2>
             </div>
             <div className="h-full overflow-y-auto">
@@ -556,6 +641,154 @@ const handleCreatePaymentEntry = (acceptedData) => {
           </div>
         </div>
       </div>
+      {/* Bank Selection Modal - opens after Accept */}
+      <AEBankSelectionModal
+        isOpen={isBankModalOpen}
+        onClose={() => {
+          setIsBankModalOpen(false);
+          setPendingAcceptedData(null);
+        }}
+        onBankSelect={(bank) => {
+          setSelectedBankForPayment(bank);
+          setIsBankModalOpen(false);
+
+          try {
+            // Build per-invoice payments from acceptedData by matching approvedInvoices
+            const payments = [];
+            const approved = approvedInvoices || [];
+
+            (pendingAcceptedData || []).forEach(row => {
+              const vendorName = row['Vendor Name'];
+              const invoiceNumbers = String(row['Invoice Numbers'] || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean);
+
+              invoiceNumbers.forEach(invNo => {
+                // Try to find approved invoice with exact paidAmount
+                const match = approved.find(a => a.vendorName === vendorName && a.invoiceNumber === invNo);
+                const amount = match ? parseFloat(match.paidAmount || 0) : 0;
+                const type = match?.type || match?.invoiceTypeLabel || 'Material';
+                const vendorGLCode = match?.vendorGLCode;
+
+                // If no explicit match amount, fallback to even split (as earlier estimate)
+                const fallbackAmount = amount > 0 ? amount : parseFloat(row['Payment Done'] || row['Total Amount'] || 0) / Math.max(invoiceNumbers.length, 1);
+
+                payments.push({
+                  vendorName,
+                  invoiceNumber: invNo,
+                  amount: fallbackAmount,
+                  type,
+                  vendorGLCode
+                });
+              });
+            });
+
+            const result = processVendorPayments(payments, bank);
+            if (!result.success) {
+              toast.error(result.message || 'Failed to post vendor payments');
+              return;
+            }
+
+            toast.success(result.message);
+
+            // Delete processed invoices from localStorage stores
+            try {
+              const paidInvoiceNumbers = new Set(result.results.map(r => r.invoiceNumber));
+              const removePaid = (key) => {
+                const arr = JSON.parse(localStorage.getItem(key) || '[]');
+                const filtered = arr.filter(inv => !paidInvoiceNumbers.has(inv.invoiceNumber));
+                localStorage.setItem(key, JSON.stringify(filtered));
+              };
+              removePaid('processed_invoices');           // AM processed (Material/Fixed Asset)
+              removePaid('final_processed_invoices');     // BM final processed (Prepaid/Uniform)
+              toast.info(`Removed ${paidInvoiceNumbers.size} invoice(s) from approval queues`);
+            } catch (e) {
+              console.error('Error cleaning localStorage invoices:', e);
+            }
+
+            // Prepare a display payload for PaymentEntryModal with real GLs
+            const totalAmount = result.totalPaid;
+            const allInvoiceNumbers = result.results.map(r => r.invoiceNumber).join(', ');
+
+            // Build vendor details from returned groups (real GL view per vendor ledger)
+            const vendorDetails = result.groups.map(g => ({
+              vendorName: g.vendorName,
+              vendorGLCode: g.vendorGLCode,
+              totalAmount: g.totalAmount,
+              invoices: g.invoices.map(inv => ({
+                invoiceNumber: inv.invoiceNumber,
+                originalAmount: inv.amount,
+                paidAmount: inv.amount,
+                paymentType: 'full'
+              }))
+            }));
+
+            const paymentEntryData = {
+              entryNo: `PE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`,
+              date: new Date().toISOString().split('T')[0],
+              vendor: vendorDetails.length > 1 ? `Multiple Vendors (${vendorDetails.length})` : (vendorDetails[0]?.vendorName || ''),
+              vendorCode: vendorDetails.length > 1 ? 'MULTIPLE' : '',
+              amount: totalAmount,
+              paymentMethod: 'Bank Transfer',
+              bankAccount: `${bank.bankName} (${bank.bankCode})`,
+              invoiceNo: allInvoiceNumbers,
+              particulars: `Payment for invoices: ${allInvoiceNumbers}`,
+              gstAmount: 0,
+              netAmount: totalAmount,
+              status: 'Posted',
+              preparedBy: 'Account Executive',
+              approvedBy: 'System',
+              remarks: 'Auto-posted via Process of Payments',
+              vendorDetails,
+              glEntries: [
+                // Show each vendor ledger line
+                ...result.groups.map(g => ({
+                  glCode: g.vendorGLCode,
+                  glDescription: `VENDOR - ${g.vendorName}`,
+                  costCenter: 'HEAD OFFICE',
+                  department: 'Finance',
+                  debitAmount: g.totalAmount,
+                  creditAmount: 0
+                })),
+                {
+                  glCode: bank.bankCode,
+                  glDescription: bank.bankName,
+                  costCenter: 'HEAD OFFICE',
+                  department: 'Finance',
+                  debitAmount: 0,
+                  creditAmount: totalAmount
+                }
+              ]
+            };
+
+            setCurrentPaymentEntryData(paymentEntryData);
+            setShowPaymentEntry(true);
+
+            // Update on-screen vendor list to remove paid invoices
+            try {
+              setVendorData(prev => {
+                const toRemove = new Set(result.results.map(r => r.invoiceNumber));
+                const updated = prev.map(v => ({
+                  ...v,
+                  invoices: (v.invoices || []).filter(inv => !toRemove.has(inv.invoiceNumber))
+                })).filter(v => (v.invoices || []).length > 0);
+                return updated;
+              });
+            } catch (e) {
+              console.error('Error updating vendorData after payment:', e);
+            }
+
+            // Clear modal states
+            setPendingAcceptedData(null);
+          } catch (e) {
+            console.error(e);
+            toast.error(e.message || 'Error processing payments');
+          }
+        }}
+        requestData={pendingAcceptedData}
+      />
+
       {/* Payment Entry Modal */}
       {showPaymentEntry && (
         <PaymentEntryModal

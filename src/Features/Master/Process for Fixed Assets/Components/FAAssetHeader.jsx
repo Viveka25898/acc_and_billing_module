@@ -2,7 +2,7 @@ import React from "react";
 
 export const FAAssetHeader = ({ info, balances }) => {
   return (
-    <div className="bg-gradient-to-r from-indigo-700 to-blue-500 text-white p-6 rounded-t-lg shadow-md">
+    <div className="bg-gradient-to-r from-green-700 to-green-500 text-white p-6 rounded-t-lg shadow-md">
       <h1 className="text-2xl font-bold mb-4">Fixed Asset Ledger</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">

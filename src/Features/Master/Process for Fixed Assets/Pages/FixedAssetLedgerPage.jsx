@@ -133,7 +133,7 @@ const FixedAssetLedgerPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto my-6 bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="max-w-5xl mx-auto my-6 bg-white shadow-lg rounded-lg overflow-hidden">
         <FAAssetHeader info={ledgerData.assetInfo} balances={ledgerData.assetInfo.balances} />
         <FASummaryCards summary={ledgerData.assetInfo.summary} />
         <FAFilterSection filters={filters} setFilters={setFilters} />

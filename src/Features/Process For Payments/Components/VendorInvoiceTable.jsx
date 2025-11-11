@@ -122,6 +122,20 @@ const VendorInvoiceTable = ({
     };
   };
 
+  // Helper function to get badge color based on invoice type
+  const getInvoiceTypeBadgeColor = (invoiceTypeLabel) => {
+    if (!invoiceTypeLabel) return 'bg-gray-100 text-gray-600';
+    
+    if (invoiceTypeLabel.includes('Material')) {
+      return 'bg-blue-100 text-blue-700 border-blue-200';
+    } else if (invoiceTypeLabel.includes('Fixed Asset')) {
+      return 'bg-purple-100 text-purple-700 border-purple-200';
+    } else if (invoiceTypeLabel.includes('Uniform') || invoiceTypeLabel.includes('Prepaid')) {
+      return 'bg-green-100 text-green-700 border-green-200';
+    }
+    return 'bg-gray-100 text-gray-600 border-gray-200';
+  };
+
   const filteredVendors = vendorData.filter(
     (vendor) => vendor.invoices.length > 0
   );
@@ -137,12 +151,19 @@ const VendorInvoiceTable = ({
         <td className="px-[2px] py-[2px] text-center border">-</td>
         <td className="px-[2px] py-[2px] text-black border">└ {vendor.vendorName}</td>
         <td className="px-[2px] py-[2px] border">
-          <button
-            onClick={() => onInvoiceSelect?.(invoice)}
-            className="text-blue-600 hover:underline font-medium text-[10px]"
-          >
-            {invoice.invoiceNumber}
-          </button>
+          <div className="flex flex-col space-y-1">
+            <button
+              onClick={() => onInvoiceSelect?.(invoice)}
+              className="text-blue-600 hover:underline font-medium text-[10px] text-left"
+            >
+              {invoice.invoiceNumber}
+            </button>
+            {invoice.invoiceTypeLabel && (
+              <span className={`inline-block text-[8px] px-1.5 py-0.5 rounded-full border font-medium ${getInvoiceTypeBadgeColor(invoice.invoiceTypeLabel)}`}>
+                {invoice.invoiceTypeLabel}
+              </span>
+            )}
+          </div>
         </td>
         <td className="px-[2px] py-[2px] border">
           <div className="space-y-[2px]">

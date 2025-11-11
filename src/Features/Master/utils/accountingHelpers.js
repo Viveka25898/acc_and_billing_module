@@ -1323,21 +1323,59 @@ export const generateRelieverVoucherNumber = (site) => {
  * Rent Expense Booking
  */
 
-// Add to your accountingHelpers.js - Following your employee ledger pattern
+/**
+ * Get existing vendor GL code by vendor name (all under L2005)
+ */
+export const getVendorGLCode = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
+    
+    // Find existing ledger for this vendor by name under L2005
+    const existingLedger = chartOfAccounts.find(acc => {
+      if (!acc.code.startsWith('L2005_')) return false;
+      
+      // Check by account name - extract vendor name from "VENDOR - {VendorName}"
+      const accountName = (acc.name || '').toLowerCase();
+      if (accountName.includes('vendor -')) {
+        const vendorInAccountName = accountName.replace('vendor -', '').trim();
+        if (vendorInAccountName === vendorNameNormalized) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    if (existingLedger) {
+      console.log(`✅ Found existing vendor ledger: ${existingLedger.code} for ${vendorName}`);
+      return existingLedger.code;
+    }
+    
+    // If not found, return null (will need to create)
+    return null;
+  } catch (error) {
+    console.error('Error getting vendor GL code:', error);
+    return null;
+  }
+};
+/**
+ * Create vendor ledger directly under L2005 (no sub-grouping)
+ */
 export const createVendorLedger = (vendorId, vendorName) => {
   try {
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
     
-    // Generate proper vendor GL code (L2005001, L2005002, etc.)
-    const glCode = generateVendorGLCode();
+    // Generate vendor GL code under L2005
+    const glCode = generateVendorGLCode(vendorName);
     
     const newLedger = {
       id: `VENDOR_${Date.now()}_${vendorId}`,
       code: glCode,
-      name: `VENDOR-${vendorId} - ${vendorName}`,
+      name: `VENDOR - ${vendorName}`,
       type: "ACCOUNT",
       parentAccount: "SUNDRY CREDITORS",
-      parentCode: "L2005001",
+      parentCode: "L2005",
       accountCategory: "LIABILITIES",
       debitCreditNature: "CREDIT",
       openingBalance: 0,
@@ -1360,16 +1398,46 @@ export const createVendorLedger = (vendorId, vendorName) => {
     throw new Error(`Failed to create vendor ledger: ${error.message}`);
   }
 };
+/**
+ * Check if vendor ledger exists under L2005
+ */
+export const checkVendorLedgerExists = (vendorName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
+    
+    // Check if a ledger exists for this vendor by name under L2005
+    const existingLedger = chartOfAccounts.find(acc => {
+      if (!acc.code.startsWith('L2005_')) return false;
+      
+      // Check by account name - extract vendor name from "VENDOR - {VendorName}"
+      const accountName = (acc.name || '').toLowerCase();
+      if (accountName.includes('vendor -')) {
+        const vendorInAccountName = accountName.replace('vendor -', '').trim();
+        if (vendorInAccountName === vendorNameNormalized) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    return !!existingLedger;
+  } catch (error) {
+    console.error('Error checking vendor ledger:', error);
+    return false;
+  }
+};
 
-const generateVendorGLCode = () => {
+const generateVendorGLCode = (vendorName) => {
   const chartOfAccounts = safeGetItem('chartOfAccounts', []);
   
   // Find all existing vendor GL codes under L2005
   const vendorGLs = chartOfAccounts
-    .filter(acc => acc.code.startsWith('L2005001'))
+    .filter(acc => acc.code.startsWith('L2005_'))
     .map(acc => {
-      // Extract the number part after L2005
-      const numberPart = acc.code.replace('L2005001', '');
+      // Extract the number part after L2005_
+      const numberPart = acc.code.replace('L2005_', '');
       return parseInt(numberPart) || 0;
     })
     .filter(num => !isNaN(num));
@@ -1377,7 +1445,7 @@ const generateVendorGLCode = () => {
   const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
   const nextNumber = lastNumber + 1;
   
-  return `L2005001${String(nextNumber).padStart(3, '0')}`; // L2005001, L2005002, etc.
+  return `L2005_${String(nextNumber).padStart(3, '0')}`;
 };
 
 // Rent transaction creator - following your advance pattern
@@ -1498,13 +1566,9 @@ export const processRentApproval = (rentVoucher, bankData) => {
     }
     
     // ✅ FIX: Check if vendor GL exists, if not create it
-    let vendorGL = rentVoucher.ownerGLCode;
+    let vendorGL = getVendorGLCode(rentVoucher.ownerName);
     
-    // Validate if GL code actually exists in COA
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    const glExists = chartOfAccounts.some(acc => acc.code === vendorGL);
-    
-    if (!vendorGL || !glExists) {
+    if (!vendorGL) {
       console.log('📝 Creating vendor ledger for:', rentVoucher.ownerName);
       const vendorId = rentVoucher.ownerId || `VEND-${Date.now()}`;
       vendorGL = createVendorLedger(vendorId, rentVoucher.ownerName);
@@ -1513,7 +1577,7 @@ export const processRentApproval = (rentVoucher, bankData) => {
       rentVoucher.ownerGLCode = vendorGL;
     }
     
-    // Rest of your processing logic...
+    // Rest of your processing logic remains the same...
     const siteCode = rentVoucher.siteName?.substring(0, 3).toUpperCase() || 'GEN';
     const voucherNo = generateRentVoucherNumber(siteCode);
     
@@ -1552,6 +1616,7 @@ export const processRentApproval = (rentVoucher, bankData) => {
   }
 };
 
+
 // Voucher number generator for rent
 export const generateRentVoucherNumber = (site) => {
   try {
@@ -1574,163 +1639,7 @@ export const generateRentVoucherNumber = (site) => {
   }
 };
 
-// HK Material 
-export const createHKMaterialVendorLedger = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    
-    // First check if a ledger already exists for this vendor by name
-    const existingLedger = getHKMaterialVendorGLCode(vendorName);
-    if (existingLedger) {
-      console.log(`⚠️ HK Material Vendor ledger already exists for ${vendorName}: ${existingLedger}`);
-      return existingLedger;
-    }
-    
-    // Generate new GL code only if vendor doesn't exist
-    const glCode = generateHKMaterialVendorGLCode(vendorName);
-    
-    // Double-check the generated code doesn't exist (safety check)
-    if (chartOfAccounts.some(acc => acc.code === glCode)) {
-      console.log(`⚠️ HK Material Vendor ledger ${glCode} already exists`);
-      return glCode;
-    }
-    
-    const newLedger = {
-      id: `HK_VENDOR_${Date.now()}_${vendorName.replace(/\s+/g, '_')}`,
-      code: glCode,
-      name: `HK MATERIAL VENDOR - ${vendorName}`,
-      type: "ACCOUNT",
-      parentAccount: "HK MATERIAL",
-      parentCode: "L2005002",
-      accountCategory: "LIABILITIES",
-      debitCreditNature: "CREDIT",
-      openingBalance: 0,
-      currentBalance: 0,
-      isActive: true
-    };
-    
-    chartOfAccounts.push(newLedger);
-    
-    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
-      throw new Error('Failed to save chart of accounts');
-    }
-    
-    console.log(`✅ Created HK Material Vendor ledger: ${glCode} for ${vendorName}`);
-    return glCode;
-  } catch (error) {
-    console.error('❌ Error creating HK Material Vendor ledger:', error);
-    throw new Error(`Failed to create HK Material Vendor ledger: ${error.message}`);
-  }
-};
-export const generateHKMaterialVendorGLCode = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    
-    // Find all existing HK Material vendor GL codes under L2005002
-    const vendorGLs = chartOfAccounts
-      .filter(acc => acc.code.startsWith('L2005002_'))
-      .map(acc => {
-        const numberPart = acc.code.replace('L2005002_', '').split('_')[0];
-        return parseInt(numberPart) || 0;
-      })
-      .filter(num => !isNaN(num));
-    
-    const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
-    const nextNumber = lastNumber + 1;
-    const vendorCode = String(nextNumber).padStart(3, '0');
-    
-    return `L2005002_${vendorCode}_${vendorName.replace(/\s+/g, '_')}`;
-  } catch (error) {
-    console.error('Error generating HK Material Vendor GL code:', error);
-    throw new Error(`Failed to generate HK Material Vendor GL code: ${error.message}`);
-  }
-};
-export const checkHKMaterialVendorLedgerExists = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
-    const vendorNameForCode = vendorNameNormalized.replace(/\s+/g, '_');
-    
-    // Check if a ledger exists for this vendor by name (more reliable than code)
-    const existingLedger = chartOfAccounts.find(acc => {
-      if (!acc.code.startsWith('L2005002_')) return false;
-      
-      // Check by account name - extract vendor name from "HK MATERIAL VENDOR - {VendorName}"
-      const accountName = (acc.name || '').toLowerCase();
-      if (accountName.includes('hk material vendor')) {
-        // Extract vendor name from account name
-        const vendorInAccountName = accountName.replace('hk material vendor -', '').trim();
-        if (vendorInAccountName === vendorNameNormalized || 
-            vendorInAccountName.replace(/\s+/g, '_') === vendorNameForCode) {
-          return true;
-        }
-      }
-      
-      // Also check by code pattern (vendor name in code after the number)
-      // Format: L2005002_XXX_Vendor_Name_Here
-      const parts = acc.code.split('_');
-      if (parts.length >= 3) {
-        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
-        if (vendorNameInCode === vendorNameForCode) {
-          return true;
-        }
-      }
-      
-      return false;
-    });
-    
-    return !!existingLedger;
-  } catch (error) {
-    console.error('Error checking HK Material vendor ledger:', error);
-    return false;
-  }
-};
-export const getHKMaterialVendorGLCode = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
-    const vendorNameForCode = vendorNameNormalized.replace(/\s+/g, '_');
-    
-    // Find existing ledger for this vendor by name (more reliable)
-    const existingLedger = chartOfAccounts.find(acc => {
-      if (!acc.code.startsWith('L2005002_')) return false;
-      
-      // Check by account name - extract vendor name from "HK MATERIAL VENDOR - {VendorName}"
-      const accountName = (acc.name || '').toLowerCase();
-      if (accountName.includes('hk material vendor')) {
-        // Extract vendor name from account name
-        const vendorInAccountName = accountName.replace('hk material vendor -', '').trim();
-        if (vendorInAccountName === vendorNameNormalized || 
-            vendorInAccountName.replace(/\s+/g, '_') === vendorNameForCode) {
-          return true;
-        }
-      }
-      
-      // Also check by code pattern (vendor name in code after the number)
-      // Format: L2005002_XXX_Vendor_Name_Here
-      const parts = acc.code.split('_');
-      if (parts.length >= 3) {
-        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
-        if (vendorNameInCode === vendorNameForCode) {
-          return true;
-        }
-      }
-      
-      return false;
-    });
-    
-    if (existingLedger) {
-      console.log(`✅ Found existing HK Material vendor ledger: ${existingLedger.code} for ${vendorName}`);
-      return existingLedger.code;
-    }
-    
-    // If not found, return null (will need to create)
-    return null;
-  } catch (error) {
-    console.error('Error getting HK Material vendor GL code:', error);
-    return null;
-  }
-};
+
 export const createHKMaterialTransaction = (invoice, vendorGLCode, expenseGLCode, bankData, voucherNo, taxableAmount, cgstAmount, sgstAmount) => {
   try {
     return {
@@ -1770,7 +1679,7 @@ export const createHKMaterialTransaction = (invoice, vendorGLCode, expenseGLCode
         {
           lineNo: 4,
           glCode: vendorGLCode,
-          glName: `HK MATERIAL VENDOR - ${invoice.vendorName}`,
+          glName: `VENDOR - ${invoice.vendorName}`, // ✅ UPDATED: Use unified naming
           debit: 0,
           credit: invoice.totalAmount,
           narration: `Invoice ${invoice.invoiceNumber} - HK Materials`
@@ -1826,16 +1735,17 @@ export const processHKMaterialInvoice = (invoice, bankData) => {
       throw new Error('Invalid GST rate');
     }
     
-    // Check/create HK Material Vendor ledger
-    let vendorGLCode = getHKMaterialVendorGLCode(invoice.vendorName);
+    // Check/create vendor ledger using main function
+    let vendorGLCode = getVendorGLCode(invoice.vendorName);
     
     if (!vendorGLCode) {
-      console.log(`📝 Creating HK Material Vendor ledger for ${invoice.vendorName}...`);
-      vendorGLCode = createHKMaterialVendorLedger(invoice.vendorName);
+      console.log(`📝 Creating vendor ledger for ${invoice.vendorName}...`);
+      vendorGLCode = createVendorLedger(invoice.vendorName, invoice.vendorName);
     } else {
-      console.log(`✅ Using existing HK Material Vendor ledger: ${vendorGLCode}`);
+      console.log(`✅ Using existing vendor ledger: ${vendorGLCode}`);
     }
     
+    // Rest of the function remains the same...
     const expenseGLCode = "X1001004001"; // HK MATERIALS expense account
     
     // ✅ IMPROVED GST CALCULATION
@@ -1984,129 +1894,9 @@ export const getFixedAssetGLName = (glCode) => {
 /**
  * Create Fixed Asset vendor ledger (L2005-VEN-{code} format)
  */
-export const createFixedAssetVendorLedger = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    
-    // First check if a ledger already exists for this vendor by name
-    const existingLedger = getFixedAssetVendorGLCode(vendorName);
-    if (existingLedger) {
-      console.log(`⚠️ Fixed Asset Vendor ledger already exists for ${vendorName}: ${existingLedger}`);
-      return existingLedger;
-    }
-    
-    // Generate new GL code only if vendor doesn't exist
-    const glCode = generateFixedAssetVendorGLCode(vendorName);
-    
-    // Double-check the generated code doesn't exist (safety check)
-    if (chartOfAccounts.some(acc => acc.code === glCode)) {
-      console.log(`⚠️ Fixed Asset Vendor ledger ${glCode} already exists`);
-      return glCode;
-    }
-    
-    const newLedger = {
-      id: `FA_VENDOR_${Date.now()}_${vendorName.replace(/\s+/g, '_')}`,
-      code: glCode,
-      name: `FIXED ASSET VENDOR - ${vendorName}`,
-      type: "ACCOUNT",
-      parentAccount: "FIXED ASSET",
-      parentCode: "L2005003",
-      accountCategory: "LIABILITIES",
-      debitCreditNature: "CREDIT",
-      openingBalance: 0,
-      currentBalance: 0,
-      isActive: true
-    };
-    
-    chartOfAccounts.push(newLedger);
-    
-    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
-      throw new Error('Failed to save chart of accounts');
-    }
-    
-    console.log(`✅ Created Fixed Asset Vendor ledger: ${glCode} for ${vendorName}`);
-    return glCode;
-  } catch (error) {
-    console.error('❌ Error creating Fixed Asset Vendor ledger:', error);
-    throw new Error(`Failed to create Fixed Asset Vendor ledger: ${error.message}`);
-  }
-};
 
-/**
- * Generate Fixed Asset vendor GL code (L2005-VEN-{code} format)
- */
-export const generateFixedAssetVendorGLCode = (vendorName) => {
-  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-  const vendorNameNormalized = vendorName.trim().replace(/\s+/g, '_');
-  
-  // Find all existing Fixed Asset vendor GL codes (L2005003_*)
-  const vendorGLs = chartOfAccounts
-    .filter(acc => acc.code.startsWith('L2005003_'))
-    .map(acc => {
-      const parts = acc.code.split('_');
-      if (parts.length >= 2) {
-        const numberPart = parseInt(parts[1], 10);
-        return isNaN(numberPart) ? 0 : numberPart;
-      }
-      return 0;
-    })
-    .filter(num => !isNaN(num) && num > 0);
-  
-  const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
-  const nextNumber = lastNumber + 1;
-  
-  const vendorCode = String(nextNumber).padStart(3, '0');
-  
-  // Format: L2005003_001_Vendor_Name
-  return `L2005003_${vendorCode}_${vendorNameNormalized}`;
-};
 
-/**
- * Get existing Fixed Asset vendor GL code by vendor name
- */
-export const getFixedAssetVendorGLCode = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
-    const vendorNameForCode = vendorName.trim().replace(/\s+/g, '_').toLowerCase();
-    
-    // Find existing ledger for this vendor by name (new format only)
-    const existingLedger = chartOfAccounts.find(acc => {
-      if (!acc.code.startsWith('L2005003_')) return false;
-      
-      // Check by account name - extract vendor name from "FIXED ASSET VENDOR - {VendorName}"
-      const accountName = (acc.name || '').toLowerCase();
-      if (accountName.includes('fixed asset vendor -')) {
-        const vendorInAccountName = accountName.replace('fixed asset vendor -', '').trim();
-        if (vendorInAccountName === vendorNameNormalized) {
-          return true;
-        }
-      }
-      
-      // Also check by code pattern (vendor name in code after the number)
-      const parts = acc.code.split('_');
-      if (parts.length >= 3) {
-        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
-        if (vendorNameInCode === vendorNameForCode) {
-          return true;
-        }
-      }
-      
-      return false;
-    });
-    
-    if (existingLedger) {
-      console.log(`✅ Found existing Fixed Asset vendor ledger: ${existingLedger.code} for ${vendorName}`);
-      return existingLedger.code;
-    }
-    
-    // If not found, return null (will need to create)
-    return null;
-  } catch (error) {
-    console.error('Error getting Fixed Asset vendor GL code:', error);
-    return null;
-  }
-};
+
 
 /**
  * Create Fixed Asset transaction
@@ -2152,7 +1942,7 @@ export const createFixedAssetTransaction = (invoice, vendorGLCode, fixedAssetGLC
         {
           lineNo: 4,
           glCode: vendorGLCode,
-          glName: `FIXED ASSET VENDOR - ${invoice.vendorName}`,
+          glName: `VENDOR - ${invoice.vendorName}`, // ✅ UPDATED: Use unified naming
           debit: 0,
           credit: invoice.totalAmount,
           narration: `Invoice ${invoice.invoiceNumber} - Fixed Asset`
@@ -2171,6 +1961,7 @@ export const createFixedAssetTransaction = (invoice, vendorGLCode, fixedAssetGLC
     throw new Error(`Failed to create Fixed Asset transaction: ${error.message}`);
   }
 };
+
 
 /**
  * Generate Fixed Asset voucher number
@@ -2199,6 +1990,9 @@ export const generateFixedAssetVoucherNumber = () => {
 /**
  * Process Fixed Asset invoice - Automatic GL posting
  */
+/**
+ * Process Fixed Asset invoice - Automatic GL posting
+ */
 export const processFixedAssetInvoice = (invoice) => {
   try {
     console.log('🚀 Starting Fixed Asset invoice processing...');
@@ -2224,14 +2018,14 @@ export const processFixedAssetInvoice = (invoice) => {
     
     console.log(`📦 Asset Category: ${assetCategory} -> GL Code: ${fixedAssetGLCode} (${fixedAssetGLName})`);
     
-    // Check/create Fixed Asset Vendor ledger
-    let vendorGLCode = getFixedAssetVendorGLCode(invoice.vendorName);
+    // ✅ UPDATED: Use unified vendor creation under L2005
+    let vendorGLCode = getVendorGLCode(invoice.vendorName);
     
     if (!vendorGLCode) {
-      console.log(`📝 Creating Fixed Asset Vendor ledger for ${invoice.vendorName}...`);
-      vendorGLCode = createFixedAssetVendorLedger(invoice.vendorName);
+      console.log(`📝 Creating vendor ledger for ${invoice.vendorName}...`);
+      vendorGLCode = createVendorLedger(invoice.vendorName, invoice.vendorName);
     } else {
-      console.log(`✅ Using existing Fixed Asset Vendor ledger: ${vendorGLCode}`);
+      console.log(`✅ Using existing vendor ledger: ${vendorGLCode}`);
     }
     
     // ✅ IMPROVED GST CALCULATION
@@ -2317,132 +2111,10 @@ export const processFixedAssetInvoice = (invoice) => {
  * ========================================
  */
 
-/**
- * Get Prepaid Uniform vendor GL code by vendor name
- */
-export const getPrepaidUniformVendorGLCode = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
-    const vendorNameForCode = vendorName.trim().replace(/\s+/g, '_').toLowerCase();
-    
-    // Find existing ledger for this vendor by name (under L2005004)
-    const existingLedger = chartOfAccounts.find(acc => {
-      if (!acc.code.startsWith('L2005004_')) return false;
-      
-      // Check by account name - extract vendor name from "UNIFORM VENDOR - {VendorName}"
-      const accountName = (acc.name || '').toLowerCase();
-      if (accountName.includes('uniform vendor -') || accountName.includes('prepaid vendor -')) {
-        const vendorInAccountName = accountName.replace('uniform vendor -', '').replace('prepaid vendor -', '').trim();
-        if (vendorInAccountName === vendorNameNormalized) {
-          return true;
-        }
-      }
-      
-      // Also check by code pattern (vendor name in code after the number)
-      const parts = acc.code.split('_');
-      if (parts.length >= 3) {
-        const vendorNameInCode = parts.slice(2).join('_').toLowerCase();
-        if (vendorNameInCode === vendorNameForCode) {
-          return true;
-        }
-      }
-      
-      return false;
-    });
-    
-    if (existingLedger) {
-      console.log(`✅ Found existing Prepaid Uniform vendor ledger: ${existingLedger.code} for ${vendorName}`);
-      return existingLedger.code;
-    }
-    
-    // If not found, return null (will need to create)
-    return null;
-  } catch (error) {
-    console.error('Error getting Prepaid Uniform vendor GL code:', error);
-    return null;
-  }
-};
 
-/**
- * Generate Prepaid Uniform vendor GL code (L2005004_XXX_VendorName format)
- */
-export const generatePrepaidUniformVendorGLCode = (vendorName) => {
-  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-  const vendorNameNormalized = vendorName.trim().replace(/\s+/g, '_');
-  
-  // Find all existing Prepaid Uniform vendor GL codes (L2005004_*)
-  const vendorGLs = chartOfAccounts
-    .filter(acc => acc.code.startsWith('L2005004_'))
-    .map(acc => {
-      const parts = acc.code.split('_');
-      if (parts.length >= 2) {
-        const numberPart = parseInt(parts[1], 10);
-        return isNaN(numberPart) ? 0 : numberPart;
-      }
-      return 0;
-    })
-    .filter(num => !isNaN(num) && num > 0);
-  
-  const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
-  const nextNumber = lastNumber + 1;
-  
-  const vendorCode = String(nextNumber).padStart(3, '0');
-  
-  // Format: L2005004_001_Vendor_Name
-  return `L2005004_${vendorCode}_${vendorNameNormalized}`;
-};
 
-/**
- * Create Prepaid Uniform vendor ledger (L2005004_XXX_VendorName format)
- */
-export const createPrepaidUniformVendorLedger = (vendorName) => {
-  try {
-    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    
-    // First check if a ledger already exists for this vendor by name
-    const existingLedger = getPrepaidUniformVendorGLCode(vendorName);
-    if (existingLedger) {
-      console.log(`⚠️ Prepaid Uniform Vendor ledger already exists for ${vendorName}: ${existingLedger}`);
-      return existingLedger;
-    }
-    
-    // Generate new GL code only if vendor doesn't exist
-    const glCode = generatePrepaidUniformVendorGLCode(vendorName);
-    
-    // Double-check the generated code doesn't exist (safety check)
-    if (chartOfAccounts.some(acc => acc.code === glCode)) {
-      console.log(`⚠️ Prepaid Uniform Vendor ledger ${glCode} already exists`);
-      return glCode;
-    }
-    
-    const newLedger = {
-      id: `PREPAID_UNIFORM_VENDOR_${Date.now()}_${vendorName.replace(/\s+/g, '_')}`,
-      code: glCode,
-      name: `UNIFORM VENDOR - ${vendorName}`,
-      type: "ACCOUNT",
-      parentAccount: "UNIFORM PROCUREMENT",
-      parentCode: "L2005004",
-      accountCategory: "LIABILITIES",
-      debitCreditNature: "CREDIT",
-      openingBalance: 0,
-      currentBalance: 0,
-      isActive: true
-    };
-    
-    chartOfAccounts.push(newLedger);
-    
-    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
-      throw new Error('Failed to save chart of accounts');
-    }
-    
-    console.log(`✅ Created Prepaid Uniform Vendor ledger: ${glCode} for ${vendorName}`);
-    return glCode;
-  } catch (error) {
-    console.error('❌ Error creating Prepaid Uniform Vendor ledger:', error);
-    throw new Error(`Failed to create Prepaid Uniform Vendor ledger: ${error.message}`);
-  }
-};
+
+
 
 /**
  * Generate Prepaid Uniform voucher number
@@ -2512,7 +2184,7 @@ export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo
         {
           lineNo: 4,
           glCode: vendorGLCode,
-          glName: `UNIFORM VENDOR - ${invoice.vendorName}`,
+          glName: `VENDOR - ${invoice.vendorName}`, // ✅ UPDATED: Use unified naming
           debit: 0,
           credit: invoice.totalAmount,
           narration: `Invoice ${invoice.invoiceNumber} - Prepaid Uniform`
@@ -2558,14 +2230,14 @@ export const processPrepaidUniformInvoice = (invoice) => {
       throw new Error('Invalid GST rate');
     }
     
-    // Check/create Prepaid Uniform Vendor ledger (L2005004)
-    let vendorGLCode = getPrepaidUniformVendorGLCode(invoice.vendorName);
+    // ✅ UPDATED: Use unified vendor creation under L2005
+    let vendorGLCode = getVendorGLCode(invoice.vendorName);
     
     if (!vendorGLCode) {
-      console.log(`📝 Creating Prepaid Uniform Vendor ledger for ${invoice.vendorName}...`);
-      vendorGLCode = createPrepaidUniformVendorLedger(invoice.vendorName);
+      console.log(`📝 Creating vendor ledger for ${invoice.vendorName}...`);
+      vendorGLCode = createVendorLedger(invoice.vendorName, invoice.vendorName);
     } else {
-      console.log(`✅ Using existing Prepaid Uniform Vendor ledger: ${vendorGLCode}`);
+      console.log(`✅ Using existing vendor ledger: ${vendorGLCode}`);
     }
     
     // GST CALCULATION
@@ -2855,6 +2527,232 @@ export const processMonthlyAmortization = (invoice, monthYear) => {
   }
 };
 
+// ========================================
+// VENDOR PAYMENT (PROCESS FOR PAYMENTS)
+// ========================================
+
+/**
+ * Map invoice type to vendor parent GL code (L2005xxxx)
+ */
+export const getVendorParentCodeByType = (invoiceType) => {
+  // Updated rule: Always use direct vendor ledgers under L2005 (no sub-grouping)
+  return 'L2005';
+};
+
+/**
+ * Find or create a vendor ledger under a given parent (L2005xxxx) by vendor name
+ */
+export const getOrCreateVendorLedgerUnderParent = (vendorName, parentCode) => {
+  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+  // Try exact match by name under the same parent
+  const existing = chartOfAccounts.find(
+    acc =>
+      acc.parentCode === parentCode &&
+      acc.type === 'ACCOUNT' &&
+      (acc.name?.toUpperCase().includes(vendorName.toUpperCase()) ||
+       acc.glName?.toUpperCase().includes(vendorName.toUpperCase()))
+  );
+  if (existing) return existing.code;
+
+  // Create a new ledger
+  const sanitized = vendorName.replace(/\s+/g, '_').toUpperCase();
+  const code = `${parentCode}_${sanitized}`.slice(0, 24); // keep code length reasonable
+  const newLedger = {
+    id: `VEND_${Date.now()}_${sanitized}`,
+    code,
+    name: `VENDOR - ${vendorName}`,
+    type: 'ACCOUNT',
+    parentAccount: 'TRADE CREDITORS',
+    parentCode: parentCode,
+    accountCategory: 'LIABILITIES',
+    debitCreditNature: 'CREDIT',
+    openingBalance: 0,
+    currentBalance: 0,
+    isActive: true,
+  };
+  chartOfAccounts.push(newLedger);
+  safeSetItem('chartOfAccounts', chartOfAccounts);
+  return code;
+};
+
+/**
+ * Generate vendor payment voucher number
+ */
+export const generateVendorPaymentVoucherNumber = () => {
+  const counters = safeGetItem('voucherCounters', {});
+  const year = new Date().getFullYear();
+  const key = `PAY/VEND/${year}`;
+  counters[key] = (counters[key] || 0) + 1;
+  const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+  safeSetItem('voucherCounters', counters);
+  return voucherNo;
+};
+
+/**
+ * Create a single vendor payment transaction for one invoice
+ * DR Vendor Payable (L2005 child), CR Bank
+ */
+export const createVendorPaymentTransaction = (payment, vendorGLCode, bankGLCode, bankName, voucherNo) => {
+  const amount = parseFloat(payment.amount || payment.paidAmount || 0);
+  if (!amount || amount <= 0) {
+    throw new Error('Invalid payment amount');
+  }
+  const narration = `Payment for Invoice ${payment.invoiceNumber} - ${payment.vendorName}`;
+  return {
+    id: `TXN_VPAY_${Date.now()}_${payment.invoiceNumber}`,
+    voucherNo,
+    voucherType: 'Payment Voucher',
+    date: getCurrentDate(),
+    invoiceNumber: payment.invoiceNumber,
+    vendorName: payment.vendorName,
+    entries: [
+      {
+        lineNo: 1,
+        glCode: vendorGLCode,
+        glName: `VENDOR - ${payment.vendorName}`,
+        debit: amount,
+        credit: 0,
+        narration,
+        costCenter: 'HEAD OFFICE',
+      },
+      {
+        lineNo: 2,
+        glCode: bankGLCode,
+        glName: bankName || 'Bank',
+        debit: 0,
+        credit: amount,
+        narration,
+        costCenter: 'HEAD OFFICE',
+      },
+    ],
+    totalDebit: amount,
+    totalCredit: amount,
+    narration,
+    approvedBy: payment.approvedBy || 'ae1',
+    approvedDate: new Date().toISOString(),
+  };
+};
+
+/**
+ * Process multiple vendor invoice payments
+ * payments: [{ vendorName, invoiceNumber, amount, type }]
+ * bank: { bankCode, bankName }
+ */
+export const processVendorPayments = (payments, bank) => {
+  try {
+    if (!bank?.bankCode) throw new Error('Bank selection is required');
+    const bankGLCode = bank.bankCode;
+    const bankName = bank.bankName;
+    const results = [];
+
+    // Group payments by vendor ledger (all under L2005)
+    const groupKeyToInfo = {};
+    for (const p of payments) {
+      if (!p.vendorName || !p.invoiceNumber) continue;
+      
+      let vendorGLCode = p.vendorGLCode;
+      if (!vendorGLCode) {
+        vendorGLCode = getVendorGLCode(p.vendorName);
+      }
+      if (!vendorGLCode) {
+        vendorGLCode = createVendorLedger(p.vendorName, p.vendorName);
+      }
+      const key = `${vendorGLCode}`;
+      if (!groupKeyToInfo[key]) {
+        groupKeyToInfo[key] = {
+          vendorGLCode,
+          vendorName: p.vendorName,
+          totalAmount: 0,
+          invoices: [],
+        };
+      }
+      const amt = parseFloat(p.amount || 0) || 0;
+      groupKeyToInfo[key].totalAmount += amt;
+      groupKeyToInfo[key].invoices.push({ invoiceNumber: p.invoiceNumber, amount: amt });
+
+      // Keep per-invoice results for downstream cleanup and UI
+      results.push({
+        invoiceNumber: p.invoiceNumber,
+        vendorName: p.vendorName,
+        amount: amt,
+        vendorGLCode,
+        bankGLCode,
+      });
+    }
+
+    // Rest of the function remains the same...
+    const groups = Object.values(groupKeyToInfo);
+    const totalPaid = groups.reduce((sum, g) => sum + g.totalAmount, 0);
+
+    if (totalPaid <= 0) {
+      throw new Error('Total payment amount is zero');
+    }
+
+    // Create ONE voucher with multiple vendor debits and ONE bank credit
+    const voucherNo = generateVendorPaymentVoucherNumber();
+    const narration = `Vendor payments for ${groups.length} ledger(s), total ₹${totalPaid.toLocaleString()}`;
+    const entries = [];
+
+    groups.forEach((g, idx) => {
+      const invoiceList = g.invoices.map(i => i.invoiceNumber).join(', ');
+      entries.push({
+        lineNo: idx + 1,
+        glCode: g.vendorGLCode,
+        glName: `VENDOR - ${g.vendorName}`,
+        debit: g.totalAmount,
+        credit: 0,
+        narration: `Payment for invoices: ${invoiceList}`,
+        costCenter: 'HEAD OFFICE',
+      });
+    });
+
+    // Bank credit as single line
+    entries.push({
+      lineNo: entries.length + 1,
+      glCode: bankGLCode,
+      glName: bankName || 'Bank',
+      debit: 0,
+      credit: totalPaid,
+      narration: 'Bank payment (batch)',
+      costCenter: 'HEAD OFFICE',
+    });
+
+    const batchTransaction = {
+      id: `TXN_VPAY_BATCH_${Date.now()}`,
+      voucherNo,
+      voucherType: 'Payment Voucher',
+      date: getCurrentDate(),
+      entries,
+      totalDebit: totalPaid,
+      totalCredit: totalPaid,
+      narration,
+      approvedBy: 'ae1',
+      approvedDate: new Date().toISOString(),
+    };
+
+    const postResult = postTransaction(batchTransaction);
+    if (!postResult.success) {
+      throw new Error(postResult.error || 'Failed to post payment transaction');
+    }
+    updateLedgerBalances(entries);
+
+    return {
+      success: true,
+      count: results.length, // per-invoice count
+      totalPaid,
+      bankGLCode,
+      voucherNo,
+      transactionId: postResult.transaction.id,
+      groups,
+      results,
+      message: `Processed ${results.length} vendor payment entries for ₹${totalPaid.toLocaleString()}`,
+    };
+  } catch (error) {
+    console.error('❌ ERROR in processVendorPayments:', error);
+    return { success: false, error: error.message, message: error.message };
+  }
+};
+
 
 // Export all functions
 export default {
@@ -2889,15 +2787,10 @@ export default {
   processRentApproval,
   processFixedAssetInvoice,
   processPrepaidUniformInvoice,
-  createPrepaidUniformVendorLedger,
-  getPrepaidUniformVendorGLCode,
-  generatePrepaidUniformVendorGLCode,
   createPrepaidUniformTransaction,
   generatePrepaidUniformVoucherNumber,
   generateMonthlyAmortizationJVNumber,
   getMonthlyAmortizationCount,
   createMonthlyAmortizationTransaction,
   processMonthlyAmortization
-
-
 };
