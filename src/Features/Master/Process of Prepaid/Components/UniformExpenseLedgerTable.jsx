@@ -10,9 +10,12 @@ const UniformExpenseLedgerTable = ({ data }) => {
               "#",
               "Date",
               "Voucher No",
+              "Invoice #",
               "Asset Tag",
               "Description",
               "Entry Type",
+              "Debit (₹)",
+              "Credit (₹)",
               "Purchase (₹)",
               "Attachments",
             ].map((heading) => (
@@ -38,10 +41,18 @@ const UniformExpenseLedgerTable = ({ data }) => {
                 <td className="px-4 py-2 font-mono text-indigo-700">
                   {entry.voucherNo}
                 </td>
+                <td className="px-4 py-2 font-mono text-blue-700">
+                  {entry.invoiceNumber || entry.refNo || '-'}
+                </td>
                 <td className="px-4 py-2">{entry.assetTag}</td>
                 <td className="px-4 py-2">{entry.description}</td>
                 <td className="px-4 py-2">{entry.entryType}</td>
-
+                <td className="px-4 py-2 text-right font-mono text-gray-900">
+                  {entry.debit || '-'}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-gray-900">
+                  {entry.credit || '-'}
+                </td>
                 <td className="px-4 py-2 text-right font-mono text-gray-900">
                   {entry.purchaseAmount}
                 </td>

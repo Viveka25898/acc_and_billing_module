@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 
 const UniformExpenseLedgerHeader = ({ totalEntries = 0, totalDebit = 0, closingBalance = "₹0.00" }) => {
@@ -11,7 +12,7 @@ const UniformExpenseLedgerHeader = ({ totalEntries = 0, totalDebit = 0, closingB
     : totalDebit;
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-t-lg">
+    <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-8 rounded-t-lg">
       <h1 className="text-2xl font-semibold mb-4">Uniform Expense Ledger</h1>
 
       <div className="grid md:grid-cols-4 sm:grid-cols-2 gap-4 text-sm">

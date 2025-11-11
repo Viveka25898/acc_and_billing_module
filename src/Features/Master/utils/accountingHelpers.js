@@ -2661,6 +2661,200 @@ export const validateRelieverRequest = (relieverRequest) => {
   return { isValid: errors.length === 0, errors };
 };
 
+/**
+ * Generate Journal Voucher number for monthly amortization
+ */
+export const generateMonthlyAmortizationJVNumber = () => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `JV/AMORT/${year}`;
+    
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+    
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+    
+    console.log(`🎫 Generated Monthly Amortization JV: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating Monthly Amortization JV:', error);
+    throw new Error(`Failed to generate Monthly Amortization JV: ${error.message}`);
+  }
+};
+
+/**
+ * Get count of monthly amortizations already passed for an invoice
+ */
+export const getMonthlyAmortizationCount = (invoiceNumber) => {
+  try {
+    const transactions = safeGetItem('transactions', []);
+    
+    // Filter transactions that are monthly amortization JVs for this invoice
+    const amortizationTransactions = transactions.filter(txn => {
+      // Check if transaction is a Journal Voucher for monthly amortization
+      const isAmortizationJV = txn.voucherType === "Journal Voucher" || 
+                               (txn.voucherNo && txn.voucherNo.includes('AMORT'));
+      
+      // Check if it's related to this invoice
+      const isForInvoice = txn.invoiceNumber === invoiceNumber || 
+                          (txn.narration && txn.narration.includes(invoiceNumber));
+      
+      // Check if it has the amortization GL entries (X2001004 debit and A3005001 credit)
+      const hasAmortizationEntries = txn.entries?.some(entry => 
+        entry.glCode === "X2001004" && entry.debit > 0
+      ) && txn.entries?.some(entry => 
+        entry.glCode === "A3005001" && entry.credit > 0
+      );
+      
+      return isAmortizationJV && isForInvoice && hasAmortizationEntries;
+    });
+    
+    return amortizationTransactions.length;
+  } catch (error) {
+    console.error('Error getting monthly amortization count:', error);
+    return 0;
+  }
+};
+
+/**
+ * Create Monthly Amortization Journal Voucher transaction
+ */
+export const createMonthlyAmortizationTransaction = (invoice, monthYear) => {
+  try {
+    // Get prepaid details
+    const prepaidPeriod = invoice.prepaidPeriod || 12;
+    const prepaidStartMonth = invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7);
+    
+    // Calculate taxable amount (base amount before GST)
+    const gstRate = invoice.gstRate || 18;
+    const totalAmount = parseFloat(invoice.totalAmount);
+    const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
+    
+    // Calculate monthly amortization amount
+    const monthlyAmortization = invoice.monthlyAmortization || 
+                                Math.round(taxableAmount / prepaidPeriod);
+    
+    // Generate voucher number
+    const voucherNo = generateMonthlyAmortizationJVNumber();
+    
+    // Get current user for approval
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    
+    return {
+      id: `TXN_AMORT_${Date.now()}_${invoice.id}`,
+      voucherNo: voucherNo,
+      voucherType: "Journal Voucher",
+      date: getCurrentDate(),
+      invoiceNumber: invoice.invoiceNumber,
+      monthYear: monthYear, // Store the month for which amortization is being done
+      
+      entries: [
+        {
+          lineNo: 1,
+          glCode: "X2001004",
+          glName: "X2-UNIFORM EXPENSE",
+          debit: monthlyAmortization,
+          credit: 0,
+          narration: `Monthly amortization for ${monthYear} - Invoice ${invoice.invoiceNumber}`,
+          costCenter: invoice.site || "Operations",
+          prepaidPeriod: prepaidPeriod,
+          prepaidStartMonth: prepaidStartMonth
+        },
+        {
+          lineNo: 2,
+          glCode: "A3005001",
+          glName: "UNIFORM EXPENSE",
+          debit: 0,
+          credit: monthlyAmortization,
+          narration: `Monthly amortization for ${monthYear} - Invoice ${invoice.invoiceNumber}`,
+          costCenter: invoice.site || "Operations",
+          prepaidPeriod: prepaidPeriod,
+          prepaidStartMonth: prepaidStartMonth
+        }
+      ],
+      
+      totalDebit: monthlyAmortization,
+      totalCredit: monthlyAmortization,
+      narration: `Monthly amortization JV for Invoice ${invoice.invoiceNumber} - ${monthYear}`,
+      approvedBy: currentUser.username || "bm1",
+      approvedDate: new Date().toISOString(),
+      prepaidDetails: {
+        prepaidPeriod: prepaidPeriod,
+        prepaidStartMonth: prepaidStartMonth,
+        monthlyAmortization: monthlyAmortization,
+        monthYear: monthYear
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error creating Monthly Amortization transaction:', error);
+    throw new Error(`Failed to create Monthly Amortization transaction: ${error.message}`);
+  }
+};
+
+/**
+ * Process Monthly Amortization - Create and post JV for a specific month
+ */
+export const processMonthlyAmortization = (invoice, monthYear) => {
+  try {
+    console.log('🚀 Starting Monthly Amortization processing...');
+    
+    // Validate inputs
+    if (!invoice || !invoice.invoiceNumber) {
+      throw new Error('Invalid invoice data');
+    }
+    
+    if (!monthYear) {
+      throw new Error('Month/Year is required for amortization');
+    }
+    
+    // Check if amortization already exists for this month
+    const transactions = safeGetItem('transactions', []);
+    const existingAmortization = transactions.find(txn => 
+      txn.invoiceNumber === invoice.invoiceNumber &&
+      txn.monthYear === monthYear &&
+      txn.entries?.some(entry => entry.glCode === "X2001004" && entry.debit > 0)
+    );
+    
+    if (existingAmortization) {
+      throw new Error(`Monthly amortization for ${monthYear} already exists for this invoice`);
+    }
+    
+    // Create transaction
+    const transaction = createMonthlyAmortizationTransaction(invoice, monthYear);
+    
+    // Post transaction
+    const postResult = postTransaction(transaction);
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+    
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+    
+    console.log('✅ Monthly Amortization JV posted successfully!');
+    
+    return {
+      success: true,
+      voucherNo: transaction.voucherNo,
+      transactionId: postResult.transaction.id,
+      monthYear: monthYear,
+      amount: transaction.totalDebit,
+      message: `Monthly amortization of ₹${transaction.totalDebit.toLocaleString()} posted for ${monthYear}`
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR in processMonthlyAmortization:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process monthly amortization: ${error.message}`
+    };
+  }
+};
+
 
 // Export all functions
 export default {
@@ -2699,7 +2893,11 @@ export default {
   getPrepaidUniformVendorGLCode,
   generatePrepaidUniformVendorGLCode,
   createPrepaidUniformTransaction,
-  generatePrepaidUniformVoucherNumber
+  generatePrepaidUniformVoucherNumber,
+  generateMonthlyAmortizationJVNumber,
+  getMonthlyAmortizationCount,
+  createMonthlyAmortizationTransaction,
+  processMonthlyAmortization
 
 
 };

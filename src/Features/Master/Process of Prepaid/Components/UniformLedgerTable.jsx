@@ -10,6 +10,9 @@ const UniformLedgerTable = ({ data }) => {
               "S.No",
               "Date",
               "Voucher Type",
+              "Debit (₹)",
+              "Credit (₹)",
+              "Invoice #",
               "Description",
               "Vendor",
               "Prepaid Amount (₹)",
@@ -41,6 +44,15 @@ const UniformLedgerTable = ({ data }) => {
                 <td className="px-4 py-2 font-medium text-indigo-700">
                   {entry.voucherType}
                 </td>
+                <td className="px-4 py-2 text-right font-mono">
+                  {entry.debit || '-'}
+                </td>
+                <td className="px-4 py-2 text-right font-mono">
+                  {entry.credit || '-'}
+                </td>
+                <td className="px-4 py-2 font-mono text-blue-700">
+                  {entry.invoiceNumber || entry.documentNo || '-'}
+                </td>
                 <td className="px-4 py-2">{entry.description}</td>
                 <td className="px-4 py-2">{entry.vendor}</td>
                 <td className="px-4 py-2 text-right font-mono">
@@ -58,7 +70,7 @@ const UniformLedgerTable = ({ data }) => {
           ) : (
             <tr>
               <td
-                colSpan="12"
+                colSpan="14"
                 className="text-center text-gray-500 py-6 italic"
               >
                 No records found

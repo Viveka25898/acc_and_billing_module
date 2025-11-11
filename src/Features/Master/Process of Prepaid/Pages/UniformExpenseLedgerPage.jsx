@@ -81,6 +81,7 @@ const UniformExpenseLedgerPage = () => {
     id: entry.voucherNo || entry.refNo || idx,
     date: entry.date,
     voucherNo: entry.voucherNo,
+    invoiceNumber: entry.invoiceNumber || entry.refNo || '-',
     documentNo: entry.voucherNo,
     entryType: entry.entryType,
     description: entry.description,

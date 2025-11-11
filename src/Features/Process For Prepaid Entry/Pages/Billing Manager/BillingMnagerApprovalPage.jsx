@@ -4,6 +4,7 @@ import BillingManagerFilter from "../../Components/BillingManagerFilter";
 import BillingManagerModal from "../../Components/BillingManagerModal";
 import PurchaseVoucherModal from "../../Components/PurchaseVoucherModal";
 import JournalVoucherModal from "../../Components/JournalVoucherModal";
+import MonthlyAmortizationModal from "../../Components/MonthlyAmortizationModal";
 import { toast } from "react-toastify";
 import { processPrepaidUniformInvoice } from "../../../Master/utils/accountingHelpers";
 
@@ -15,6 +16,7 @@ export default function BillingManagerApprovalPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showJournalModal, setShowJournalModal] = useState(false);
+  const [showAmortizationModal, setShowAmortizationModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -380,26 +382,33 @@ Invoice Processing Summary:
                         <span className="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">
                           Approved
                         </span>
-                        <div className="mt-1 space-x-2">
+                        <div className="mt-1 space-x-2 flex flex-wrap gap-1">
                           <button
-                            className="bg-green-500 text-white text-xs px-2 py-1 rounded cursor-pointer"
+                            className="bg-green-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-green-600"
                             onClick={() => {
                               setSelectedInvoice(inv);
                               setShowPurchaseModal(true);
-                              toast.success("Purchase Entry Created!")
                             }}
                           >
                             View Purchase Voucher
                           </button>
                           <button
-                            className="bg-blue-500 text-white text-xs px-2 py-1 rounded cursor-pointer"
+                            className="bg-blue-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-blue-600"
                             onClick={() => {
                               setSelectedInvoice(inv);
                               setShowJournalModal(true);
-                              toast.success("Prepaid Expense Entry Created!")
                             }}
                           >
                             View Journal Voucher
+                          </button>
+                          <button
+                            className="bg-purple-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-purple-600"
+                            onClick={() => {
+                              setSelectedInvoice(inv);
+                              setShowAmortizationModal(true);
+                            }}
+                          >
+                            Monthly Amortization
                           </button>
                         </div>
                       </div>
@@ -452,6 +461,16 @@ Invoice Processing Summary:
           <JournalVoucherModal
             invoice={selectedInvoice}
             onClose={() => setShowJournalModal(false)}
+          />
+        )}
+
+        {showAmortizationModal && selectedInvoice && (
+          <MonthlyAmortizationModal
+            invoice={selectedInvoice}
+            onClose={() => {
+              setShowAmortizationModal(false);
+              setSelectedInvoice(null);
+            }}
           />
         )}
       </div>

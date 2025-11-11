@@ -85,21 +85,34 @@ const UniformPrepaidExpenseLedger = () => {
   }
 
   // Format entries for table display
-  const formattedEntries = filteredEntries.map(entry => ({
-    id: entry.voucherNo || entry.refNo,
-    date: entry.date,
-    voucherType: entry.voucherType || entry.entryType,
-    description: entry.description,
-    vendor: entry.vendor,
-    prepaidAmount: entry.prepaidAmount || '-',
-    period: entry.prepaidStartMonth || '-',
-    totalMonths: entry.totalMonths || entry.period || '-',
-    monthlyAmort: entry.monthlyAmort || '-',
-    counterparty: entry.counterparty || entry.vendor,
-    approvedBy: entry.approvedBy,
-    cumulativeAmort: entry.cumulativeAmort || '-',
-    remainingBalance: entry.remainingBalance
-  }));
+  const formattedEntries = filteredEntries.map(entry => {
+    // Format debit and credit amounts
+    const debitAmount = entry.debit 
+      ? `₹${typeof entry.debit === 'number' ? entry.debit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : entry.debit}`
+      : '-';
+    const creditAmount = entry.credit 
+      ? `₹${typeof entry.credit === 'number' ? entry.credit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : entry.credit}`
+      : '-';
+    
+    return {
+      id: entry.voucherNo || entry.refNo,
+      date: entry.date,
+      voucherType: entry.voucherType || entry.entryType,
+      debit: debitAmount,
+      credit: creditAmount,
+      invoiceNumber: entry.invoiceNumber || entry.documentNo || '-',
+      description: entry.description,
+      vendor: entry.vendor,
+      prepaidAmount: entry.prepaidAmount || '-',
+      period: entry.prepaidStartMonth || '-',
+      totalMonths: entry.totalMonths || entry.period || '-',
+      monthlyAmort: entry.monthlyAmort || '-',
+      counterparty: entry.counterparty || entry.vendor,
+      approvedBy: entry.approvedBy,
+      cumulativeAmort: entry.cumulativeAmort || '-',
+      remainingBalance: entry.remainingBalance
+    };
+  });
 
   return (
     <div className="m-6 max-w-5xl rounded-lg shadow-md bg-white overflow-hidden">
