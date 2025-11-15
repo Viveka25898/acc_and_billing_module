@@ -56,7 +56,7 @@ export class RentLedgerService {
             refNo: txn.id,
             counterparty: siteLoc ? `${derivedCounterparty} - ${siteLoc}` : derivedCounterparty,
             counterpartyType: "Company",
-            type: 'Rent Payment',
+           type: txn.vendorType || (credit > 0 ? 'Rent Invoice' : 'Rent Payment'),
             approvedBy: txn.approvedBy,
             attachments: vendorEntry.attachments || 0,
             costCenter: vendorEntry.costCenter || 'General',

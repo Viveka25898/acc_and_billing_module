@@ -69,7 +69,7 @@ export class HKMaterialLedgerService {
             refNo: txn.invoiceNumber || txn.id,
             counterparty: counterparty,
             counterpartyType: "HK Materials",
-            type: entryType === 'Invoice' ? 'Purchase Invoice' : entryType === 'Payment' ? 'Payment' : 'Journal',
+            type: txn.vendorType || (entryType === 'Invoice' ? 'HK Material Invoice' : entryType === 'Payment' ? 'HK Material Payment' : 'Journal'),
             approvedBy: txn.approvedBy || 'System',
             attachments: vendorEntry.attachments || 0,
             costCenter: vendorEntry.costCenter || expenseEntry?.costCenter || 'Operations',
@@ -256,4 +256,3 @@ export class HKMaterialLedgerService {
     }
   }
 }
-

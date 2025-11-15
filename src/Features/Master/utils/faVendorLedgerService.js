@@ -56,7 +56,7 @@ export class FAVendorLedgerService {
             refNo: txn.invoiceNumber || txn.id,
             counterparty: counterparty,
             counterpartyType: "Fixed Asset",
-            type: entryType === 'Invoice' ? 'Purchase Invoice' : entryType === 'Payment' ? 'Payment' : 'Journal',
+           type: txn.vendorType || (entryType === 'Invoice' ? 'Fixed Asset Invoice' : entryType === 'Payment' ? 'Fixed Asset Payment' : 'Journal'),
             approvedBy: txn.approvedBy || 'System',
             attachments: vendorEntry.attachments || 0,
             costCenter: vendorEntry.costCenter || assetEntry?.costCenter || 'Operations',
@@ -197,5 +197,3 @@ export class FAVendorLedgerService {
     }
   }
 }
-
-

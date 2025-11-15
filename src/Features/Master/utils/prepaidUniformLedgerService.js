@@ -69,7 +69,7 @@ export class PrepaidUniformLedgerService {
             refNo: txn.invoiceNumber || txn.id,
             counterparty: counterparty,
             counterpartyType: "Prepaid Uniform",
-            type: entryType === 'Invoice' ? 'Purchase Invoice' : entryType === 'Payment' ? 'Payment' : 'Journal',
+            type: txn.vendorType || (entryType === 'Invoice' ? 'Prepaid Uniform Invoice' : entryType === 'Payment' ? 'Prepaid Uniform Payment' : 'Journal'),
             approvedBy: txn.approvedBy || 'System',
             attachments: vendorEntry.attachments || 0,
             costCenter: vendorEntry.costCenter || prepaidEntry?.costCenter || 'Operations',
@@ -523,4 +523,3 @@ export class PrepaidUniformLedgerService {
     }
   }
 }
-

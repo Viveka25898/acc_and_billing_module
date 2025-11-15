@@ -142,7 +142,7 @@ const EmployeeAdvanceSettlementPage = () => {
   }, []);
 
   /**
-   * 🎯 UPDATED: Excel template with exact expense head mapping
+   * 🎯 UPDATED: Excel template with exact expense head mapping and NO DUMMY DATA
    */
   const exportTemplate = async () => {
     try {
@@ -172,27 +172,8 @@ const EmployeeAdvanceSettlementPage = () => {
       };
       worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Add sample data
-      worksheet.addRow({
-        sno: '1',
-        date: '25/01/2025',
-        expenseHead: 'Travel',
-        description: 'Auto fare from office to client site',
-        amount: '350',
-        remarks: 'Paid via UPI'
-      });
-
-      worksheet.addRow({
-        sno: '2', 
-        date: '26/01/2025',
-        expenseHead: 'Food & Refreshments',
-        description: 'Lunch during client meeting',
-        amount: '250',
-        remarks: 'Paid by cash'
-      });
-
-      // Add 20 empty rows with auto-numbered S.No
-      for (let i = 3; i <= 22; i++) {
+      // Add 20 empty rows with auto-numbered S.No (starting from row 2)
+      for (let i = 1; i <= 20; i++) {
         worksheet.addRow({
           sno: i.toString(),
           date: '',
@@ -203,8 +184,8 @@ const EmployeeAdvanceSettlementPage = () => {
         });
       }
 
-      // 🎯 ADD DROPDOWN VALIDATION to Expense Head column (C3:C22)
-      for (let rowNum = 3; rowNum <= 22; rowNum++) {
+      // 🎯 ADD DROPDOWN VALIDATION to Expense Head column (C2:C21 - all data rows)
+      for (let rowNum = 2; rowNum <= 21; rowNum++) {
         const cell = worksheet.getCell(`C${rowNum}`);
         
         cell.dataValidation = {
@@ -221,8 +202,8 @@ const EmployeeAdvanceSettlementPage = () => {
         };
       }
 
-      // Add border to all cells with data
-      for (let rowNum = 1; rowNum <= 22; rowNum++) {
+      // Add border to all cells with data (header + 20 data rows)
+      for (let rowNum = 1; rowNum <= 21; rowNum++) {
         for (let colNum = 1; colNum <= 6; colNum++) {
           const cell = worksheet.getCell(rowNum, colNum);
           cell.border = {
@@ -257,13 +238,11 @@ const EmployeeAdvanceSettlementPage = () => {
         '   • Amount: Enter amount in rupees (numbers only, no ₹ symbol)',
         '   • Remarks: Any additional notes (optional)',
         '',
-        '2️⃣ Two sample rows are provided as examples',
+        '2️⃣ Start filling data from Row 2 onwards (first data row)',
         '',
-        '3️⃣ Delete sample rows (row 2 & 3) before submitting your actual expenses',
+        '3️⃣ Fill up to 20 expenses maximum',
         '',
-        '4️⃣ Fill rows starting from row 4 onwards',
-        '',
-        '5️⃣ Save the file and upload along with supporting documents',
+        '4️⃣ Save the file and upload along with supporting documents',
         '',
         '⚠️ IMPORTANT NOTES:',
         '   • Do not change column headers',
@@ -410,8 +389,6 @@ const EmployeeAdvanceSettlementPage = () => {
           
           const filteredData = jsonData.filter(row => 
             row['S. No'] && 
-            row['S. No'] !== '1' && 
-            row['S. No'] !== '2' &&
             row['Amount (₹)'] &&
             Number(row['Amount (₹)']) > 0
           );
