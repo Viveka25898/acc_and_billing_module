@@ -26,7 +26,7 @@ export const normalizeEmployeeId = (employeeId) => {
 export const generateEmployeeGLCode = (employeeId) => {
   const normalizedId = normalizeEmployeeId(employeeId);
   if (!normalizedId) return null;
-  return `A3002-EMP-${normalizedId.padStart(3, '0')}`;
+  return `A3001001001-EMP-${normalizedId.padStart(3, '0')}`;
 };
 
 const safeGetItem = (key, defaultValue = null) => {
@@ -72,14 +72,14 @@ export const generateVoucherNumber = (site, year = new Date().getFullYear()) => 
   try {
     const counters = safeGetItem('voucherCounters', {});
     const key = `PAY/${site}/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     if (DEBUG) console.log(`🎫 Generated voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -109,27 +109,27 @@ export const createEmployeeLedger = (empId, employeeName) => {
     const normalizedId = normalizeEmployeeId(empId);
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
     const glCode = generateEmployeeGLCode(normalizedId);
-    
+
     if (chartOfAccounts.some(acc => acc.code === glCode)) {
       if (DEBUG) console.log(`⚠️ Ledger ${glCode} already exists`);
       return glCode;
     }
-    
+
     const newLedger = {
       id: `EMP_${Date.now()}_${normalizedId}`,
       code: glCode,
       name: `EMP-${normalizedId.padStart(3, '0')}`,
       type: "ACCOUNT",
-      parentAccount: "LOANS & ADVANCES (ASSETS)",
-      parentCode: "A3002"
+      parentAccount: "EMPLOYEE ADVANCE",
+      parentCode: "A3001001"
     };
-    
+
     chartOfAccounts.push(newLedger);
-    
+
     if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
       throw new Error('Failed to save chart of accounts');
     }
-    
+
     console.log(`✅ Created employee ledger: ${glCode} for ${employeeName}`);
     return glCode;
   } catch (error) {
@@ -142,13 +142,13 @@ export const getEmployeeDetails = (employeeId) => {
   try {
     const normalizedId = normalizeEmployeeId(employeeId);
     const users = safeGetItem('users', []);
-    
+
     const employee = users.find(u => u.empId === normalizedId);
     if (employee) return employee;
-    
+
     const employeeByUsername = users.find(u => u.username === employeeId);
     if (employeeByUsername) return employeeByUsername;
-    
+
     console.warn(`⚠️ Employee not found: ${employeeId}`);
     return null;
   } catch (error) {
@@ -177,45 +177,45 @@ export const getBankDetails = (bankCode) => {
 
 export const validateAdvanceRequest = (advanceRequest) => {
   const errors = [];
-  
+
   if (!advanceRequest.employeeId) errors.push('Employee ID is missing');
   if (!advanceRequest.amount || parseFloat(advanceRequest.amount) <= 0) errors.push('Invalid amount');
   if (!advanceRequest.status || advanceRequest.status !== 'Approved') errors.push('Request is not approved');
-  
+
   return { isValid: errors.length === 0, errors };
 };
 
 export const validateBankData = (bankData) => {
   const errors = [];
-  
+
   if (!bankData.bankCode) errors.push('Bank code is missing');
   if (!bankData.bankName) errors.push('Bank name is missing');
-  
+
   return { isValid: errors.length === 0, errors };
 };
 
 export const validateTransaction = (transaction) => {
   const errors = [];
-  
+
   const totalDebit = transaction.entries.reduce((sum, e) => sum + (e.debit || 0), 0);
   const totalCredit = transaction.entries.reduce((sum, e) => sum + (e.credit || 0), 0);
-  
+
   if (Math.abs(totalDebit - totalCredit) > 0.01) {
     errors.push(`Unbalanced: Dr ₹${totalDebit.toFixed(2)} ≠ Cr ₹${totalCredit.toFixed(2)}`);
   }
-  
+
   const chartOfAccounts = safeGetItem('chartOfAccounts', []);
   transaction.entries.forEach(entry => {
     const glExists = chartOfAccounts.some(acc => acc.code === entry.glCode);
     if (!glExists) errors.push(`GL Code ${entry.glCode} not found`);
   });
-  
+
   transaction.entries.forEach(entry => {
     if (entry.debit < 0 || entry.credit < 0) {
       errors.push(`Negative amounts not allowed: ${entry.glCode}`);
     }
   });
-  
+
   return { isValid: errors.length === 0, errors };
 };
 
@@ -229,22 +229,22 @@ export const postTransaction = (transactionData) => {
     if (!validation.isValid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
-    
+
     const transactions = safeGetItem('transactions', []);
-    
+
     const transaction = {
       id: transactionData.id || `TXN_${Date.now()}`,
       ...transactionData,
       postedDate: new Date().toISOString(),
       status: 'Posted'
     };
-    
+
     transactions.push(transaction);
-    
+
     if (!safeSetItem('transactions', transactions)) {
       throw new Error('Failed to save transaction');
     }
-    
+
     console.log(`✅ Transaction posted: ${transaction.voucherNo}`);
     return { success: true, transaction };
   } catch (error) {
@@ -259,21 +259,21 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
     const employee = getEmployeeDetails(normalizedId);
     const bank = getBankDetails(bankData.bankCode);
     const amount = parseFloat(advanceRequest.amount);
-    
+
     if (!employee) throw new Error(`Employee ${advanceRequest.employeeId} not found`);
-    
+
     const employeeGLCode = generateEmployeeGLCode(normalizedId);
     const employeeName = employee.fullName || advanceRequest.employeeName;
     const bankGLCode = bankData.bankCode;
     const bankName = bank?.name || bankData.bankName;
-    
+
     return {
       id: `TXN_${Date.now()}_${normalizedId}`,
       voucherNo: voucherNo,
       voucherType: "Payment Voucher",
       date: getCurrentDate(), // ✅ FIXED: Always use current date for posting
       advanceRequestId: advanceRequest.requestId,
-      
+
       entries: [
         {
           lineNo: 1,
@@ -295,7 +295,7 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
           costCenter: 'HEAD OFFICE'
         }
       ],
-      
+
       totalDebit: amount,
       totalCredit: amount,
       narration: `Advance payment to ${employeeName}`,
@@ -337,7 +337,7 @@ const resolveConveyanceGLs = () => {
   const hasCode = (code) => chartOfAccounts.some(acc => acc.code === code);
 
   let expenseGLCode = expenseCandidates.find(hasCode);
-  
+
   // Auto-create X2001003 if missing
   if (!expenseGLCode) {
     const newExpenseLedger = {
@@ -501,21 +501,21 @@ export const processConveyanceApproval = (claim) => {
 export const updateLedgerBalances = (entries) => {
   try {
     const balances = safeGetItem('ledgerBalances', {});
-    
+
     entries.forEach(entry => {
       if (!balances[entry.glCode]) {
         balances[entry.glCode] = { debit: 0, credit: 0, balance: 0 };
       }
-      
+
       balances[entry.glCode].debit += entry.debit;
       balances[entry.glCode].credit += entry.credit;
       balances[entry.glCode].balance = balances[entry.glCode].debit - balances[entry.glCode].credit;
     });
-    
+
     if (!safeSetItem('ledgerBalances', balances)) {
       throw new Error('Failed to save ledger balances');
     }
-    
+
     console.log('✅ Ledger balances updated');
     return balances;
   } catch (error) {
@@ -539,18 +539,18 @@ export const updateEmployeeOSBalance = (employeeId, newBalance) => {
     const normalizedId = normalizeEmployeeId(employeeId);
     const users = safeGetItem('users', []);
     const userIndex = users.findIndex(u => u.empId === normalizedId);
-    
+
     if (userIndex !== -1) {
       users[userIndex].osBalance = newBalance;
-      
+
       if (!safeSetItem('users', users)) {
         throw new Error('Failed to save user data');
       }
-      
+
       console.log(`✅ Updated osBalance for employee ${normalizedId}: ₹${newBalance}`);
       return true;
     }
-    
+
     console.warn(`⚠️ Employee ${normalizedId} not found in users`);
     return false;
   } catch (error) {
@@ -566,51 +566,51 @@ export const updateEmployeeOSBalance = (employeeId, newBalance) => {
 export const processAdvanceApproval = (advanceRequest, bankData) => {
   try {
     if (DEBUG) console.log('🚀 Starting advance approval...');
-    
+
     // Validate inputs
     const requestValidation = validateAdvanceRequest(advanceRequest);
     if (!requestValidation.isValid) {
       throw new Error(`Invalid request: ${requestValidation.errors.join(', ')}`);
     }
-    
+
     const bankValidation = validateBankData(bankData);
     if (!bankValidation.isValid) {
       throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
     }
-    
+
     // Get employee details
     const normalizedId = normalizeEmployeeId(advanceRequest.employeeId);
     const employee = getEmployeeDetails(normalizedId);
     if (!employee) throw new Error(`Employee ${advanceRequest.employeeId} not found`);
-    
+
     if (DEBUG) console.log("✅ Found employee:", employee.fullName);
-    
+
     // Check/create employee ledger
     const ledgerExists = checkEmployeeLedgerExists(normalizedId);
     if (!ledgerExists) {
       if (DEBUG) console.log(`📝 Creating ledger for ${employee.fullName}...`);
       createEmployeeLedger(normalizedId, employee.fullName);
     }
-    
+
     const employeeGLCode = generateEmployeeGLCode(normalizedId);
     const site = employee.site || getSiteByEmpId(normalizedId);
     const voucherNo = generateVoucherNumber(site);
-    
+
     // Create and post transaction
     const transaction = createAdvancePaymentTransaction(advanceRequest, bankData, voucherNo);
     const postResult = postTransaction(transaction);
-    
+
     if (!postResult.success) {
       throw new Error(postResult.error);
     }
-    
+
     // Update balances
     updateLedgerBalances(transaction.entries);
     const ledgerBalance = getLedgerBalance(employeeGLCode);
     updateEmployeeOSBalance(normalizedId, ledgerBalance.balance);
-    
+
     console.log('✅ Advance approval completed!');
-    
+
     return {
       success: true,
       voucherNo: voucherNo,
@@ -622,7 +622,7 @@ export const processAdvanceApproval = (advanceRequest, bankData) => {
       employeeName: employee.fullName,
       message: `Advance of ₹${parseFloat(advanceRequest.amount).toLocaleString()} processed for ${employee.fullName}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processAdvanceApproval:', error);
     return {
@@ -644,28 +644,28 @@ export const processAdvanceApproval = (advanceRequest, bankData) => {
 export const processMultipleAdvanceApprovals = (advanceRequests, bankData) => {
   try {
     if (DEBUG) console.log(`🚀 Starting batch approval for ${advanceRequests.length} requests...`);
-    
+
     // Validate bank data
     const bankValidation = validateBankData(bankData);
     if (!bankValidation.isValid) {
       throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
     }
-    
+
     const results = [];
     let totalAmount = 0;
     let successCount = 0;
     let failureCount = 0;
-    
+
     // 🔧 FIX: Process each request INDIVIDUALLY
     for (let i = 0; i < advanceRequests.length; i++) {
       const request = advanceRequests[i];
-      
+
       try {
         console.log(`\n📝 Processing request ${i + 1}/${advanceRequests.length}...`);
-        
+
         // Process this single request
         const result = processAdvanceApproval(request, bankData);
-        
+
         if (result.success) {
           results.push({
             employeeId: normalizeEmployeeId(request.employeeId),
@@ -676,10 +676,10 @@ export const processMultipleAdvanceApprovals = (advanceRequests, bankData) => {
             newBalance: result.newBalance,
             success: true
           });
-          
+
           totalAmount += result.amount;
           successCount++;
-          
+
           console.log(`✅ Request ${i + 1} processed successfully`);
         } else {
           results.push({
@@ -689,11 +689,11 @@ export const processMultipleAdvanceApprovals = (advanceRequests, bankData) => {
             error: result.error,
             success: false
           });
-          
+
           failureCount++;
           console.error(`❌ Request ${i + 1} failed: ${result.error}`);
         }
-        
+
       } catch (error) {
         console.error(`❌ Error processing request ${i + 1}:`, error);
         results.push({
@@ -706,9 +706,9 @@ export const processMultipleAdvanceApprovals = (advanceRequests, bankData) => {
         failureCount++;
       }
     }
-    
+
     console.log(`\n✅ Batch processing complete: ${successCount} succeeded, ${failureCount} failed`);
-    
+
     return {
       success: successCount > 0,
       batchSize: advanceRequests.length,
@@ -717,11 +717,11 @@ export const processMultipleAdvanceApprovals = (advanceRequests, bankData) => {
       totalAmount: totalAmount,
       bankGLCode: bankData.bankCode,
       employees: results,
-      message: failureCount === 0 
+      message: failureCount === 0
         ? `All ${successCount} advances processed successfully (Total: ₹${totalAmount.toLocaleString()})`
         : `${successCount} of ${advanceRequests.length} advances processed. ${failureCount} failed.`
     };
-    
+
   } catch (error) {
     console.error('❌ Error in batch approval:', error);
     return {
@@ -741,14 +741,14 @@ export const getAllTransactions = () => safeGetItem('transactions', []);
 export const getTransactionsByEmployee = (employeeId) => {
   const normalizedId = normalizeEmployeeId(employeeId);
   const transactions = getAllTransactions();
-  return transactions.filter(txn => 
+  return transactions.filter(txn =>
     txn.entries.some(entry => entry.employeeId === normalizedId)
   );
 };
 
 export const getTransactionsByGLCode = (glCode) => {
   const transactions = getAllTransactions();
-  return transactions.filter(txn => 
+  return transactions.filter(txn =>
     txn.entries.some(entry => entry.glCode === glCode)
   );
 };
@@ -782,64 +782,64 @@ export const formatAmount = (amount) => {
 export const processAdvanceSettlement = (settlement) => {
   try {
     console.log('🚀 Starting advance settlement processing...');
-    
+
     // Validate settlement data
     if (!settlement.employeeGLCode) {
       throw new Error('Employee GL Code not found');
     }
-    
+
     if (!settlement.expenseItems || settlement.expenseItems.length === 0) {
       throw new Error('No expense items found');
     }
-    
+
     // Calculate total settlement amount
     const totalAmount = settlement.expenseItems.reduce((sum, item) => {
       return sum + (Number(item['Amount (₹)']) || 0);
     }, 0);
-    
+
     if (totalAmount <= 0) {
       throw new Error('Invalid settlement amount');
     }
-    
+
     // Get employee details
     const normalizedId = normalizeEmployeeId(settlement.employeeId);
     const employee = getEmployeeDetails(normalizedId);
     if (!employee) throw new Error(`Employee ${settlement.employeeId} not found`);
-    
+
     // Get current O/S balance
     const currentBalance = getLedgerBalance(settlement.employeeGLCode).balance;
     const osBalanceBefore = settlement.osBalanceBefore || currentBalance;
-    
+
     // Calculate new O/S balance
     const osBalanceAfter = osBalanceBefore - totalAmount;
-    
+
     if (osBalanceAfter < 0) {
       throw new Error(`Settlement amount (₹${totalAmount}) exceeds O/S balance (₹${osBalanceBefore})`);
     }
-    
+
     // Generate voucher number
     const site = employee.site || getSiteByEmpId(normalizedId);
     const voucherNo = generateSettlementVoucherNumber(site);
-    
+
     // Create JV data for display
     const jvData = createSettlementJVData(settlement, employee, voucherNo, totalAmount, osBalanceBefore, osBalanceAfter);
-    
+
     // Create and post transaction
     const transaction = createSettlementTransaction(settlement, employee, voucherNo, totalAmount);
     const postResult = postTransaction(transaction);
-    
+
     if (!postResult.success) {
       throw new Error(postResult.error);
     }
-    
+
     // Update ledger balances
     updateLedgerBalances(transaction.entries);
-    
+
     // Update employee O/S balance
     updateEmployeeOSBalance(normalizedId, osBalanceAfter);
-    
+
     console.log('✅ Advance settlement completed!');
-    
+
     return {
       success: true,
       voucherNo: voucherNo,
@@ -851,7 +851,7 @@ export const processAdvanceSettlement = (settlement) => {
       employeeName: employee.fullName,
       message: `Settlement of ₹${totalAmount.toLocaleString()} processed for ${employee.fullName}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processAdvanceSettlement:', error);
     return {
@@ -868,32 +868,32 @@ export const processAdvanceSettlement = (settlement) => {
 const createSettlementJVData = (settlement, employee, voucherNo, totalAmount, osBalanceBefore, osBalanceAfter) => {
   // Map expense heads to proper GL codes
   const expenseGLMapping = {
-  'Travel': 'X1001002001', // TRAVEL EXPENSE
-  'Food & Refreshments': 'X1001003001', // FOOD & REFRESHMENT
-  'Accommodation': 'X1001002002', // ACCOMODATION
-  'Other': 'X2002002001' // OTHER EXPENSE
-};
-  
+    'Travel': 'X1001002001', // TRAVEL EXPENSE
+    'Food & Refreshments': 'X1001003001', // FOOD & REFRESHMENT
+    'Accommodation': 'X1001002002', // ACCOMODATION
+    'Other': 'X2002002001' // OTHER EXPENSE
+  };
+
   // Group expenses by expense head
   const expenseGroups = {};
   settlement.expenseItems.forEach(item => {
     const expenseHead = item['Expense Head'] || 'Other';
     const amount = Number(item['Amount (₹)']) || 0;
-    
+
     if (!expenseGroups[expenseHead]) {
       expenseGroups[expenseHead] = 0;
     }
     expenseGroups[expenseHead] += amount;
   });
-  
+
   // Create JV entries
   const entries = [];
-  
+
   // Debit entries for each expense head
   Object.entries(expenseGroups).forEach(([expenseHead, amount]) => {
     const glCode = expenseGLMapping[expenseHead] || expenseGLMapping['Other'];
     const glName = getGLName(glCode) || expenseHead;
-    
+
     entries.push({
       particulars: `${expenseHead} Expense`,
       glCode: glCode,
@@ -902,7 +902,7 @@ const createSettlementJVData = (settlement, employee, voucherNo, totalAmount, os
       narration: `Settlement for ${expenseHead}`
     });
   });
-  
+
   // Credit entry for employee advance
   entries.push({
     particulars: `Employee Advance - ${employee.fullName}`,
@@ -911,7 +911,7 @@ const createSettlementJVData = (settlement, employee, voucherNo, totalAmount, os
     credit: totalAmount,
     narration: `Advance settlement`
   });
-  
+
   return {
     header: {
       company: "Ismart",
@@ -953,35 +953,35 @@ const createSettlementJVData = (settlement, employee, voucherNo, totalAmount, os
 const createSettlementTransaction = (settlement, employee, voucherNo, totalAmount) => {
   const normalizedId = normalizeEmployeeId(settlement.employeeId);
   const employeeName = employee.fullName;
-  
+
   const expenseGLMapping = {
     'Travel': 'X1001002001',
     'Food & Refreshments': 'X1001003001',
     'Accommodation': 'X1001002002',
     'Other': 'X2002002001'
   };
-  
+
   // Group expenses by expense head
   const expenseGroups = {};
   settlement.expenseItems.forEach(item => {
     const expenseHead = item['Expense Head'] || 'Other';
     const amount = Number(item['Amount (₹)']) || 0;
-    
+
     if (!expenseGroups[expenseHead]) {
       expenseGroups[expenseHead] = 0;
     }
     expenseGroups[expenseHead] += amount;
   });
-  
+
   // Create transaction entries
   const entries = [];
   let lineNo = 1;
-  
+
   // Debit entries for each expense head
   Object.entries(expenseGroups).forEach(([expenseHead, amount]) => {
     const glCode = expenseGLMapping[expenseHead] || expenseGLMapping['Other'];
     const glName = getGLName(glCode) || expenseHead;
-    
+
     entries.push({
       lineNo: lineNo++,
       glCode: glCode,
@@ -993,7 +993,7 @@ const createSettlementTransaction = (settlement, employee, voucherNo, totalAmoun
       costCenter: employee.site || 'General'
     });
   });
-  
+
   // Credit entry for employee advance
   entries.push({
     lineNo: lineNo,
@@ -1005,7 +1005,7 @@ const createSettlementTransaction = (settlement, employee, voucherNo, totalAmoun
     employeeId: normalizedId,
     costCenter: employee.site || 'General'
   });
-  
+
   return {
     id: `TXN_SETT_${Date.now()}_${normalizedId}`,
     voucherNo: voucherNo,
@@ -1043,14 +1043,14 @@ export const generateSettlementVoucherNumber = (site) => {
     const counters = safeGetItem('voucherCounters', {});
     const year = new Date().getFullYear();
     const key = `SETTLEMENT/${site}/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     if (DEBUG) console.log(`🎫 Generated settlement voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -1083,21 +1083,21 @@ export const createRelieverPaymentTransaction = (relieverRequest, bankData, vouc
   try {
     const amount = parseFloat(relieverRequest.amount);
     const bank = getBankDetails(bankData.bankCode);
-    
+
     const relieverGLCode = 'X1001001003'; // Reliever Wages Expense
     const bankGLCode = bankData.bankCode;
     const bankName = bank?.name || bankData.bankName;
-    
+
     // Get site from request or use default
     const site = relieverRequest.site || 'General';
-    
+
     return {
       id: `TXN_REL_${Date.now()}_${relieverRequest.id}`,
       voucherNo: voucherNo,
       voucherType: "Payment Voucher",
       date: getCurrentDate(),
       relieverRequestId: relieverRequest.id,
-      
+
       entries: [
         {
           lineNo: 1,
@@ -1122,7 +1122,7 @@ export const createRelieverPaymentTransaction = (relieverRequest, bankData, vouc
           costCenter: 'HEAD OFFICE'
         }
       ],
-      
+
       totalDebit: amount,
       totalCredit: amount,
       narration: `Reliever payment to ${relieverRequest.name} for ${relieverRequest.days || 1} day(s)`,
@@ -1148,38 +1148,38 @@ export const createRelieverPaymentTransaction = (relieverRequest, bankData, vouc
 export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
   try {
     if (DEBUG) console.log('🚀 Starting reliever payment approval...');
-    
+
     // Validate inputs
     if (!relieverRequest.name) {
       throw new Error('Reliever name is required');
     }
-    
+
     if (!relieverRequest.amount || parseFloat(relieverRequest.amount) <= 0) {
       throw new Error('Invalid payment amount');
     }
-    
-     const bankValidation = validateBankData(bankData);
+
+    const bankValidation = validateBankData(bankData);
     if (!bankValidation.isValid) {
       throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
     }
-    
+
     // Generate voucher number
     const site = relieverRequest.site || 'General';
     const voucherNo = generateRelieverVoucherNumber(site);
-    
+
     // Create and post transaction
     const transaction = createRelieverPaymentTransaction(relieverRequest, bankData, voucherNo);
     const postResult = postTransaction(transaction);
-    
+
     if (!postResult.success) {
       throw new Error(postResult.error);
     }
-    
+
     // Update ledger balances
     updateLedgerBalances(transaction.entries);
-    
+
     console.log('✅ Reliever payment completed!');
-    
+
     return {
       success: true,
       voucherNo: voucherNo,
@@ -1192,7 +1192,7 @@ export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
       days: relieverRequest.days || 1,
       message: `Reliever payment of ₹${parseFloat(relieverRequest.amount).toLocaleString()} processed for ${relieverRequest.name}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processRelieverPaymentApproval:', error);
     return {
@@ -1209,28 +1209,28 @@ export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
 export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
   try {
     if (DEBUG) console.log(`🚀 Starting batch reliever payment for ${relieverRequests.length} requests...`);
-    
+
     // Validate bank data
     const bankValidation = validateBankData(bankData);
     if (!bankValidation.isValid) {
       throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
     }
-    
+
     const results = [];
     let totalAmount = 0;
     let successCount = 0;
     let failureCount = 0;
-    
+
     // Process each request individually
     for (let i = 0; i < relieverRequests.length; i++) {
       const request = relieverRequests[i];
-      
+
       try {
         console.log(`📝 Processing reliever payment ${i + 1}/${relieverRequests.length}...`);
-        
+
         // Process this single reliever payment
         const result = processRelieverPaymentApproval(request, bankData);
-        
+
         if (result.success) {
           results.push({
             relieverName: request.name,
@@ -1241,10 +1241,10 @@ export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
             days: result.days,
             success: true
           });
-          
+
           totalAmount += result.amount;
           successCount++;
-          
+
           console.log(`✅ Reliever payment ${i + 1} processed successfully`);
         } else {
           results.push({
@@ -1253,11 +1253,11 @@ export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
             error: result.error,
             success: false
           });
-          
+
           failureCount++;
           console.error(`❌ Reliever payment ${i + 1} failed: ${result.error}`);
         }
-        
+
       } catch (error) {
         console.error(`❌ Error processing reliever payment ${i + 1}:`, error);
         results.push({
@@ -1269,9 +1269,9 @@ export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
         failureCount++;
       }
     }
-    
+
     console.log(`\n✅ Batch reliever processing complete: ${successCount} succeeded, ${failureCount} failed`);
-    
+
     return {
       success: successCount > 0,
       batchSize: relieverRequests.length,
@@ -1280,11 +1280,11 @@ export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
       totalAmount: totalAmount,
       bankGLCode: bankData.bankCode,
       payments: results,
-      message: failureCount === 0 
+      message: failureCount === 0
         ? `All ${successCount} reliever payments processed successfully (Total: ₹${totalAmount.toLocaleString()})`
         : `${successCount} of ${relieverRequests.length} payments processed. ${failureCount} failed.`
     };
-    
+
   } catch (error) {
     console.error('❌ Error in batch reliever payment:', error);
     return {
@@ -1303,14 +1303,14 @@ export const generateRelieverVoucherNumber = (site) => {
     const counters = safeGetItem('voucherCounters', {});
     const year = new Date().getFullYear();
     const key = `PAY/REL/${site}/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     if (DEBUG) console.log(`🎫 Generated reliever voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -1330,11 +1330,11 @@ export const getVendorGLCode = (vendorName) => {
   try {
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
     const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
-    
+
     // Find existing ledger for this vendor by name under L2005
     const existingLedger = chartOfAccounts.find(acc => {
       if (!acc.code.startsWith('L2005_')) return false;
-      
+
       // Check by account name - extract vendor name from "VENDOR - {VendorName}"
       const accountName = (acc.name || '').toLowerCase();
       if (accountName.includes('vendor -')) {
@@ -1343,15 +1343,15 @@ export const getVendorGLCode = (vendorName) => {
           return true;
         }
       }
-      
+
       return false;
     });
-    
+
     if (existingLedger) {
       console.log(`✅ Found existing vendor ledger: ${existingLedger.code} for ${vendorName}`);
       return existingLedger.code;
     }
-    
+
     // If not found, return null (will need to create)
     return null;
   } catch (error) {
@@ -1365,10 +1365,10 @@ export const getVendorGLCode = (vendorName) => {
 export const createVendorLedger = (vendorId, vendorName) => {
   try {
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-    
+
     // Generate vendor GL code under L2005
     const glCode = generateVendorGLCode(vendorName);
-    
+
     const newLedger = {
       id: `VENDOR_${Date.now()}_${vendorId}`,
       code: glCode,
@@ -1382,15 +1382,15 @@ export const createVendorLedger = (vendorId, vendorName) => {
       currentBalance: 0,
       isActive: true
     };
-    
+
     console.log(`✅ Creating vendor ledger:`, newLedger);
-    
+
     chartOfAccounts.push(newLedger);
-    
+
     if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
       throw new Error('Failed to save chart of accounts');
     }
-    
+
     console.log(`✅ Created vendor ledger: ${glCode} for ${vendorName}`);
     return glCode;
   } catch (error) {
@@ -1405,11 +1405,11 @@ export const checkVendorLedgerExists = (vendorName) => {
   try {
     const chartOfAccounts = safeGetItem('chartOfAccounts', []);
     const vendorNameNormalized = vendorName.trim().toLowerCase().replace(/\s+/g, ' ');
-    
+
     // Check if a ledger exists for this vendor by name under L2005
     const existingLedger = chartOfAccounts.find(acc => {
       if (!acc.code.startsWith('L2005_')) return false;
-      
+
       // Check by account name - extract vendor name from "VENDOR - {VendorName}"
       const accountName = (acc.name || '').toLowerCase();
       if (accountName.includes('vendor -')) {
@@ -1418,10 +1418,10 @@ export const checkVendorLedgerExists = (vendorName) => {
           return true;
         }
       }
-      
+
       return false;
     });
-    
+
     return !!existingLedger;
   } catch (error) {
     console.error('Error checking vendor ledger:', error);
@@ -1431,7 +1431,7 @@ export const checkVendorLedgerExists = (vendorName) => {
 
 const generateVendorGLCode = (vendorName) => {
   const chartOfAccounts = safeGetItem('chartOfAccounts', []);
-  
+
   // Find all existing vendor GL codes under L2005
   const vendorGLs = chartOfAccounts
     .filter(acc => acc.code.startsWith('L2005_'))
@@ -1441,10 +1441,10 @@ const generateVendorGLCode = (vendorName) => {
       return parseInt(numberPart) || 0;
     })
     .filter(num => !isNaN(num));
-  
+
   const lastNumber = vendorGLs.length > 0 ? Math.max(...vendorGLs) : 0;
   const nextNumber = lastNumber + 1;
-  
+
   return `L2005_${String(nextNumber).padStart(3, '0')}`;
 };
 
@@ -1453,8 +1453,8 @@ export const createRentPaymentTransaction = (rentData, vendorGL, bankData, vouch
   try {
     const amount = parseFloat(rentData.amount);
     const bank = getBankDetails(bankData.bankCode);
-    
-  // Create entries array following your double-entry pattern
+
+    // Create entries array following your double-entry pattern
     const entries = [
       // Rent Expense Debit
       {
@@ -1468,58 +1468,58 @@ export const createRentPaymentTransaction = (rentData, vendorGL, bankData, vouch
         site: rentData.siteName
       }
     ];
-    
-  // Add GST entries automatically if agreement/site indicates GST
-  {
-    // derive GST applicability and split
-    const agreements = JSON.parse(localStorage.getItem('agreements') || '[]');
-    const company = JSON.parse(localStorage.getItem('companyProfile') || '{}');
-    const agreement = agreements.find(a => a.agreementId === rentData.agreementId || a.siteId === rentData.siteId);
-    const gstApplicable = (rentData.gstDetails && rentData.gstDetails.applicable) || rentData.withGST || agreement?.withGST;
 
-    if (gstApplicable) {
-      // Determine GST type: default CGST+SGST unless cross-state
-      const siteState = rentData.siteState || agreement?.siteState || rentData.siteDetails?.state;
-      const companyState = company?.state || company?.registeredState;
-      const gstType = rentData.gstDetails?.type || ((siteState && companyState && siteState !== companyState) ? 'IGST' : 'CGST+SGST');
+    // Add GST entries automatically if agreement/site indicates GST
+    {
+      // derive GST applicability and split
+      const agreements = JSON.parse(localStorage.getItem('agreements') || '[]');
+      const company = JSON.parse(localStorage.getItem('companyProfile') || '{}');
+      const agreement = agreements.find(a => a.agreementId === rentData.agreementId || a.siteId === rentData.siteId);
+      const gstApplicable = (rentData.gstDetails && rentData.gstDetails.applicable) || rentData.withGST || agreement?.withGST;
 
-      // Determine base and gst amounts
-      const baseRent = (rentData.breakdown?.baseRent ?? agreement?.monthlyBaseRent ?? rentData.amount);
-      const totalGST = (rentData.breakdown?.gst ?? agreement?.monthlyGST ?? 0);
+      if (gstApplicable) {
+        // Determine GST type: default CGST+SGST unless cross-state
+        const siteState = rentData.siteState || agreement?.siteState || rentData.siteDetails?.state;
+        const companyState = company?.state || company?.registeredState;
+        const gstType = rentData.gstDetails?.type || ((siteState && companyState && siteState !== companyState) ? 'IGST' : 'CGST+SGST');
 
-      if (gstType === 'CGST+SGST') {
-        const half = Number((Number(totalGST) / 2).toFixed(2));
-        entries.push(
-          {
+        // Determine base and gst amounts
+        const baseRent = (rentData.breakdown?.baseRent ?? agreement?.monthlyBaseRent ?? rentData.amount);
+        const totalGST = (rentData.breakdown?.gst ?? agreement?.monthlyGST ?? 0);
+
+        if (gstType === 'CGST+SGST') {
+          const half = Number((Number(totalGST) / 2).toFixed(2));
+          entries.push(
+            {
+              lineNo: entries.length + 1,
+              glCode: "A3007001001", // CGST INPUT
+              glName: "CGST INPUT",
+              debit: half,
+              credit: 0,
+              narration: `CGST on rent - ${rentData.month}`
+            },
+            {
+              lineNo: entries.length + 2,
+              glCode: "A3007001002", // SGST INPUT
+              glName: "SGST INPUT",
+              debit: half,
+              credit: 0,
+              narration: `SGST on rent - ${rentData.month}`
+            }
+          );
+        } else {
+          entries.push({
             lineNo: entries.length + 1,
-            glCode: "A3007001001", // CGST INPUT
-            glName: "CGST INPUT",
-            debit: half,
+            glCode: "A3007001003", // IGST INPUT
+            glName: "IGST INPUT",
+            debit: Number(totalGST),
             credit: 0,
-            narration: `CGST on rent - ${rentData.month}`
-          },
-          {
-            lineNo: entries.length + 2,
-            glCode: "A3007001002", // SGST INPUT
-            glName: "SGST INPUT",
-            debit: half,
-            credit: 0,
-            narration: `SGST on rent - ${rentData.month}`
-          }
-        );
-      } else {
-        entries.push({
-          lineNo: entries.length + 1,
-          glCode: "A3007001003", // IGST INPUT
-          glName: "IGST INPUT",
-          debit: Number(totalGST),
-          credit: 0,
-          narration: `IGST on rent - ${rentData.month}`
-        });
+            narration: `IGST on rent - ${rentData.month}`
+          });
+        }
       }
     }
-  }
-    
+
     // Vendor Payable Credit
     entries.push({
       lineNo: entries.length + 1,
@@ -1530,7 +1530,7 @@ export const createRentPaymentTransaction = (rentData, vendorGL, bankData, vouch
       narration: `Rent payable to ${rentData.ownerName} for ${rentData.month}`,
       vendorId: rentData.ownerId
     });
-    
+
     return {
       id: `TXN_RENT_${Date.now()}_${rentData.voucherId}`,
       voucherNo: voucherNo,
@@ -1559,40 +1559,40 @@ export const createRentPaymentTransaction = (rentData, vendorGL, bankData, vouch
 export const processRentApproval = (rentVoucher, bankData) => {
   try {
     console.log('🚀 Starting rent voucher processing...');
-    
+
     // Validate inputs
     if (!rentVoucher.ownerName) {
       throw new Error('Owner name is required');
     }
-    
+
     // ✅ FIX: Check if vendor GL exists, if not create it
     let vendorGL = getVendorGLCode(rentVoucher.ownerName);
-    
+
     if (!vendorGL) {
       console.log('📝 Creating vendor ledger for:', rentVoucher.ownerName);
       const vendorId = rentVoucher.ownerId || `VEND-${Date.now()}`;
       vendorGL = createVendorLedger(vendorId, rentVoucher.ownerName);
-      
+
       // Update the rent voucher with the new valid GL code
       rentVoucher.ownerGLCode = vendorGL;
     }
-    
+
     // Rest of your processing logic remains the same...
     const siteCode = rentVoucher.siteName?.substring(0, 3).toUpperCase() || 'GEN';
     const voucherNo = generateRentVoucherNumber(siteCode);
-    
+
     // Create and post transaction
     const transaction = createRentPaymentTransaction(rentVoucher, vendorGL, bankData, voucherNo);
     const postResult = postTransaction(transaction);
-    
+
     if (!postResult.success) {
       throw new Error(postResult.error);
     }
-    
+
     updateLedgerBalances(transaction.entries);
-    
+
     console.log('✅ Rent voucher processing completed!');
-    
+
     return {
       success: true,
       voucherNo: voucherNo,
@@ -1605,7 +1605,7 @@ export const processRentApproval = (rentVoucher, bankData) => {
       month: rentVoucher.month,
       message: `Rent voucher for ${rentVoucher.month} processed successfully - ₹${parseFloat(rentVoucher.amount).toLocaleString()}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processRentApproval:', error);
     return {
@@ -1623,14 +1623,14 @@ export const generateRentVoucherNumber = (site) => {
     const counters = safeGetItem('voucherCounters', {});
     const year = new Date().getFullYear();
     const key = `RENT/${site}/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     console.log(`🎫 Generated rent voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -1648,7 +1648,7 @@ export const createHKMaterialTransaction = (invoice, vendorGLCode, expenseGLCode
       voucherType: "Purchase Voucher",
       date: getCurrentDate(),
       invoiceNumber: invoice.invoiceNumber,
-      
+
       entries: [
         {
           lineNo: 1,
@@ -1666,15 +1666,15 @@ export const createHKMaterialTransaction = (invoice, vendorGLCode, expenseGLCode
           glName: "CGST Input",
           debit: cgstAmount,
           credit: 0,
-          narration: `CGST @${invoice.gstRate/2}% on HK Materials`
+          narration: `CGST @${invoice.gstRate / 2}% on HK Materials`
         },
         {
           lineNo: 3,
           glCode: "A3007001002",
-          glName: "SGST Input", 
+          glName: "SGST Input",
           debit: sgstAmount,
           credit: 0,
-          narration: `SGST @${invoice.gstRate/2}% on HK Materials`
+          narration: `SGST @${invoice.gstRate / 2}% on HK Materials`
         },
         {
           lineNo: 4,
@@ -1685,7 +1685,7 @@ export const createHKMaterialTransaction = (invoice, vendorGLCode, expenseGLCode
           narration: `Invoice ${invoice.invoiceNumber} - HK Materials`
         }
       ],
-      
+
       totalDebit: invoice.totalAmount,
       totalCredit: invoice.totalAmount,
       narration: `HK Material purchase from ${invoice.vendorName}`,
@@ -1702,14 +1702,14 @@ export const generateHKMaterialVoucherNumber = () => {
     const counters = safeGetItem('voucherCounters', {});
     const year = new Date().getFullYear();
     const key = `PINV/HK/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     console.log(`🎫 Generated HK Material voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -1720,82 +1720,82 @@ export const generateHKMaterialVoucherNumber = () => {
 export const processHKMaterialInvoice = (invoice, bankData) => {
   try {
     console.log('🚀 Starting HK Material invoice processing...');
-    
+
     // Validate inputs
     if (!invoice.vendorName) {
       throw new Error('Vendor name is required for HK Material invoice');
     }
-    
+
     if (!invoice.totalAmount || parseFloat(invoice.totalAmount) <= 0) {
       throw new Error('Invalid invoice amount');
     }
-    
+
     // ✅ Validate GST Rate
     if (!invoice.gstRate || invoice.gstRate <= 0) {
       throw new Error('Invalid GST rate');
     }
-    
+
     // Check/create vendor ledger using main function
     let vendorGLCode = getVendorGLCode(invoice.vendorName);
-    
+
     if (!vendorGLCode) {
       console.log(`📝 Creating vendor ledger for ${invoice.vendorName}...`);
       vendorGLCode = createVendorLedger(invoice.vendorName, invoice.vendorName);
     } else {
       console.log(`✅ Using existing vendor ledger: ${vendorGLCode}`);
     }
-    
+
     // Rest of the function remains the same...
     const expenseGLCode = "X1001004001"; // HK MATERIALS expense account
-    
+
     // ✅ IMPROVED GST CALCULATION
     const totalAmount = parseFloat(invoice.totalAmount);
     const gstRate = parseFloat(invoice.gstRate);
-    
+
     // Calculate taxable amount (base amount before GST)
     const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
-    
+
     // Calculate total GST (ensure it matches total - taxable)
     const totalGST = totalAmount - taxableAmount;
-    
+
     // Split GST equally for CGST and SGST
     const halfGST = totalGST / 2;
     const cgstAmount = Math.round(halfGST * 100) / 100; // Round to 2 decimals
     const sgstAmount = totalGST - cgstAmount; // Remainder ensures total matches
-    
+
     // ✅ Validation check
     const calculatedTotal = taxableAmount + cgstAmount + sgstAmount;
     if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
       console.warn(`⚠️ GST calculation mismatch: Expected ${totalAmount}, Got ${calculatedTotal}`);
     }
-    
+
     console.log(`📊 GST Breakdown: Taxable: ₹${taxableAmount}, CGST: ₹${cgstAmount}, SGST: ₹${sgstAmount}`);
-    
+
     // Generate voucher number
     const voucherNo = generateHKMaterialVoucherNumber();
-    
+
     // Create and post transaction
     const transaction = createHKMaterialTransaction(
-      invoice, 
-      vendorGLCode, 
-      expenseGLCode, 
-      bankData, 
+      invoice,
+      vendorGLCode,
+      expenseGLCode,
+      bankData,
       voucherNo,
       taxableAmount,
       cgstAmount,
       sgstAmount
     );
-    
+
     const postResult = postTransaction(transaction);
     if (!postResult.success) {
       throw new Error(postResult.error);
     }
-    
+
     // Update ledger balances
     updateLedgerBalances(transaction.entries);
-    
+
     console.log('✅ HK Material invoice processing completed!');
-    
+
     return {
       success: true,
       voucherNo: voucherNo,
@@ -1812,7 +1812,7 @@ export const processHKMaterialInvoice = (invoice, bankData) => {
       },
       message: `HK Material invoice processed successfully - ₹${totalAmount.toLocaleString()}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processHKMaterialInvoice:', error);
     return {
@@ -1836,7 +1836,7 @@ export const getFixedAssetGLCode = (assetCategory) => {
     console.warn('⚠️ No asset category specified, defaulting to A1001 (FA COMPUTERS)');
     return 'A1001';
   }
-  
+
   const categoryMap = {
     'computer': 'A1001',
     'computers': 'A1001',
@@ -1862,15 +1862,15 @@ export const getFixedAssetGLCode = (assetCategory) => {
     'machineries': 'A1007',
     'machine': 'A1007'
   };
-  
+
   const normalizedCategory = assetCategory.toLowerCase().trim();
   const glCode = categoryMap[normalizedCategory];
-  
+
   if (!glCode) {
     console.warn(`⚠️ Unknown asset category "${assetCategory}", defaulting to A1001 (FA COMPUTERS)`);
     return 'A1001'; // Default fallback
   }
-  
+
   return glCode;
 };
 
@@ -1887,7 +1887,7 @@ export const getFixedAssetGLName = (glCode) => {
     'A1006': 'FA BUILDING & PREMISES',
     'A1007': 'FA MACHINERIES'
   };
-  
+
   return assetNames[glCode] || 'FA COMPUTERS';
 };
 
@@ -1909,7 +1909,7 @@ export const createFixedAssetTransaction = (invoice, vendorGLCode, fixedAssetGLC
       voucherType: "Purchase Voucher",
       date: getCurrentDate(),
       invoiceNumber: invoice.invoiceNumber,
-      
+
       entries: [
         {
           lineNo: 1,
@@ -1929,15 +1929,15 @@ export const createFixedAssetTransaction = (invoice, vendorGLCode, fixedAssetGLC
           glName: "CGST Input",
           debit: cgstAmount,
           credit: 0,
-          narration: `CGST @${invoice.gstRate/2}% on Fixed Asset`
+          narration: `CGST @${invoice.gstRate / 2}% on Fixed Asset`
         },
         {
           lineNo: 3,
           glCode: "A3007001002",
-          glName: "SGST Input", 
+          glName: "SGST Input",
           debit: sgstAmount,
           credit: 0,
-          narration: `SGST @${invoice.gstRate/2}% on Fixed Asset`
+          narration: `SGST @${invoice.gstRate / 2}% on Fixed Asset`
         },
         {
           lineNo: 4,
@@ -1948,7 +1948,7 @@ export const createFixedAssetTransaction = (invoice, vendorGLCode, fixedAssetGLC
           narration: `Invoice ${invoice.invoiceNumber} - Fixed Asset`
         }
       ],
-      
+
       totalDebit: invoice.totalAmount,
       totalCredit: invoice.totalAmount,
       narration: `Fixed Asset purchase from ${invoice.vendorName} - ${invoice.assetDetails?.assetCategory || 'Asset'}`,
@@ -1971,14 +1971,14 @@ export const generateFixedAssetVoucherNumber = () => {
     const counters = safeGetItem('voucherCounters', {});
     const year = new Date().getFullYear();
     const key = `FA/PUR/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     console.log(`🎫 Generated Fixed Asset voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -1996,68 +1996,68 @@ export const generateFixedAssetVoucherNumber = () => {
 export const processFixedAssetInvoice = (invoice) => {
   try {
     console.log('🚀 Starting Fixed Asset invoice processing...');
-    
+
     // Validate inputs
     if (!invoice.vendorName) {
       throw new Error('Vendor name is required for Fixed Asset invoice');
     }
-    
+
     if (!invoice.totalAmount || parseFloat(invoice.totalAmount) <= 0) {
       throw new Error('Invalid invoice amount');
     }
-    
+
     // ✅ Validate GST Rate
     if (!invoice.gstRate || invoice.gstRate <= 0) {
       throw new Error('Invalid GST rate');
     }
-    
+
     // Determine Fixed Asset GL code from asset category
     const assetCategory = invoice.assetDetails?.assetCategory || invoice.assetCategory || 'Computer';
     const fixedAssetGLCode = getFixedAssetGLCode(assetCategory);
     const fixedAssetGLName = getFixedAssetGLName(fixedAssetGLCode);
-    
+
     console.log(`📦 Asset Category: ${assetCategory} -> GL Code: ${fixedAssetGLCode} (${fixedAssetGLName})`);
-    
+
     // ✅ UPDATED: Use unified vendor creation under L2005
     let vendorGLCode = getVendorGLCode(invoice.vendorName);
-    
+
     if (!vendorGLCode) {
       console.log(`📝 Creating vendor ledger for ${invoice.vendorName}...`);
       vendorGLCode = createVendorLedger(invoice.vendorName, invoice.vendorName);
     } else {
       console.log(`✅ Using existing vendor ledger: ${vendorGLCode}`);
     }
-    
+
     // ✅ IMPROVED GST CALCULATION
     const totalAmount = parseFloat(invoice.totalAmount);
     const gstRate = parseFloat(invoice.gstRate);
-    
+
     // Calculate taxable amount (base amount before GST)
     const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
-    
+
     // Calculate total GST (ensure it matches total - taxable)
     const totalGST = totalAmount - taxableAmount;
-    
+
     // Split GST equally for CGST and SGST
     const halfGST = totalGST / 2;
     const cgstAmount = Math.round(halfGST * 100) / 100; // Round to 2 decimals
     const sgstAmount = totalGST - cgstAmount; // Remainder ensures total matches
-    
+
     // ✅ Validation check
     const calculatedTotal = taxableAmount + cgstAmount + sgstAmount;
     if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
       console.warn(`⚠️ GST calculation mismatch: Expected ${totalAmount}, Got ${calculatedTotal}`);
     }
-    
+
     console.log(`💰 Amount breakdown: Taxable=${taxableAmount}, CGST=${cgstAmount}, SGST=${sgstAmount}, Total=${totalAmount}`);
-    
+
     // Generate voucher number
     const voucherNo = generateFixedAssetVoucherNumber();
-    
+
     // Create and post transaction
     const transaction = createFixedAssetTransaction(
-      invoice, 
-      vendorGLCode, 
+      invoice,
+      vendorGLCode,
       fixedAssetGLCode,
       fixedAssetGLName,
       voucherNo,
@@ -2065,17 +2065,17 @@ export const processFixedAssetInvoice = (invoice) => {
       cgstAmount,
       sgstAmount
     );
-    
+
     const postResult = postTransaction(transaction);
     if (!postResult.success) {
       throw new Error(postResult.error);
     }
-    
+
     // Update ledger balances
     updateLedgerBalances(transaction.entries);
-    
+
     console.log('✅ Fixed Asset invoice processing completed!');
-    
+
     return {
       success: true,
       voucherNo: voucherNo,
@@ -2094,7 +2094,7 @@ export const processFixedAssetInvoice = (invoice) => {
       },
       message: `Fixed Asset invoice processed successfully - ₹${totalAmount.toLocaleString()}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processFixedAssetInvoice:', error);
     return {
@@ -2124,14 +2124,14 @@ export const generatePrepaidUniformVoucherNumber = () => {
     const counters = safeGetItem('voucherCounters', {});
     const year = new Date().getFullYear();
     const key = `PREPAID/PUR/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     console.log(`🎫 Generated Prepaid Uniform voucher: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -2151,7 +2151,7 @@ export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo
       voucherType: "Purchase Voucher",
       date: getCurrentDate(),
       invoiceNumber: invoice.invoiceNumber,
-      
+
       entries: [
         {
           lineNo: 1,
@@ -2171,15 +2171,15 @@ export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo
           glName: "CGST Input",
           debit: cgstAmount,
           credit: 0,
-          narration: `CGST @${invoice.gstRate/2}% on Prepaid Uniform`
+          narration: `CGST @${invoice.gstRate / 2}% on Prepaid Uniform`
         },
         {
           lineNo: 3,
           glCode: "A3007001002",
-          glName: "SGST Input", 
+          glName: "SGST Input",
           debit: sgstAmount,
           credit: 0,
-          narration: `SGST @${invoice.gstRate/2}% on Prepaid Uniform`
+          narration: `SGST @${invoice.gstRate / 2}% on Prepaid Uniform`
         },
         {
           lineNo: 4,
@@ -2190,7 +2190,7 @@ export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo
           narration: `Invoice ${invoice.invoiceNumber} - Prepaid Uniform`
         }
       ],
-      
+
       totalDebit: invoice.totalAmount,
       totalCredit: invoice.totalAmount,
       narration: `Prepaid Uniform purchase from ${invoice.vendorName}`,
@@ -2215,80 +2215,80 @@ export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo
 export const processPrepaidUniformInvoice = (invoice) => {
   try {
     console.log('🚀 Starting Prepaid Uniform invoice processing...');
-    
+
     // Validate inputs
     if (!invoice.vendorName) {
       throw new Error('Vendor name is required for Prepaid Uniform invoice');
     }
-    
+
     if (!invoice.totalAmount || parseFloat(invoice.totalAmount) <= 0) {
       throw new Error('Invalid invoice amount');
     }
-    
+
     // Validate GST Rate
     if (!invoice.gstRate || invoice.gstRate <= 0) {
       throw new Error('Invalid GST rate');
     }
-    
+
     // ✅ UPDATED: Use unified vendor creation under L2005
     let vendorGLCode = getVendorGLCode(invoice.vendorName);
-    
+
     if (!vendorGLCode) {
       console.log(`📝 Creating vendor ledger for ${invoice.vendorName}...`);
       vendorGLCode = createVendorLedger(invoice.vendorName, invoice.vendorName);
     } else {
       console.log(`✅ Using existing vendor ledger: ${vendorGLCode}`);
     }
-    
+
     // GST CALCULATION
     const totalAmount = parseFloat(invoice.totalAmount);
     const gstRate = parseFloat(invoice.gstRate);
-    
+
     // Calculate taxable amount (base amount before GST)
     const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
-    
+
     // Calculate total GST (ensure it matches total - taxable)
     const totalGST = totalAmount - taxableAmount;
-    
+
     // Split GST equally for CGST and SGST
     const halfGST = totalGST / 2;
     const cgstAmount = Math.round(halfGST * 100) / 100; // Round to 2 decimals
     const sgstAmount = totalGST - cgstAmount; // Remainder ensures total matches
-    
+
     // Validation check
     const calculatedTotal = taxableAmount + cgstAmount + sgstAmount;
     if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
       console.warn(`⚠️ GST calculation mismatch: Expected ${totalAmount}, Got ${calculatedTotal}`);
     }
-    
+
     console.log(`💰 Amount breakdown: Taxable=${taxableAmount}, CGST=${cgstAmount}, SGST=${sgstAmount}, Total=${totalAmount}`);
-    
+
     // Generate voucher number for Purchase Voucher
     const purchaseVoucherNo = generatePrepaidUniformVoucherNumber();
-    
+
     // Create and post Purchase Voucher transaction
     const purchaseTransaction = createPrepaidUniformTransaction(
-      invoice, 
-      vendorGLCode, 
+      invoice,
+      vendorGLCode,
       purchaseVoucherNo,
       taxableAmount,
       cgstAmount,
       sgstAmount
     );
-    
+
     const postPurchaseResult = postTransaction(purchaseTransaction);
     if (!postPurchaseResult.success) {
       throw new Error(postPurchaseResult.error);
     }
-    
+
     // Update ledger balances for Purchase Voucher
     updateLedgerBalances(purchaseTransaction.entries);
-    
+
     console.log('✅ Prepaid Uniform Purchase Voucher posted successfully!');
-    
+
     // Note: Monthly amortization JV will be created separately via button click
     // The initial setup is complete with the Purchase Voucher
-    
+
     return {
       success: true,
       purchaseVoucherNo: purchaseVoucherNo,
@@ -2311,7 +2311,7 @@ export const processPrepaidUniformInvoice = (invoice) => {
       },
       message: `Prepaid Uniform invoice processed successfully - ₹${totalAmount.toLocaleString()}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processPrepaidUniformInvoice:', error);
     return {
@@ -2327,7 +2327,7 @@ export const processPrepaidUniformInvoice = (invoice) => {
  */
 export const validateRelieverRequest = (relieverRequest) => {
   const errors = [];
-  
+
   if (!relieverRequest.name) errors.push('Reliever name is required');
   if (!relieverRequest.amount || parseFloat(relieverRequest.amount) <= 0) errors.push('Invalid amount');
   return { isValid: errors.length === 0, errors };
@@ -2341,14 +2341,14 @@ export const generateMonthlyAmortizationJVNumber = () => {
     const counters = safeGetItem('voucherCounters', {});
     const year = new Date().getFullYear();
     const key = `JV/AMORT/${year}`;
-    
+
     counters[key] = (counters[key] || 0) + 1;
     const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
-    
+
     if (!safeSetItem('voucherCounters', counters)) {
       throw new Error('Failed to update voucher counter');
     }
-    
+
     console.log(`🎫 Generated Monthly Amortization JV: ${voucherNo}`);
     return voucherNo;
   } catch (error) {
@@ -2363,27 +2363,27 @@ export const generateMonthlyAmortizationJVNumber = () => {
 export const getMonthlyAmortizationCount = (invoiceNumber) => {
   try {
     const transactions = safeGetItem('transactions', []);
-    
+
     // Filter transactions that are monthly amortization JVs for this invoice
     const amortizationTransactions = transactions.filter(txn => {
       // Check if transaction is a Journal Voucher for monthly amortization
-      const isAmortizationJV = txn.voucherType === "Journal Voucher" || 
-                               (txn.voucherNo && txn.voucherNo.includes('AMORT'));
-      
+      const isAmortizationJV = txn.voucherType === "Journal Voucher" ||
+        (txn.voucherNo && txn.voucherNo.includes('AMORT'));
+
       // Check if it's related to this invoice
-      const isForInvoice = txn.invoiceNumber === invoiceNumber || 
-                          (txn.narration && txn.narration.includes(invoiceNumber));
-      
+      const isForInvoice = txn.invoiceNumber === invoiceNumber ||
+        (txn.narration && txn.narration.includes(invoiceNumber));
+
       // Check if it has the amortization GL entries (X2001004 debit and A3005001 credit)
-      const hasAmortizationEntries = txn.entries?.some(entry => 
+      const hasAmortizationEntries = txn.entries?.some(entry =>
         entry.glCode === "X2001004" && entry.debit > 0
-      ) && txn.entries?.some(entry => 
+      ) && txn.entries?.some(entry =>
         entry.glCode === "A3005001" && entry.credit > 0
       );
-      
+
       return isAmortizationJV && isForInvoice && hasAmortizationEntries;
     });
-    
+
     return amortizationTransactions.length;
   } catch (error) {
     console.error('Error getting monthly amortization count:', error);
@@ -2399,22 +2399,22 @@ export const createMonthlyAmortizationTransaction = (invoice, monthYear) => {
     // Get prepaid details
     const prepaidPeriod = invoice.prepaidPeriod || 12;
     const prepaidStartMonth = invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7);
-    
+
     // Calculate taxable amount (base amount before GST)
     const gstRate = invoice.gstRate || 18;
     const totalAmount = parseFloat(invoice.totalAmount);
     const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
-    
+
     // Calculate monthly amortization amount
-    const monthlyAmortization = invoice.monthlyAmortization || 
-                                Math.round(taxableAmount / prepaidPeriod);
-    
+    const monthlyAmortization = invoice.monthlyAmortization ||
+      Math.round(taxableAmount / prepaidPeriod);
+
     // Generate voucher number
     const voucherNo = generateMonthlyAmortizationJVNumber();
-    
+
     // Get current user for approval
     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    
+
     return {
       id: `TXN_AMORT_${Date.now()}_${invoice.id}`,
       voucherNo: voucherNo,
@@ -2422,7 +2422,7 @@ export const createMonthlyAmortizationTransaction = (invoice, monthYear) => {
       date: getCurrentDate(),
       invoiceNumber: invoice.invoiceNumber,
       monthYear: monthYear, // Store the month for which amortization is being done
-      
+
       entries: [
         {
           lineNo: 1,
@@ -2447,7 +2447,7 @@ export const createMonthlyAmortizationTransaction = (invoice, monthYear) => {
           prepaidStartMonth: prepaidStartMonth
         }
       ],
-      
+
       totalDebit: monthlyAmortization,
       totalCredit: monthlyAmortization,
       narration: `Monthly amortization JV for Invoice ${invoice.invoiceNumber} - ${monthYear}`,
@@ -2472,42 +2472,42 @@ export const createMonthlyAmortizationTransaction = (invoice, monthYear) => {
 export const processMonthlyAmortization = (invoice, monthYear) => {
   try {
     console.log('🚀 Starting Monthly Amortization processing...');
-    
+
     // Validate inputs
     if (!invoice || !invoice.invoiceNumber) {
       throw new Error('Invalid invoice data');
     }
-    
+
     if (!monthYear) {
       throw new Error('Month/Year is required for amortization');
     }
-    
+
     // Check if amortization already exists for this month
     const transactions = safeGetItem('transactions', []);
-    const existingAmortization = transactions.find(txn => 
+    const existingAmortization = transactions.find(txn =>
       txn.invoiceNumber === invoice.invoiceNumber &&
       txn.monthYear === monthYear &&
       txn.entries?.some(entry => entry.glCode === "X2001004" && entry.debit > 0)
     );
-    
+
     if (existingAmortization) {
       throw new Error(`Monthly amortization for ${monthYear} already exists for this invoice`);
     }
-    
+
     // Create transaction
     const transaction = createMonthlyAmortizationTransaction(invoice, monthYear);
-    
+
     // Post transaction
     const postResult = postTransaction(transaction);
     if (!postResult.success) {
       throw new Error(postResult.error);
     }
-    
+
     // Update ledger balances
     updateLedgerBalances(transaction.entries);
-    
+
     console.log('✅ Monthly Amortization JV posted successfully!');
-    
+
     return {
       success: true,
       voucherNo: transaction.voucherNo,
@@ -2516,7 +2516,7 @@ export const processMonthlyAmortization = (invoice, monthYear) => {
       amount: transaction.totalDebit,
       message: `Monthly amortization of ₹${transaction.totalDebit.toLocaleString()} posted for ${monthYear}`
     };
-    
+
   } catch (error) {
     console.error('❌ ERROR in processMonthlyAmortization:', error);
     return {
@@ -2550,7 +2550,7 @@ export const getOrCreateVendorLedgerUnderParent = (vendorName, parentCode) => {
       acc.parentCode === parentCode &&
       acc.type === 'ACCOUNT' &&
       (acc.name?.toUpperCase().includes(vendorName.toUpperCase()) ||
-       acc.glName?.toUpperCase().includes(vendorName.toUpperCase()))
+        acc.glName?.toUpperCase().includes(vendorName.toUpperCase()))
   );
   if (existing) return existing.code;
 
@@ -2649,7 +2649,7 @@ export const processVendorPayments = (payments, bank) => {
     const groupKeyToInfo = {};
     for (const p of payments) {
       if (!p.vendorName || !p.invoiceNumber) continue;
-      
+
       let vendorGLCode = p.vendorGLCode;
       if (!vendorGLCode) {
         vendorGLCode = getVendorGLCode(p.vendorName);
@@ -2782,7 +2782,7 @@ export default {
   getTransactionsByDateRange,
   formatAmount,
   formatDate,
-  processRelieverPaymentApproval, 
+  processRelieverPaymentApproval,
   processMultipleRelieverPayments,
   processRentApproval,
   processFixedAssetInvoice,

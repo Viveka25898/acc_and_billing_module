@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 // utils/prepaidUniformLedgerService.js
 export class PrepaidUniformLedgerService {
-  
+
   /**
    * Get all vendor ledger entries for a specific Prepaid Uniform vendor GL account (L2005004_*)
    */
@@ -9,53 +9,53 @@ export class PrepaidUniformLedgerService {
     try {
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      
+
       console.log(`📊 Generating Prepaid Uniform vendor ledger for: ${accountCode}`);
-      
+
       // Filter transactions that involve this vendor account
-      const prepaidUniformTransactions = transactions.filter(txn => 
+      const prepaidUniformTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode)
       );
-      
+
       // Sort by date ascending
       prepaidUniformTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+
       console.log(`📋 Found ${prepaidUniformTransactions.length} Prepaid Uniform transactions`);
-      
+
       // Convert to ledger entries
       const ledgerEntries = [];
       let runningBalance = 0;
       let balanceType = 'CR'; // Vendors typically have credit balance
-      
+
       prepaidUniformTransactions.forEach(txn => {
         const vendorEntry = txn.entries.find(entry => entry.glCode === accountCode);
         const prepaidEntry = txn.entries.find(entry => entry.glCode === "A3005001");
         const cgstEntry = txn.entries.find(entry => entry.glCode === "A3007001001");
         const sgstEntry = txn.entries.find(entry => entry.glCode === "A3007001002");
-        
+
         if (vendorEntry) {
           const debit = vendorEntry.debit || 0;
           const credit = vendorEntry.credit || 0;
-          
+
           // Calculate running balance (vendor perspective)
           // For vendors: Credit increases liability (outstanding), Debit decreases (payment)
           runningBalance += credit - debit;
           balanceType = runningBalance >= 0 ? 'CR' : 'DR';
-          
+
           // Determine entry type
           const entryType = this.getVendorEntryType(debit, credit);
-          
+
           // Get counterparty info (usually the prepaid expense account or invoice details)
-          const counterparty = prepaidEntry 
+          const counterparty = prepaidEntry
             ? prepaidEntry.glName || 'UNIFORM EXPENSE (Prepaid)'
             : txn.narration || 'Prepaid Uniform Purchase';
-          
+
           // Format date for display (DD-MM-YY format)
           const displayDate = this.formatDate(txn.date);
-          
+
           // Format balance
           const formattedBalance = `${Math.abs(runningBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${balanceType}`;
-          
+
           ledgerEntries.push({
             date: displayDate, // Formatted date for display (DD-MM-YY)
             originalDate: txn.date, // Original date for filtering (YYYY-MM-DD)
@@ -80,10 +80,10 @@ export class PrepaidUniformLedgerService {
           });
         }
       });
-      
+
       console.log(`✅ Generated ${ledgerEntries.length} Prepaid Uniform vendor ledger entries`);
       return ledgerEntries;
-      
+
     } catch (error) {
       console.error('❌ Error generating Prepaid Uniform vendor ledger:', error);
       return [];
@@ -97,34 +97,34 @@ export class PrepaidUniformLedgerService {
     try {
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
       const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
-      
+
       const account = chartOfAccounts.find(acc => acc.code === accountCode);
-      
+
       if (!account) {
         console.log(`❌ Prepaid Uniform vendor account not found: ${accountCode}`);
         return null;
       }
-      
+
       // Extract vendor name from account name or code
-      const vendorName = account.name.replace('UNIFORM VENDOR - ', '').replace('PREPAID VENDOR - ', '') || 
-                        accountCode.split('_').slice(2).join(' ').replace(/_/g, ' ');
-      
+      const vendorName = account.name.replace('UNIFORM VENDOR - ', '').replace('PREPAID VENDOR - ', '') ||
+        accountCode.split('_').slice(2).join(' ').replace(/_/g, ' ');
+
       // Get current balance
       const balance = ledgerBalances[accountCode] || { debit: 0, credit: 0, balance: 0 };
       const outstandingBalance = Math.abs(balance.balance);
       const balanceType = balance.balance >= 0 ? 'Credit' : 'Debit';
-      
+
       // Get vendor transactions to calculate totals
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-      const prepaidUniformTransactions = transactions.filter(txn => 
+      const prepaidUniformTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode)
       );
-      
+
       // Calculate invoice and payment totals
       let totalInvoices = 0;
       let totalPayments = 0;
       let pendingInvoices = 0;
-      
+
       prepaidUniformTransactions.forEach(txn => {
         const vendorEntry = txn.entries.find(entry => entry.glCode === accountCode);
         if (vendorEntry) {
@@ -137,7 +137,7 @@ export class PrepaidUniformLedgerService {
           }
         }
       });
-      
+
       return {
         vendorCode: accountCode,
         vendorName: vendorName,
@@ -170,7 +170,7 @@ export class PrepaidUniformLedgerService {
           pendingInvoices: `${pendingInvoices} Invoices`,
         }
       };
-      
+
     } catch (error) {
       console.error('❌ Error getting Prepaid Uniform vendor account details:', error);
       return null;
@@ -186,61 +186,61 @@ export class PrepaidUniformLedgerService {
       const billingManagerInvoices = JSON.parse(localStorage.getItem('billing_manager_invoices')) || [];
       const finalProcessed = JSON.parse(localStorage.getItem('final_processed_invoices')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      
+
       console.log(`📊 Generating Prepaid Uniform Expense ledger for: ${accountCode}`);
-      
+
       // Filter transactions that involve this Prepaid Expense account (debit entries for purchase, credit entries for amortization)
-      const prepaidTransactions = transactions.filter(txn => 
+      const prepaidTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode)
       );
-      
+
       // Sort by date ascending
       prepaidTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+
       console.log(`📋 Found ${prepaidTransactions.length} Prepaid Uniform Expense transactions`);
-      
+
       // Convert to ledger entries
       const ledgerEntries = [];
       let runningBalance = 0;
       let balanceType = 'DR'; // Prepaid expenses are assets (debit balance)
-      
+
       prepaidTransactions.forEach(txn => {
         const prepaidEntry = txn.entries.find(entry => entry.glCode === accountCode);
         const vendorEntry = txn.entries.find(entry => entry.glCode.startsWith('L2005004_'));
         const expenseEntry = txn.entries.find(entry => entry.glCode === "X2001004");
-        
+
         if (prepaidEntry) {
           const debit = prepaidEntry.debit || 0;
           const credit = prepaidEntry.credit || 0;
-          
+
           // Calculate running balance (asset perspective)
           // For prepaid expenses: Debit increases asset, Credit decreases (amortization)
           runningBalance += debit - credit;
           balanceType = runningBalance >= 0 ? 'DR' : 'CR';
-          
+
           // Determine entry type
           const entryType = this.getPrepaidEntryType(debit, credit);
-          
+
           // Get vendor name or expense account name
-          const counterparty = vendorEntry 
+          const counterparty = vendorEntry
             ? vendorEntry.glName?.replace('UNIFORM VENDOR - ', '') || 'Vendor'
             : expenseEntry?.glName || txn.narration || 'Prepaid Uniform';
-          
+
           // Find invoice details
-          const invoice = billingManagerInvoices.find(inv => 
-            inv.invoiceNumber === txn.invoiceNumber || 
+          const invoice = billingManagerInvoices.find(inv =>
+            inv.invoiceNumber === txn.invoiceNumber ||
             inv.purchaseTransactionId === txn.id
-          ) || finalProcessed.find(inv => 
-            inv.invoiceNumber === txn.invoiceNumber || 
+          ) || finalProcessed.find(inv =>
+            inv.invoiceNumber === txn.invoiceNumber ||
             inv.purchaseTransactionId === txn.id
           );
-          
+
           // Format date for display
           const displayDate = this.formatDate(txn.date);
-          
+
           // Format balance
           const formattedBalance = `${Math.abs(runningBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${balanceType}`;
-          
+
           ledgerEntries.push({
             date: displayDate,
             originalDate: txn.date,
@@ -273,7 +273,7 @@ export class PrepaidUniformLedgerService {
           });
         }
       });
-      
+
       // Calculate cumulative amortization
       let cumulativeAmort = 0;
       ledgerEntries.forEach((entry, index) => {
@@ -284,10 +284,10 @@ export class PrepaidUniformLedgerService {
           entry.cumulativeAmort = index > 0 ? ledgerEntries[index - 1].cumulativeAmort : '-';
         }
       });
-      
+
       console.log(`✅ Generated ${ledgerEntries.length} Prepaid Uniform Expense ledger entries`);
       return ledgerEntries;
-      
+
     } catch (error) {
       console.error('❌ Error generating Prepaid Uniform Expense ledger:', error);
       return [];
@@ -301,42 +301,42 @@ export class PrepaidUniformLedgerService {
     try {
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      
+
       console.log(`📊 Generating Uniform Expense ledger for: ${accountCode}`);
-      
+
       // Filter transactions that involve this Uniform Expense account (debit entries for amortization)
-      const expenseTransactions = transactions.filter(txn => 
+      const expenseTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode && entry.debit > 0)
       );
-      
+
       // Sort by date ascending
       expenseTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+
       console.log(`📋 Found ${expenseTransactions.length} Uniform Expense transactions`);
-      
+
       // Convert to ledger entries
       const ledgerEntries = [];
       let runningBalance = 0;
       let balanceType = 'DR'; // Expenses are debits
-      
+
       expenseTransactions.forEach(txn => {
         const expenseEntry = txn.entries.find(entry => entry.glCode === accountCode && entry.debit > 0);
         const prepaidEntry = txn.entries.find(entry => entry.glCode === "A3005001");
-        
+
         if (expenseEntry) {
           const debit = expenseEntry.debit || 0;
           const credit = expenseEntry.credit || 0;
-          
+
           // Calculate running balance (expense perspective)
           runningBalance += debit - credit;
           balanceType = runningBalance >= 0 ? 'DR' : 'CR';
-          
+
           // Format date for display
           const displayDate = this.formatDate(txn.date);
-          
+
           // Format balance
           const formattedBalance = `${Math.abs(runningBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${balanceType}`;
-          
+
           ledgerEntries.push({
             date: displayDate,
             originalDate: txn.date,
@@ -358,10 +358,10 @@ export class PrepaidUniformLedgerService {
           });
         }
       });
-      
+
       console.log(`✅ Generated ${ledgerEntries.length} Uniform Expense ledger entries`);
       return ledgerEntries;
-      
+
     } catch (error) {
       console.error('❌ Error generating Uniform Expense ledger:', error);
       return [];
@@ -376,29 +376,29 @@ export class PrepaidUniformLedgerService {
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
       const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-      
+
       const account = chartOfAccounts.find(acc => acc.code === accountCode);
-      
+
       if (!account) {
         console.log(`❌ Prepaid Uniform Expense account not found: ${accountCode}`);
         return null;
       }
-      
+
       // Get current balance
       const balance = ledgerBalances[accountCode] || { debit: 0, credit: 0, balance: 0 };
       const totalPrepaid = balance.debit || 0;
       const totalAmortized = balance.credit || 0;
       const remainingBalance = totalPrepaid - totalAmortized;
-      
+
       // Get transaction counts
-      const prepaidTransactions = transactions.filter(txn => 
+      const prepaidTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode && entry.debit > 0)
       );
-      
-      const amortizationTransactions = transactions.filter(txn => 
+
+      const amortizationTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode && entry.credit > 0)
       );
-      
+
       return {
         accountCode: accountCode,
         accountName: account.name || "UNIFORM EXPENSE",
@@ -426,7 +426,7 @@ export class PrepaidUniformLedgerService {
           activePrepaidItems: `${prepaidTransactions.length} Active Items`,
         }
       };
-      
+
     } catch (error) {
       console.error('❌ Error getting Prepaid Uniform Expense account details:', error);
       return null;
@@ -471,7 +471,7 @@ export class PrepaidUniformLedgerService {
       } else {
         date = new Date(dateString);
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = String(date.getFullYear()).slice(-2);
@@ -480,7 +480,7 @@ export class PrepaidUniformLedgerService {
       return dateString;
     }
   }
-  
+
   /**
    * Parse date for filtering (convert DD-MM-YY to Date object)
    */

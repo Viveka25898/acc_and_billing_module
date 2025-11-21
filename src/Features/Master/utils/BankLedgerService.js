@@ -1,7 +1,7 @@
 // services/bankLedgerService.js
 
 export class BankLedgerService {
-  
+
   /**
    * Get bank account details for header
    */
@@ -9,7 +9,7 @@ export class BankLedgerService {
     try {
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
       const bankAccount = chartOfAccounts.find(acc => acc.code === bankCode);
-      
+
       if (!bankAccount) {
         return null;
       }
@@ -24,7 +24,7 @@ export class BankLedgerService {
           accountType: 'Current Account'
         },
         'A3004003002': {
-          bankName: 'HDFC Bank', 
+          bankName: 'HDFC Bank',
           accountNumber: '50100987654321',
           ifscCode: 'HDFC0001234',
           branch: 'Mumbai - Andheri East',
@@ -53,7 +53,7 @@ export class BankLedgerService {
         ...details,
         financialYear: '2024-25'
       };
-      
+
     } catch (error) {
       console.error('Error getting bank account details:', error);
       return null;
@@ -68,39 +68,39 @@ export class BankLedgerService {
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
       const users = JSON.parse(localStorage.getItem('users')) || [];
-      
+
       console.log(`🏦 Loading bank transactions for: ${bankCode}`);
-      
+
       // Filter transactions that involve this bank account
-      const bankTransactions = transactions.filter(txn => 
+      const bankTransactions = transactions.filter(txn =>
         txn.entries.some(entry => entry.glCode === bankCode)
       );
-      
+
       console.log(`📋 Found ${bankTransactions.length} bank transactions`);
-      
+
       // Convert to bank ledger format
       const ledgerEntries = [];
       let runningBalance = 500000; // Opening balance (you can make this dynamic)
-      
+
       bankTransactions.forEach(txn => {
         const bankEntry = txn.entries.find(entry => entry.glCode === bankCode);
         const otherEntry = txn.entries.find(entry => entry.glCode !== bankCode);
-        
+
         if (bankEntry) {
           const debit = bankEntry.debit || 0;
           const credit = bankEntry.credit || 0;
-          
+
           // Calculate running balance (for banks, credit decreases balance, debit increases)
           runningBalance += debit - credit;
           const balanceType = runningBalance >= 0 ? 'DR' : 'CR';
-          
+
           // Get counterparty info
           const counterparty = this.getCounterpartyInfo(otherEntry, chartOfAccounts, users);
-          
+
           // Determine transaction type
           const entryType = credit > 0 ? 'payment' : 'receipt';
           const transactionType = this.getTransactionType(otherEntry);
-          
+
           ledgerEntries.push({
             date: this.formatDate(txn.date),
             voucherNo: txn.voucherNo,
@@ -144,9 +144,9 @@ export class BankLedgerService {
         recon: 'reconciled',
         rowClass: 'bg-orange-50'
       });
-      
+
       return ledgerEntries;
-      
+
     } catch (error) {
       console.error('Error getting bank transactions:', error);
       return [];
@@ -158,7 +158,7 @@ export class BankLedgerService {
    */
   static getCounterpartyInfo(entry, chartOfAccounts, users) {
     if (!entry) return { name: 'N/A', type: 'Unknown' };
-    
+
     // Employee account
     if (entry.glCode && entry.glCode.startsWith('A3002-EMP-')) {
       const empId = entry.glCode.replace('A3002-EMP-', '');
@@ -168,7 +168,7 @@ export class BankLedgerService {
         type: 'advance'
       };
     }
-    
+
     // Vendor account
     if (entry.glCode && entry.glCode.startsWith('L2005')) {
       const vendor = chartOfAccounts.find(acc => acc.code === entry.glCode);
@@ -177,7 +177,7 @@ export class BankLedgerService {
         type: 'vendor'
       };
     }
-    
+
     // Other accounts
     const account = chartOfAccounts.find(acc => acc.code === entry.glCode);
     return {
@@ -191,15 +191,15 @@ export class BankLedgerService {
    */
   static getTransactionType(entry) {
     if (!entry) return 'other';
-    
+
     if (entry.glCode && entry.glCode.startsWith('A3002-EMP-')) {
       return 'advance';
     }
-    
+
     if (entry.glCode && entry.glCode.startsWith('L2005')) {
       return 'vendor';
     }
-    
+
     return 'other';
   }
 
@@ -253,7 +253,7 @@ export class BankLedgerService {
       if (txn.entryType !== 'opening') {
         const debit = txn.debit !== '-' ? parseFloat(txn.debit.replace(/,/g, '')) : 0;
         const credit = txn.credit !== '-' ? parseFloat(txn.credit.replace(/,/g, '')) : 0;
-        
+
         totalDebit += debit;
         totalCredit += credit;
       }

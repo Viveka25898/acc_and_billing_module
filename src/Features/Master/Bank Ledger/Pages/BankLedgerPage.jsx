@@ -1,47 +1,47 @@
 // pages/BankLedgerPage.jsx - UPDATED VERSION
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import BankLedgerHeader from '../Components/BankLedgerHeader';
-import FilterSection from '../Components/FilterSection';
-import TransactionTable from '../Components/TransactionTable';
-import SummarySection from '../Components/SummerySection';
-import { BankLedgerService } from '../../utils/BankLedgerService';
+import React, { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+import BankLedgerHeader from '../Components/BankLedgerHeader'
+import FilterSection from '../Components/FilterSection'
+import TransactionTable from '../Components/TransactionTable'
+import SummarySection from '../Components/SummerySection'
+import { BankLedgerService } from '../../utils/BankLedgerService'
 
 const BankLedgerPage = () => {
-  const { accountCode } = useParams();
-  const [bankDetails, setBankDetails] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { accountCode } = useParams()
+  const [bankDetails, setBankDetails] = useState(null)
+  const [transactions, setTransactions] = useState([])
+  const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadBankLedgerData();
-  }, [accountCode]);
+    loadBankLedgerData()
+  }, [accountCode])
 
   const loadBankLedgerData = () => {
     try {
-      setLoading(true);
-      console.log(`🏦 Loading bank ledger for: ${accountCode}`);
-      
+      setLoading(true)
+      console.log(`🏦 Loading bank ledger for: ${accountCode}`)
+
       // Get bank account details
-      const details = BankLedgerService.getBankAccountDetails(accountCode);
-      setBankDetails(details);
-      
+      const details = BankLedgerService.getBankAccountDetails(accountCode)
+      setBankDetails(details)
+
       // Get bank transactions
-      const bankTransactions = BankLedgerService.getBankTransactions(accountCode);
-      setTransactions(bankTransactions);
-      
+      const bankTransactions = BankLedgerService.getBankTransactions(accountCode)
+      setTransactions(bankTransactions)
+
       // Get summary
-      const summaryData = BankLedgerService.getBankSummary(bankTransactions);
-      setSummary(summaryData);
-      
-      console.log(`✅ Loaded ${bankTransactions.length} transactions for ${accountCode}`);
+      const summaryData = BankLedgerService.getBankSummary(bankTransactions)
+      setSummary(summaryData)
+
+      console.log(`✅ Loaded ${bankTransactions.length} transactions for ${accountCode}`)
     } catch (error) {
-      console.error('❌ Error loading bank ledger:', error);
+      console.error('❌ Error loading bank ledger:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -51,7 +51,7 @@ const BankLedgerPage = () => {
           <p className="mt-4 text-gray-600">Loading bank ledger...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!bankDetails) {
@@ -62,7 +62,7 @@ const BankLedgerPage = () => {
           <p className="text-gray-600">The bank account {accountCode} does not exist.</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -76,7 +76,7 @@ const BankLedgerPage = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default BankLedgerPage;
+export default BankLedgerPage

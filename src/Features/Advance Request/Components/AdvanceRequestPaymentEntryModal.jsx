@@ -1,14 +1,14 @@
 /* eslint-disable no-unused-vars */
-import React from 'react';
-import { 
-  FaCalendarAlt, 
-  FaUser, 
-  FaCreditCard, 
-  FaFileAlt, 
-  FaBuilding, 
-  FaTag, 
-  FaRupeeSign, 
-  FaTimes, 
+import React from 'react'
+import {
+  FaCalendarAlt,
+  FaUser,
+  FaCreditCard,
+  FaFileAlt,
+  FaBuilding,
+  FaTag,
+  FaRupeeSign,
+  FaTimes,
   FaIdCard,
   FaPhone,
   FaEnvelope,
@@ -17,97 +17,107 @@ import {
   FaClock,
   FaCheck,
   FaUsers,
-} from 'react-icons/fa';
+} from 'react-icons/fa'
 
 const AdvanceRequestPaymentEntryModal = ({ isOpen, onClose, requestData, approvedRequests }) => {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   // Determine if this is single or multiple requests
-  const isMultipleRequests = approvedRequests && approvedRequests.length > 0;
-  const requests = isMultipleRequests ? approvedRequests : (requestData ? [requestData] : []);
-  
-  if (requests.length === 0) return null;
+  const isMultipleRequests = approvedRequests && approvedRequests.length > 0
+  const requests = isMultipleRequests ? approvedRequests : requestData ? [requestData] : []
+
+  if (requests.length === 0) return null
 
   // Load users from localStorage to get employee GL codes
-  const users = JSON.parse(localStorage.getItem('users')) || [];
-  console.log("Users",users);
-  
+  const users = JSON.parse(localStorage.getItem('users')) || []
+  console.log('Users', users)
+
   // Load chart of accounts to get bank details
-  const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
+  const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || []
 
   // Helper function to get employee details including GL code
 
-const getEmployeeDetails = (employeeId) => {
-  if (!employeeId) {
-    console.log("No employeeId provided");
-    return null;
+  const getEmployeeDetails = (employeeId) => {
+    if (!employeeId) {
+      console.log('No employeeId provided')
+      return null
+    }
+
+    console.log('Looking for employee with ID:', employeeId)
+    console.log(
+      'Available users:',
+      users.map((u) => ({ empId: u.empId, username: u.username }))
+    )
+
+    // Try exact match first
+    const employee = users.find((u) => u.empId === employeeId)
+
+    if (employee) {
+      console.log('Found employee with exact empId match:', employee)
+      return employee
+    }
+
+    // Try username match
+    const employeeByUsername = users.find((u) => u.username === employeeId)
+    if (employeeByUsername) {
+      console.log('Found employee with username match:', employeeByUsername)
+      return employeeByUsername
+    }
+
+    console.log('No employee found for ID:', employeeId)
+    return null
   }
-  
-  console.log("Looking for employee with ID:", employeeId);
-  console.log("Available users:", users.map(u => ({ empId: u.empId, username: u.username })));
-  
-  // Try exact match first
-  const employee = users.find(u => u.empId === employeeId);
-  
-  if (employee) {
-    console.log("Found employee with exact empId match:", employee);
-    return employee;
-  }
-  
-  // Try username match
-  const employeeByUsername = users.find(u => u.username === employeeId);
-  if (employeeByUsername) {
-    console.log("Found employee with username match:", employeeByUsername);
-    return employeeByUsername;
-  }
-  
-  console.log("No employee found for ID:", employeeId);
-  return null;
-};
 
   // Helper function to get bank details by bank code
   const getBankDetails = (bankCode) => {
-    const bank = chartOfAccounts.find(acc => acc.code === bankCode);
-    return bank || null;
-  };
+    const bank = chartOfAccounts.find((acc) => acc.code === bankCode)
+    return bank || null
+  }
 
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'Approved': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Rejected by AE': return 'bg-red-100 text-red-800 border-red-200';
-      case 'Pending AE Approval': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    switch (status) {
+      case 'Approved':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'Rejected by AE':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'Pending AE Approval':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
-  };
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'N/A'
     try {
       return new Date(dateString).toLocaleDateString('en-IN', {
         day: '2-digit',
-        month: '2-digit', 
+        month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
-      });
+        minute: '2-digit',
+      })
     } catch {
-      return dateString;
+      return dateString
     }
-  };
+  }
 
   // Generate REAL GL entries using actual employee GL codes and bank GL codes
   const generateAllGLEntries = (requests) => {
-    const glEntries = [];
-    let totalAmount = 0;
+    const glEntries = []
+    let totalAmount = 0
 
     requests.forEach((request) => {
-      const amount = parseFloat(request.amount);
-      totalAmount += amount;
+      const amount = parseFloat(request.amount)
+      totalAmount += amount
 
       // Get employee details for GL code
-      const employee = getEmployeeDetails(request.employeeId);
-      const employeeGLCode = employee?.glCode || `A3002-EMP-${request.employeeId.padStart(3, '0')}`;
-      const employeeName = employee?.fullName || request.employeeName;
+      const employee = getEmployeeDetails(request.employeeId)
+      const employeeGLCode =
+        request.glCode ||
+        employee?.glCode ||
+        `A3001001001-EMP-${request.employeeId.padStart(3, '0')}`
+      const employeeName = employee?.fullName || request.employeeName
 
       // Debit entry for each employee advance
       glEntries.push({
@@ -119,14 +129,14 @@ const getEmployeeDetails = (employeeId) => {
         creditAmount: 0,
         employeeName: employeeName,
         employeeId: request.employeeId,
-        narration: `Advance paid to ${employeeName} - ${Array.isArray(request.reason) ? request.reason.join(', ') : request.reason || 'General advance'}`
-      });
-    });
+        narration: `Advance paid to ${employeeName} - ${Array.isArray(request.reason) ? request.reason.join(', ') : request.reason || 'General advance'}`,
+      })
+    })
 
     // Get bank details from the first request (all requests in batch use same bank)
-    const bankCode = requests[0].bankCode;
-    const bank = getBankDetails(bankCode);
-    const bankName = bank?.name || requests[0].bankName || 'Bank Account';
+    const bankCode = requests[0].bankCode
+    const bank = getBankDetails(bankCode)
+    const bankName = bank?.name || requests[0].bankName || 'Bank Account'
 
     // Single credit entry for bank (total amount)
     glEntries.push({
@@ -138,17 +148,17 @@ const getEmployeeDetails = (employeeId) => {
       creditAmount: totalAmount,
       employeeName: null,
       employeeId: null,
-      narration: `Advance payment${isMultipleRequests ? ` to ${requests.length} employees` : ''} via ${bankName}`
-    });
+      narration: `Advance payment${isMultipleRequests ? ` to ${requests.length} employees` : ''} via ${bankName}`,
+    })
 
-    return glEntries;
-  };
+    return glEntries
+  }
 
-  const glEntries = generateAllGLEntries(requests);
-  const totalAmount = requests.reduce((sum, req) => sum + parseFloat(req.amount), 0);
+  const glEntries = generateAllGLEntries(requests)
+  const totalAmount = requests.reduce((sum, req) => sum + parseFloat(req.amount), 0)
 
   // Get bank details for display
-  const selectedBank = getBankDetails(requests[0].bankCode);
+  const selectedBank = getBankDetails(requests[0].bankCode)
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -171,7 +181,9 @@ const getEmployeeDetails = (employeeId) => {
                   <>
                     <FaCreditCard className="text-blue-600" />
                     Advance Request - Approved
-                    <span className={`px-3 py-1 rounded-lg text-sm border ${getStatusColor(requests[0].status)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-lg text-sm border ${getStatusColor(requests[0].status)}`}
+                    >
                       <FaCheck className="inline mr-1" size={12} />
                       {requests[0].status}
                     </span>
@@ -179,14 +191,13 @@ const getEmployeeDetails = (employeeId) => {
                 )}
               </h1>
               <p className="text-gray-600 mt-1">
-                {isMultipleRequests 
+                {isMultipleRequests
                   ? `Batch Approval - ${requests.length} requests processed`
-                  : `Request ID: ${requests[0].requestId || 'AUTO-' + requests[0].submittedAt?.slice(-8)}`
-                }
+                  : `Request ID: ${requests[0].requestId || 'AUTO-' + requests[0].submittedAt?.slice(-8)}`}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={onClose}
                 className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Close Modal"
@@ -198,27 +209,31 @@ const getEmployeeDetails = (employeeId) => {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
             {/* Left Column */}
             <div className="space-y-6">
-              
               {/* Selected Bank Information */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-300">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"> 
+                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   Selected Bank Account
                 </h2>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Bank Name:</span>
-                    <span className="font-bold text-blue-700">{selectedBank?.name || requests[0].bankName}</span>
+                    <span className="font-bold text-blue-700">
+                      {selectedBank?.name || requests[0].bankName}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">GL Code:</span>
-                    <span className="font-mono font-bold text-green-700">{requests[0].bankCode}</span>
+                    <span className="font-mono font-bold text-green-700">
+                      {requests[0].bankCode}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Account Type:</span>
-                    <span className="font-medium">{selectedBank?.parentAccount || 'Bank Account'}</span>
+                    <span className="font-medium">
+                      {selectedBank?.parentAccount || 'Bank Account'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -257,12 +272,14 @@ const getEmployeeDetails = (employeeId) => {
                       Employee Information
                     </h2>
                     {(() => {
-                      const employee = getEmployeeDetails(requests[0].employeeId);
+                      const employee = getEmployeeDetails(requests[0].employeeId)
                       return (
                         <div className="space-y-3">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Name:</span>
-                            <span className="font-medium">{employee?.fullName || requests[0].employeeName}</span>
+                            <span className="font-medium">
+                              {employee?.fullName || requests[0].employeeName}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Employee ID:</span>
@@ -278,14 +295,18 @@ const getEmployeeDetails = (employeeId) => {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">GL Code:</span>
-                            <span className="font-mono font-bold text-green-700">{employee?.glCode || 'N/A'}</span>
+                            <span className="font-mono font-bold text-green-700">
+                              {employee?.glCode || 'N/A'}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Outstanding Balance:</span>
-                            <span className="font-medium">₹ {employee?.osBalance?.toLocaleString() || '0'}</span>
+                            <span className="font-medium">
+                              ₹ {employee?.osBalance?.toLocaleString() || '0'}
+                            </span>
                           </div>
                         </div>
-                      );
+                      )
                     })()}
                   </div>
                 </>
@@ -310,23 +331,33 @@ const getEmployeeDetails = (employeeId) => {
                       </thead>
                       <tbody>
                         {requests.map((req, index) => {
-                          const emp = getEmployeeDetails(req.employeeId);
+                          const emp = getEmployeeDetails(req.employeeId)
                           return (
                             <tr key={index} className="border-b hover:bg-gray-50">
-                              <td className="p-2 border font-medium">{emp?.fullName || req.employeeName}</td>
-                              <td className="p-2 border font-mono text-xs text-blue-600">{emp?.glCode || 'N/A'}</td>
-                              <td className="p-2 border text-right font-medium">₹ {parseFloat(req.amount).toLocaleString()}</td>
+                              <td className="p-2 border font-medium">
+                                {emp?.fullName || req.employeeName}
+                              </td>
+                              <td className="p-2 border font-mono text-xs text-blue-600">
+                                {emp?.glCode || 'N/A'}
+                              </td>
+                              <td className="p-2 border text-right font-medium">
+                                ₹ {parseFloat(req.amount).toLocaleString()}
+                              </td>
                               <td className="p-2 border text-xs">
                                 {Array.isArray(req.reason) ? req.reason.join(', ') : req.reason}
                               </td>
                             </tr>
-                          );
+                          )
                         })}
                       </tbody>
                       <tfoot className="bg-gray-100">
                         <tr>
-                          <td colSpan="2" className="p-2 border font-bold">TOTAL</td>
-                          <td className="p-2 border text-right font-bold">₹ {totalAmount.toLocaleString()}</td>
+                          <td colSpan="2" className="p-2 border font-bold">
+                            TOTAL
+                          </td>
+                          <td className="p-2 border text-right font-bold">
+                            ₹ {totalAmount.toLocaleString()}
+                          </td>
                           <td className="p-2 border"></td>
                         </tr>
                       </tfoot>
@@ -346,15 +377,19 @@ const getEmployeeDetails = (employeeId) => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Submitted At:</span>
-                      <span className="font-medium text-sm">{formatDate(requests[0].submittedAt)}</span>
+                      <span className="font-medium text-sm">
+                        {formatDate(requests[0].submittedAt)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Reason:</span>
                       <span className="font-medium text-sm">
-                        {Array.isArray(requests[0].reason) ? requests[0].reason.join(', ') : requests[0].reason}
+                        {Array.isArray(requests[0].reason)
+                          ? requests[0].reason.join(', ')
+                          : requests[0].reason}
                       </span>
                     </div>
-                    
+
                     <div className="flex justify-between">
                       <span className="text-gray-600">Approved At:</span>
                       <span className="font-medium text-sm text-green-600">
@@ -368,7 +403,6 @@ const getEmployeeDetails = (employeeId) => {
 
             {/* Right Column */}
             <div className="space-y-6">
-              
               {/* GL Entries Table - REAL DATA */}
               <div className="bg-gradient-to-br from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-300">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -379,36 +413,60 @@ const getEmployeeDetails = (employeeId) => {
                   <table className="w-full border-collapse text-sm">
                     <thead className="bg-gray-100 sticky top-0">
                       <tr className="border-b border-gray-300">
-                        <th className="text-left py-2 px-2 text-xs font-semibold text-gray-700">GL Code</th>
-                        <th className="text-left py-2 px-2 text-xs font-semibold text-gray-700">Description</th>
-                        <th className="text-left py-2 px-2 text-xs font-semibold text-gray-700">Narration</th>
-                        <th className="text-right py-2 px-2 text-xs font-semibold text-gray-700">Debit</th>
-                        <th className="text-right py-2 px-2 text-xs font-semibold text-gray-700">Credit</th>
+                        <th className="text-left py-2 px-2 text-xs font-semibold text-gray-700">
+                          GL Code
+                        </th>
+                        <th className="text-left py-2 px-2 text-xs font-semibold text-gray-700">
+                          Description
+                        </th>
+                        <th className="text-left py-2 px-2 text-xs font-semibold text-gray-700">
+                          Narration
+                        </th>
+                        <th className="text-right py-2 px-2 text-xs font-semibold text-gray-700">
+                          Debit
+                        </th>
+                        <th className="text-right py-2 px-2 text-xs font-semibold text-gray-700">
+                          Credit
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {glEntries.map((entry, index) => (
                         <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
-                          <td className="py-2 px-2 text-xs font-bold text-blue-700 font-mono">{entry.glCode}</td>
+                          <td className="py-2 px-2 text-xs font-bold text-blue-700 font-mono">
+                            {entry.glCode}
+                          </td>
                           <td className="py-2 px-2 text-xs font-medium">{entry.glDescription}</td>
                           <td className="py-2 px-2 text-xs text-gray-600">{entry.narration}</td>
                           <td className="py-2 px-2 text-xs text-right font-medium">
-                            {entry.debitAmount > 0 ? `₹ ${entry.debitAmount.toLocaleString()}` : '-'}
+                            {entry.debitAmount > 0
+                              ? `₹ ${entry.debitAmount.toLocaleString()}`
+                              : '-'}
                           </td>
                           <td className="py-2 px-2 text-xs text-right font-medium">
-                            {entry.creditAmount > 0 ? `₹ ${entry.creditAmount.toLocaleString()}` : '-'}
+                            {entry.creditAmount > 0
+                              ? `₹ ${entry.creditAmount.toLocaleString()}`
+                              : '-'}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-green-100">
                       <tr className="border-t-2 border-green-400">
-                        <td colSpan="3" className="py-2 px-2 text-xs font-bold text-gray-800">TOTALS</td>
+                        <td colSpan="3" className="py-2 px-2 text-xs font-bold text-gray-800">
+                          TOTALS
+                        </td>
                         <td className="py-2 px-2 text-xs font-bold text-right text-green-700">
-                          ₹ {glEntries.reduce((sum, entry) => sum + entry.debitAmount, 0).toLocaleString()}
+                          ₹{' '}
+                          {glEntries
+                            .reduce((sum, entry) => sum + entry.debitAmount, 0)
+                            .toLocaleString()}
                         </td>
                         <td className="py-2 px-2 text-xs font-bold text-right text-red-700">
-                          ₹ {glEntries.reduce((sum, entry) => sum + entry.creditAmount, 0).toLocaleString()}
+                          ₹{' '}
+                          {glEntries
+                            .reduce((sum, entry) => sum + entry.creditAmount, 0)
+                            .toLocaleString()}
                         </td>
                       </tr>
                     </tfoot>
@@ -431,13 +489,17 @@ const getEmployeeDetails = (employeeId) => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Average Amount:</span>
-                        <span className="font-medium">₹ {(totalAmount / requests.length).toLocaleString()}</span>
+                        <span className="font-medium">
+                          ₹ {(totalAmount / requests.length).toLocaleString()}
+                        </span>
                       </div>
                     </>
                   ) : (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Requested Amount:</span>
-                      <span className="font-medium">₹ {parseFloat(requests[0].amount).toLocaleString()}</span>
+                      <span className="font-medium">
+                        ₹ {parseFloat(requests[0].amount).toLocaleString()}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -459,20 +521,34 @@ const getEmployeeDetails = (employeeId) => {
                   Approval Workflow
                 </h2>
                 <div className="space-y-4">
-                  {requests.some(req => req.isVPRequest) && (
+                  {requests.some((req) => req.isVPRequest) && (
                     <div className="border-l-4 border-green-500 pl-4">
                       <div className="flex items-center gap-2 mb-1">
                         <FaCheck className="text-green-600" size={14} />
                         <span className="font-semibold text-green-700">VP Approvals</span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <div>VP Requests: {requests.filter(req => req.isVPRequest).length}</div>
-                        <div>Before Deadline: {requests.filter(req => req.isVPRequest && req.vpApprovedBeforeDeadline).length}</div>
-                        <div>After Deadline: {requests.filter(req => req.isVPRequest && !req.vpApprovedBeforeDeadline).length}</div>
+                        <div>VP Requests: {requests.filter((req) => req.isVPRequest).length}</div>
+                        <div>
+                          Before Deadline:{' '}
+                          {
+                            requests.filter(
+                              (req) => req.isVPRequest && req.vpApprovedBeforeDeadline
+                            ).length
+                          }
+                        </div>
+                        <div>
+                          After Deadline:{' '}
+                          {
+                            requests.filter(
+                              (req) => req.isVPRequest && !req.vpApprovedBeforeDeadline
+                            ).length
+                          }
+                        </div>
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="border-l-4 border-green-500 pl-4">
                     <div className="flex items-center gap-2 mb-1">
                       <FaCheck className="text-green-600" size={14} />
@@ -483,27 +559,37 @@ const getEmployeeDetails = (employeeId) => {
                     <div className="text-sm text-gray-600">
                       <div>Approved by: {requests[0].aeApprovedBy || 'Account Executive'}</div>
                       <div>Time: {formatDate(requests[0].approvedAt)}</div>
-                      <div className={requests[0].aeApprovedBeforeDeadline ? 'text-green-600' : 'text-red-600'}>
-                        Status: {requests[0].aeApprovedBeforeDeadline ? 
-                          'Approved before 19:59 (Same-day processing)' : 
-                          'Approved after 19:59 (Next-day processing)'
+                      <div
+                        className={
+                          requests[0].aeApprovedBeforeDeadline ? 'text-green-600' : 'text-red-600'
                         }
+                      >
+                        Status:{' '}
+                        {requests[0].aeApprovedBeforeDeadline
+                          ? 'Approved before 19:59 (Same-day processing)'
+                          : 'Approved after 19:59 (Next-day processing)'}
                       </div>
-                      {isMultipleRequests && (
-                        <div>Batch Size: {requests.length} requests</div>
-                      )}
+                      {isMultipleRequests && <div>Batch Size: {requests.length} requests</div>}
                     </div>
                   </div>
-                  
+
                   <div className="border-l-4 border-blue-500 pl-4">
                     <div className="flex items-center gap-2 mb-1">
                       <FaClock className="text-blue-600" size={14} />
                       <span className="font-semibold text-blue-700">Next Steps</span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>• {isMultipleRequests ? 'All requests' : 'Request'} included in bank upload file</div>
-                      <div>• {isMultipleRequests ? 'Payments' : 'Payment'} will be processed via NEFT</div>
-                      <div>• Amount{isMultipleRequests ? 's' : ''} will be credited to employee account{isMultipleRequests ? 's' : ''}</div>
+                      <div>
+                        • {isMultipleRequests ? 'All requests' : 'Request'} included in bank upload
+                        file
+                      </div>
+                      <div>
+                        • {isMultipleRequests ? 'Payments' : 'Payment'} will be processed via NEFT
+                      </div>
+                      <div>
+                        • Amount{isMultipleRequests ? 's' : ''} will be credited to employee account
+                        {isMultipleRequests ? 's' : ''}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -516,9 +602,18 @@ const getEmployeeDetails = (employeeId) => {
                   Processing Notes
                 </h2>
                 <div className="text-sm text-gray-700 space-y-2">
-                  <div>• {isMultipleRequests ? 'These advances' : 'This advance'} will be deducted from future salary payments</div>
-                  <div>• Employee{isMultipleRequests ? 's' : ''} outstanding balance{isMultipleRequests ? 's' : ''} will be updated after processing</div>
-                  <div>• Transaction reference{isMultipleRequests ? 's' : ''} will be provided once bank processing is complete</div>
+                  <div>
+                    • {isMultipleRequests ? 'These advances' : 'This advance'} will be deducted from
+                    future salary payments
+                  </div>
+                  <div>
+                    • Employee{isMultipleRequests ? 's' : ''} outstanding balance
+                    {isMultipleRequests ? 's' : ''} will be updated after processing
+                  </div>
+                  <div>
+                    • Transaction reference{isMultipleRequests ? 's' : ''} will be provided once
+                    bank processing is complete
+                  </div>
                   {isMultipleRequests && (
                     <div className="font-medium text-blue-600">
                       • Batch processing: All {requests.length} requests processed simultaneously
@@ -531,7 +626,7 @@ const getEmployeeDetails = (employeeId) => {
 
           {/* Action Buttons */}
           <div className="mt-8 pt-4 border-t flex justify-end gap-3">
-            <button 
+            <button
               onClick={onClose}
               className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
             >
@@ -541,7 +636,7 @@ const getEmployeeDetails = (employeeId) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AdvanceRequestPaymentEntryModal;
+export default AdvanceRequestPaymentEntryModal
