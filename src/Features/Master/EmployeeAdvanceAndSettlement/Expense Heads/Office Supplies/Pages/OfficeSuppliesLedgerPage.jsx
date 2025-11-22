@@ -1,51 +1,55 @@
 // src/pages/OfficeSuppliesLedgerPage.jsx
-import React, { useState, useEffect } from 'react';
-import { ExpenseLedgerService } from '../../../../utils/expenseLedgerService';
-import HeaderSection from '../../../../Components/ExpenseHeadComponents/HeaderSection';
-import FilterSection from '../../../../Components/ExpenseHeadComponents/FilterSection';
-import LedgerTable from '../../../../Components/ExpenseHeadComponents/LedgerTable';
-import FooterSummary from '../../../../Components/ExpenseHeadComponents/FooterSummery';
+import React, { useState, useEffect } from 'react'
+import { ExpenseLedgerService } from '../../../../utils/expenseLedgerService'
+import HeaderSection from '../../../../Components/ExpenseHeadComponents/HeaderSection'
+import FilterSection from '../../../../Components/ExpenseHeadComponents/FilterSection'
+import LedgerTable from '../../../../Components/ExpenseHeadComponents/LedgerTable'
+import FooterSummary from '../../../../Components/ExpenseHeadComponents/FooterSummery'
 
 const OfficeSuppliesLedgerPage = () => {
-  const [ledgerData, setLedgerData] = useState(null);
-  const [filteredTransactions, setFilteredTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
+  const [ledgerData, setLedgerData] = useState(null)
+  const [filteredTransactions, setFilteredTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
-    loadLedgerData();
-  }, []);
-  
+    loadLedgerData()
+  }, [])
+
   const loadLedgerData = () => {
     try {
-      setLoading(true);
-      const data = ExpenseLedgerService.getExpenseLedgerData('X2001002001');
-      setLedgerData(data);
-      setFilteredTransactions(data.transactions);
+      setLoading(true)
+      const data = ExpenseLedgerService.getExpenseLedgerData('X2001002001')
+      setLedgerData(data)
+      setFilteredTransactions(data.transactions)
     } catch (error) {
-      console.error('Error loading office supplies ledger:', error);
+      console.error('Error loading office supplies ledger:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-  
+  }
+
   const handleFilterChange = (filters) => {
-    if (!ledgerData) return;
-    
-    const filtered = ledgerData.transactions.filter(transaction => {
-      if (filters.employee && transaction.employee.id && !transaction.employee.id.toLowerCase().includes(filters.employee.toLowerCase())) {
-        return false;
+    if (!ledgerData) return
+
+    const filtered = ledgerData.transactions.filter((transaction) => {
+      if (
+        filters.employee &&
+        transaction.employee.id &&
+        !transaction.employee.id.toLowerCase().includes(filters.employee.toLowerCase())
+      ) {
+        return false
       }
       if (filters.costCenter && transaction.costCenter.toLowerCase() !== filters.costCenter) {
-        return false;
+        return false
       }
       if (filters.entryType && transaction.entryType !== filters.entryType) {
-        return false;
+        return false
       }
-      return true;
-    });
-    setFilteredTransactions(filtered);
-  };
-  
+      return true
+    })
+    setFilteredTransactions(filtered)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 p-5 flex items-center justify-center">
@@ -54,15 +58,15 @@ const OfficeSuppliesLedgerPage = () => {
           <p className="mt-4 text-gray-600">Loading office supplies ledger...</p>
         </div>
       </div>
-    );
+    )
   }
-  
+
   if (!ledgerData) {
     return (
       <div className="min-h-screen bg-gray-100 p-5 flex items-center justify-center">
         <div className="text-center text-red-600">
           <p>Failed to load office supplies ledger data</p>
-          <button 
+          <button
             onClick={loadLedgerData}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
@@ -70,29 +74,29 @@ const OfficeSuppliesLedgerPage = () => {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-100 p-5">
-      <div className="max-w-full mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
-        <HeaderSection 
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
+        <HeaderSection
           header={ledgerData.header}
           balances={ledgerData.balances}
           stats={ledgerData.stats}
         />
-        
-        <FilterSection 
+
+        <FilterSection
           filterOptions={ledgerData.filterOptions}
           onFilterChange={handleFilterChange}
         />
-        
+
         <LedgerTable transactions={filteredTransactions} />
-        
+
         <FooterSummary summary={ledgerData.summary} />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default OfficeSuppliesLedgerPage;
+export default OfficeSuppliesLedgerPage
