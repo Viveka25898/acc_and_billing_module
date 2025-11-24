@@ -1,48 +1,43 @@
 // components/AERelieverBankSelectionModal.jsx
-import React, { useState, useEffect } from 'react';
-import { FaTimes, FaCheckCircle } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react'
+import { FaTimes, FaCheckCircle } from 'react-icons/fa'
 
-const AERelieverBankSelectionModal = ({ 
-  isOpen, 
-  onClose, 
-  onBankSelect, 
-  approvedRequests 
-}) => {
-  const [banks, setBanks] = useState([]);
-  const [selectedBankCode, setSelectedBankCode] = useState('');
-  const [selectedBank, setSelectedBank] = useState(null);
+const AERelieverBankSelectionModal = ({ isOpen, onClose, onBankSelect, approvedRequests }) => {
+  const [banks, setBanks] = useState([])
+  const [selectedBankCode, setSelectedBankCode] = useState('')
+  const [selectedBank, setSelectedBank] = useState(null)
 
   useEffect(() => {
     if (isOpen) {
       // Load banks from chartOfAccounts
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      
+      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || []
+
       // Filter banks: parentCode = "A3004003" and type = "ACCOUNT"
       const bankAccounts = chartOfAccounts.filter(
-        acc => acc.parentCode === "A3004003" && acc.type === "ACCOUNT"
-      );
-      
-      setBanks(bankAccounts);
-      
+        (acc) => acc.parentCode === 'A3004001' && acc.type === 'ACCOUNT'
+      )
+
+      setBanks(bankAccounts)
+
       // Reset selection when modal opens
-      setSelectedBankCode('');
-      setSelectedBank(null);
+      setSelectedBankCode('')
+      setSelectedBank(null)
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   const handleBankSelect = (e) => {
-    const bankCode = e.target.value;
-    setSelectedBankCode(bankCode);
-    
+    const bankCode = e.target.value
+    setSelectedBankCode(bankCode)
+
     // Find selected bank details
-    const bank = banks.find(b => b.code === bankCode);
-    setSelectedBank(bank);
-  };
+    const bank = banks.find((b) => b.code === bankCode)
+    setSelectedBank(bank)
+  }
 
   const handleConfirm = () => {
     if (!selectedBank) {
-      alert('Please select a bank');
-      return;
+      alert('Please select a bank')
+      return
     }
 
     // Pass selected bank and approved requests to parent
@@ -50,16 +45,16 @@ const AERelieverBankSelectionModal = ({
       bankCode: selectedBank.code,
       bankName: selectedBank.name,
       bankId: selectedBank.id,
-      approvedRequests: approvedRequests
-    });
-  };
+      approvedRequests: approvedRequests,
+    })
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   // Calculate totals
-  const totalAmount = approvedRequests.reduce((sum, req) => sum + parseFloat(req.amount || 0), 0);
-  const requestCount = approvedRequests.length;
-  const uniqueRelievers = [...new Set(approvedRequests.map(req => req.name))];
+  const totalAmount = approvedRequests.reduce((sum, req) => sum + parseFloat(req.amount || 0), 0)
+  const requestCount = approvedRequests.length
+  const uniqueRelievers = [...new Set(approvedRequests.map((req) => req.name))]
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
@@ -68,17 +63,14 @@ const AERelieverBankSelectionModal = ({
         <div className="bg-gradient-to-r from-pink-600 to-pink-700 text-white p-4 rounded-t-xl">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-bold">
-                Select Bank for Reliever Payments
-              </h2>
+              <h2 className="text-lg font-bold">Select Bank for Reliever Payments</h2>
               <p className="text-pink-100 text-xs mt-1">
-                {requestCount > 1 
+                {requestCount > 1
                   ? `${requestCount} reliever payments`
-                  : 'Processing reliever payment'
-                }
+                  : 'Processing reliever payment'}
               </p>
             </div>
-            <button 
+            <button
               onClick={onClose}
               className="text-white hover:bg-pink-800 p-1 rounded-lg transition-colors"
             >
@@ -89,7 +81,6 @@ const AERelieverBankSelectionModal = ({
 
         {/* Body */}
         <div className="p-4 space-y-4">
-          
           {/* Payment Summary */}
           <div className="bg-pink-50 border border-pink-200 rounded-lg p-3">
             <h3 className="font-semibold text-gray-800 text-sm mb-2 flex items-center gap-2">
@@ -107,9 +98,7 @@ const AERelieverBankSelectionModal = ({
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-gray-600">Relievers:</span>
-                <p className="font-medium text-xs truncate">
-                  {uniqueRelievers.join(', ')}
-                </p>
+                <p className="font-medium text-xs truncate">{uniqueRelievers.join(', ')}</p>
               </div>
             </div>
           </div>
@@ -119,7 +108,7 @@ const AERelieverBankSelectionModal = ({
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Select Bank Account <span className="text-red-500">*</span>
             </label>
-            
+
             {banks.length === 0 ? (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
                 <p className="font-medium">⚠️ No bank accounts found!</p>
@@ -132,7 +121,7 @@ const AERelieverBankSelectionModal = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-pink-500 text-sm"
               >
                 <option value="">-- Select Bank --</option>
-                {banks.map(bank => (
+                {banks.map((bank) => (
                   <option key={bank.code} value={bank.code}>
                     {bank.name} ({bank.code})
                   </option>
@@ -164,8 +153,8 @@ const AERelieverBankSelectionModal = ({
           {/* Warning Note */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs">
             <p className="text-yellow-800">
-              <strong>Note:</strong> Selected bank will be debited for reliever payments. 
-              Ensure sufficient balance.
+              <strong>Note:</strong> Selected bank will be debited for reliever payments. Ensure
+              sufficient balance.
             </p>
           </div>
         </div>
@@ -192,7 +181,7 @@ const AERelieverBankSelectionModal = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AERelieverBankSelectionModal;
+export default AERelieverBankSelectionModal

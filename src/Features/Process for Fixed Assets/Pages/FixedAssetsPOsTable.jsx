@@ -1,65 +1,64 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
-import { FaEye } from "react-icons/fa";
-import { fixedAssetPOs } from "../data/fixedAssetsPo"; // dummy data file
-import { format } from "date-fns";
-import FixedAssetPOsFilter from "../Components/FixedAssetPosFilter";
-import { NavLink } from "react-router-dom";
+import React, { useState, useEffect } from 'react'
+import { FaEye } from 'react-icons/fa'
+import { fixedAssetPOs } from '../data/fixedAssetsPo' // dummy data file
+import { format } from 'date-fns'
+import FixedAssetPOsFilter from '../Components/FixedAssetPosFilter'
+import { NavLink } from 'react-router-dom'
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 5
 
 export default function FixedAssetPOsTable() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState([])
   const [filters, setFilters] = useState({
-    assetName: "",
-    poNumber: "",
-    date: "",
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedPO, setSelectedPO] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+    assetName: '',
+    poNumber: '',
+    date: '',
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [selectedPO, setSelectedPO] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        setLoading(true)
+        setError(null)
         setTimeout(() => {
-          setData(fixedAssetPOs);
-          setLoading(false);
-        }, 500);
+          setData(fixedAssetPOs)
+          setLoading(false)
+        }, 500)
       } catch (err) {
-        setError("Failed to fetch Fixed Asset POs");
-        setLoading(false);
+        setError('Failed to fetch Fixed Asset POs')
+        setLoading(false)
       }
-    };
-    fetchData();
-  }, []);
+    }
+    fetchData()
+  }, [])
 
   const handleViewDetails = (po) => {
-    setSelectedPO(po);
-  };
+    setSelectedPO(po)
+  }
 
   const handleFilter = (filterValues) => {
-    setFilters(filterValues);
-    setCurrentPage(1); // Reset to first page on filter
-  };
+    setFilters(filterValues)
+    setCurrentPage(1) // Reset to first page on filter
+  }
 
   const filteredPOs = data.filter((po) => {
-  const assetMatch = (po.assetName || "").toLowerCase().includes(filters.assetName.toLowerCase());
-  const poNumberMatch = (po.poNumber || "").toLowerCase().includes(filters.poNumber.toLowerCase());
-  const dateMatch = filters.date ? po.date === filters.date : true;
-  return assetMatch && poNumberMatch && dateMatch;
-});
-
+    const assetMatch = (po.assetName || '').toLowerCase().includes(filters.assetName.toLowerCase())
+    const poNumberMatch = (po.poNumber || '').toLowerCase().includes(filters.poNumber.toLowerCase())
+    const dateMatch = filters.date ? po.date === filters.date : true
+    return assetMatch && poNumberMatch && dateMatch
+  })
 
   const paginatedData = filteredPOs.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
-  );
+  )
 
-  const totalPages = Math.ceil(filteredPOs.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredPOs.length / ITEMS_PER_PAGE)
 
   return (
     <div className="w-full px-2 md:px-6 py-4 bg-white rounded-lg shadow-md">
@@ -97,14 +96,11 @@ export default function FixedAssetPOsTable() {
                     </button>
                   </td>
                   <td className="px-4 py-2 border">
-                    {po.status === "invoice-uploaded" ? (
+                    {po.status === 'invoice-uploaded' ? (
                       <span className="text-green-600 font-semibold">Uploaded</span>
                     ) : (
                       <button className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm cursor-pointer">
-                        <NavLink to="/dashboard/vendor/dc-form">
-
-                        Generate DC
-                        </NavLink>
+                        <NavLink to="/dashboard/vendor/dc-form">Generate DC</NavLink>
                       </button>
                     )}
                   </td>
@@ -122,7 +118,9 @@ export default function FixedAssetPOsTable() {
             >
               Previous
             </button>
-            <span className="px-3 py-1">Page {currentPage} of {totalPages}</span>
+            <span className="px-3 py-1">
+              Page {currentPage} of {totalPages}
+            </span>
             <button
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
@@ -146,15 +144,25 @@ export default function FixedAssetPOsTable() {
             </button>
             <h3 className="text-lg font-bold mb-4">PO Details – {selectedPO.id}</h3>
             <div className="space-y-2 text-sm">
-              <p><strong>Asset Name:</strong> {selectedPO.assetName}</p>
-              <p><strong>Vendor:</strong> {selectedPO.vendor}</p>
-              <p><strong>PO Date:</strong> {format(new Date(selectedPO.date), "dd/MM/yyyy")}</p>
-              <p><strong>Amount:</strong> ₹{selectedPO.amount.toLocaleString()}</p>
-              <p><strong>Status:</strong> {selectedPO.status}</p>
+              <p>
+                <strong>Asset Name:</strong> {selectedPO.assetName}
+              </p>
+              <p>
+                <strong>Vendor:</strong> {selectedPO.vendor}
+              </p>
+              <p>
+                <strong>PO Date:</strong> {format(new Date(selectedPO.date), 'dd/MM/yyyy')}
+              </p>
+              <p>
+                <strong>Amount:</strong> ₹{selectedPO.amount.toLocaleString()}
+              </p>
+              <p>
+                <strong>Status:</strong> {selectedPO.status}
+              </p>
             </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }

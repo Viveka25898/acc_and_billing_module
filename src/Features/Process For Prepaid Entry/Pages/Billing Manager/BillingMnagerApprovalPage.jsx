@@ -1,179 +1,181 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
-import BillingManagerFilter from "../../Components/BillingManagerFilter";
-import BillingManagerModal from "../../Components/BillingManagerModal";
-import PurchaseVoucherModal from "../../Components/PurchaseVoucherModal";
-import JournalVoucherModal from "../../Components/JournalVoucherModal";
-import MonthlyAmortizationModal from "../../Components/MonthlyAmortizationModal";
-import { toast } from "react-toastify";
-import { processPrepaidUniformInvoice } from "../../../Master/utils/accountingHelpers";
+import React, { useState, useEffect } from 'react'
+import BillingManagerFilter from '../../Components/BillingManagerFilter'
+import BillingManagerModal from '../../Components/BillingManagerModal'
+import PurchaseVoucherModal from '../../Components/PurchaseVoucherModal'
+import JournalVoucherModal from '../../Components/JournalVoucherModal'
+import MonthlyAmortizationModal from '../../Components/MonthlyAmortizationModal'
+import { toast } from 'react-toastify'
+import { processPrepaidUniformInvoice } from '../../../Master/utils/accountingHelpers'
 
 export default function BillingManagerApprovalPage() {
-  const [filterText, setFilterText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [invoices, setInvoices] = useState([]);
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [showJournalModal, setShowJournalModal] = useState(false);
-  const [showAmortizationModal, setShowAmortizationModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [filterText, setFilterText] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [invoices, setInvoices] = useState([])
+  const [selectedInvoice, setSelectedInvoice] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [showJournalModal, setShowJournalModal] = useState(false)
+  const [showAmortizationModal, setShowAmortizationModal] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
 
   // Load Invoice Data from localStorage (AM Approved invoices for Procurement Prepaid)
   const loadInvoiceData = () => {
     try {
       // Get invoices approved by Account Manager that are of type "Procurement Prepaid"
-      const processedInvoices = localStorage.getItem("processed_invoices");
-      const billingManagerQueue = localStorage.getItem("billing_manager_invoices");
-      
-      let invoicesToShow = [];
-      
+      const processedInvoices = localStorage.getItem('processed_invoices')
+      const billingManagerQueue = localStorage.getItem('billing_manager_invoices')
+
+      let invoicesToShow = []
+
       // Get existing billing manager invoices
       if (billingManagerQueue) {
-        invoicesToShow = JSON.parse(billingManagerQueue);
+        invoicesToShow = JSON.parse(billingManagerQueue)
       }
-      
+
       // Check for new processed invoices that should come to billing manager
       if (processedInvoices) {
-        const processed = JSON.parse(processedInvoices);
-        
+        const processed = JSON.parse(processedInvoices)
+
         // Filter for Procurement Prepaid type invoices that haven't been moved to BM queue yet
-        const newProcurementInvoices = processed.filter(inv => 
-          inv.type === "Procurement Prepaid" && 
-          !invoicesToShow.some(existing => existing.id === inv.id)
-        );
-        
+        const newProcurementInvoices = processed.filter(
+          (inv) =>
+            inv.type === 'Procurement Prepaid' &&
+            !invoicesToShow.some((existing) => existing.id === inv.id)
+        )
+
         // Add new procurement invoices to billing manager queue
         if (newProcurementInvoices.length > 0) {
-          const updatedInvoices = newProcurementInvoices.map(inv => ({
+          const updatedInvoices = newProcurementInvoices.map((inv) => ({
             ...inv,
-            billingManagerStatus: "Pending",
-            bmRemarks: "",
-            processedByBM: "",
-            processedAtBM: ""
-          }));
-          
-          invoicesToShow = [...invoicesToShow, ...updatedInvoices];
-          
+            billingManagerStatus: 'Pending',
+            bmRemarks: '',
+            processedByBM: '',
+            processedAtBM: '',
+          }))
+
+          invoicesToShow = [...invoicesToShow, ...updatedInvoices]
+
           // Save updated billing manager queue
-          localStorage.setItem("billing_manager_invoices", JSON.stringify(invoicesToShow));
+          localStorage.setItem('billing_manager_invoices', JSON.stringify(invoicesToShow))
         }
       }
-      
-      setInvoices(invoicesToShow);
-      
+
+      setInvoices(invoicesToShow)
     } catch (error) {
-      console.error("Error loading BM invoice data:", error);
-      setInvoices([]);
+      console.error('Error loading BM invoice data:', error)
+      setInvoices([])
     }
-  };
+  }
 
   // Load data on component mount
   useEffect(() => {
-    loadInvoiceData();
-  }, []);
+    loadInvoiceData()
+  }, [])
 
   // Auto-refresh to check for new AM approvals
   useEffect(() => {
     const interval = setInterval(() => {
-      loadInvoiceData();
-    }, 10000); // Check every 10 seconds
+      loadInvoiceData()
+    }, 10000) // Check every 10 seconds
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearInterval(interval)
+  }, [])
 
   // Refresh data from localStorage
   const refreshData = () => {
-    loadInvoiceData();
-    toast.success("Data refreshed from localStorage!");
-  };
+    loadInvoiceData()
+    toast.success('Data refreshed from localStorage!')
+  }
 
   // Clear processed invoices (for demo purposes)
   const clearBillingQueue = () => {
-    if (window.confirm("Clear all billing manager queue?")) {
-      localStorage.setItem("billing_manager_invoices", JSON.stringify([]));
-      setInvoices([]);
-      toast.info("Billing Manager queue cleared!");
+    if (window.confirm('Clear all billing manager queue?')) {
+      localStorage.setItem('billing_manager_invoices', JSON.stringify([]))
+      setInvoices([])
+      toast.info('Billing Manager queue cleared!')
     }
-  };
+  }
 
   // View processed invoices summary
   const viewProcessedSummary = () => {
-    const processedInvoices = JSON.parse(localStorage.getItem("processed_invoices") || "[]");
-    const billingManagerInvoices = JSON.parse(localStorage.getItem("billing_manager_invoices") || "[]");
-    const finalProcessed = JSON.parse(localStorage.getItem("final_processed_invoices") || "[]");
-    const rejectedInvoices = JSON.parse(localStorage.getItem("rejected_invoices") || "[]");
-    
+    const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices') || '[]')
+    const billingManagerInvoices = JSON.parse(
+      localStorage.getItem('billing_manager_invoices') || '[]'
+    )
+    const finalProcessed = JSON.parse(localStorage.getItem('final_processed_invoices') || '[]')
+    const rejectedInvoices = JSON.parse(localStorage.getItem('rejected_invoices') || '[]')
+
     const summary = `
 Invoice Processing Summary:
 - Total AM Processed: ${processedInvoices.length}
-- Pending BM Approval: ${billingManagerInvoices.filter(inv => inv.billingManagerStatus === "Pending").length}
+- Pending BM Approval: ${billingManagerInvoices.filter((inv) => inv.billingManagerStatus === 'Pending').length}
 - Final Processed: ${finalProcessed.length}
 - Total Rejected: ${rejectedInvoices.length}
-    `;
-    
-    alert(summary);
-  };
+    `
+
+    alert(summary)
+  }
 
   // UPDATED: Filter and sort invoices
   const filteredInvoices = invoices
     .filter((inv) => {
       const textMatch =
         inv.invoiceNumber.toLowerCase().includes(filterText.toLowerCase()) ||
-        inv.vendorName?.toLowerCase().includes(filterText.toLowerCase());
+        inv.vendorName?.toLowerCase().includes(filterText.toLowerCase())
 
       const statusMatch =
-        !statusFilter || 
-        (statusFilter === "Pending" && inv.billingManagerStatus === "Pending") ||
-        (statusFilter === "Approved" && inv.billingManagerStatus === "Approved") ||
-        (statusFilter === "Rejected" && inv.billingManagerStatus === "Rejected");
+        !statusFilter ||
+        (statusFilter === 'Pending' && inv.billingManagerStatus === 'Pending') ||
+        (statusFilter === 'Approved' && inv.billingManagerStatus === 'Approved') ||
+        (statusFilter === 'Rejected' && inv.billingManagerStatus === 'Rejected')
 
-      return textMatch && statusMatch;
+      return textMatch && statusMatch
     })
     .sort((a, b) => {
       // Sort by status priority: Pending -> Approved -> Rejected
       const statusPriority = {
-        "Pending": 1,
-        "Approved": 2, 
-        "Rejected": 3
-      };
-      
-      const aPriority = statusPriority[a.billingManagerStatus] || 4;
-      const bPriority = statusPriority[b.billingManagerStatus] || 4;
-      
-      if (aPriority !== bPriority) {
-        return aPriority - bPriority;
+        Pending: 1,
+        Approved: 2,
+        Rejected: 3,
       }
-      
-      // If same status, sort by invoice number or date
-      return a.invoiceNumber.localeCompare(b.invoiceNumber);
-    });
 
-  // Pagination 
+      const aPriority = statusPriority[a.billingManagerStatus] || 4
+      const bPriority = statusPriority[b.billingManagerStatus] || 4
+
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority
+      }
+
+      // If same status, sort by invoice number or date
+      return a.invoiceNumber.localeCompare(b.invoiceNumber)
+    })
+
+  // Pagination
   const paginatedInvoices = filteredInvoices.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
-  );
-  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  )
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage)
 
   const handleApprove = (id) => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const timestamp = new Date().toISOString();
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
+    const timestamp = new Date().toISOString()
 
     // Find the invoice to approve
-    const invoiceToApprove = invoices.find(inv => inv.id === id);
+    const invoiceToApprove = invoices.find((inv) => inv.id === id)
     if (!invoiceToApprove) {
-      toast.error("Invoice not found!");
-      return;
+      toast.error('Invoice not found!')
+      return
     }
 
     // Process Prepaid Uniform invoice - automatically create Purchase Voucher and ledger entries
-    const glResult = processPrepaidUniformInvoice(invoiceToApprove);
-    
+    const glResult = processPrepaidUniformInvoice(invoiceToApprove)
+
     if (!glResult.success) {
-      toast.error(`Failed to process invoice: ${glResult.error}`);
-      return;
+      toast.error(`Failed to process invoice: ${glResult.error}`)
+      return
     }
 
     // Update local state with approval and GL result
@@ -181,121 +183,130 @@ Invoice Processing Summary:
       if (inv.id === id) {
         return {
           ...inv,
-          billingManagerStatus: "Approved",
+          billingManagerStatus: 'Approved',
           bmRemarks: `Approved - Purchase Voucher ${glResult.purchaseVoucherNo} created`,
-          processedByBM: currentUser.username || "bm1",
+          processedByBM: currentUser.username || 'bm1',
           processedAtBM: timestamp,
           approved: true,
           purchaseVoucherNo: glResult.purchaseVoucherNo,
           purchaseTransactionId: glResult.purchaseTransactionId,
           vendorGLCode: glResult.vendorGLCode,
           uniformPrepaidGLCode: glResult.uniformPrepaidGLCode,
-          accountingResult: glResult
-        };
+          accountingResult: glResult,
+        }
       }
-      return inv;
-    });
-    
-    setInvoices(updated);
-    setIsModalOpen(false);
+      return inv
+    })
+
+    setInvoices(updated)
+    setIsModalOpen(false)
 
     // Update localStorage
-    const billingManagerInvoices = JSON.parse(localStorage.getItem("billing_manager_invoices") || "[]");
-    const updatedBMInvoices = billingManagerInvoices.map(inv => {
+    const billingManagerInvoices = JSON.parse(
+      localStorage.getItem('billing_manager_invoices') || '[]'
+    )
+    const updatedBMInvoices = billingManagerInvoices.map((inv) => {
       if (inv.id === id) {
         return {
           ...inv,
-          billingManagerStatus: "Approved",
+          billingManagerStatus: 'Approved',
           bmRemarks: `Approved - Purchase Voucher ${glResult.purchaseVoucherNo} created`,
-          processedByBM: currentUser.username || "bm1",
+          processedByBM: currentUser.username || 'bm1',
           processedAtBM: timestamp,
           approved: true,
           purchaseVoucherNo: glResult.purchaseVoucherNo,
           purchaseTransactionId: glResult.purchaseTransactionId,
           vendorGLCode: glResult.vendorGLCode,
           uniformPrepaidGLCode: glResult.uniformPrepaidGLCode,
-          accountingResult: glResult
-        };
+          accountingResult: glResult,
+        }
       }
-      return inv;
-    });
+      return inv
+    })
 
-    localStorage.setItem("billing_manager_invoices", JSON.stringify(updatedBMInvoices));
+    localStorage.setItem('billing_manager_invoices', JSON.stringify(updatedBMInvoices))
 
     // Find the approved invoice for final processing
-    const approvedInvoice = updatedBMInvoices.find(inv => inv.id === id);
-    
+    const approvedInvoice = updatedBMInvoices.find((inv) => inv.id === id)
+
     if (approvedInvoice) {
       // Move to final processed queue
-      const finalProcessed = JSON.parse(localStorage.getItem("final_processed_invoices") || "[]");
+      const finalProcessed = JSON.parse(localStorage.getItem('final_processed_invoices') || '[]')
       const finalInvoice = {
         ...approvedInvoice,
-        finalStatus: "Completed - Purchase Voucher Created",
-        completedAt: timestamp
-      };
-      
-      const updatedFinalProcessed = [...finalProcessed, finalInvoice];
-      localStorage.setItem("final_processed_invoices", JSON.stringify(updatedFinalProcessed));
-      
-      toast.success(`Invoice ${approvedInvoice.invoiceNumber} approved! Purchase Voucher ${glResult.purchaseVoucherNo} created successfully.`);
+        finalStatus: 'Completed - Purchase Voucher Created',
+        completedAt: timestamp,
+      }
+
+      const updatedFinalProcessed = [...finalProcessed, finalInvoice]
+      localStorage.setItem('final_processed_invoices', JSON.stringify(updatedFinalProcessed))
+
+      toast.success(
+        `Invoice ${approvedInvoice.invoiceNumber} approved! Purchase Voucher ${glResult.purchaseVoucherNo} created successfully.`
+      )
     }
-  };
+  }
 
   const handleReject = (id) => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const timestamp = new Date().toISOString();
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
+    const timestamp = new Date().toISOString()
 
     // Update local state first
     const updated = invoices.map((inv) => {
       if (inv.id === id) {
         return {
           ...inv,
-          billingManagerStatus: "Rejected",
-          bmRemarks: "Rejected by Billing Manager",
-          processedByBM: currentUser.username || "bm1",
+          billingManagerStatus: 'Rejected',
+          bmRemarks: 'Rejected by Billing Manager',
+          processedByBM: currentUser.username || 'bm1',
           processedAtBM: timestamp,
-          approved: true
-        };
+          approved: true,
+        }
       }
-      return inv;
-    });
-    
-    setInvoices(updated);
-    setIsModalOpen(false);
+      return inv
+    })
+
+    setInvoices(updated)
+    setIsModalOpen(false)
 
     // Update localStorage
-    const billingManagerInvoices = JSON.parse(localStorage.getItem("billing_manager_invoices") || "[]");
-    const updatedBMInvoices = billingManagerInvoices.map(inv => {
+    const billingManagerInvoices = JSON.parse(
+      localStorage.getItem('billing_manager_invoices') || '[]'
+    )
+    const updatedBMInvoices = billingManagerInvoices.map((inv) => {
       if (inv.id === id) {
         return {
           ...inv,
-          billingManagerStatus: "Rejected",
-          bmRemarks: "Rejected by Billing Manager",
-          processedByBM: currentUser.username || "bm1",
+          billingManagerStatus: 'Rejected',
+          bmRemarks: 'Rejected by Billing Manager',
+          processedByBM: currentUser.username || 'bm1',
           processedAtBM: timestamp,
-          approved: true
-        };
+          approved: true,
+        }
       }
-      return inv;
-    });
+      return inv
+    })
 
-    localStorage.setItem("billing_manager_invoices", JSON.stringify(updatedBMInvoices));
+    localStorage.setItem('billing_manager_invoices', JSON.stringify(updatedBMInvoices))
 
     // Move to rejected queue
-    const rejectedInvoices = JSON.parse(localStorage.getItem("rejected_invoices") || "[]");
-    const rejectedInvoice = updatedBMInvoices.find(inv => inv.id === id);
-    
+    const rejectedInvoices = JSON.parse(localStorage.getItem('rejected_invoices') || '[]')
+    const rejectedInvoice = updatedBMInvoices.find((inv) => inv.id === id)
+
     if (rejectedInvoice) {
-      const updatedRejected = [...rejectedInvoices, {
-        ...rejectedInvoice,
-        finalStatus: "Rejected by Billing Manager",
-        rejectedAtBM: timestamp
-      }];
-      localStorage.setItem("rejected_invoices", JSON.stringify(updatedRejected));
-      
-      toast.error(`Invoice ${rejectedInvoice.invoiceNumber} rejected by Billing Manager.`);
+      const updatedRejected = [
+        ...rejectedInvoices,
+        {
+          ...rejectedInvoice,
+          finalStatus: 'Rejected by Billing Manager',
+          rejectedAtBM: timestamp,
+        },
+      ]
+      localStorage.setItem('rejected_invoices', JSON.stringify(updatedRejected))
+
+      toast.error(`Invoice ${rejectedInvoice.invoiceNumber} rejected by Billing Manager.`)
     }
-  };
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto bg-white shadow-md rounded-md">
@@ -303,7 +314,7 @@ Invoice Processing Summary:
         <h1 className="text-2xl md:text-2xl font-bold text-green-600">
           Final Invoice Approval (Billing Manager)
         </h1>
-        
+
         {/* Control Buttons for Demo/Development */}
         <div className="flex gap-2">
           <button
@@ -356,7 +367,9 @@ Invoice Processing Summary:
                 <td colSpan="7" className="p-4 text-center text-gray-500">
                   No Procurement Prepaid invoices pending approval.
                   <br />
-                  <span className="text-xs">Invoices will appear here after Account Manager approval.</span>
+                  <span className="text-xs">
+                    Invoices will appear here after Account Manager approval.
+                  </span>
                 </td>
               </tr>
             ) : (
@@ -368,16 +381,16 @@ Invoice Processing Summary:
                   <td className="p-3 border">₹{inv.totalAmount.toLocaleString()}</td>
                   <td className="p-3 border">
                     <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                      {inv.type || "Procurement Prepaid"}
+                      {inv.type || 'Procurement Prepaid'}
                     </span>
                   </td>
                   <td className="p-3 border">
-                    {inv.billingManagerStatus === "Pending" && (
+                    {inv.billingManagerStatus === 'Pending' && (
                       <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs">
                         Pending BM Approval
                       </span>
                     )}
-                    {inv.billingManagerStatus === "Approved" && (
+                    {inv.billingManagerStatus === 'Approved' && (
                       <div>
                         <span className="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">
                           Approved
@@ -386,8 +399,8 @@ Invoice Processing Summary:
                           <button
                             className="bg-green-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-green-600"
                             onClick={() => {
-                              setSelectedInvoice(inv);
-                              setShowPurchaseModal(true);
+                              setSelectedInvoice(inv)
+                              setShowPurchaseModal(true)
                             }}
                           >
                             View Purchase Voucher
@@ -395,8 +408,8 @@ Invoice Processing Summary:
                           <button
                             className="bg-blue-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-blue-600"
                             onClick={() => {
-                              setSelectedInvoice(inv);
-                              setShowJournalModal(true);
+                              setSelectedInvoice(inv)
+                              setShowJournalModal(true)
                             }}
                           >
                             View Journal Voucher
@@ -404,8 +417,8 @@ Invoice Processing Summary:
                           <button
                             className="bg-purple-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-purple-600"
                             onClick={() => {
-                              setSelectedInvoice(inv);
-                              setShowAmortizationModal(true);
+                              setSelectedInvoice(inv)
+                              setShowAmortizationModal(true)
                             }}
                           >
                             Monthly Amortization
@@ -413,7 +426,7 @@ Invoice Processing Summary:
                         </div>
                       </div>
                     )}
-                    {inv.billingManagerStatus === "Rejected" && (
+                    {inv.billingManagerStatus === 'Rejected' && (
                       <span className="bg-red-200 text-red-800 px-2 py-1 rounded text-xs">
                         Rejected
                       </span>
@@ -422,14 +435,14 @@ Invoice Processing Summary:
                   <td className="p-3 border text-center">
                     <button
                       onClick={() => {
-                        setSelectedInvoice(inv);
-                        setIsModalOpen(true);
+                        setSelectedInvoice(inv)
+                        setIsModalOpen(true)
                       }}
-                      disabled={inv.billingManagerStatus !== "Pending"}
+                      disabled={inv.billingManagerStatus !== 'Pending'}
                       className={`px-3 py-1.5 rounded text-white text-sm ${
-                        inv.billingManagerStatus !== "Pending"
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700"
+                        inv.billingManagerStatus !== 'Pending'
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                     >
                       View
@@ -468,8 +481,8 @@ Invoice Processing Summary:
           <MonthlyAmortizationModal
             invoice={selectedInvoice}
             onClose={() => {
-              setShowAmortizationModal(false);
-              setSelectedInvoice(null);
+              setShowAmortizationModal(false)
+              setSelectedInvoice(null)
             }}
           />
         )}
@@ -483,9 +496,7 @@ Invoice Processing Summary:
               key={index}
               onClick={() => setCurrentPage(index + 1)}
               className={`px-3 py-1 rounded border text-sm ${
-                currentPage === index + 1
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700"
+                currentPage === index + 1 ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
               }`}
             >
               {index + 1}
@@ -494,5 +505,5 @@ Invoice Processing Summary:
         </div>
       )}
     </div>
-  );
+  )
 }

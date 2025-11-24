@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import React, { useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
 
 const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) => {
-  const [gstRate, setGstRate] = useState("");
-  const [hsnCode, setHsnCode] = useState("");
-  const [hsnSummary, setHsnSummary] = useState("");
-  const [isRejecting, setIsRejecting] = useState(false);
-  const [remarks, setRemarks] = useState("");
-  const [isIframeLoading, setIsIframeLoading] = useState(true);
+  const [gstRate, setGstRate] = useState('')
+  const [hsnCode, setHsnCode] = useState('')
+  const [hsnSummary, setHsnSummary] = useState('')
+  const [isRejecting, setIsRejecting] = useState(false)
+  const [remarks, setRemarks] = useState('')
+  const [isIframeLoading, setIsIframeLoading] = useState(true)
 
   useEffect(() => {
     if (invoice) {
-      setRemarks("");
-      setIsRejecting(false);
-      setGstRate(invoice.gstRate?.toString() || "");
-      setHsnCode(invoice.hsnCode || "");
-      setHsnSummary(invoice.hsnSummary || "");
+      setRemarks('')
+      setIsRejecting(false)
+      setGstRate(invoice.gstRate?.toString() || '')
+      setHsnCode(invoice.hsnCode || '')
+      setHsnSummary(invoice.hsnSummary || '')
     }
-  }, [invoice]);
+  }, [invoice])
 
-  if (!isOpen || !invoice) return null;
+  if (!isOpen || !invoice) return null
 
   const handleApprove = () => {
     const updatedInvoice = {
@@ -27,23 +27,23 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
       gstRate,
       hsnCode,
       hsnSummary,
-    };
+    }
 
-    handleUpdateInvoice(updatedInvoice.id, "Approved", null, updatedInvoice);
-    onClose();
-    toast.success("Invoice approved successfully!");
-  };
+    handleUpdateInvoice(updatedInvoice.id, 'Approved', null, updatedInvoice)
+    onClose()
+    toast.success('Invoice approved successfully!')
+  }
 
   const handleReject = () => {
     if (!remarks.trim()) {
-      toast.warn("Please provide rejection remarks.");
-      return;
+      toast.warn('Please provide rejection remarks.')
+      return
     }
 
-    handleUpdateInvoice(invoice.id, "Rejected", remarks);
-    onClose();
-    toast.error("Invoice rejected successfully!");
-  };
+    handleUpdateInvoice(invoice.id, 'Rejected', remarks)
+    onClose()
+    toast.error('Invoice rejected successfully!')
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
@@ -51,7 +51,9 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
         {/* Header */}
         <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-semibold">Verify Invoice - {invoice.invoiceNumber}</h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-red-600">X</button>
+          <button onClick={onClose} className="text-gray-600 hover:text-red-600">
+            X
+          </button>
         </div>
 
         {/* Content */}
@@ -112,26 +114,26 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
           )}
 
           {/* Fixed Asset Info */}
-          {invoice.type === "Fixed Asset" && invoice.assetDetails && (
+          {invoice.type === 'Fixed Asset' && invoice.assetDetails && (
             <div className="border-t pt-4">
               <h3 className="font-semibold text-base mb-2 text-blue-800">Fixed Asset Details</h3>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <label className="block font-medium">Asset Tag</label>
                   <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.assetTag || "-"}
+                    {invoice.assetDetails.assetTag || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block font-medium">Serial Number</label>
                   <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.serialNumber || "-"}
+                    {invoice.assetDetails.serialNumber || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block font-medium">Location</label>
                   <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.location || "-"}
+                    {invoice.assetDetails.location || '-'}
                   </div>
                 </div>
               </div>
@@ -217,7 +219,7 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default InvoiceVerifyModal;
+export default InvoiceVerifyModal
