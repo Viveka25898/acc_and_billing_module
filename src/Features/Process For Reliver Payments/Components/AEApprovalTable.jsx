@@ -1,9 +1,9 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from "react";
-import { FaEye, FaCheck, FaTimes } from "react-icons/fa";
-import RejectionModal from "./RejectionModal";
+import React, { useState } from 'react'
+import { FaEye, FaCheck, FaTimes } from 'react-icons/fa'
+import RejectionModal from './RejectionModal'
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 5
 
 export default function AEApprovalTable({
   requests,
@@ -11,68 +11,65 @@ export default function AEApprovalTable({
   onBulkApprove,
   showActions = false,
 }) {
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedRequests, setSelectedRequests] = useState([]);
-  const [passbookUrl, setPassbookUrl] = useState(null);
+  const [showRejectionModal, setShowRejectionModal] = useState(false)
+  const [selectedId, setSelectedId] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [selectedRequests, setSelectedRequests] = useState([])
+  const [passbookUrl, setPassbookUrl] = useState(null)
 
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginated = requests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  const totalPages = Math.ceil(requests.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const paginated = requests.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(requests.length / ITEMS_PER_PAGE)
 
- const handleApprove = (id) => {
-  const request = requests.find(req => req.id === id);
-  if (request && request.status === "Pending Account Executive Approval") {
-    onStatusChange(id, "Approved");
-    // The modal will now be opened from the parent component
+  const handleApprove = (id) => {
+    const request = requests.find((req) => req.id === id)
+    if (request && request.status === 'Pending Account Executive Approval') {
+      onStatusChange(id, 'Approved')
+      // The modal will now be opened from the parent component
+    }
   }
-};
-
 
   const handleRejectClick = (id) => {
-    setSelectedId(id);
-    setShowRejectionModal(true);
-  };
+    setSelectedId(id)
+    setShowRejectionModal(true)
+  }
 
   const handleRejectConfirm = (reason) => {
     if (selectedId) {
-      onStatusChange(selectedId, "Rejected by Account Executive", reason);
+      onStatusChange(selectedId, 'Rejected by Account Executive', reason)
     }
-    setShowRejectionModal(false);
-    setSelectedId(null);
-  };
+    setShowRejectionModal(false)
+    setSelectedId(null)
+  }
 
   const handleCheckboxChange = (id) => {
-    setSelectedRequests(prev => 
-      prev.includes(id) 
-        ? prev.filter(reqId => reqId !== id) 
-        : [...prev, id]
-    );
-  };
+    setSelectedRequests((prev) =>
+      prev.includes(id) ? prev.filter((reqId) => reqId !== id) : [...prev, id]
+    )
+  }
 
   const handleApproveAll = () => {
-  const approvableIds = selectedRequests.filter(id => {
-    const req = requests.find(r => r.id === id);
-    return req && req.status === "Pending Account Executive Approval";
-  });
+    const approvableIds = selectedRequests.filter((id) => {
+      const req = requests.find((r) => r.id === id)
+      return req && req.status === 'Pending Account Executive Approval'
+    })
 
-  if (approvableIds.length > 0) {
-    onBulkApprove(approvableIds);
-    setSelectedRequests([]);
+    if (approvableIds.length > 0) {
+      onBulkApprove(approvableIds)
+      setSelectedRequests([])
+    }
   }
-};
   const handlePassbookView = (url) => {
-    setPassbookUrl(url);
-  };
+    setPassbookUrl(url)
+  }
 
   const handleClosePassbookModal = () => {
-    setPassbookUrl(null);
-  };
+    setPassbookUrl(null)
+  }
 
   const isPdf = (url) => {
-    return typeof url === 'string' && url.toLowerCase().endsWith('.pdf');
-  };
+    return typeof url === 'string' && url.toLowerCase().endsWith('.pdf')
+  }
 
   return (
     <div className="overflow-x-auto mt-4">
@@ -80,24 +77,24 @@ export default function AEApprovalTable({
         <thead className="bg-gray-100">
           <tr>
             <th className="p-2 border w-10">
-              <input 
+              <input
                 type="checkbox"
                 className="w-4 h-4 cursor-pointer"
                 onChange={(e) => {
                   if (e.target.checked) {
                     const pendingIds = paginated
-                      .filter(req => req.status === "Pending Account Executive Approval")
-                      .map(req => req.id);
-                    setSelectedRequests(pendingIds);
+                      .filter((req) => req.status === 'Pending Account Executive Approval')
+                      .map((req) => req.id)
+                    setSelectedRequests(pendingIds)
                   } else {
-                    setSelectedRequests([]);
+                    setSelectedRequests([])
                   }
                 }}
                 checked={
-                  selectedRequests.length > 0 && 
-                  selectedRequests.length === paginated.filter(
-                    req => req.status === "Pending Account Executive Approval"
-                  ).length
+                  selectedRequests.length > 0 &&
+                  selectedRequests.length ===
+                    paginated.filter((req) => req.status === 'Pending Account Executive Approval')
+                      .length
                 }
               />
             </th>
@@ -113,81 +110,89 @@ export default function AEApprovalTable({
           </tr>
         </thead>
         <tbody>
-            {paginated.map((req, index) => (
-              <tr key={`${req.id}-${index}`} className="hover:bg-gray-50 text-center"> {/* ✅ FIX: Add index to make keys unique */}
-                <td className="border p-2 flex justify-center">
-                  {/* ✅ FIX: Only show checkbox for pending requests */}
-                  {req.status === "Pending Account Executive Approval" && (
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 cursor-pointer"
-                      checked={selectedRequests.includes(req.id)}
-                      onChange={() => handleCheckboxChange(req.id)}
-                    />
-                  )}
-                </td>
-                <td className="border p-2">#{req.id.slice(-6)}</td>
-                <td className="border p-2">{req.name}</td>
-                <td className="border p-2">{new Date(req.date).toLocaleDateString()}</td>
-                <td className="border p-2">{req.amount}</td>
-                <td className="border p-2">{req.accountNo || "-"}</td>
-                <td className="border p-2">{req.ifscCode || "-"}</td>
-                <td className="border p-2">
-                  {req.passbookFile ? (
+          {paginated.map((req, index) => (
+            <tr key={`${req.id}-${index}`} className="hover:bg-gray-50 text-center">
+              {' '}
+              {/* ✅ FIX: Add index to make keys unique */}
+              <td className="border p-2 flex justify-center">
+                {/* ✅ FIX: Only show checkbox for pending requests */}
+                {req.status === 'Pending Account Executive Approval' && (
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 cursor-pointer"
+                    checked={selectedRequests.includes(req.id)}
+                    onChange={() => handleCheckboxChange(req.id)}
+                  />
+                )}
+              </td>
+              <td className="border p-2">#{req.id.slice(-6)}</td>
+              <td className="border p-2">{req.name}</td>
+              <td className="border p-2">{new Date(req.date).toLocaleDateString()}</td>
+              <td className="border p-2">{req.amount}</td>
+              <td className="border p-2">{req.accountNo || '-'}</td>
+              <td className="border p-2">{req.ifscCode || '-'}</td>
+              <td className="border p-2">
+                {req.passbookFile ? (
+                  <button
+                    onClick={() => handlePassbookView(req.passbookFile)}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="View Passbook"
+                  >
+                    <FaEye />
+                  </button>
+                ) : (
+                  '-'
+                )}
+              </td>
+              <td className="border p-2">
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded ${
+                    req.status.includes('Rejected')
+                      ? 'bg-red-100 text-red-800'
+                      : req.status.includes('Pending')
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-green-100 text-green-800'
+                  }`}
+                >
+                  {req.status}
+                </span>
+              </td>
+              <td className="border p-2 space-x-2">
+                {/* ✅ FIX: Only show action buttons for PENDING requests */}
+                {req.status === 'Pending Account Executive Approval' ? (
+                  <>
                     <button
-                      onClick={() => handlePassbookView(req.passbookFile)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="View Passbook"
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                      onClick={() => handleApprove(req.id)}
                     >
-                      <FaEye />
+                      <FaCheck className="inline mr-1" /> Approve
                     </button>
-                  ) : "-"}
-                </td>
-                <td className="border p-2">
-                  <span className={`inline-flex items-center px-2 py-1 rounded ${
-                    req.status.includes("Rejected") ? "bg-red-100 text-red-800" :
-                    req.status.includes("Pending") ? "bg-yellow-100 text-yellow-800" :
-                    "bg-green-100 text-green-800"
-                  }`}>
-                    {req.status}
-                  </span>
-                </td>
-                <td className="border p-2 space-x-2">
-                  {/* ✅ FIX: Only show action buttons for PENDING requests */}
-                  {req.status === "Pending Account Executive Approval" ? (
-                    <>
-                      <button
-                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                        onClick={() => handleApprove(req.id)}
-                      >
-                        <FaCheck className="inline mr-1" /> Approve
-                      </button>
-                      <button
-                        className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                        onClick={() => handleRejectClick(req.id)}
-                      >
-                        <FaTimes className="inline mr-1" /> Reject
-                      </button>
-                    </>
-                  ) : req.status.includes("Rejected") ? (
                     <button
+                      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
                       onClick={() => handleRejectClick(req.id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="View rejection reason"
                     >
-                      <FaEye />
+                      <FaTimes className="inline mr-1" /> Reject
                     </button>
-                  ) : req.status === "Approved" ? (
-                    /* ✅ FIX: Show "Approved" indicator for approved requests */
-                    <span className="text-green-600 font-medium flex items-center justify-center gap-1">
-                      <FaCheck size={14} />
-                      Processed
-                    </span>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-      </tbody>
+                  </>
+                ) : req.status.includes('Rejected') ? (
+                  <button
+                    onClick={() => handleRejectClick(req.id)}
+                    className="text-red-600 hover:text-red-800"
+                    title="View rejection reason"
+                  >
+                    <FaEye />
+                  </button>
+                ) : req.status === 'Approved' ? (
+                  /* ✅ FIX: Show "Approved" indicator for approved requests */
+                  <span className="text-green-600 font-medium flex items-center justify-center gap-1">
+                    <FaCheck size={14} />
+                    Processed
+                  </span>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
       </table>
 
       {selectedRequests.length > 0 && (
@@ -205,15 +210,17 @@ export default function AEApprovalTable({
       <div className="flex justify-between items-center mt-4">
         <button
           className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-          onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
         >
           Previous
         </button>
-        <span>Page {currentPage} of {totalPages}</span>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
         <button
           className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-          onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
           disabled={currentPage === totalPages}
         >
           Next
@@ -224,8 +231,8 @@ export default function AEApprovalTable({
         isOpen={showRejectionModal}
         onClose={() => setShowRejectionModal(false)}
         onSubmit={handleRejectConfirm}
-        mode={selectedId ? "reject" : "view"}
-        existingReason={requests.find(r => r.id === selectedId)?.rejectionReason}
+        mode={selectedId ? 'reject' : 'view'}
+        existingReason={requests.find((r) => r.id === selectedId)?.rejectionReason}
       />
 
       {passbookUrl && (
@@ -256,5 +263,5 @@ export default function AEApprovalTable({
         </div>
       )}
     </div>
-  );
+  )
 }

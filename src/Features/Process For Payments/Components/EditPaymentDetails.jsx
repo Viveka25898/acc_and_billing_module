@@ -1,19 +1,19 @@
 // src/features/processPayments/components/EditPaymentDetails.jsx
-import React from "react";
-import { toast } from "react-toastify";
+import React from 'react'
+import { toast } from 'react-toastify'
 
 export default function EditPaymentDetails({ data, setData, onCancel }) {
   const handleChange = (index, field, value) => {
-    const updated = [...data];
-    updated[index][field] = value;
-    setData(updated);
-  };
+    const updated = [...data]
+    updated[index][field] = value
+    setData(updated)
+  }
 
   const handleSave = () => {
-    localStorage.setItem("paymentEntries", JSON.stringify(data));
-    toast.success("Changes saved successfully. Payment entries accepted and passed in the System.");
-    onCancel(); // close editor
-  };
+    localStorage.setItem('paymentEntries', JSON.stringify(data))
+    toast.success('Changes saved successfully. Payment entries accepted and passed in the System.')
+    onCancel() // close editor
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6 mt-6 overflow-auto">
@@ -24,7 +24,9 @@ export default function EditPaymentDetails({ data, setData, onCancel }) {
           <thead className="bg-gray-100">
             <tr>
               {Object.keys(data[0] || {}).map((key) => (
-                <th key={key} className="px-3 py-2 border">{key}</th>
+                <th key={key} className="px-3 py-2 border">
+                  {key}
+                </th>
               ))}
             </tr>
           </thead>
@@ -48,10 +50,7 @@ export default function EditPaymentDetails({ data, setData, onCancel }) {
       </div>
 
       <div className="flex justify-end mt-4 gap-3">
-        <button
-          onClick={onCancel}
-          className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-        >
+        <button onClick={onCancel} className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">
           Cancel
         </button>
         <button
@@ -62,5 +61,5 @@ export default function EditPaymentDetails({ data, setData, onCancel }) {
         </button>
       </div>
     </div>
-  );
+  )
 }

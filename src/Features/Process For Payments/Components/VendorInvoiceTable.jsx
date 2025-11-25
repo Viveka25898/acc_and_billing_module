@@ -1,149 +1,147 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 
 const VendorInvoiceTable = ({
   vendorData,
   onInvoiceSelect,
   onPaymentUpdate,
   invoicePayments,
-  onInvoiceApprove
+  onInvoiceApprove,
 }) => {
-  const [selectedVendors, setSelectedVendors] = useState({});
-  const [expandedVendor, setExpandedVendor] = useState(null);
-  const [localPayments, setLocalPayments] = useState({});
-  
+  const [selectedVendors, setSelectedVendors] = useState({})
+  const [expandedVendor, setExpandedVendor] = useState(null)
+  const [localPayments, setLocalPayments] = useState({})
+
   useEffect(() => {
-    setLocalPayments(invoicePayments);
-  }, [invoicePayments]);
+    setLocalPayments(invoicePayments)
+  }, [invoicePayments])
 
   const handleVendorClick = (vendorId) => {
-    setExpandedVendor(expandedVendor === vendorId ? null : vendorId);
-  };
+    setExpandedVendor(expandedVendor === vendorId ? null : vendorId)
+  }
 
   const handleVendorCheckbox = (vendorId) => {
     setSelectedVendors((prev) => ({
       ...prev,
       [vendorId]: !prev[vendorId],
-    }));
-  };
+    }))
+  }
 
   const handleAmountChange = (invoiceId, amount) => {
-    const currentPayment = localPayments[invoiceId] || {};
+    const currentPayment = localPayments[invoiceId] || {}
     const updatedPayment = {
       ...currentPayment,
       amount: Number(amount),
       paymentType: currentPayment.paymentType || 'partial',
-    };
-    
+    }
+
     setLocalPayments((prev) => ({
       ...prev,
       [invoiceId]: updatedPayment,
-    }));
+    }))
 
     // Immediately update parent component
-    onPaymentUpdate?.(invoiceId, Number(amount), updatedPayment.paymentType);
-  };
+    onPaymentUpdate?.(invoiceId, Number(amount), updatedPayment.paymentType)
+  }
 
   const handlePaymentTypeChange = (invoiceId, paymentType, originalAmount) => {
-    const amount = paymentType === 'full' 
-      ? originalAmount 
-      : (localPayments[invoiceId]?.amount || originalAmount);
+    const amount =
+      paymentType === 'full' ? originalAmount : localPayments[invoiceId]?.amount || originalAmount
 
     const updatedPayment = {
       amount: Number(amount),
       paymentType: paymentType,
-    };
+    }
 
     setLocalPayments((prev) => ({
       ...prev,
       [invoiceId]: updatedPayment,
-    }));
+    }))
 
     // Immediately update parent component
-    onPaymentUpdate?.(invoiceId, Number(amount), paymentType);
-  };
+    onPaymentUpdate?.(invoiceId, Number(amount), paymentType)
+  }
 
   // Initialize default payment data for all invoices when component mounts
   useEffect(() => {
     const initializePayments = () => {
-      const defaultPayments = {};
-      vendorData.forEach(vendor => {
-        vendor.invoices.forEach(invoice => {
+      const defaultPayments = {}
+      vendorData.forEach((vendor) => {
+        vendor.invoices.forEach((invoice) => {
           if (!localPayments[invoice.id]) {
             defaultPayments[invoice.id] = {
               amount: invoice.amount,
-              paymentType: 'full'
-            };
+              paymentType: 'full',
+            }
             // Also update parent component
-            onPaymentUpdate?.(invoice.id, invoice.amount, 'full');
+            onPaymentUpdate?.(invoice.id, invoice.amount, 'full')
           }
-        });
-      });
+        })
+      })
 
       if (Object.keys(defaultPayments).length > 0) {
-        setLocalPayments(prev => ({
+        setLocalPayments((prev) => ({
           ...prev,
-          ...defaultPayments
-        }));
+          ...defaultPayments,
+        }))
       }
-    };
+    }
 
-    initializePayments();
-  }, [vendorData]); // Run when vendorData changes
+    initializePayments()
+  }, [vendorData]) // Run when vendorData changes
 
   const handleApproveSelectedInvoices = () => {
     // Pass both selected vendors and current payment state
-    onInvoiceApprove(selectedVendors, localPayments);
+    onInvoiceApprove(selectedVendors, localPayments)
 
     // Reset selected vendors after approval
-    const resetSelections = {};
+    const resetSelections = {}
     Object.keys(selectedVendors).forEach((id) => {
-      resetSelections[id] = false;
-    });
-    setSelectedVendors(resetSelections);
-  };
+      resetSelections[id] = false
+    })
+    setSelectedVendors(resetSelections)
+  }
 
   const getVendorPaymentStatus = (vendor, payments) => {
-    let fullyPaid = true;
-    let partiallyPaidInvoices = [];
+    let fullyPaid = true
+    let partiallyPaidInvoices = []
 
     vendor.invoices.forEach((inv) => {
-      const pay = payments[inv.id];
+      const pay = payments[inv.id]
       if (!pay) {
-        fullyPaid = false;
+        fullyPaid = false
       } else if (Number(pay.amount) < inv.amount) {
-        fullyPaid = false;
-        partiallyPaidInvoices.push({ ...inv, paidAmount: pay.amount });
+        fullyPaid = false
+        partiallyPaidInvoices.push({ ...inv, paidAmount: pay.amount })
       }
-    });
+    })
 
     return {
       fullyPaid,
       partiallyPaidInvoices,
-    };
-  };
+    }
+  }
 
   // Helper function to get badge color based on invoice type
   const getInvoiceTypeBadgeColor = (invoiceTypeLabel) => {
-    if (!invoiceTypeLabel) return 'bg-gray-100 text-gray-600';
-    
-    if (invoiceTypeLabel.includes('Material')) {
-      return 'bg-blue-100 text-blue-700 border-blue-200';
-    } else if (invoiceTypeLabel.includes('Fixed Asset')) {
-      return 'bg-purple-100 text-purple-700 border-purple-200';
-    } else if (invoiceTypeLabel.includes('Uniform') || invoiceTypeLabel.includes('Prepaid')) {
-      return 'bg-green-100 text-green-700 border-green-200';
-    }
-    return 'bg-gray-100 text-gray-600 border-gray-200';
-  };
+    if (!invoiceTypeLabel) return 'bg-gray-100 text-gray-600'
 
-  const filteredVendors = vendorData.filter(
-    (vendor) => vendor.invoices.length > 0
-  );
+    if (invoiceTypeLabel.includes('Material')) {
+      return 'bg-blue-100 text-blue-700 border-blue-200'
+    } else if (invoiceTypeLabel.includes('Fixed Asset')) {
+      return 'bg-purple-100 text-purple-700 border-purple-200'
+    } else if (invoiceTypeLabel.includes('Uniform') || invoiceTypeLabel.includes('Prepaid')) {
+      return 'bg-green-100 text-green-700 border-green-200'
+    }
+    return 'bg-gray-100 text-gray-600 border-gray-200'
+  }
+
+  const filteredVendors = vendorData.filter((vendor) => vendor.invoices.length > 0)
 
   const renderInvoiceRow = (invoice, vendor) => {
-    const payment = localPayments[invoice.id] || { amount: invoice.amount, paymentType: 'full' };
-    const isPartialPayment = payment.paymentType === 'partial';
-    const displayAmount = payment.amount !== undefined ? String(payment.amount) : String(invoice.amount);
+    const payment = localPayments[invoice.id] || { amount: invoice.amount, paymentType: 'full' }
+    const isPartialPayment = payment.paymentType === 'partial'
+    const displayAmount =
+      payment.amount !== undefined ? String(payment.amount) : String(invoice.amount)
 
     return (
       <tr key={invoice.id} className="bg-gray-100 border text-[10px] leading-tight">
@@ -159,7 +157,9 @@ const VendorInvoiceTable = ({
               {invoice.invoiceNumber}
             </button>
             {invoice.invoiceTypeLabel && (
-              <span className={`inline-block text-[8px] px-1.5 py-0.5 rounded-full border font-medium ${getInvoiceTypeBadgeColor(invoice.invoiceTypeLabel)}`}>
+              <span
+                className={`inline-block text-[8px] px-1.5 py-0.5 rounded-full border font-medium ${getInvoiceTypeBadgeColor(invoice.invoiceTypeLabel)}`}
+              >
                 {invoice.invoiceTypeLabel}
               </span>
             )}
@@ -175,9 +175,7 @@ const VendorInvoiceTable = ({
                 onChange={(e) => handleAmountChange(invoice.id, e.target.value)}
                 disabled={!isPartialPayment}
                 className={`w-[60px] px-[4px] py-[2px] text-[10px] border rounded focus:outline-none ${
-                  isPartialPayment
-                    ? 'bg-white border-blue-300'
-                    : 'bg-gray-100 border-gray-300'
+                  isPartialPayment ? 'bg-white border-blue-300' : 'bg-gray-100 border-gray-300'
                 }`}
                 step="0.01"
                 min="0"
@@ -192,9 +190,7 @@ const VendorInvoiceTable = ({
                   name={`payment-${invoice.id}`}
                   value="full"
                   checked={payment.paymentType !== 'partial'}
-                  onChange={() =>
-                    handlePaymentTypeChange(invoice.id, 'full', invoice.amount)
-                  }
+                  onChange={() => handlePaymentTypeChange(invoice.id, 'full', invoice.amount)}
                   className="mr-[3px] text-blue-600 scale-[0.8]"
                 />
                 <span className="text-green-600">Full</span>
@@ -206,9 +202,7 @@ const VendorInvoiceTable = ({
                   name={`payment-${invoice.id}`}
                   value="partial"
                   checked={payment.paymentType === 'partial'}
-                  onChange={() =>
-                    handlePaymentTypeChange(invoice.id, 'partial', invoice.amount)
-                  }
+                  onChange={() => handlePaymentTypeChange(invoice.id, 'partial', invoice.amount)}
                   className="mr-[3px] text-orange-600 scale-[0.8]"
                 />
                 <span className="text-orange-600">Partial</span>
@@ -217,8 +211,8 @@ const VendorInvoiceTable = ({
           </div>
         </td>
       </tr>
-    );
-  };
+    )
+  }
 
   return (
     <div className="w-full overflow-x-auto">
@@ -250,14 +244,10 @@ const VendorInvoiceTable = ({
                     onClick={() => handleVendorClick(vendor.id)}
                     className="flex items-center space-x-1 hover:text-blue-600 font-medium"
                   >
-                    <span className="text-[10px]">
-                      {expandedVendor === vendor.id ? '▼' : '▶'}
-                    </span>
+                    <span className="text-[10px]">{expandedVendor === vendor.id ? '▼' : '▶'}</span>
                     <span>{vendor.vendorName}</span>
                     <span className="ml-1 text-[10px] text-gray-500 bg-gray-100 px-1 rounded-full">
-                      {getVendorPaymentStatus(vendor, localPayments).fullyPaid
-                        ? 'Paid'
-                        : 'Pending'}
+                      {getVendorPaymentStatus(vendor, localPayments).fullyPaid ? 'Paid' : 'Pending'}
                     </span>
                     <span className="text-[10px] text-gray-500 bg-gray-100 px-1 rounded-full">
                       {vendor.invoices.length} inv
@@ -268,16 +258,11 @@ const VendorInvoiceTable = ({
                   {expandedVendor === vendor.id ? '↓ invoices below' : 'Click name'}
                 </td>
                 <td className="px-1 py-1 text-[10px] border">
-                  ₹
-                  {vendor.invoices
-                    .reduce((sum, inv) => sum + inv.amount, 0)
-                    .toLocaleString()}
+                  ₹{vendor.invoices.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
                 </td>
               </tr>
               {expandedVendor === vendor.id &&
-                vendor.invoices.map((invoice) =>
-                  renderInvoiceRow(invoice, vendor)
-                )}
+                vendor.invoices.map((invoice) => renderInvoiceRow(invoice, vendor))}
             </React.Fragment>
           ))}
         </tbody>
@@ -299,7 +284,7 @@ const VendorInvoiceTable = ({
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default VendorInvoiceTable;
+export default VendorInvoiceTable

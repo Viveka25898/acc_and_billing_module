@@ -1079,30 +1079,23 @@ export const formatDate = (dateString) => {
 /**
  * Create reliever payment transaction (Dr Reliever Wages, Cr Bank)
  */
-export const createRelieverPaymentTransaction = (relieverRequest, bankData, voucherNo) => {
+export const createRelieverPaymentTransaction = (relieverRequest, voucherNo) => {
   try {
     const amount = parseFloat(relieverRequest.amount);
-    const bank = getBankDetails(bankData.bankCode);
-
-    const relieverGLCode = 'X1001001003'; // Reliever Wages Expense
-    const bankGLCode = bankData.bankCode;
-    const bankName = bank?.name || bankData.bankName;
-
-    // Get site from request or use default
     const site = relieverRequest.site || 'General';
 
     return {
       id: `TXN_REL_${Date.now()}_${relieverRequest.id}`,
       voucherNo: voucherNo,
-      voucherType: "Payment Voucher",
+      voucherType: "Journal Voucher",
       date: getCurrentDate(),
       relieverRequestId: relieverRequest.id,
 
       entries: [
         {
           lineNo: 1,
-          glCode: relieverGLCode,
-          glName: "RELIEVER WAGES",
+          glCode: 'X2002002001', // RELIEVER PAYMENTS (Expense)
+          glName: "RELIEVER PAYMENTS",
           debit: amount,
           credit: 0,
           narration: `Reliever payment - ${relieverRequest.name} - ${relieverRequest.narration || 'Temporary staff coverage'}`,
@@ -1114,18 +1107,18 @@ export const createRelieverPaymentTransaction = (relieverRequest, bankData, vouc
         },
         {
           lineNo: 2,
-          glCode: bankGLCode,
-          glName: bankName,
+          glCode: 'L2001002', // EMPLOYEE RELIEVER ACCOUNT (Liability)
+          glName: "EMPLOYEE RELIEVER ACCOUNT",
           debit: 0,
           credit: amount,
-          narration: `Payment to ${relieverRequest.name} - Reliever`,
-          costCenter: 'HEAD OFFICE'
+          narration: `Reliever liability created - ${relieverRequest.name}`,
+          costCenter: site
         }
       ],
 
       totalDebit: amount,
       totalCredit: amount,
-      narration: `Reliever payment to ${relieverRequest.name} for ${relieverRequest.days || 1} day(s)`,
+      narration: `Reliever payment approved for ${relieverRequest.name} for ${relieverRequest.days || 1} day(s)`,
       approvedBy: relieverRequest.aeApprovedBy || 'ae1',
       approvedDate: new Date().toISOString(),
       relieverDetails: {
@@ -1145,7 +1138,7 @@ export const createRelieverPaymentTransaction = (relieverRequest, bankData, vouc
 /**
  * Process single reliever payment approval
  */
-export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
+export const processRelieverPaymentApproval = (relieverRequest) => {
   try {
     if (DEBUG) console.log('🚀 Starting reliever payment approval...');
 
@@ -1158,17 +1151,12 @@ export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
       throw new Error('Invalid payment amount');
     }
 
-    const bankValidation = validateBankData(bankData);
-    if (!bankValidation.isValid) {
-      throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
-    }
-
     // Generate voucher number
     const site = relieverRequest.site || 'General';
     const voucherNo = generateRelieverVoucherNumber(site);
 
     // Create and post transaction
-    const transaction = createRelieverPaymentTransaction(relieverRequest, bankData, voucherNo);
+    const transaction = createRelieverPaymentTransaction(relieverRequest, voucherNo);
     const postResult = postTransaction(transaction);
 
     if (!postResult.success) {
@@ -1178,19 +1166,19 @@ export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
     // Update ledger balances
     updateLedgerBalances(transaction.entries);
 
-    console.log('✅ Reliever payment completed!');
+    console.log('✅ Reliever payment approval completed!');
 
     return {
       success: true,
       voucherNo: voucherNo,
       transactionId: postResult.transaction.id,
-      relieverGLCode: 'X100101003',
-      bankGLCode: bankData.bankCode,
+      expenseGLCode: 'X2002002001',
+      liabilityGLCode: 'L2001002',
       amount: parseFloat(relieverRequest.amount),
       relieverName: relieverRequest.name,
       site: site,
       days: relieverRequest.days || 1,
-      message: `Reliever payment of ₹${parseFloat(relieverRequest.amount).toLocaleString()} processed for ${relieverRequest.name}`
+      message: `Reliever payment of ₹${parseFloat(relieverRequest.amount).toLocaleString()} approved for ${relieverRequest.name}`
     };
 
   } catch (error) {
@@ -1206,15 +1194,9 @@ export const processRelieverPaymentApproval = (relieverRequest, bankData) => {
 /**
  * Process multiple reliever payments (batch approval)
  */
-export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
+export const processMultipleRelieverPayments = (relieverRequests) => {
   try {
     if (DEBUG) console.log(`🚀 Starting batch reliever payment for ${relieverRequests.length} requests...`);
-
-    // Validate bank data
-    const bankValidation = validateBankData(bankData);
-    if (!bankValidation.isValid) {
-      throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
-    }
 
     const results = [];
     let totalAmount = 0;
@@ -1229,7 +1211,7 @@ export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
         console.log(`📝 Processing reliever payment ${i + 1}/${relieverRequests.length}...`);
 
         // Process this single reliever payment
-        const result = processRelieverPaymentApproval(request, bankData);
+        const result = processRelieverPaymentApproval(request);
 
         if (result.success) {
           results.push({
@@ -1278,11 +1260,12 @@ export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
       successCount: successCount,
       failureCount: failureCount,
       totalAmount: totalAmount,
-      bankGLCode: bankData.bankCode,
+      expenseGLCode: 'X2002002001',
+      liabilityGLCode: 'L2001002',
       payments: results,
       message: failureCount === 0
-        ? `All ${successCount} reliever payments processed successfully (Total: ₹${totalAmount.toLocaleString()})`
-        : `${successCount} of ${relieverRequests.length} payments processed. ${failureCount} failed.`
+        ? `All ${successCount} reliever payments approved successfully (Total: ₹${totalAmount.toLocaleString()})`
+        : `${successCount} of ${relieverRequests.length} payments approved. ${failureCount} failed.`
     };
 
   } catch (error) {
@@ -1294,7 +1277,163 @@ export const processMultipleRelieverPayments = (relieverRequests, bankData) => {
     };
   }
 };
+export const processRelieverBankPayments = (payments, bankData) => {
+  try {
+    console.log('🚀 Processing reliever bank payments...');
 
+    // Validate inputs
+    if (!payments || payments.length === 0) {
+      throw new Error('No reliever payments found');
+    }
+
+    const bankValidation = validateBankData(bankData);
+    if (!bankValidation.isValid) {
+      throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
+    }
+
+    // Calculate total amount
+    const totalAmount = payments.reduce((sum, payment) => {
+      return sum + (Number(payment.amount) || 0);
+    }, 0);
+
+    if (totalAmount <= 0) {
+      throw new Error('Invalid total payment amount');
+    }
+
+    // Generate voucher number
+    const site = payments[0]?.site || 'General';
+    const voucherNo = generateRelieverBankVoucherNumber(site);
+
+    // Create transaction with your specified GL entries
+    const transaction = createRelieverBankPaymentTransaction(payments, bankData, voucherNo, totalAmount);
+    const postResult = postTransaction(transaction);
+
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+
+    console.log('✅ Reliever bank payments processed successfully!');
+
+    // 🔥 FIX: Convert debit/credit fields to debitAmount/creditAmount for the modal
+    const formattedGLEntries = transaction.entries.map(entry => ({
+      glCode: entry.glCode,
+      glDescription: entry.glName || entry.glDescription,
+      costCenter: entry.costCenter,
+      department: entry.department || 'Finance',
+      debitAmount: entry.debit || entry.debitAmount || 0,  // Convert debit to debitAmount
+      creditAmount: entry.credit || entry.creditAmount || 0, // Convert credit to creditAmount
+      narration: entry.narration
+    }));
+
+    console.log('🔍 DEBUG - Formatted GL Entries:', formattedGLEntries);
+
+    // Return COMPLETE data structure for the modal
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      totalAmount: totalAmount,
+      paymentCount: payments.length,
+      glEntries: formattedGLEntries, // Use properly formatted GL entries
+      message: `Processed ${payments.length} reliever bank payments totaling ₹${totalAmount.toLocaleString()}`,
+      payments: payments,
+      bankDetails: bankData
+    };
+
+  } catch (error) {
+    console.error('❌ ERROR in processRelieverBankPayments:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process reliever bank payments: ${error.message}`
+    };
+  }
+};
+
+/**
+ * Create reliever bank payment transaction with specified GL entries
+ */
+export const createRelieverBankPaymentTransaction = (payments, bankData, voucherNo, totalAmount) => {
+  try {
+    const bank = getBankDetails(bankData.bankCode);
+
+    return {
+      id: `TXN_REL_BANK_${Date.now()}`,
+      voucherNo: voucherNo,
+      voucherType: "Payment Voucher",
+      date: getCurrentDate(),
+      relieverPaymentBatch: true,
+
+      entries: [
+        // DEBIT: L2001002 - EMPLOYEE RELIEVER ACCOUNT
+        {
+          lineNo: 1,
+          glCode: 'L2001002',
+          glName: "EMPLOYEE RELIEVER ACCOUNT",
+          debit: totalAmount,
+          credit: 0,
+          narration: `Reliever payments batch - ${payments.length} relievers`,
+          costCenter: 'HEAD OFFICE'
+        },
+        // CREDIT: Selected Bank
+        {
+          lineNo: 2,
+          glCode: bankData.bankCode,
+          glName: bank?.name || bankData.bankName,
+          debit: 0,
+          credit: totalAmount,
+          narration: `Bank payment for relievers`,
+          costCenter: 'HEAD OFFICE'
+        }
+      ],
+
+      totalDebit: totalAmount,
+      totalCredit: totalAmount,
+      narration: `Bank payments processed for ${payments.length} relievers`,
+      approvedBy: "ae1",
+      approvedDate: new Date().toISOString(),
+      paymentDetails: {
+        totalRelievers: payments.length,
+        totalAmount: totalAmount,
+        relievers: payments.map(p => ({
+          name: p.name,
+          amount: p.amount,
+          site: p.site
+        }))
+      }
+    };
+  } catch (error) {
+    console.error('Error creating reliever bank transaction:', error);
+    throw new Error(`Failed to create reliever bank transaction: ${error.message}`);
+  }
+};
+
+/**
+ * Generate voucher number for reliever bank payments
+ */
+export const generateRelieverBankVoucherNumber = (site) => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `PAY/REL/BANK/${site}/${year}`;
+
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+
+    console.log(`🎫 Generated reliever bank voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating reliever bank voucher:', error);
+    throw new Error(`Failed to generate reliever bank voucher: ${error.message}`);
+  }
+};
 /**
  * Generate voucher number for reliever payments
  */

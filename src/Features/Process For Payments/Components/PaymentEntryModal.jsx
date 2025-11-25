@@ -1,51 +1,56 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
-import { 
-  FaCalendarAlt, 
-  FaUser, 
-  FaCreditCard, 
-  FaFileAlt, 
-  FaBuilding, 
-  FaTag, 
-  FaRupeeSign, 
-  FaCheck, 
-  FaTimes, 
+import React, { useState } from 'react'
+import {
+  FaCalendarAlt,
+  FaUser,
+  FaCreditCard,
+  FaFileAlt,
+  FaBuilding,
+  FaTag,
+  FaRupeeSign,
+  FaCheck,
+  FaTimes,
   FaEdit,
   FaChevronDown,
   FaChevronRight,
-  FaUsers
-} from 'react-icons/fa';
+  FaUsers,
+} from 'react-icons/fa'
 
 const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
-  const [isEditable, setIsEditable] = useState(false);
-  const [currentPaymentData, setCurrentPaymentData] = useState(paymentData);
-  const [expandedVendors, setExpandedVendors] = useState({});
+  const [isEditable, setIsEditable] = useState(false)
+  const [currentPaymentData, setCurrentPaymentData] = useState(paymentData)
+  const [expandedVendors, setExpandedVendors] = useState({})
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleEdit = () => {
-    setIsEditable(!isEditable);
-  };
+    setIsEditable(!isEditable)
+  }
 
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'Approved': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Rejected': return 'bg-red-100 text-red-800 border-red-200';
-      case 'Pending Approval': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    switch (status) {
+      case 'Approved':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'Rejected':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'Pending Approval':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
-  };
+  }
 
   // Toggle vendor expansion in breakdown section
   const toggleVendorExpansion = (vendorIndex) => {
-    setExpandedVendors(prev => ({
+    setExpandedVendors((prev) => ({
       ...prev,
-      [vendorIndex]: !prev[vendorIndex]
-    }));
-  };
+      [vendorIndex]: !prev[vendorIndex],
+    }))
+  }
 
   // Check if this is a multi-vendor payment
-  const isMultiVendor = currentPaymentData.vendorDetails && currentPaymentData.vendorDetails.length > 1;
+  const isMultiVendor =
+    currentPaymentData.vendorDetails && currentPaymentData.vendorDetails.length > 1
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -67,7 +72,7 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
               <p className="text-gray-600 mt-1">Entry No: {currentPaymentData.entryNo}</p>
             </div>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={onClose}
                 className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Close Modal"
@@ -79,10 +84,8 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
             {/* Left Column */}
             <div className="space-y-6">
-              
               {/* Basic Information */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -122,7 +125,7 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                     </span>
                   )}
                 </h2>
-                
+
                 {!isMultiVendor ? (
                   // Single Vendor Display (existing code)
                   <div className="space-y-3">
@@ -144,12 +147,16 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                   <div className="space-y-4 max-h-80 overflow-y-auto">
                     {currentPaymentData.vendorDetails.map((vendor, index) => (
                       <div key={index} className="border border-gray-200 rounded-lg p-3 bg-white">
-                        <div 
+                        <div
                           className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded"
                           onClick={() => toggleVendorExpansion(index)}
                         >
                           <div className="flex items-center gap-2">
-                            {expandedVendors[index] ? <FaChevronDown size={14} /> : <FaChevronRight size={14} />}
+                            {expandedVendors[index] ? (
+                              <FaChevronDown size={14} />
+                            ) : (
+                              <FaChevronRight size={14} />
+                            )}
                             <span className="font-medium text-gray-800">{vendor.vendorName}</span>
                             <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
                               ₹{vendor.totalAmount.toLocaleString()}
@@ -159,13 +166,15 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                             {vendor.invoices.length} invoice{vendor.invoices.length > 1 ? 's' : ''}
                           </span>
                         </div>
-                        
+
                         {expandedVendors[index] && (
                           <div className="mt-3 pl-4 border-l-2 border-blue-200 space-y-2">
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               <div>
                                 <span className="text-gray-600">Vendor Code:</span>
-                                <span className="ml-2 font-medium">{vendor.vendorCode || 'VEN-' + String(index + 1).padStart(3, '0')}</span>
+                                <span className="ml-2 font-medium">
+                                  {vendor.vendorCode || 'VEN-' + String(index + 1).padStart(3, '0')}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">IFSC:</span>
@@ -173,24 +182,37 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                               </div>
                               <div className="col-span-2">
                                 <span className="text-gray-600">Account:</span>
-                                <span className="ml-2 font-medium">{vendor.beneficiaryAccountNumber}</span>
+                                <span className="ml-2 font-medium">
+                                  {vendor.beneficiaryAccountNumber}
+                                </span>
                               </div>
                             </div>
-                            
+
                             {/* Invoice Details */}
                             <div className="bg-gray-50 p-2 rounded">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-2">Invoices:</h4>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                                Invoices:
+                              </h4>
                               <div className="space-y-1">
                                 {vendor.invoices.map((invoice, invIndex) => (
-                                  <div key={invIndex} className="flex justify-between items-center text-xs">
-                                    <span className="text-blue-600 font-medium">{invoice.invoiceNumber}</span>
+                                  <div
+                                    key={invIndex}
+                                    className="flex justify-between items-center text-xs"
+                                  >
+                                    <span className="text-blue-600 font-medium">
+                                      {invoice.invoiceNumber}
+                                    </span>
                                     <div className="flex gap-2">
-                                      <span className="text-gray-500">₹{invoice.originalAmount.toLocaleString()}</span>
+                                      <span className="text-gray-500">
+                                        ₹{invoice.originalAmount.toLocaleString()}
+                                      </span>
                                       <span className="text-green-600 font-medium">
                                         → ₹{invoice.paidAmount.toLocaleString()}
                                       </span>
                                       {invoice.paymentType === 'partial' && (
-                                        <span className="bg-orange-100 text-orange-700 px-1 rounded text-xs">Partial</span>
+                                        <span className="bg-orange-100 text-orange-700 px-1 rounded text-xs">
+                                          Partial
+                                        </span>
                                       )}
                                     </div>
                                   </div>
@@ -215,38 +237,64 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b border-gray-300">
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">GL Code</th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">Description</th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">Cost Center</th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">Department</th>
-                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">Debit</th>
-                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">Credit</th>
+                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
+                          GL Code
+                        </th>
+                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
+                          Description
+                        </th>
+                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
+                          Cost Center
+                        </th>
+                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
+                          Department
+                        </th>
+                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">
+                          Debit
+                        </th>
+                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">
+                          Credit
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {currentPaymentData.glEntries?.map((entry, index) => (
                         <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
-                          <td className="py-2 px-1 text-sm font-medium text-blue-700">{entry.glCode}</td>
+                          <td className="py-2 px-1 text-sm font-medium text-blue-700">
+                            {entry.glCode}
+                          </td>
                           <td className="py-2 px-1 text-sm">{entry.glDescription}</td>
                           <td className="py-2 px-1 text-sm">{entry.costCenter}</td>
                           <td className="py-2 px-1 text-sm">{entry.department}</td>
                           <td className="py-2 px-1 text-sm text-right font-medium">
-                            {entry.debitAmount > 0 ? `₹ ${entry.debitAmount.toLocaleString()}` : '-'}
+                            {entry.debitAmount > 0
+                              ? `₹ ${entry.debitAmount.toLocaleString()}`
+                              : '-'}
                           </td>
                           <td className="py-2 px-1 text-sm text-right font-medium">
-                            {entry.creditAmount > 0 ? `₹ ${entry.creditAmount.toLocaleString()}` : '-'}
+                            {entry.creditAmount > 0
+                              ? `₹ ${entry.creditAmount.toLocaleString()}`
+                              : '-'}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-gray-400 bg-gray-100">
-                        <td colSpan="4" className="py-2 px-1 text-sm font-bold text-gray-800">TOTALS</td>
-                        <td className="py-2 px-1 text-sm font-bold text-right">
-                          ₹ {currentPaymentData.glEntries?.reduce((sum, entry) => sum + entry.debitAmount, 0).toLocaleString()}
+                        <td colSpan="4" className="py-2 px-1 text-sm font-bold text-gray-800">
+                          TOTALS
                         </td>
                         <td className="py-2 px-1 text-sm font-bold text-right">
-                          ₹ {currentPaymentData.glEntries?.reduce((sum, entry) => sum + entry.creditAmount, 0).toLocaleString()}
+                          ₹{' '}
+                          {currentPaymentData.glEntries
+                            ?.reduce((sum, entry) => sum + entry.debitAmount, 0)
+                            .toLocaleString()}
+                        </td>
+                        <td className="py-2 px-1 text-sm font-bold text-right">
+                          ₹{' '}
+                          {currentPaymentData.glEntries
+                            ?.reduce((sum, entry) => sum + entry.creditAmount, 0)
+                            .toLocaleString()}
                         </td>
                       </tr>
                     </tfoot>
@@ -257,7 +305,6 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
 
             {/* Right Column */}
             <div className="space-y-6">
-              
               {/* Amount Breakdown */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -267,29 +314,39 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Base Amount:</span>
-                    <span className="font-medium">₹ {currentPaymentData.netAmount?.toLocaleString()}</span>
+                    <span className="font-medium">
+                      ₹ {currentPaymentData.netAmount?.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">GST Amount:</span>
-                    <span className="font-medium">₹ {currentPaymentData.gstAmount?.toLocaleString()}</span>
+                    <span className="font-medium">
+                      ₹ {currentPaymentData.gstAmount?.toLocaleString()}
+                    </span>
                   </div>
                   <hr className="border-blue-300" />
                   <div className="flex justify-between text-lg font-bold text-blue-800">
                     <span>Total Payment:</span>
                     <span>₹ {currentPaymentData.amount?.toLocaleString()}</span>
                   </div>
-                  
+
                   {/* Vendor-wise Amount Breakdown for Multi-vendor */}
                   {isMultiVendor && (
                     <div className="mt-4 pt-3 border-t border-blue-300">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Vendor-wise Breakdown:</h3>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                        Vendor-wise Breakdown:
+                      </h3>
                       <div className="space-y-1 max-h-40 overflow-y-auto">
                         {currentPaymentData.vendorDetails.map((vendor, index) => (
                           <div key={index} className="flex justify-between text-sm">
                             <span className="text-gray-600 truncate mr-2" title={vendor.vendorName}>
-                              {vendor.vendorName.length > 20 ? vendor.vendorName.substring(0, 20) + '...' : vendor.vendorName}
+                              {vendor.vendorName.length > 20
+                                ? vendor.vendorName.substring(0, 20) + '...'
+                                : vendor.vendorName}
                             </span>
-                            <span className="font-medium">₹ {vendor.totalAmount.toLocaleString()}</span>
+                            <span className="font-medium">
+                              ₹ {vendor.totalAmount.toLocaleString()}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -304,9 +361,7 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                   <FaFileAlt className="text-blue-600" size={20} />
                   Particulars
                 </h2>
-                <p className="text-gray-700 leading-relaxed">
-                  {currentPaymentData.particulars}
-                </p>
+                <p className="text-gray-700 leading-relaxed">{currentPaymentData.particulars}</p>
               </div>
 
               {/* Workflow Information */}
@@ -337,7 +392,7 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
 
           {/* Action Buttons */}
           <div className="mt-8 pt-4 border-t flex justify-end gap-3">
-            <button 
+            <button
               onClick={onClose}
               className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
             >
@@ -347,7 +402,7 @@ const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default PaymentEntryModal;
+export default PaymentEntryModal

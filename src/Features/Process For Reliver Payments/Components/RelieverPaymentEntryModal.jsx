@@ -1,14 +1,14 @@
 /* eslint-disable no-unused-vars */
-import React from 'react';
-import { 
-  FaCalendarAlt, 
-  FaUser, 
-  FaCreditCard, 
-  FaFileAlt, 
-  FaBuilding, 
-  FaTag, 
-  FaRupeeSign, 
-  FaTimes, 
+import React from 'react'
+import {
+  FaCalendarAlt,
+  FaUser,
+  FaCreditCard,
+  FaFileAlt,
+  FaBuilding,
+  FaTag,
+  FaRupeeSign,
+  FaTimes,
   FaIdCard,
   FaPhone,
   FaEnvelope,
@@ -17,98 +17,99 @@ import {
   FaClock,
   FaCheck,
   FaUsers,
-  FaMapMarkerAlt
-} from 'react-icons/fa';
+  FaMapMarkerAlt,
+} from 'react-icons/fa'
 
-const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedRequests, selectedBank, accountingResult }) => {
-  if (!isOpen) return null;
+const RelieverPaymentEntryModal = ({
+  isOpen,
+  onClose,
+  requestData,
+  approvedRequests,
+  accountingResult,
+}) => {
+  if (!isOpen) return null
 
   // Determine if this is single or multiple requests
-  const isMultipleRequests = approvedRequests && approvedRequests.length > 0;
-  const requests = isMultipleRequests ? approvedRequests : (requestData ? [requestData] : []);
-  
-  if (requests.length === 0) return null;
+  const isMultipleRequests = approvedRequests && approvedRequests.length > 0
+  const requests = isMultipleRequests ? approvedRequests : requestData ? [requestData] : []
+
+  if (requests.length === 0) return null
 
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'Approved': 
-      case 'Pending Account Executive Approval': 
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'Rejected by VP Operations': 
-      case 'Rejected by Account Executive': 
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'Pending VP Operations Approval': 
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: 
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+    switch (status) {
+      case 'Approved':
+      case 'Pending Account Executive Approval':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'Rejected by VP Operations':
+      case 'Rejected by Account Executive':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'Pending VP Operations Approval':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
-  };
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'N/A'
     try {
       return new Date(dateString).toLocaleDateString('en-IN', {
         day: '2-digit',
-        month: '2-digit', 
+        month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
-      });
+        minute: '2-digit',
+      })
     } catch {
-      return dateString;
+      return dateString
     }
-  };
+  }
 
-  // Generate GL entries for all approved reliever requests with REAL GL CODES
+  // Generate GL entries for all approved reliever requests with correct GL CODES
   const generateAllGLEntries = (requests) => {
-    const glEntries = [];
-    let totalAmount = 0;
+    const glEntries = []
+    let totalAmount = 0
 
     requests.forEach((request, index) => {
-      const amount = parseFloat(request.amount);
-      totalAmount += amount;
+      const amount = parseFloat(request.amount)
+      totalAmount += amount
 
-      // REAL GL CODE: Reliever Wages Expense (Debit)
+      // DEBIT: Reliever Payments Expense
       glEntries.push({
-        glCode: 'X100101003', // REAL GL CODE for Reliever Wages
-        glDescription: `Reliever Wages - ${request.name}`,
-        costCenter: request.site || 'Operations',
-        department: request.site || 'Operations',
+        glCode: 'X2002002001', // RELIEVER PAYMENTS
+        glDescription: 'RELIEVER PAYMENTS',
         debitAmount: amount,
         creditAmount: 0,
         employeeName: request.name,
         employeeId: request.id?.slice(-6) || 'N/A',
         site: request.site,
         days: request.days || 1,
-        ratePerDay: request.ratePerDay || amount
-      });
-    });
+        ratePerDay: request.ratePerDay || amount,
+      })
+    })
 
-    // REAL GL CODE: Bank Account (Credit) - Use selected bank's GL code
-    const bankGLCode = selectedBank?.bankCode || 'A3004003001'; // Default bank GL code
-    const bankName = selectedBank?.bankName || 'HDFC Bank - Current Account';
-    
+    // CREDIT: Employee Reliever Account (Liability)
     glEntries.push({
-      glCode: bankGLCode, // REAL BANK GL CODE
-      glDescription: bankName,
-      costCenter: 'HEAD OFFICE',
-      department: 'Finance',
+      glCode: 'L2001002', // EMPLOYEE RELIEVER ACCOUNT
+      glDescription: 'EMPLOYEE RELIEVER ACCOUNT',
       debitAmount: 0,
       creditAmount: totalAmount,
       employeeName: null,
       employeeId: null,
-      site: null
-    });
+      site: null,
+    })
 
-    return glEntries;
-  };
+    return glEntries
+  }
 
-  const glEntries = generateAllGLEntries(requests);
-  const totalAmount = requests.reduce((sum, req) => sum + parseFloat(req.amount), 0);
+  const glEntries = generateAllGLEntries(requests)
+  const totalAmount = requests.reduce((sum, req) => sum + parseFloat(req.amount), 0)
 
   // Get accounting details from accountingResult
-  const voucherNo = accountingResult?.voucherNo || `PAY/REL/${requests[0]?.site || 'GEN'}/${new Date().getFullYear()}/${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`;
-  const transactionId = accountingResult?.transactionId || `TXN_REL_${Date.now()}`;
+  const voucherNo =
+    accountingResult?.voucherNo ||
+    `REL/${requests[0]?.site || 'GEN'}/${new Date().getFullYear()}/${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`
+  const transactionId = accountingResult?.transactionId || `TXN_REL_${Date.now()}`
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -121,17 +122,19 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 {isMultipleRequests ? (
                   <>
                     <FaUsers className="text-blue-600" />
-                    Reliever Payments - Processed Successfully
+                    Reliever Payments - Approved Successfully
                     <span className="bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-lg text-sm">
                       <FaCheck className="inline mr-1" size={12} />
-                      {requests.length} Payments Posted
+                      {requests.length} Payments Approved
                     </span>
                   </>
                 ) : (
                   <>
                     <FaCreditCard className="text-blue-600" />
-                    Reliever Payment - Processed Successfully
-                    <span className={`px-3 py-1 rounded-lg text-sm border ${getStatusColor(requests[0].status)}`}>
+                    Reliever Payment - Approved Successfully
+                    <span
+                      className={`px-3 py-1 rounded-lg text-sm border ${getStatusColor(requests[0].status)}`}
+                    >
                       <FaCheck className="inline mr-1" size={12} />
                       Accounting Entries Posted
                     </span>
@@ -139,14 +142,13 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 )}
               </h1>
               <p className="text-gray-600 mt-1">
-                {isMultipleRequests 
-                  ? `Batch Payment - ${requests.length} reliever payments processed and posted to GL`
-                  : `Voucher: ${voucherNo} | Transaction: ${transactionId?.slice(0, 12)}...`
-                }
+                {isMultipleRequests
+                  ? `Batch Approval - ${requests.length} reliever payments approved and liability created`
+                  : `Voucher: ${voucherNo} | Transaction: ${transactionId?.slice(0, 12)}...`}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={onClose}
                 className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Close Modal"
@@ -158,16 +160,14 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
             {/* Left Column */}
             <div className="space-y-6">
-              
               {/* Batch Summary (for multiple requests) or Reliever Information (for single) */}
               {isMultipleRequests ? (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <FaUsers className="text-blue-600" size={20} />
-                    Batch Payment Summary
+                    Batch Approval Summary
                   </h2>
                   <div className="space-y-3">
                     <div className="flex justify-between">
@@ -183,8 +183,10 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-medium font-mono text-blue-600">{voucherNo}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Bank Account:</span>
-                      <span className="font-medium">{selectedBank?.bankName || 'HDFC Bank'}</span>
+                      <span className="text-gray-600">Liability Created:</span>
+                      <span className="font-medium text-green-600">
+                        ₹ {totalAmount.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -239,18 +241,24 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                             <td className="p-2 border font-medium">{req.name}</td>
                             <td className="p-2 border">{req.site}</td>
                             <td className="p-2 border text-center">{req.days || 1}</td>
-                            <td className="p-2 border text-right font-medium">₹ {parseFloat(req.amount).toLocaleString()}</td>
+                            <td className="p-2 border text-right font-medium">
+                              ₹ {parseFloat(req.amount).toLocaleString()}
+                            </td>
                             <td className="p-2 border text-xs">{req.replacedEmployee || 'N/A'}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot className="bg-gray-100">
                         <tr>
-                          <td colSpan="2" className="p-2 border font-bold">TOTAL</td>
+                          <td colSpan="2" className="p-2 border font-bold">
+                            TOTAL
+                          </td>
                           <td className="p-2 border text-center font-bold">
                             {requests.reduce((sum, req) => sum + (req.days || 1), 0)}
                           </td>
-                          <td className="p-2 border text-right font-bold">₹ {totalAmount.toLocaleString()}</td>
+                          <td className="p-2 border text-right font-bold">
+                            ₹ {totalAmount.toLocaleString()}
+                          </td>
                           <td className="p-2 border"></td>
                         </tr>
                       </tfoot>
@@ -277,7 +285,7 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-medium">{requests[0].ifscCode || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Posted At:</span>
+                      <span className="text-gray-600">Approved At:</span>
                       <span className="font-medium text-sm text-green-600">
                         {formatDate(new Date().toISOString())}
                       </span>
@@ -286,7 +294,7 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                 </div>
               )}
 
-              {/* GL Entries Table - UPDATED WITH REAL GL CODES */}
+              {/* GL Entries Table - UPDATED WITH CORRECT GL CODES */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FaTag className="text-blue-600" size={20} />
@@ -296,11 +304,21 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                   <table className="w-full border-collapse text-sm">
                     <thead className="bg-gray-100 sticky top-0">
                       <tr className="border-b border-gray-300">
-                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">GL Code</th>
-                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">Account Name</th>
-                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">Reliever/Site</th>
-                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">Debit (₹)</th>
-                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">Credit (₹)</th>
+                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">
+                          GL Code
+                        </th>
+                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">
+                          Account Name
+                        </th>
+                        <th className="text-left py-2 px-1 text-xs font-semibold text-gray-700">
+                          Reliever/Site
+                        </th>
+                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">
+                          Debit (₹)
+                        </th>
+                        <th className="text-right py-2 px-1 text-xs font-semibold text-gray-700">
+                          Credit (₹)
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -329,41 +347,62 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                           </td>
                           <td className="py-2 px-1 text-xs text-right font-medium">
                             {entry.debitAmount > 0 ? (
-                              <span className="text-red-600">₹ {entry.debitAmount.toLocaleString()}</span>
-                            ) : '-'}
+                              <span className="text-red-600">
+                                ₹ {entry.debitAmount.toLocaleString()}
+                              </span>
+                            ) : (
+                              '-'
+                            )}
                           </td>
                           <td className="py-2 px-1 text-xs text-right font-medium">
                             {entry.creditAmount > 0 ? (
-                              <span className="text-green-600">₹ {entry.creditAmount.toLocaleString()}</span>
-                            ) : '-'}
+                              <span className="text-green-600">
+                                ₹ {entry.creditAmount.toLocaleString()}
+                              </span>
+                            ) : (
+                              '-'
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-gray-100">
                       <tr className="border-t-2 border-gray-400">
-                        <td colSpan="3" className="py-2 px-1 text-xs font-bold text-gray-800">TOTALS</td>
+                        <td colSpan="3" className="py-2 px-1 text-xs font-bold text-gray-800">
+                          TOTALS
+                        </td>
                         <td className="py-2 px-1 text-xs font-bold text-right text-red-600">
-                          ₹ {glEntries.reduce((sum, entry) => sum + entry.debitAmount, 0).toLocaleString()}
+                          ₹{' '}
+                          {glEntries
+                            .reduce((sum, entry) => sum + entry.debitAmount, 0)
+                            .toLocaleString()}
                         </td>
                         <td className="py-2 px-1 text-xs font-bold text-right text-green-600">
-                          ₹ {glEntries.reduce((sum, entry) => sum + entry.creditAmount, 0).toLocaleString()}
+                          ₹{' '}
+                          {glEntries
+                            .reduce((sum, entry) => sum + entry.creditAmount, 0)
+                            .toLocaleString()}
                         </td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
                 <div className="mt-3 text-xs text-gray-600">
-                  <div><strong>GL Codes Used:</strong></div>
-                  <div>• <strong>X100101003</strong> - Reliever Wages (Expense Account)</div>
-                  <div>• <strong>{selectedBank?.bankCode || 'A3004003001'}</strong> - {selectedBank?.bankName || 'Bank Account'} (Asset Account)</div>
+                  <div>
+                    <strong>GL Codes Used:</strong>
+                  </div>
+                  <div>
+                    • <strong>X2002002001</strong> - RELIEVER PAYMENTS (Expense Account)
+                  </div>
+                  <div>
+                    • <strong>L2001002</strong> - EMPLOYEE RELIEVER ACCOUNT (Liability Account)
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Right Column */}
             <div className="space-y-6">
-              
               {/* Amount Details */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -385,14 +424,18 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Average Amount:</span>
-                        <span className="font-medium">₹ {(totalAmount / requests.length).toLocaleString()}</span>
+                        <span className="font-medium">
+                          ₹ {(totalAmount / requests.length).toLocaleString()}
+                        </span>
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Payment Amount:</span>
-                        <span className="font-medium">₹ {parseFloat(requests[0].amount).toLocaleString()}</span>
+                        <span className="font-medium">
+                          ₹ {parseFloat(requests[0].amount).toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Days Worked:</span>
@@ -400,40 +443,45 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Rate per Day:</span>
-                        <span className="font-medium">₹ {requests[0].ratePerDay ? requests[0].ratePerDay.toLocaleString() : parseFloat(requests[0].amount).toLocaleString()}</span>
+                        <span className="font-medium">
+                          ₹{' '}
+                          {requests[0].ratePerDay
+                            ? requests[0].ratePerDay.toLocaleString()
+                            : parseFloat(requests[0].amount).toLocaleString()}
+                        </span>
                       </div>
                     </>
                   )}
                   <hr className="border-blue-300" />
                   <div className="flex justify-between text-lg font-bold text-blue-800">
-                    <span>Total Amount Posted:</span>
+                    <span>Total Liability Created:</span>
                     <span>₹ {totalAmount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Bank & Accounting Details */}
+              {/* Accounting Details */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FaBuilding className="text-blue-600" size={20} />
-                  Bank & Accounting Details
+                  Accounting Details
                 </h2>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Bank Account:</span>
-                    <span className="font-medium">{selectedBank?.bankName || 'HDFC Bank'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Bank GL Code:</span>
-                    <span className="font-medium font-mono">{selectedBank?.bankCode || 'A3004003001'}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-gray-600">Voucher Type:</span>
-                    <span className="font-medium">Payment Voucher</span>
+                    <span className="font-medium">Journal Voucher</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Payment Mode:</span>
-                    <span className="font-medium">NEFT</span>
+                    <span className="text-gray-600">Expense Account:</span>
+                    <span className="font-medium font-mono">X2002002001</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Liability Account:</span>
+                    <span className="font-medium font-mono">L2001002</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <span className="font-medium text-green-600">Liability Created</span>
                   </div>
                   {accountingResult?.message && (
                     <div className="bg-green-50 p-2 rounded border border-green-200">
@@ -464,7 +512,7 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Ledger Updates */}
                   <div className="border-l-4 border-green-500 pl-4">
                     <div className="flex items-center gap-2 mb-1">
@@ -472,12 +520,12 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-semibold text-green-700">Ledger Balances Updated</span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>• Reliever Wages (X100101003) - Debit increased</div>
-                      <div>• {selectedBank?.bankName || 'Bank Account'} - Credit increased</div>
+                      <div>• Reliever Payments (X2002002001) - Debit increased</div>
+                      <div>• Employee Reliever Account (L2001002) - Credit increased</div>
                       <div>• All entries balanced and validated</div>
                     </div>
                   </div>
-                  
+
                   {/* Next Steps */}
                   <div className="border-l-4 border-blue-500 pl-4">
                     <div className="flex items-center gap-2 mb-1">
@@ -485,9 +533,9 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                       <span className="font-semibold text-blue-700">Next Steps</span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>• Payment{isMultipleRequests ? 's' : ''} ready for bank processing</div>
-                      <div>• Amount{isMultipleRequests ? 's' : ''} will be debited from bank account</div>
-                      <div>• Transaction reference{isMultipleRequests ? 's' : ''} will be generated</div>
+                      <div>• Payment ready for processing in "Process Payments"</div>
+                      <div>• Liability created in Employee Reliever Account</div>
+                      <div>• Actual payment will be made later with UTR</div>
                     </div>
                   </div>
                 </div>
@@ -500,8 +548,12 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
                   Accounting Notes
                 </h2>
                 <div className="text-sm text-gray-700 space-y-2">
-                  <div>• <strong>Debit:</strong> X100101003 - Reliever Wages Expense increased</div>
-                  <div>• <strong>Credit:</strong> {selectedBank?.bankCode || 'A3004003001'} - Bank Account decreased</div>
+                  <div>
+                    • <strong>Debit:</strong> X2002002001 - Reliever Payments Expense recognized
+                  </div>
+                  <div>
+                    • <strong>Credit:</strong> L2001002 - Employee Reliever Liability created
+                  </div>
                   <div>• Transaction follows double-entry accounting principles</div>
                   <div>• All entries are audit-compliant with proper narration</div>
                   {isMultipleRequests && (
@@ -516,7 +568,7 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
 
           {/* Action Buttons */}
           <div className="mt-8 pt-4 border-t flex justify-end gap-3">
-            <button 
+            <button
               onClick={onClose}
               className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
             >
@@ -526,7 +578,7 @@ const RelieverPaymentEntryModal = ({ isOpen, onClose, requestData, approvedReque
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default RelieverPaymentEntryModal;
+export default RelieverPaymentEntryModal
