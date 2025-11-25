@@ -1,11 +1,146 @@
+/* eslint-disable no-unused-vars */
 import { RouterProvider } from 'react-router-dom'
 import { ToastContainer, toast } from 'react-toastify'
 import { router } from './Routes/Route.jsx'
 import { useEffect } from 'react'
+import { INITIAL_CHART_OF_ACCOUNTS } from './data/ChartOfAccounts'
+import { INITIAL_TRANSACTIONS } from './data/Transactions.js'
 
 function App() {
   // Application Version for Migration Management
   const APP_VERSION = '1.0.0'
+
+  /**
+   * Syncs Chart of Accounts between code and localStorage
+   * - Adds new accounts from code to localStorage
+   * - Updates existing accounts if code version is newer
+   * - Preserves user-created accounts in localStorage
+   */
+  const syncChartOfAccounts = () => {
+    try {
+      const storedAccounts = JSON.parse(localStorage.getItem('chartOfAccounts') || '[]')
+      const codeAccounts = INITIAL_CHART_OF_ACCOUNTS
+
+      // Create a map for quick lookup
+      const storedMap = new Map(storedAccounts.map((acc) => [acc.code, acc]))
+      const codeMap = new Map(codeAccounts.map((acc) => [acc.code, acc]))
+
+      let merged = [...storedAccounts]
+      let hasChanges = false
+
+      // Add or update accounts from code
+      codeAccounts.forEach((codeAccount) => {
+        const existingIndex = merged.findIndex((acc) => acc.code === codeAccount.code)
+
+        if (existingIndex === -1) {
+          // New account from code - add it
+          merged.push(codeAccount)
+          hasChanges = true
+          console.log(`➕ Added new account: ${codeAccount.code} - ${codeAccount.name}`)
+        } else {
+          // Account exists - update if code version is different
+          const existing = merged[existingIndex]
+          const needsUpdate =
+            existing.name !== codeAccount.name ||
+            existing.type !== codeAccount.type ||
+            existing.parentAccount !== codeAccount.parentAccount ||
+            existing.parentCode !== codeAccount.parentCode
+
+          if (needsUpdate) {
+            merged[existingIndex] = {
+              ...existing,
+              ...codeAccount,
+              // Preserve any dynamic fields (like balances) that might exist
+              balance: existing.balance,
+            }
+            hasChanges = true
+            console.log(`🔄 Updated account: ${codeAccount.code} - ${codeAccount.name}`)
+          }
+        }
+      })
+
+      // Check for accounts in localStorage that aren't in code (user-created)
+      storedAccounts.forEach((storedAccount) => {
+        if (!codeMap.has(storedAccount.code)) {
+          console.log(
+            `👤 User-created account preserved: ${storedAccount.code} - ${storedAccount.name}`
+          )
+        }
+      })
+
+      if (hasChanges) {
+        localStorage.setItem('chartOfAccounts', JSON.stringify(merged))
+        console.log('✅ Chart of Accounts synchronized')
+        return { success: true, changes: true }
+      } else {
+        console.log('✅ Chart of Accounts already in sync')
+        return { success: true, changes: false }
+      }
+    } catch (error) {
+      console.error('❌ Error syncing Chart of Accounts:', error)
+      return { success: false, error }
+    }
+  }
+
+  /**
+   * Syncs Transactions between code and localStorage
+   * - Adds new transactions from code to localStorage
+   * - Preserves all user-created transactions
+   * - Updates transactions if they have the same ID but different data
+   */
+  const syncTransactions = () => {
+    try {
+      const storedTransactions = JSON.parse(localStorage.getItem('transactions') || '[]')
+      const codeTransactions = INITIAL_TRANSACTIONS
+
+      // Create a map for quick lookup by transaction ID
+      const storedMap = new Map(storedTransactions.map((txn) => [txn.id, txn]))
+
+      let merged = [...storedTransactions]
+      let hasChanges = false
+
+      // Add or update transactions from code
+      codeTransactions.forEach((codeTxn) => {
+        const existingIndex = merged.findIndex((txn) => txn.id === codeTxn.id)
+
+        if (existingIndex === -1) {
+          // New transaction from code - add it
+          merged.push(codeTxn)
+          hasChanges = true
+          console.log(`➕ Added new transaction: ${codeTxn.voucherNo}`)
+        } else {
+          // Transaction exists - update if code version is different
+          const existing = merged[existingIndex]
+          const needsUpdate = JSON.stringify(existing) !== JSON.stringify(codeTxn)
+
+          if (needsUpdate) {
+            merged[existingIndex] = codeTxn
+            hasChanges = true
+            console.log(`🔄 Updated transaction: ${codeTxn.voucherNo}`)
+          }
+        }
+      })
+
+      // Sort transactions by date (newest first)
+      merged.sort((a, b) => {
+        const dateA = new Date(a.date || a.transactionDate)
+        const dateB = new Date(b.date || b.transactionDate)
+        return dateB - dateA
+      })
+
+      if (hasChanges) {
+        localStorage.setItem('transactions', JSON.stringify(merged))
+        console.log('✅ Transactions synchronized')
+        return { success: true, changes: true }
+      } else {
+        console.log('✅ Transactions already in sync')
+        return { success: true, changes: false }
+      }
+    } catch (error) {
+      console.error('❌ Error syncing Transactions:', error)
+      return { success: false, error }
+    }
+  }
 
   // Local Storage Initialization - Enhanced with Accounting Modules
   useEffect(() => {
@@ -17,6 +152,20 @@ function App() {
         // Handle data migration here if needed
       }
       localStorage.setItem('appVersion', APP_VERSION)
+
+      // ========================================
+      // 0. SYNC CHART OF ACCOUNTS & TRANSACTIONS
+      // ========================================
+      console.log('🔄 Starting data synchronization...')
+      const accountsSync = syncChartOfAccounts()
+      const transactionsSync = syncTransactions()
+
+      if (accountsSync.changes || transactionsSync.changes) {
+        toast.info('Data synchronized with latest version', {
+          position: 'top-center',
+          autoClose: 2000,
+        })
+      }
 
       // ========================================
       // 1. INITIALIZE USERS (Enhanced Structure)
@@ -386,15 +535,7 @@ function App() {
       }
 
       // ========================================
-      // 3. INITIALIZE TRANSACTIONS STORAGE
-      // ========================================
-      if (!localStorage.getItem('transactions')) {
-        localStorage.setItem('transactions', JSON.stringify([]))
-        console.log('✅ Transactions storage initialized')
-      }
-
-      // ========================================
-      // 4. INITIALIZE LEDGER BALANCES
+      // 3. INITIALIZE LEDGER BALANCES
       // ========================================
       if (!localStorage.getItem('ledgerBalances')) {
         localStorage.setItem('ledgerBalances', JSON.stringify({}))
@@ -402,12 +543,12 @@ function App() {
       }
 
       // ========================================
-      // 5. INITIALIZE BANK OPENING BALANCES
+      // 4. INITIALIZE BANK OPENING BALANCES
       // ========================================
       if (!localStorage.getItem('bankOpeningBalances')) {
         const bankOpeningBalances = {
-          A3004003002: 500000, // HDFC Bank - ₹5,00,000
-          A3004003003: 300000, // Punjab Bank - ₹3,00,000
+          A3004001001: 500000, // HDFC Bank - ₹5,00,000
+          A3004001002: 300000, // Punjab Bank - ₹3,00,000
         }
         localStorage.setItem('bankOpeningBalances', JSON.stringify(bankOpeningBalances))
         console.log('✅ Bank opening balances initialized')
