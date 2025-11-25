@@ -2194,7 +2194,7 @@ export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo
       totalDebit: invoice.totalAmount,
       totalCredit: invoice.totalAmount,
       narration: `Prepaid Uniform purchase from ${invoice.vendorName}`,
-      approvedBy: invoice.processedByBM || "bm1",
+      approvedBy: invoice.processedByBM || "am1",
       approvedDate: new Date().toISOString(),
       prepaidDetails: {
         prepaidPeriod: invoice.prepaidPeriod || 12,
@@ -2451,7 +2451,7 @@ export const createMonthlyAmortizationTransaction = (invoice, monthYear) => {
       totalDebit: monthlyAmortization,
       totalCredit: monthlyAmortization,
       narration: `Monthly amortization JV for Invoice ${invoice.invoiceNumber} - ${monthYear}`,
-      approvedBy: currentUser.username || "bm1",
+      approvedBy: currentUser.username || "am1",
       approvedDate: new Date().toISOString(),
       prepaidDetails: {
         prepaidPeriod: prepaidPeriod,

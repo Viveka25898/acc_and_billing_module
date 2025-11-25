@@ -260,13 +260,16 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
 
       const isUniformPrepaidExpenseAccount =
         account.code === 'A3005001' ||
-        account.name.toLowerCase().includes('uniform') ||
-        account.parentAccount?.toLowerCase().includes('prepaid expenses')
+        (account.code.startsWith('A3005') &&
+          account.name.toLowerCase().includes('uniform') &&
+          account.name.toLowerCase().includes('prepaid'))
 
+      // ✅ FIXED: Correct Uniform Expense Account detection
       const isUniformExpenseAccount =
         account.code === 'X2001004' ||
-        account.name.toLowerCase().includes('uniform expense') ||
-        account.parentAccount?.toLowerCase().includes('branch management')
+        (account.code.startsWith('X2001') &&
+          account.name.toLowerCase().includes('uniform expense') &&
+          !account.name.toLowerCase().includes('prepaid'))
 
       console.log('🎯 Account Classification:', {
         isRelieverPaymentAccount,

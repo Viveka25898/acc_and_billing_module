@@ -7,7 +7,11 @@ import InvoiceJVDisplay from '../Components/InvoiceJVDisplay'
 import {
   processHKMaterialInvoice,
   processFixedAssetInvoice,
+  processPrepaidUniformInvoice,
 } from '../../Master/utils/accountingHelpers'
+import PurchaseVoucherModal from '../../Process For Prepaid Entry/Components/PurchaseVoucherModal'
+import JournalVoucherModal from '../../Process For Prepaid Entry/Components/JournalVoucherModal'
+import MonthlyAmortizationModal from '../../Process For Prepaid Entry/Components/MonthlyAmortizationModal'
 
 // Prepaid Period Selection Modal Component
 const PrepaidPeriodModal = ({ invoice, onClose, onConfirm }) => {
@@ -114,6 +118,9 @@ const AMInvoiceReviewPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isJVModalOpen, setIsJVModalOpen] = useState(false)
   const [isPrepaidModalOpen, setIsPrepaidModalOpen] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [showJournalModal, setShowJournalModal] = useState(false)
+  const [showAmortizationModal, setShowAmortizationModal] = useState(false)
   const [jvData, setJvData] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
@@ -151,20 +158,10 @@ const AMInvoiceReviewPage = () => {
   // Clear processed invoices (for demo purposes)
   const clearProcessedInvoices = () => {
     if (window.confirm('Clear all processed invoices from Account Manager queue?')) {
-      const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices') || '[]')
-      const rejectedInvoices = JSON.parse(localStorage.getItem('rejected_invoices') || '[]')
-      const billingManagerInvoices = JSON.parse(
-        localStorage.getItem('billing_manager_invoices') || '[]'
-      )
-
       localStorage.setItem('pending_am_invoices', JSON.stringify([]))
-
       setInvoices([])
       setFilteredInvoices([])
-
-      alert(
-        `Cleared AM queue. Total processed: ${processedInvoices.length + rejectedInvoices.length + billingManagerInvoices.length} invoices.`
-      )
+      alert('AM queue cleared.')
     }
   }
 
@@ -173,16 +170,12 @@ const AMInvoiceReviewPage = () => {
     const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices') || '[]')
     const rejectedInvoices = JSON.parse(localStorage.getItem('rejected_invoices') || '[]')
     const pendingAE = JSON.parse(localStorage.getItem('pending_ae_invoices') || '[]')
-    const billingManagerInvoices = JSON.parse(
-      localStorage.getItem('billing_manager_invoices') || '[]'
-    )
 
     const summary = `
 Invoice Processing Summary:
 - Pending AE Approval: ${pendingAE.length}
 - Pending AM Approval: ${invoices.length}  
-- Sent to Billing Manager: ${billingManagerInvoices.length}
-- Total Processed (Material/Fixed Asset): ${processedInvoices.length}
+- Total Processed (Material/Fixed Asset/Prepaid): ${processedInvoices.length}
 - Total Rejected: ${rejectedInvoices.length}
     `
 
@@ -197,14 +190,13 @@ Invoice Processing Summary:
   // Auto-refresh to check for new AE approvals
   useEffect(() => {
     const interval = setInterval(() => {
-      // Silently refresh data every 30 seconds to check for new AE approvals
       const pendingAMInvoices = localStorage.getItem('pending_am_invoices')
       if (pendingAMInvoices) {
         const parsedInvoices = JSON.parse(pendingAMInvoices)
         setInvoices(parsedInvoices)
         setFilteredInvoices(parsedInvoices)
       }
-    }, 30000) // Check every 30 seconds
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [])
@@ -221,141 +213,103 @@ Invoice Processing Summary:
     setIsModalOpen(false)
   }
 
-  // Handle Prepaid Period Confirmation
-  const handlePrepaidPeriodConfirm = (invoiceId, periodData) => {
+  // ✅ UPDATED: Handle Prepaid Period Confirmation - KEEP IN AM QUEUE
+  const handlePrepaidPeriodConfirm = async (invoiceId, periodData) => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
     const timestamp = new Date().toISOString()
 
-    // Get current invoice data from AM queue
     const currentAMInvoices = JSON.parse(localStorage.getItem('pending_am_invoices') || '[]')
     const invoiceToUpdate = currentAMInvoices.find((inv) => inv.id === invoiceId)
 
     if (!invoiceToUpdate) return
 
-    // Create the approved invoice with prepaid data
-    const approvedInvoice = {
-      ...invoiceToUpdate,
-      accountManagerStatus: 'Approved',
-      amRemarks: `Prepaid period set for ${periodData.period} months`,
-      processedByAM: currentUser.username || 'am1',
-      processedAtAM: timestamp,
-      prepaidPeriod: periodData.period,
-      prepaidStartMonth: periodData.startMonth,
-      monthlyAmortization: periodData.monthlyAmount,
-      billingManagerStatus: 'Pending',
-      bmRemarks: '',
-      processedByBM: '',
-      processedAtBM: '',
-    }
+    // ✅ PROCESS PREPAID UNIFORM INVOICE - AUTO GL POSTING
+    try {
+      // Add prepaid period data to invoice
+      invoiceToUpdate.prepaidPeriod = periodData.period
+      invoiceToUpdate.prepaidStartMonth = periodData.startMonth
+      invoiceToUpdate.monthlyAmortization = periodData.monthlyAmount
 
-    // Move to billing manager queue
-    const billingManagerInvoices = JSON.parse(
-      localStorage.getItem('billing_manager_invoices') || '[]'
-    )
-    const updatedBMQueue = [...billingManagerInvoices, approvedInvoice]
-    localStorage.setItem('billing_manager_invoices', JSON.stringify(updatedBMQueue))
+      const glResult = processPrepaidUniformInvoice(invoiceToUpdate)
 
-    // Remove from AM queue
-    const updatedAMQueue = currentAMInvoices.filter((inv) => inv.id !== invoiceId)
-    localStorage.setItem('pending_am_invoices', JSON.stringify(updatedAMQueue))
+      if (glResult.success) {
+        // ✅ KEEP IN AM QUEUE BUT MARK AS APPROVED (Don't move to processed queue)
+        const updatedAMQueue = currentAMInvoices.map((inv) => {
+          if (inv.id === invoiceId) {
+            return {
+              ...inv,
+              accountManagerStatus: 'Approved',
+              finalStatus: 'GL Posted - Completed',
+              amRemarks: `Prepaid Uniform invoice processed - Period: ${periodData.period} months`,
+              processedByAM: currentUser.username || 'am1',
+              processedAtAM: timestamp,
+              prepaidPeriod: periodData.period,
+              prepaidStartMonth: periodData.startMonth,
+              monthlyAmortization: periodData.monthlyAmount,
+              purchaseVoucherNo: glResult.purchaseVoucherNo,
+              purchaseTransactionId: glResult.purchaseTransactionId,
+              vendorGLCode: glResult.vendorGLCode,
+              uniformPrepaidGLCode: glResult.uniformPrepaidGLCode,
+              accountingResult: glResult,
+            }
+          }
+          return inv
+        })
 
-    // Update local state - remove from table
-    setInvoices(updatedAMQueue)
-    setFilteredInvoices(updatedAMQueue)
+        // Save updated AM queue (invoice stays here)
+        localStorage.setItem('pending_am_invoices', JSON.stringify(updatedAMQueue))
 
-    // Close the prepaid modal
-    setIsPrepaidModalOpen(false)
-    setSelectedInvoice(null) // Clear selected invoice
+        // Also add to processed queue for record keeping (optional)
+        const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices') || '[]')
+        const processedInvoice = {
+          ...invoiceToUpdate,
+          accountManagerStatus: 'Approved',
+          finalStatus: 'GL Posted - Completed',
+          amRemarks: `Prepaid Uniform invoice processed - Period: ${periodData.period} months`,
+          processedByAM: currentUser.username || 'am1',
+          processedAtAM: timestamp,
+          prepaidPeriod: periodData.period,
+          prepaidStartMonth: periodData.startMonth,
+          monthlyAmortization: periodData.monthlyAmount,
+          purchaseVoucherNo: glResult.purchaseVoucherNo,
+          purchaseTransactionId: glResult.purchaseTransactionId,
+          vendorGLCode: glResult.vendorGLCode,
+          uniformPrepaidGLCode: glResult.uniformPrepaidGLCode,
+          accountingResult: glResult,
+        }
 
-    alert(
-      `Prepaid period set successfully! Invoice ${invoiceToUpdate.invoiceNumber} sent to Billing Manager for final approval.`
-    )
-  }
+        const updatedProcessedQueue = [...processedInvoices, processedInvoice]
+        localStorage.setItem('processed_invoices', JSON.stringify(updatedProcessedQueue))
 
-  // Prepare JV Data
-  const prepareJVData = (invoice) => {
-    // Calculate base amount (excluding GST)
-    const baseAmount = Math.round(invoice.totalAmount / (1 + invoice.gstRate / 100))
+        // Update local state
+        setInvoices(updatedAMQueue)
+        setFilteredInvoices(updatedAMQueue)
 
-    // Calculate GST amount (should be exact)
-    const gstAmount = invoice.totalAmount - baseAmount
-    // For CGST/SGST (equal split), handle rounding properly
-    const halfGst = gstAmount / 2
-    const cgstAmount = Math.floor(halfGst) // Round down
-    const sgstAmount = gstAmount - cgstAmount // Remainder to ensure total matches
+        // Close modals
+        setIsPrepaidModalOpen(false)
+        closeModal()
 
-    // Calculate total debits
-    const totalDebits = baseAmount + cgstAmount + sgstAmount
-    const adjustment = invoice.totalAmount - totalDebits
-
-    // Net payable should equal total invoice amount
-    const netPayable = invoice.totalAmount
-
-    return {
-      header: {
-        company: 'iSmart',
-        voucherNo: `JV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
-        financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
-        date: new Date().toISOString().split('T')[0],
-        reference: `${invoice.invoiceNumber}`,
-        preparedBy: 'Account Manager',
-      },
-      entries: [
-        {
-          id: 1,
-          particulars:
-            invoice.type === 'Fixed Asset' ? 'Fixed Asset Purchase' : 'Material Purchase',
-          gl: invoice.type === 'Fixed Asset' ? '1010' : '5010',
-          costCenter: 'Operations',
-          debit: baseAmount + adjustment,
-          credit: 0,
-          note: `Vendor: ${invoice.vendorName}`,
-        },
-        {
-          id: 2,
-          particulars: 'CGST Input',
-          gl: '1801',
-          costCenter: '',
-          debit: cgstAmount,
-          credit: 0,
-          note: `@${invoice.gstRate / 2}%`,
-        },
-        {
-          id: 3,
-          particulars: 'SGST Input',
-          gl: '1802',
-          costCenter: '',
-          debit: sgstAmount,
-          credit: 0,
-          note: `@${invoice.gstRate / 2}%`,
-        },
-        {
-          id: 4,
-          particulars: `Accounts Payable - ${invoice.vendorName}`,
-          gl: '2000',
-          costCenter: '',
-          debit: 0,
-          credit: netPayable,
-          note: `Invoice: ${invoice.invoiceNumber}`,
-        },
-      ],
-      narration: `Payment against ${invoice.type} Invoice No. ${invoice.invoiceNumber} (₹${invoice.totalAmount.toLocaleString()}), including GST @${invoice.gstRate}%.`,
-      approvals: {
-        preparer: 'Account Manager',
-        reviewer: 'Pending',
-        approver: 'Pending',
-        date: new Date().toISOString().split('T')[0],
-      },
+        alert(
+          `✅ Prepaid Uniform invoice ${invoiceToUpdate.invoiceNumber} approved and GL entries posted!\nPurchase Voucher: ${glResult.purchaseVoucherNo}\nVendor GL: ${glResult.vendorGLCode}\nPrepaid Period: ${periodData.period} months`
+        )
+      } else {
+        alert(
+          `❌ Failed to process Prepaid Uniform invoice: ${glResult.message}\nInvoice remains in queue.`
+        )
+      }
+    } catch (error) {
+      console.error('❌ Error in Prepaid Uniform approval:', error)
+      alert(
+        `❌ Failed to process Prepaid Uniform invoice: ${error.message}\nInvoice remains in queue.`
+      )
     }
   }
 
-  // Handle Update Invoice (Modified for different invoice types)
   // Handle Update Invoice (Modified for different invoice types)
   const handleUpdateInvoice = async (id, status, remark = '') => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
     const timestamp = new Date().toISOString()
 
-    // Get current invoice data from AM queue
     const currentAMInvoices = JSON.parse(localStorage.getItem('pending_am_invoices') || '[]')
     const invoiceToUpdate = currentAMInvoices.find((inv) => inv.id === id)
 
@@ -364,23 +318,18 @@ Invoice Processing Summary:
     if (status === 'Approved') {
       // Check invoice type and handle differently
       if (invoiceToUpdate.type === 'Procurement Prepaid') {
-        // For Procurement Prepaid: DON'T close the modal, just open prepaid period selection
+        // ✅ For Procurement Prepaid: Open prepaid period selection
         setIsPrepaidModalOpen(true)
-        // The invoice will be processed when prepaid period is confirmed
-        return // Don't close the main modal or do anything else yet
+        return // Don't close modal yet
       } else if (invoiceToUpdate.type === 'Material') {
-        // ========================================
-        // HK MATERIAL INVOICE - AUTO GL POSTING
-        // ========================================
+        // HK MATERIAL INVOICE - AUTO GL POSTING (Move to processed queue)
         try {
-          // Process HK Material invoice with auto-GL posting
           const glResult = await processHKMaterialInvoice(invoiceToUpdate, {
-            bankCode: 'A3004003001', // Default bank for now
+            bankCode: 'A3004003001',
             bankName: 'SBI Current Account',
           })
 
           if (glResult.success) {
-            // Move to processed queue with GL reference
             const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices') || '[]')
             const processedInvoice = {
               ...invoiceToUpdate,
@@ -398,15 +347,13 @@ Invoice Processing Summary:
             const updatedProcessedQueue = [...processedInvoices, processedInvoice]
             localStorage.setItem('processed_invoices', JSON.stringify(updatedProcessedQueue))
 
-            // Remove from AM queue
+            // Remove from AM queue (Material invoices move out)
             const updatedAMQueue = currentAMInvoices.filter((inv) => inv.id !== id)
             localStorage.setItem('pending_am_invoices', JSON.stringify(updatedAMQueue))
 
-            // Update local state
             setInvoices(updatedAMQueue)
             setFilteredInvoices(updatedAMQueue)
 
-            // Show success message
             alert(
               `✅ HK Material invoice ${invoiceToUpdate.invoiceNumber} approved and GL entries posted!\nVoucher: ${glResult.voucherNo}\nVendor GL: ${glResult.vendorGLCode}`
             )
@@ -414,11 +361,9 @@ Invoice Processing Summary:
             closeModal()
             return
           } else {
-            // GL posting failed - keep invoice in AM queue and show error
             alert(
               `❌ HK Material invoice approval failed: ${glResult.message}\nInvoice remains in queue for retry.`
             )
-            // Don't close modal - let user see the error and potentially retry
             return
           }
         } catch (error) {
@@ -426,18 +371,14 @@ Invoice Processing Summary:
           alert(
             `❌ HK Material invoice approval failed: ${error.message}\nInvoice remains in queue.`
           )
-          return // Keep invoice in queue
+          return
         }
       } else if (invoiceToUpdate.type === 'Fixed Asset') {
-        // ========================================
-        // FIXED ASSET - AUTO GL POSTING
-        // ========================================
+        // FIXED ASSET - AUTO GL POSTING (Move to processed queue)
         try {
-          // Process Fixed Asset invoice with auto-GL posting
           const glResult = await processFixedAssetInvoice(invoiceToUpdate)
 
           if (glResult.success) {
-            // Move to processed queue with GL reference
             const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices') || '[]')
             const processedInvoice = {
               ...invoiceToUpdate,
@@ -460,15 +401,13 @@ Invoice Processing Summary:
             const updatedProcessedQueue = [...processedInvoices, processedInvoice]
             localStorage.setItem('processed_invoices', JSON.stringify(updatedProcessedQueue))
 
-            // Remove from AM queue
+            // Remove from AM queue (Fixed Asset invoices move out)
             const updatedAMQueue = currentAMInvoices.filter((inv) => inv.id !== id)
             localStorage.setItem('pending_am_invoices', JSON.stringify(updatedAMQueue))
 
-            // Update local state
             setInvoices(updatedAMQueue)
             setFilteredInvoices(updatedAMQueue)
 
-            // Show success message
             alert(
               `✅ Fixed Asset invoice ${invoiceToUpdate.invoiceNumber} approved and GL entries posted!\nVoucher: ${glResult.voucherNo}\nFixed Asset GL: ${glResult.fixedAssetGLCode} (${glResult.fixedAssetGLName})\nVendor GL: ${glResult.vendorGLCode}`
             )
@@ -476,11 +415,9 @@ Invoice Processing Summary:
             closeModal()
             return
           } else {
-            // GL posting failed - keep invoice in AM queue and show error
             alert(
               `❌ Fixed Asset invoice approval failed: ${glResult.message}\nInvoice remains in queue for retry.`
             )
-            // Don't close modal - let user see the error and potentially retry
             return
           }
         } catch (error) {
@@ -488,11 +425,11 @@ Invoice Processing Summary:
           alert(
             `❌ Fixed Asset invoice approval failed: ${error.message}\nInvoice remains in queue.`
           )
-          return // Keep invoice in queue
+          return
         }
       }
     } else if (status === 'Rejected') {
-      // AM Rejected - Move to rejected queue (same for all types)
+      // AM Rejected - Move to rejected queue
       const rejectedInvoices = JSON.parse(localStorage.getItem('rejected_invoices') || '[]')
       const rejectedInvoice = {
         ...invoiceToUpdate,
@@ -505,15 +442,12 @@ Invoice Processing Summary:
         rejectedAtAM: timestamp,
       }
 
-      // Add to rejected queue
       const updatedRejectedQueue = [...rejectedInvoices, rejectedInvoice]
       localStorage.setItem('rejected_invoices', JSON.stringify(updatedRejectedQueue))
 
-      // Remove from AM queue
       const updatedAMQueue = currentAMInvoices.filter((inv) => inv.id !== id)
       localStorage.setItem('pending_am_invoices', JSON.stringify(updatedAMQueue))
 
-      // Update local state
       setInvoices(updatedAMQueue)
       setFilteredInvoices(updatedAMQueue)
 
@@ -521,7 +455,6 @@ Invoice Processing Summary:
         `Invoice ${invoiceToUpdate.invoiceNumber} rejected by Account Manager and returned to vendor.`
       )
 
-      // Close modal for rejections
       closeModal()
     }
   }
@@ -542,13 +475,9 @@ Invoice Processing Summary:
     setCurrentPage(1)
   }
 
-  // Note: Fixed Asset invoices are now automatically processed on approval
-  // No need for manual button clicks - GL entries are posted automatically
-
   // Close prepaid modal handler
   const closePrepaidModal = () => {
     setIsPrepaidModalOpen(false)
-    // Don't clear selectedInvoice here as the main modal might still be open
   }
 
   // Pagination logic
@@ -562,29 +491,25 @@ Invoice Processing Summary:
     <div className="p-4 md:p-6 max-w-6xl mx-auto bg-white shadow rounded-lg">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-green-700">
-          Invoice Review (Account Manager)
+          Invoice Review (Account Manager) - Final Approval
         </h1>
 
-        {/* Control Buttons for Demo/Development */}
         <div className="flex gap-2">
           <button
             onClick={refreshData}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-            title="Refresh data from localStorage"
           >
             Refresh
           </button>
           <button
             onClick={viewProcessedSummary}
             className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
-            title="View processing summary"
           >
             Summary
           </button>
           <button
             onClick={clearProcessedInvoices}
             className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-            title="Clear processed invoices"
           >
             Clear Queue
           </button>
@@ -597,6 +522,7 @@ Invoice Processing Summary:
         <table className="w-full text-sm md:text-base">
           <thead className="bg-gray-100 text-left">
             <tr>
+              <th className="p-3 border">Sr No</th>
               <th className="p-3 border">Invoice #</th>
               <th className="p-3 border">Vendor Name</th>
               <th className="p-3 border">Amount (₹)</th>
@@ -610,15 +536,16 @@ Invoice Processing Summary:
           <tbody>
             {currentInvoices.length === 0 ? (
               <tr>
-                <td colSpan="8" className="p-4 text-center text-gray-500">
+                <td colSpan="9" className="p-4 text-center text-gray-500">
                   No invoices approved by Account Executive yet.
                   <br />
                   <span className="text-xs">Invoices will appear here after AE approval.</span>
                 </td>
               </tr>
             ) : (
-              currentInvoices.map((inv) => (
+              currentInvoices.map((inv, index) => (
                 <tr key={inv.id} className="hover:bg-gray-50">
+                  <td className="p-3 border">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                   <td className="p-3 border">{inv.invoiceNumber}</td>
                   <td className="p-3 border">{inv.vendorName}</td>
                   <td className="p-3 border">₹{inv.totalAmount.toLocaleString()}</td>
@@ -664,21 +591,47 @@ Invoice Processing Summary:
                   </td>
                   <td className="p-3 border">
                     {inv.accountManagerStatus === 'Approved' ? (
-                      <div className="flex items-center justify-center gap-2 flex-wrap">
-                        <span className="bg-green-200 rounded-full px-2 py-1 text-xs">
-                          Approved
+                      <div className="flex flex-col gap-2">
+                        <span className="bg-green-200 text-green-800 px-2 py-1 rounded text-xs inline-block">
+                          ✅ Approved (Final)
                         </span>
-                        {/* Fixed Asset invoices are now automatically processed - no button needed */}
+
+                        {/* ✅ SHOW BUTTONS FOR PROCUREMENT PREPAID AFTER APPROVAL - LIKE BILLING MANAGER */}
+                        {inv.type === 'Procurement Prepaid' && (
+                          <div className="mt-1 space-x-2 flex flex-wrap gap-1">
+                            <button
+                              className="bg-green-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-green-600"
+                              onClick={() => {
+                                setSelectedInvoice(inv)
+                                setShowPurchaseModal(true)
+                              }}
+                            >
+                              View Purchase Voucher
+                            </button>
+                            <button
+                              className="bg-blue-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-blue-600"
+                              onClick={() => {
+                                setSelectedInvoice(inv)
+                                setShowJournalModal(true)
+                              }}
+                            >
+                              View Journal Voucher
+                            </button>
+                            <button
+                              className="bg-purple-500 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-purple-600"
+                              onClick={() => {
+                                setSelectedInvoice(inv)
+                                setShowAmortizationModal(true)
+                              }}
+                            >
+                              Monthly Amortization
+                            </button>
+                          </div>
+                        )}
+
                         {inv.type === 'Fixed Asset' && (
                           <span className="bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs">
                             GL Posted
-                          </span>
-                        )}
-
-                        {/* For Procurement Prepaid, just show status as it goes directly to BM */}
-                        {inv.type === 'Procurement Prepaid' && (
-                          <span className="bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs">
-                            Sent to Billing Manager
                           </span>
                         )}
                       </div>
@@ -695,20 +648,18 @@ Invoice Processing Summary:
                   <td className="p-3 border text-center">
                     <button
                       onClick={() => openModal(inv)}
-                      className={`px-4 py-1.5 rounded text-sm ${
+                      className={`px-3 py-1.5 rounded text-white text-sm ${
                         inv.accountManagerStatus === 'Approved' ||
-                        inv.accountManagerStatus === 'Rejected' ||
-                        inv.finalStatus === 'Final Approved'
-                          ? 'bg-gray-400 text-white cursor-not-allowed'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                        inv.accountManagerStatus === 'Rejected'
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                       disabled={
                         inv.accountManagerStatus === 'Approved' ||
-                        inv.accountManagerStatus === 'Rejected' ||
-                        inv.finalStatus === 'Final Approved'
+                        inv.accountManagerStatus === 'Rejected'
                       }
                     >
-                      View & Approve
+                      View
                     </button>
                   </td>
                 </tr>
@@ -735,6 +686,16 @@ Invoice Processing Summary:
         </div>
       )}
 
+      {/* Info Banner */}
+      <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded">
+        <p className="text-sm text-purple-800">
+          <strong>ℹ️ New Flow:</strong> Procurement Prepaid invoices are now FINALLY approved by
+          Account Manager. After setting the prepaid period, GL entries are automatically posted and
+          all voucher buttons become available. Procurement Prepaid invoices stay in this table for
+          ongoing access to voucher functions.
+        </p>
+      </div>
+
       {/* Modal */}
       {selectedInvoice && (
         <AMInvoiceVerifyModal
@@ -754,13 +715,37 @@ Invoice Processing Summary:
         />
       )}
 
-      {/* JV Modal */}
+      {/* Purchase Voucher Modal */}
+      {showPurchaseModal && selectedInvoice && (
+        <PurchaseVoucherModal
+          invoice={selectedInvoice}
+          onClose={() => setShowPurchaseModal(false)}
+        />
+      )}
+
+      {/* Journal Voucher Modal */}
+      {showJournalModal && selectedInvoice && (
+        <JournalVoucherModal invoice={selectedInvoice} onClose={() => setShowJournalModal(false)} />
+      )}
+
+      {/* Monthly Amortization Modal */}
+      {showAmortizationModal && selectedInvoice && (
+        <MonthlyAmortizationModal
+          invoice={selectedInvoice}
+          onClose={() => {
+            setShowAmortizationModal(false)
+            setSelectedInvoice(null)
+          }}
+        />
+      )}
+
+      {/* JV Modal (if still needed) */}
       {isJVModalOpen && jvData && (
         <InvoiceJVDisplay
           data={jvData}
           onClose={() => {
             setIsJVModalOpen(false)
-            setJvData(null) // Clear JV data when closing
+            setJvData(null)
           }}
         />
       )}
