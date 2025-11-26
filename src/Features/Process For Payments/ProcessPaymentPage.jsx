@@ -14,6 +14,8 @@ import PaymentEntryModal from './Components/PaymentEntryModal'
 import AEBankSelectionModal from '../Advance Request/Components/AEBankSelectionModal'
 import { processVendorPayments } from '../Master/utils/accountingHelpers'
 import RelieverPaymentsSection from './Components/RelieverPaymentSection'
+import ConveyancePaymentsSection from './Components/ConveyancePaymentsSection'
+import { processConveyanceBankPayments } from '../Master/utils/accountingHelpers'
 
 // Function to load and transform invoices from localStorage
 const loadInvoicesFromLocalStorage = () => {
@@ -138,17 +140,7 @@ const RelieverPayments = () => {
 }
 
 const ConveyancePayments = () => {
-  return (
-    <div className="p-6 text-center">
-      <h2 className="text-xl font-bold text-green-600 mb-4">Conveyance Payments</h2>
-      <p className="text-gray-600">Conveyance payment functionality will be implemented here.</p>
-      <div className="mt-4 p-4 bg-green-50 rounded-lg">
-        <p className="text-sm text-green-700">
-          This section will handle employee conveyance and travel expense payments.
-        </p>
-      </div>
-    </div>
-  )
+  return <ConveyancePaymentsSection />
 }
 
 // Payment Type Tabs Component
@@ -802,6 +794,9 @@ export default function ProcessPaymentPage() {
   const [isBankModalOpen, setIsBankModalOpen] = useState(false)
   const [pendingAcceptedData, setPendingAcceptedData] = useState(null)
   const [selectedBankForPayment, setSelectedBankForPayment] = useState(null)
+  const [conveyanceData, setConveyanceData] = useState([])
+  const [approvedConveyances, setApprovedConveyances] = useState([])
+  const [conveyancePayments, setConveyancePayments] = useState({})
 
   // Render active tab content
   const renderActiveTab = () => {
@@ -845,7 +840,16 @@ export default function ProcessPaymentPage() {
       case 'reliever':
         return <RelieverPayments />
       case 'conveyance':
-        return <ConveyancePayments />
+        return (
+          <ConveyancePaymentsSection
+            conveyanceData={conveyanceData}
+            setConveyanceData={setConveyanceData}
+            approvedConveyances={approvedConveyances}
+            setApprovedConveyances={setApprovedConveyances}
+            conveyancePayments={conveyancePayments}
+            setConveyancePayments={setConveyancePayments}
+          />
+        )
       default:
         return (
           <VendorPaymentsSection

@@ -14,33 +14,33 @@ export class BankLedgerService {
         return null;
       }
 
-      // Default bank details - you can extend this with more bank-specific data
+      // Updated bank details with your actual bank codes
       const bankDetails = {
-        'A3004003001': {
+        'A3004001001': {
           bankName: 'HDFC Bank',
           accountNumber: '50100123456789',
           ifscCode: 'HDFC0001234',
           branch: 'Mumbai - Andheri East',
           accountType: 'Current Account'
         },
-        'A3004003002': {
-          bankName: 'HDFC Bank',
-          accountNumber: '50100987654321',
-          ifscCode: 'HDFC0001234',
-          branch: 'Mumbai - Andheri East',
-          accountType: 'Current Account'
-        },
-        'A3004003003': {
+        'A3004001002': {
           bankName: 'Punjab Bank',
           accountNumber: '12345678901234',
           ifscCode: 'PUNB0123456',
           branch: 'Delhi - Connaught Place',
           accountType: 'Current Account'
+        },
+        'A300403': {
+          bankName: 'Selected Bank',
+          accountNumber: '98765432109876',
+          ifscCode: 'SBIN0001234',
+          branch: 'Corporate Branch',
+          accountType: 'Current Account'
         }
       };
 
       const details = bankDetails[bankCode] || {
-        bankName: 'Bank Account',
+        bankName: bankAccount.name || 'Bank Account',
         accountNumber: 'N/A',
         ifscCode: 'N/A',
         branch: 'N/A',
@@ -63,6 +63,9 @@ export class BankLedgerService {
   /**
    * Get all transactions for a bank account
    */
+  /**
+ * Get all transactions for a bank account
+ */
   static getBankTransactions(bankCode) {
     try {
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
@@ -70,17 +73,23 @@ export class BankLedgerService {
       const users = JSON.parse(localStorage.getItem('users')) || [];
 
       console.log(`🏦 Loading bank transactions for: ${bankCode}`);
+      console.log(`📋 Total transactions in system: ${transactions.length}`);
 
-      // Filter transactions that involve this bank account
-      const bankTransactions = transactions.filter(txn =>
-        txn.entries.some(entry => entry.glCode === bankCode)
-      );
+      // Filter transactions that involve this bank account - WITH SAFETY CHECK
+      const bankTransactions = transactions.filter(txn => {
+        // Check if txn.entries exists and is an array
+        if (!txn.entries || !Array.isArray(txn.entries)) {
+          console.warn('⚠️ Transaction missing entries array:', txn.id);
+          return false;
+        }
+        return txn.entries.some(entry => entry.glCode === bankCode);
+      });
 
-      console.log(`📋 Found ${bankTransactions.length} bank transactions`);
+      console.log(`✅ Found ${bankTransactions.length} bank transactions for ${bankCode}`);
 
       // Convert to bank ledger format
       const ledgerEntries = [];
-      let runningBalance = 500000; // Opening balance (you can make this dynamic)
+      let runningBalance = 500000; // Opening balance
 
       bankTransactions.forEach(txn => {
         const bankEntry = txn.entries.find(entry => entry.glCode === bankCode);
@@ -108,8 +117,8 @@ export class BankLedgerService {
             debit: debit > 0 ? this.formatAmount(debit) : '-',
             credit: credit > 0 ? this.formatAmount(credit) : '-',
             balance: this.formatAmount(Math.abs(runningBalance)) + ' ' + balanceType,
-            narration: bankEntry.narration,
-            refNo: txn.advanceRequestId || txn.id,
+            narration: bankEntry.narration || txn.narration || 'Bank Transaction',
+            refNo: txn.advanceRequestId || txn.conveyanceClaimId || txn.id,
             counterparty: counterparty.name,
             type: transactionType,
             approvedBy: txn.approvedBy || 'System',
@@ -148,7 +157,7 @@ export class BankLedgerService {
       return ledgerEntries;
 
     } catch (error) {
-      console.error('Error getting bank transactions:', error);
+      console.error('❌ Error getting bank transactions:', error);
       return [];
     }
   }

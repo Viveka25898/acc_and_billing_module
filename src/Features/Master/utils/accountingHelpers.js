@@ -317,92 +317,144 @@ export const createAdvancePaymentTransaction = (advanceRequest, bankData, vouche
  * Uses shared L2001001 Conveyance Payable (not per-employee)
  */
 const resolveConveyanceGLs = () => {
-  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
 
-  // Try to find specific Conveyance Expense under Expenses
-  const expenseCandidates = [
-    'X2001003', // Branch Conveyance Expense (primary - you mentioned created)
-    'X2001004', // Branch Conveyance (if exists)
-    'X2002001006', // Corporate Conveyance (if present)
-    'X2001002', // Other Branch Expenses (fallback)
-    'X2002002001' // Other Corporate Expenses (last resort)
-  ];
-
-  const payableCandidates = [
-    'L2001001', // Conveyance Payable (shared for all employees)
-    'L2001003', // Old code (if exists, will migrate)
-    'L2001004'  // Other Employee Dues (fallback)
-  ];
-
-  const hasCode = (code) => chartOfAccounts.some(acc => acc.code === code);
-
-  let expenseGLCode = expenseCandidates.find(hasCode);
-
-  // Auto-create X2001003 if missing
-  if (!expenseGLCode) {
-    const newExpenseLedger = {
-      id: `AUTO_${Date.now()}_X2001003`,
-      code: 'X2001003',
-      name: 'BRANCH CONVEYANCE EXPENSE',
-      type: 'ACCOUNT',
-      parentAccount: 'BRANCH MANAGEMENT',
-      parentCode: 'X2001'
-    };
-    chartOfAccounts.push(newExpenseLedger);
-    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
-      throw new Error('Failed to create Branch Conveyance Expense ledger');
+    // Ensure chartOfAccounts is always an array
+    if (!Array.isArray(chartOfAccounts)) {
+      console.warn('⚠️ chartOfAccounts is not an array, initializing empty array');
+      safeSetItem('chartOfAccounts', []);
     }
-    expenseGLCode = 'X2001003';
-  }
 
-  let payableGLCode = payableCandidates.find(hasCode);
+    // Try to find specific Conveyance Expense under Expenses
+    const expenseCandidates = [
+      'X2001003', // Branch Conveyance Expense (primary - you mentioned created)
+      'X2001004', // Branch Conveyance (if exists)
+      'X2002001006', // Corporate Conveyance (if present)
+      'X2001002', // Other Branch Expenses (fallback)
+      'X2002002001' // Other Corporate Expenses (last resort)
+    ];
 
-  // Auto-create L2001001 Conveyance Payable if missing (shared for all employees)
-  if (!payableGLCode) {
-    const newPayableLedger = {
-      id: `AUTO_${Date.now()}_L2001001`,
-      code: 'L2001001',
-      name: 'CONVEYANCE PAYABLE',
-      type: 'ACCOUNT',
-      parentAccount: 'LIABILITY - EMPLOYEES',
-      parentCode: 'L2001'
+    const payableCandidates = [
+      'L2001001', // Conveyance Payable (shared for all employees)
+      'L2001003', // Old code (if exists, will migrate)
+      'L2001004'  // Other Employee Dues (fallback)
+    ];
+
+    const hasCode = (code) => {
+      if (!chartOfAccounts || !Array.isArray(chartOfAccounts)) return false;
+      return chartOfAccounts.some(acc => acc.code === code);
     };
-    chartOfAccounts.push(newPayableLedger);
-    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
-      throw new Error('Failed to create Conveyance Payable ledger');
+
+    let expenseGLCode = expenseCandidates.find(hasCode);
+
+    // Auto-create X2001003 if missing
+    if (!expenseGLCode) {
+      console.log('📝 Creating Branch Conveyance Expense ledger (X2001003)...');
+      const newExpenseLedger = {
+        id: `AUTO_${Date.now()}_X2001003`,
+        code: 'X2001003',
+        name: 'BRANCH CONVEYANCE EXPENSE',
+        type: 'ACCOUNT',
+        parentAccount: 'BRANCH MANAGEMENT',
+        parentCode: 'X2001',
+        accountCategory: 'EXPENSE',
+        debitCreditNature: 'DEBIT',
+        openingBalance: 0,
+        currentBalance: 0,
+        isActive: true
+      };
+
+      const updatedCOA = safeGetItem('chartOfAccounts', []);
+      updatedCOA.push(newExpenseLedger);
+
+      if (!safeSetItem('chartOfAccounts', updatedCOA)) {
+        throw new Error('Failed to create Branch Conveyance Expense ledger');
+      }
+      expenseGLCode = 'X2001003';
+      console.log('✅ Created Branch Conveyance Expense ledger:', expenseGLCode);
     }
-    payableGLCode = 'L2001001';
-  } else if (payableGLCode === 'L2001003') {
-    // If old code exists, prefer L2001001 going forward
-    // But still use L2001003 if L2001001 doesn't exist
-    if (!hasCode('L2001001')) {
-      // Create L2001001 for future use
+
+    let payableGLCode = payableCandidates.find(hasCode);
+
+    // Auto-create L2001001 Conveyance Payable if missing (shared for all employees)
+    if (!payableGLCode) {
+      console.log('📝 Creating Conveyance Payable ledger (L2001001)...');
       const newPayableLedger = {
         id: `AUTO_${Date.now()}_L2001001`,
         code: 'L2001001',
         name: 'CONVEYANCE PAYABLE',
         type: 'ACCOUNT',
         parentAccount: 'LIABILITY - EMPLOYEES',
-        parentCode: 'L2001'
+        parentCode: 'L2001',
+        accountCategory: 'LIABILITIES',
+        debitCreditNature: 'CREDIT',
+        openingBalance: 0,
+        currentBalance: 0,
+        isActive: true
       };
-      chartOfAccounts.push(newPayableLedger);
-      if (safeSetItem('chartOfAccounts', chartOfAccounts)) {
+
+      const updatedCOA = safeGetItem('chartOfAccounts', []);
+      updatedCOA.push(newPayableLedger);
+
+      if (!safeSetItem('chartOfAccounts', updatedCOA)) {
+        throw new Error('Failed to create Conveyance Payable ledger');
+      }
+      payableGLCode = 'L2001001';
+      console.log('✅ Created Conveyance Payable ledger:', payableGLCode);
+    } else if (payableGLCode === 'L2001003') {
+      // If old code exists, prefer L2001001 going forward
+      // But still use L2001003 if L2001001 doesn't exist
+      if (!hasCode('L2001001')) {
+        // Create L2001001 for future use
+        const newPayableLedger = {
+          id: `AUTO_${Date.now()}_L2001001`,
+          code: 'L2001001',
+          name: 'CONVEYANCE PAYABLE',
+          type: 'ACCOUNT',
+          parentAccount: 'LIABILITY - EMPLOYEES',
+          parentCode: 'L2001',
+          accountCategory: 'LIABILITIES',
+          debitCreditNature: 'CREDIT',
+          openingBalance: 0,
+          currentBalance: 0,
+          isActive: true
+        };
+
+        const updatedCOA = safeGetItem('chartOfAccounts', []);
+        updatedCOA.push(newPayableLedger);
+
+        if (safeSetItem('chartOfAccounts', updatedCOA)) {
+          payableGLCode = 'L2001001';
+        }
+      } else {
         payableGLCode = 'L2001001';
       }
-    } else {
-      payableGLCode = 'L2001001';
     }
+
+    const getName = (code) => {
+      if (!chartOfAccounts || !Array.isArray(chartOfAccounts)) return code;
+      const acc = chartOfAccounts.find(a => a.code === code);
+      return acc?.name || code;
+    };
+
+    console.log('✅ Resolved conveyance GLs:', {
+      expense: { code: expenseGLCode, name: getName(expenseGLCode) },
+      payable: { code: payableGLCode, name: getName(payableGLCode) }
+    });
+
+    return {
+      expense: { code: expenseGLCode, name: getName(expenseGLCode) },
+      payable: { code: payableGLCode, name: getName(payableGLCode) }
+    };
+  } catch (error) {
+    console.error('❌ Error in resolveConveyanceGLs:', error);
+    // Return safe fallbacks
+    return {
+      expense: { code: 'X2001003', name: 'BRANCH CONVEYANCE EXPENSE' },
+      payable: { code: 'L2001001', name: 'CONVEYANCE PAYABLE' }
+    };
   }
-
-  const getName = (code) => {
-    const acc = chartOfAccounts.find(a => a.code === code);
-    return acc?.name || code;
-  };
-
-  return {
-    expense: { code: expenseGLCode, name: getName(expenseGLCode) },
-    payable: { code: payableGLCode, name: getName(payableGLCode) }
-  };
 };
 
 /**
@@ -493,6 +545,168 @@ export const processConveyanceApproval = (claim) => {
     return { success: false, error: error.message, message: error.message };
   }
 };
+
+
+/**
+ * Create conveyance bank payment transaction with specified GL entries
+ */
+export const createConveyanceBankPaymentTransaction = (payments, bankData, voucherNo, totalAmount) => {
+  try {
+    const bank = getBankDetails(bankData.bankCode);
+
+    return {
+      id: `TXN_CONV_BANK_${Date.now()}`,
+      voucherNo: voucherNo,
+      voucherType: "Payment Voucher",
+      date: getCurrentDate(),
+      conveyancePaymentBatch: true,
+
+      entries: [
+        // DEBIT: L2001001 - CONVEYANCE PAYABLE
+        {
+          lineNo: 1,
+          glCode: 'L2001001',
+          glName: "CONVEYANCE PAYABLE",
+          debit: totalAmount,
+          credit: 0,
+          narration: `Conveyance payments batch - ${payments.length} employees`,
+          costCenter: 'HEAD OFFICE'
+        },
+        // CREDIT: Selected Bank
+        {
+          lineNo: 2,
+          glCode: bankData.bankCode,
+          glName: bank?.name || bankData.bankName,
+          debit: 0,
+          credit: totalAmount,
+          narration: `Bank payment for conveyance`,
+          costCenter: 'HEAD OFFICE'
+        }
+      ],
+
+      totalDebit: totalAmount,
+      totalCredit: totalAmount,
+      narration: `Bank payments processed for ${payments.length} conveyance requests`,
+      approvedBy: "ae1",
+      approvedDate: new Date().toISOString(),
+      paymentDetails: {
+        totalEmployees: payments.length,
+        totalAmount: totalAmount,
+        employees: payments.map(p => ({
+          name: p.employeeName,
+          amount: p.amount,
+          client: p.client
+        }))
+      }
+    };
+  } catch (error) {
+    console.error('Error creating conveyance bank transaction:', error);
+    throw new Error(`Failed to create conveyance bank transaction: ${error.message}`);
+  }
+};
+
+/**
+ * Generate voucher number for conveyance bank payments
+ */
+export const generateConveyanceBankVoucherNumber = () => {
+  try {
+    const counters = safeGetItem('voucherCounters', {});
+    const year = new Date().getFullYear();
+    const key = `PAY/CONV/BANK/${year}`;
+
+    counters[key] = (counters[key] || 0) + 1;
+    const voucherNo = `${key}/${String(counters[key]).padStart(4, '0')}`;
+
+    if (!safeSetItem('voucherCounters', counters)) {
+      throw new Error('Failed to update voucher counter');
+    }
+
+    console.log(`🎫 Generated conveyance bank voucher: ${voucherNo}`);
+    return voucherNo;
+  } catch (error) {
+    console.error('Error generating conveyance bank voucher:', error);
+    throw new Error(`Failed to generate conveyance bank voucher: ${error.message}`);
+  }
+};
+
+/**
+ * Process Conveyance Bank Payments
+ */
+export const processConveyanceBankPayments = (payments, bankData) => {
+  try {
+    console.log('🚀 Processing conveyance bank payments...');
+
+    // Validate inputs
+    if (!payments || payments.length === 0) {
+      throw new Error('No conveyance payments found');
+    }
+
+    const bankValidation = validateBankData(bankData);
+    if (!bankValidation.isValid) {
+      throw new Error(`Invalid bank data: ${bankValidation.errors.join(', ')}`);
+    }
+
+    // Calculate total amount
+    const totalAmount = payments.reduce((sum, payment) => {
+      return sum + (Number(payment.amount) || 0);
+    }, 0);
+
+    if (totalAmount <= 0) {
+      throw new Error('Invalid total payment amount');
+    }
+
+    // Generate voucher number
+    const voucherNo = generateConveyanceBankVoucherNumber();
+
+    // Create transaction with specified GL entries: Debit L2001001, Credit Bank
+    const transaction = createConveyanceBankPaymentTransaction(payments, bankData, voucherNo, totalAmount);
+    const postResult = postTransaction(transaction);
+
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+
+    console.log('✅ Conveyance bank payments processed successfully!');
+
+    // Format GL entries for the modal
+    const formattedGLEntries = transaction.entries.map(entry => ({
+      glCode: entry.glCode,
+      glDescription: entry.glName || entry.glDescription,
+      costCenter: entry.costCenter,
+      department: entry.department || 'Finance',
+      debitAmount: entry.debit || entry.debitAmount || 0,
+      creditAmount: entry.credit || entry.creditAmount || 0,
+      narration: entry.narration
+    }));
+
+    console.log('🔍 DEBUG - Formatted GL Entries:', formattedGLEntries);
+
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      totalAmount: totalAmount,
+      paymentCount: payments.length,
+      glEntries: formattedGLEntries,
+      message: `Processed ${payments.length} conveyance bank payments totaling ₹${totalAmount.toLocaleString()}`,
+      payments: payments,
+      bankDetails: bankData
+    };
+
+  } catch (error) {
+    console.error('❌ ERROR in processConveyanceBankPayments:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process conveyance bank payments: ${error.message}`
+    };
+  }
+};
+
+
 
 // ========================================
 // 7. LEDGER BALANCE FUNCTIONS
