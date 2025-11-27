@@ -29,7 +29,7 @@ const PrepaidPeriodModal = ({ invoice, onClose, onConfirm }) => {
     const periodData = {
       period: parseInt(selectedPeriod),
       startMonth: startMonth,
-      monthlyAmount: Math.round(invoice.totalAmount / parseInt(selectedPeriod)),
+      // monthlyAmount removed - will be calculated from taxable amount in helper
     }
     onConfirm(invoice.id, periodData)
   }
@@ -78,12 +78,19 @@ const PrepaidPeriodModal = ({ invoice, onClose, onConfirm }) => {
 
         <div className="bg-purple-50 p-3 rounded mb-4">
           <p className="text-sm text-purple-800">
-            <strong>Monthly Amortization:</strong> ₹
-            {Math.round(invoice.totalAmount / parseInt(selectedPeriod)).toLocaleString()}
+            <strong>Monthly Amortization (estimated):</strong> ₹
+            {Math.round(
+              (invoice.totalAmount * 100) /
+                (100 + (invoice.gstRate || 18)) /
+                parseInt(selectedPeriod)
+            ).toLocaleString()}
           </p>
           <p className="text-xs text-purple-600 mt-1">
-            This amount will be expensed each month for {selectedPeriod} months starting from{' '}
-            {startMonth}
+            Base amount (excluding GST) will be expensed each month for {selectedPeriod} months
+            starting from {startMonth}
+          </p>
+          <p className="text-xs text-purple-500 mt-1">
+            Note: GST input credit is claimed separately and not amortized
           </p>
         </div>
 
@@ -225,10 +232,8 @@ Invoice Processing Summary:
 
     // ✅ PROCESS PREPAID UNIFORM INVOICE - AUTO GL POSTING
     try {
-      // Add prepaid period data to invoice
       invoiceToUpdate.prepaidPeriod = periodData.period
       invoiceToUpdate.prepaidStartMonth = periodData.startMonth
-      invoiceToUpdate.monthlyAmortization = periodData.monthlyAmount
 
       const glResult = processPrepaidUniformInvoice(invoiceToUpdate)
 

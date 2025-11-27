@@ -2552,7 +2552,9 @@ export const createPrepaidUniformTransaction = (invoice, vendorGLCode, voucherNo
       prepaidDetails: {
         prepaidPeriod: invoice.prepaidPeriod || 12,
         prepaidStartMonth: invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7),
-        monthlyAmortization: invoice.monthlyAmortization || (taxableAmount / (invoice.prepaidPeriod || 12))
+        monthlyAmortization: Math.round(taxableAmount / (invoice.prepaidPeriod || 12)),
+        taxableAmount: taxableAmount,
+        totalGST: (invoice.totalAmount - taxableAmount)
       }
     };
   } catch (error) {
@@ -2607,6 +2609,19 @@ export const processPrepaidUniformInvoice = (invoice) => {
     const halfGST = totalGST / 2;
     const cgstAmount = Math.round(halfGST * 100) / 100; // Round to 2 decimals
     const sgstAmount = totalGST - cgstAmount; // Remainder ensures total matches
+    // Calculate monthly amortization ONLY on taxable amount (not including GST)
+    const prepaidPeriod = invoice.prepaidPeriod || 12;
+    const prepaidStartMonth = invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7);
+    const monthlyAmortization = Math.round(taxableAmount / prepaidPeriod);
+
+    console.log('💰 Prepaid calculation:', {
+      totalAmount,
+      taxableAmount,
+      gstAmount: totalGST,
+      prepaidPeriod,
+      monthlyAmortization,
+      note: 'Monthly amortization is ONLY on taxable amount, GST excluded'
+    });
 
     // Validation check
     const calculatedTotal = taxableAmount + cgstAmount + sgstAmount;
@@ -2658,9 +2673,11 @@ export const processPrepaidUniformInvoice = (invoice) => {
         total: totalAmount
       },
       prepaidDetails: {
-        prepaidPeriod: invoice.prepaidPeriod || 12,
-        prepaidStartMonth: invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7),
-        monthlyAmortization: invoice.monthlyAmortization || (taxableAmount / (invoice.prepaidPeriod || 12))
+        prepaidPeriod: prepaidPeriod,
+        prepaidStartMonth: prepaidStartMonth,
+        monthlyAmortization: monthlyAmortization,
+        taxableAmount: taxableAmount, // Store for reference
+        totalGST: totalGST // Store for reference
       },
       message: `Prepaid Uniform invoice processed successfully - ₹${totalAmount.toLocaleString()}`
     };
@@ -2750,17 +2767,28 @@ export const getMonthlyAmortizationCount = (invoiceNumber) => {
 export const createMonthlyAmortizationTransaction = (invoice, monthYear) => {
   try {
     // Get prepaid details
-    const prepaidPeriod = invoice.prepaidPeriod || 12;
-    const prepaidStartMonth = invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7);
+    const prepaidPeriod = invoice.prepaidDetails?.prepaidPeriod || invoice.prepaidPeriod || 12;
+    const prepaidStartMonth = invoice.prepaidDetails?.prepaidStartMonth || invoice.prepaidStartMonth || new Date().toISOString().slice(0, 7);
 
-    // Calculate taxable amount (base amount before GST)
-    const gstRate = invoice.gstRate || 18;
-    const totalAmount = parseFloat(invoice.totalAmount);
-    const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
+    // Use the monthly amortization that was calculated during purchase voucher
+    // This ensures we use the EXACT same taxable base amount
+    const monthlyAmortization = invoice.prepaidDetails?.monthlyAmortization ||
+      invoice.accountingResult?.prepaidDetails?.monthlyAmortization ||
+      (() => {
+        // Fallback calculation if prepaidDetails not found
+        const gstRate = invoice.gstRate || 18;
+        const totalAmount = parseFloat(invoice.totalAmount);
+        const taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate));
+        return Math.round(taxableAmount / prepaidPeriod);
+      })();
 
-    // Calculate monthly amortization amount
-    const monthlyAmortization = invoice.monthlyAmortization ||
-      Math.round(taxableAmount / prepaidPeriod);
+    console.log('📊 Monthly amortization JV:', {
+      invoiceNumber: invoice.invoiceNumber,
+      monthYear,
+      monthlyAmortization,
+      prepaidPeriod,
+      note: 'Amount is based on taxable value only'
+    });
 
     // Generate voucher number
     const voucherNo = generateMonthlyAmortizationJVNumber();
