@@ -13,9 +13,13 @@ export class RentLedgerService {
       console.log(`📊 Generating rent vendor ledger for: ${accountCode}`);
 
       // Filter transactions that involve this vendor account (include all voucher types)
-      const rentTransactions = transactions.filter(txn =>
-        txn.entries?.some(entry => entry.glCode === accountCode)
-      );
+      const rentTransactions = transactions.filter(txn => {
+        if (!txn.entries || !Array.isArray(txn.entries)) {
+          console.warn(`⚠️ Transaction ${txn.id || 'unknown'} missing entries array`);
+          return false;
+        }
+        return txn.entries.some(entry => entry.glCode === accountCode);
+      });
 
       console.log(`📋 Found ${rentTransactions.length} rent transactions`);
 
@@ -86,9 +90,13 @@ export class RentLedgerService {
       console.log(`📊 Generating branch office rent ledger`);
 
       // Filter transactions with branch office rent GL code
-      const rentTransactions = transactions.filter(txn =>
-        txn.entries.some(entry => entry.glCode === "X2001002002")
-      );
+      const rentTransactions = transactions.filter(txn => {
+        if (!txn.entries || !Array.isArray(txn.entries)) {
+          console.warn(`⚠️ Transaction ${txn.id || 'unknown'} missing entries array`);
+          return false;
+        }
+        return txn.entries.some(entry => entry.glCode === "X2001002002");
+      });
 
       const ledgerEntries = [];
       let runningBalance = 0;
