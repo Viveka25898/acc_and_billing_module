@@ -165,6 +165,7 @@ import UniformPrepaidExpenseLedger from '../Features/Master/Process of Prepaid/P
 import UniformExpenseLedgerPage from '../Features/Master/Process of Prepaid/Pages/UniformExpenseLedgerPage'
 import PrepaidUniformVendorLedgerPage from '../Features/Master/Process of Prepaid/Pages/PrepaidUniformVendorLedgerPage'
 import UnifiedVendorLedgerPage from '../Features/Master/Pages/UnifiedVendorLedgerPage'
+import HKMaterialsExpenseLedgerPage from '../Features/Master/Components/HKMaterialExpenseLedgerPage'
 
 export const router = createBrowserRouter([
   {
@@ -912,6 +913,10 @@ export const router = createBrowserRouter([
       {
         path: 'uniform-expense-ledger',
         element: <UniformExpenseLedgerPage />,
+      },
+      {
+        path: 'hk-materials-expense-ledger',
+        element: <HKMaterialsExpenseLedgerPage />,
       },
     ],
   },
