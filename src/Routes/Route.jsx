@@ -164,6 +164,7 @@ import FAVendorLedgerPage from '../Features/Master/Process for Fixed Assets/Page
 import UniformPrepaidExpenseLedger from '../Features/Master/Process of Prepaid/Pages/UniformPrepaidExpenseLedgerPage'
 import UniformExpenseLedgerPage from '../Features/Master/Process of Prepaid/Pages/UniformExpenseLedgerPage'
 import PrepaidUniformVendorLedgerPage from '../Features/Master/Process of Prepaid/Pages/PrepaidUniformVendorLedgerPage'
+import UnifiedVendorLedgerPage from '../Features/Master/Pages/UnifiedVendorLedgerPage'
 
 export const router = createBrowserRouter([
   {
@@ -834,7 +835,7 @@ export const router = createBrowserRouter([
       // Vendor Ledger Account
       {
         path: 'vendor-ledger/:accountCode',
-        element: <ProcessOfPaymentVendorPage />,
+        element: <UnifiedVendorLedgerPage />,
       },
       {
         path: 'tds-ledger/:sectionCode',

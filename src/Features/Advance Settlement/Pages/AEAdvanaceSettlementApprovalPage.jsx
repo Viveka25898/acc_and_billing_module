@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
 import { AiOutlineEye, AiOutlineCheck, AiOutlineClose } from 'react-icons/ai'
+import * as XLSX from 'xlsx'
 import RemarkModal from '../Components/RemarkModal'
 import ManagerFilter from '../Components/ManagerFilter'
 import ManagerClarificationModal from '../Components/ManagerClarificationModal'
@@ -58,6 +59,133 @@ const AEAdvanceSettlementApprovalPage = () => {
       setSettlements(aeRequests)
     }
   }, [currentUser])
+
+  // ✅ Function to open Excel file as HTML in new tab
+  const viewExcelFile = (excelFile) => {
+    if (!excelFile || !excelFile.data) {
+      alert('Excel file not found')
+      return
+    }
+
+    try {
+      const base64Data = excelFile.data.split(',')[1]
+      const byteCharacters = atob(base64Data)
+      const byteNumbers = new Array(byteCharacters.length)
+
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+
+      const byteArray = new Uint8Array(byteNumbers)
+      const workbook = XLSX.read(byteArray, { type: 'array' })
+      const firstSheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[firstSheetName]
+      const html = XLSX.utils.sheet_to_html(worksheet, {
+        header:
+          '<style>table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background-color:#4CAF50;color:white;font-weight:bold;}tr:nth-child(even){background-color:#f2f2f2;}</style>',
+        footer: '',
+      })
+
+      const newWindow = window.open('', '_blank')
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${excelFile.name || 'Settlement Expenses'}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              background-color: #f5f5f5;
+            }
+            .container {
+              background-color: white;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            h1 {
+              color: #333;
+              border-bottom: 2px solid #4CAF50;
+              padding-bottom: 10px;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin-top: 20px;
+              font-size: 14px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 12px;
+              text-align: left;
+            }
+            th {
+              background-color: #4CAF50;
+              color: white;
+              font-weight: bold;
+            }
+            tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            tr:hover {
+              background-color: #f5f5f5;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>📊 ${excelFile.name || 'Settlement Expenses'}</h1>
+            ${html}
+          </div>
+        </body>
+        </html>
+      `)
+      newWindow.document.close()
+    } catch (error) {
+      console.error('Error opening Excel file:', error)
+      alert('Failed to open Excel file')
+    }
+  }
+
+  // ✅ Function to view/download attachment
+  const viewAttachment = (attachment) => {
+    if (!attachment || !attachment.data) {
+      alert('Attachment not found')
+      return
+    }
+
+    try {
+      if (attachment.type === 'application/pdf') {
+        const pdfWindow = window.open('')
+        pdfWindow.document.write(
+          `<iframe width='100%' height='100%' src='${attachment.data}'></iframe>`
+        )
+      } else {
+        const base64Data = attachment.data.split(',')[1]
+        const byteCharacters = atob(base64Data)
+        const byteNumbers = new Array(byteCharacters.length)
+
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], { type: attachment.type })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = attachment.name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error('Error opening attachment:', error)
+      alert('Failed to open attachment')
+    }
+  }
 
   const handleApprove = async (id) => {
     if (!currentUser) return
@@ -159,14 +287,6 @@ const AEAdvanceSettlementApprovalPage = () => {
     toast.error('Settlement Rejected')
   }
 
-  // Function to handle file viewing
-  const viewFile = (fileData) => {
-    // For demo purposes, we'll just open a new window
-    // In a real app, you would fetch the actual file from your server
-    const fileUrl = URL.createObjectURL(new Blob([fileData], { type: 'application/pdf' }))
-    window.open(fileUrl, '_blank')
-  }
-
   const updateSettlements = (updatedSettlements) => {
     setSettlements(updatedSettlements)
     const allSettlements = JSON.parse(localStorage.getItem('settlements')) || []
@@ -226,7 +346,7 @@ const AEAdvanceSettlementApprovalPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-white shadow-md rounded-md">
+    <div className="max-w-5xl mx-auto p-6 bg-white shadow-md rounded-md">
       <h2 className="text-2xl font-bold mb-6 text-green-600">
         Account Executive Review - {currentUser.username}
       </h2>
@@ -266,38 +386,42 @@ const AEAdvanceSettlementApprovalPage = () => {
                 <td className="p-3 border">{req.employeeName}</td>
                 <td className="p-3 border">{new Date(req.submittedAt).toLocaleDateString()}</td>
 
-                {/* Excel File Column */}
+                {/* ✅ Excel File Column */}
                 <td className="p-3 border">
-                  <div className="flex items-center gap-1 text-blue-600 cursor-pointer">
-                    <span onClick={() => viewFile(req.excelFile)} className="underline">
-                      View Excel
-                    </span>
-                    <AiOutlineEye
-                      onClick={() => viewFile(req.excelFile)}
-                      className="hover:text-blue-800"
-                      title="View Excel File"
-                    />
-                  </div>
+                  {req.excelFile ? (
+                    <button
+                      onClick={() => viewExcelFile(req.excelFile)}
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
+                      title="Open Excel File in New Tab"
+                    >
+                      <AiOutlineEye size={18} />
+                      <span className="underline">{req.excelFile.name || 'Excel File'}</span>
+                    </button>
+                  ) : (
+                    <span className="text-gray-400">No file</span>
+                  )}
                 </td>
 
-                {/* Attachments Column */}
+                {/* ✅ Attachments Column */}
                 <td className="p-3 border">
                   <div className="space-y-1">
-                    {req.attachments?.map((attachment, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-1 text-blue-600 cursor-pointer"
-                      >
-                        <span onClick={() => viewFile(attachment)} className="underline text-sm">
-                          {attachment.name || `Attachment ${idx + 1}`}
-                        </span>
-                        <AiOutlineEye
-                          onClick={() => viewFile(attachment)}
-                          className="hover:text-blue-800"
-                          title={`View ${attachment.name || 'Attachment'}`}
-                        />
-                      </div>
-                    ))}
+                    {req.attachments && req.attachments.length > 0 ? (
+                      req.attachments.map((attachment, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => viewAttachment(attachment)}
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 w-full text-left"
+                          title={`View ${attachment.name}`}
+                        >
+                          <AiOutlineEye size={16} />
+                          <span className="underline text-sm truncate">
+                            {attachment.name || `Attachment ${idx + 1}`}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <span className="text-gray-400">No attachments</span>
+                    )}
                   </div>
                 </td>
 
@@ -391,11 +515,9 @@ const AEAdvanceSettlementApprovalPage = () => {
           onClose={() => setClarificationData(null)}
           data={{
             ...clarificationData,
-            // Include the rejection history
             rejectionHistory: clarificationData?.history?.find(
               (h) => h.action.includes('rejected') && !h.action.includes('after-clarification')
             ),
-            // Include the clarification history if exists
             clarificationHistory: clarificationData?.history?.find((h) =>
               h.action.includes('clarification')
             ),

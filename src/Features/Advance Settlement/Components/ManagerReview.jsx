@@ -1,41 +1,180 @@
-import React, { useState, useEffect } from 'react';
-import { AiOutlineEye, AiOutlineCheck, AiOutlineClose } from 'react-icons/ai';
-import RemarkModal from './RemarkModal';
-import ManagerFilter from './ManagerFilter';
-import ManagerClarificationModal from './ManagerClarificationModal';
+import React, { useState, useEffect } from 'react'
+import { AiOutlineEye, AiOutlineCheck, AiOutlineClose, AiOutlineDownload } from 'react-icons/ai'
+import * as XLSX from 'xlsx'
+import RemarkModal from './RemarkModal'
+import ManagerFilter from './ManagerFilter'
+import ManagerClarificationModal from './ManagerClarificationModal'
 
 const ManagerReview = ({ currentUser }) => {
-  const [settlements, setSettlements] = useState([]);
-  const [remarkInput, setRemarkInput] = useState('');
-  const [selectedRejectId, setSelectedRejectId] = useState(null);
-  const [clarificationData, setClarificationData] = useState(null);
+  const [settlements, setSettlements] = useState([])
+  const [remarkInput, setRemarkInput] = useState('')
+  const [selectedRejectId, setSelectedRejectId] = useState(null)
+  const [clarificationData, setClarificationData] = useState(null)
   const [filter, setFilter] = useState({
     employee: '',
     status: 'All',
     date: '',
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const rowsPerPage = 5
 
   useEffect(() => {
-    const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
-   
-    const pendingRequests = storedSettlements.filter(settlement => 
-      settlement.assignedTo === currentUser?.username ||
-      (settlement.status.includes('Clarification Submitted') && 
-       settlement.currentLevel === currentUser?.role)
-    );
-    setSettlements(pendingRequests);
-  }, [currentUser]);
+    const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || []
+
+    const pendingRequests = storedSettlements.filter(
+      (settlement) =>
+        settlement.assignedTo === currentUser?.username ||
+        (settlement.status.includes('Clarification Submitted') &&
+          settlement.currentLevel === currentUser?.role)
+    )
+    setSettlements(pendingRequests)
+  }, [currentUser])
+
+  // ✅ NEW: Function to open Excel file as HTML in new tab
+  const viewExcelFile = (excelFile) => {
+    if (!excelFile || !excelFile.data) {
+      alert('Excel file not found')
+      return
+    }
+
+    try {
+      // Convert Base64 to ArrayBuffer
+      const base64Data = excelFile.data.split(',')[1]
+      const byteCharacters = atob(base64Data)
+      const byteNumbers = new Array(byteCharacters.length)
+
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+
+      const byteArray = new Uint8Array(byteNumbers)
+
+      // Use XLSX to read and convert to HTML
+      const workbook = XLSX.read(byteArray, { type: 'array' })
+      const firstSheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[firstSheetName]
+
+      // Convert to HTML with styling
+      const html = XLSX.utils.sheet_to_html(worksheet, {
+        header:
+          '<style>table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background-color:#4CAF50;color:white;font-weight:bold;}tr:nth-child(even){background-color:#f2f2f2;}</style>',
+        footer: '',
+      })
+
+      // Open in new window with better styling
+      const newWindow = window.open('', '_blank')
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${excelFile.name || 'Settlement Expenses'}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              background-color: #f5f5f5;
+            }
+            .container {
+              background-color: white;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            h1 {
+              color: #333;
+              border-bottom: 2px solid #4CAF50;
+              padding-bottom: 10px;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin-top: 20px;
+              font-size: 14px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 12px;
+              text-align: left;
+            }
+            th {
+              background-color: #4CAF50;
+              color: white;
+              font-weight: bold;
+            }
+            tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            tr:hover {
+              background-color: #f5f5f5;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>📊 ${excelFile.name || 'Settlement Expenses'}</h1>
+            ${html}
+          </div>
+        </body>
+        </html>
+      `)
+      newWindow.document.close()
+    } catch (error) {
+      console.error('Error opening Excel file:', error)
+      alert('Failed to open Excel file. Make sure XLSX library is loaded.')
+    }
+  }
+
+  // ✅ FIXED: Function to view/download attachment
+  const viewAttachment = (attachment) => {
+    if (!attachment || !attachment.data) {
+      alert('Attachment not found')
+      return
+    }
+
+    try {
+      // Check if it's a PDF (can be opened in browser)
+      if (attachment.type === 'application/pdf') {
+        // Open PDF in new tab
+        const pdfWindow = window.open('')
+        pdfWindow.document.write(
+          `<iframe width='100%' height='100%' src='${attachment.data}'></iframe>`
+        )
+      } else {
+        // Download other file types
+        const base64Data = attachment.data.split(',')[1]
+        const byteCharacters = atob(base64Data)
+        const byteNumbers = new Array(byteCharacters.length)
+
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], { type: attachment.type })
+
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = attachment.name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error('Error opening attachment:', error)
+      alert('Failed to open attachment')
+    }
+  }
 
   const handleApprove = (id) => {
-    const updated = settlements.map(settlement => {
+    const updated = settlements.map((settlement) => {
       if (settlement.id === id) {
-        const nextApprover = getNextApprover(settlement.currentLevel);
-        const newStatus = nextApprover 
-          ? `Pending ${nextApprover.title} Approval` 
-          : 'Approved by Account Executive';
-        
+        const nextApprover = getNextApprover(settlement.currentLevel)
+        const newStatus = nextApprover
+          ? `Pending ${nextApprover.title} Approval`
+          : 'Approved by Account Executive'
+
         return {
           ...settlement,
           status: newStatus,
@@ -45,32 +184,33 @@ const ManagerReview = ({ currentUser }) => {
           history: [
             ...settlement.history,
             {
-              action: settlement.status.includes('Clarification') ? 
-                'approved-after-clarification' : 'approved',
+              action: settlement.status.includes('Clarification')
+                ? 'approved-after-clarification'
+                : 'approved',
               by: currentUser.username,
               date: new Date().toISOString(),
-              comments: ''
-            }
-          ]
-        };
+              comments: '',
+            },
+          ],
+        }
       }
-      return settlement;
-    });
+      return settlement
+    })
 
-    updateSettlements(updated);
-    setClarificationData(null);
-  };
+    updateSettlements(updated)
+    setClarificationData(null)
+  }
 
   const handleReject = (id) => {
-    if (!remarkInput.trim()) return alert('Please enter a rejection reason.');
+    if (!remarkInput.trim()) return alert('Please enter a rejection reason.')
 
-    const updated = settlements.map(settlement => {
+    const updated = settlements.map((settlement) => {
       if (settlement.id === id) {
-        const isClarification = settlement.status.includes('Clarification');
-        const status = isClarification 
-          ? 'Rejected After Clarification' 
-          : `Rejected by ${getCurrentApproverTitle(settlement.currentLevel)}`;
-        
+        const isClarification = settlement.status.includes('Clarification')
+        const status = isClarification
+          ? 'Rejected After Clarification'
+          : `Rejected by ${getCurrentApproverTitle(settlement.currentLevel)}`
+
         return {
           ...settlement,
           status,
@@ -81,116 +221,111 @@ const ManagerReview = ({ currentUser }) => {
               action: isClarification ? 'rejected-after-clarification' : 'rejected',
               by: currentUser.username,
               date: new Date().toISOString(),
-              comments: remarkInput
-            }
-          ]
-        };
+              comments: remarkInput,
+            },
+          ],
+        }
       }
-      return settlement;
-    });
+      return settlement
+    })
 
-    updateSettlements(updated);
-    setSelectedRejectId(null);
-    setRemarkInput('');
-  };
+    updateSettlements(updated)
+    setSelectedRejectId(null)
+    setRemarkInput('')
+  }
 
   const getNextApprover = (currentLevel) => {
     const hierarchy = {
-      'line-manager': { 
-        level: 'vp-operations', 
-        title: 'VP Operations', 
-        username: getVPUsername() 
+      'line-manager': {
+        level: 'vp-operations',
+        title: 'VP Operations',
+        username: getVPUsername(),
       },
-      'vp-operations': { 
-        level: 'account-executive', 
+      'vp-operations': {
+        level: 'account-executive',
         title: 'Account Executive',
-        username: getAEUsername()
+        username: getAEUsername(),
       },
-      'account-executive': null
-    };
-    return hierarchy[currentLevel];
-  };
+      'account-executive': null,
+    }
+    return hierarchy[currentLevel]
+  }
 
   const getVPUsername = () => {
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    return users.find(u => u.role === 'vp-operations')?.username;
-  };
+    const users = JSON.parse(localStorage.getItem('users')) || []
+    return users.find((u) => u.role === 'vp-operations')?.username
+  }
 
   const getAEUsername = () => {
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    return users.find(u => u.role === 'account-executive')?.username;
-  };
+    const users = JSON.parse(localStorage.getItem('users')) || []
+    return users.find((u) => u.role === 'account-executive')?.username
+  }
 
   const getCurrentApproverTitle = (currentLevel) => {
     const titles = {
       'line-manager': 'Line Manager',
       'vp-operations': 'VP Operations',
-      'account-executive': 'Account Executive'
-    };
-    return titles[currentLevel] || 'Line Manager';
-  };
+      'account-executive': 'Account Executive',
+    }
+    return titles[currentLevel] || 'Line Manager'
+  }
 
   const updateSettlements = (updatedSettlements) => {
-    setSettlements(updatedSettlements);
-    const allSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
-    const updatedAll = allSettlements.map(settlement => {
-      const updated = updatedSettlements.find(s => s.id === settlement.id);
-      return updated || settlement;
-    });
-    localStorage.setItem('settlements', JSON.stringify(updatedAll));
-  };
+    setSettlements(updatedSettlements)
+    const allSettlements = JSON.parse(localStorage.getItem('settlements')) || []
+    const updatedAll = allSettlements.map((settlement) => {
+      const updated = updatedSettlements.find((s) => s.id === settlement.id)
+      return updated || settlement
+    })
+    localStorage.setItem('settlements', JSON.stringify(updatedAll))
+  }
 
-  const filtered = settlements.filter(settlement => {
-    const matchesName = settlement.employeeName.toLowerCase().includes(filter.employee.toLowerCase());
-    const matchesStatus = filter.status === 'All' || 
-      settlement.status.toLowerCase().includes(filter.status.toLowerCase());
-    const matchesDate = !filter.date || 
-      new Date(settlement.submittedAt).toISOString().split('T')[0] === filter.date;
-    return matchesName && matchesStatus && matchesDate;
-  });
+  const filtered = settlements.filter((settlement) => {
+    const matchesName = settlement.employeeName
+      .toLowerCase()
+      .includes(filter.employee.toLowerCase())
+    const matchesStatus =
+      filter.status === 'All' ||
+      settlement.status.toLowerCase().includes(filter.status.toLowerCase())
+    const matchesDate =
+      !filter.date || new Date(settlement.submittedAt).toISOString().split('T')[0] === filter.date
+    return matchesName && matchesStatus && matchesDate
+  })
 
   const sortedRequests = filtered.sort((a, b) => {
-    if (a.status.includes('Pending') && !b.status.includes('Pending')) return -1;
-    if (!a.status.includes('Pending') && b.status.includes('Pending')) return 1;
-    return new Date(b.submittedAt) - new Date(a.submittedAt);
-  });
+    if (a.status.includes('Pending') && !b.status.includes('Pending')) return -1
+    if (!a.status.includes('Pending') && b.status.includes('Pending')) return 1
+    return new Date(b.submittedAt) - new Date(a.submittedAt)
+  })
 
   const paginatedRequests = sortedRequests.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
-  );
+  )
 
   const calculateTotalAmount = (expenseItems) => {
     return expenseItems.reduce((sum, item) => {
-      const amount = Number(item['Amount (₹)']) || 0;
-      return sum + amount;
-    }, 0);
-  };
+      const amount = Number(item['Amount (₹)']) || 0
+      return sum + amount
+    }, 0)
+  }
 
   const getStatusBadgeClass = (status) => {
-    if (status.includes('Rejected')) return 'bg-red-100 text-red-800';
-    if (status.includes('Approved')) return 'bg-green-100 text-green-800';
-    if (status.includes('Clarification')) return 'bg-purple-100 text-purple-800';
-    return 'bg-yellow-100 text-yellow-800';
-  };
+    if (status.includes('Rejected')) return 'bg-red-100 text-red-800'
+    if (status.includes('Approved')) return 'bg-green-100 text-green-800'
+    if (status.includes('Clarification')) return 'bg-purple-100 text-purple-800'
+    return 'bg-yellow-100 text-yellow-800'
+  }
 
   const shouldShowActions = (settlement) => {
     return (
       (settlement.status.includes('Pending') && settlement.assignedTo === currentUser.username) ||
       settlement.status.includes('Clarification Submitted')
-    );
-  };
-
-  // Function to handle file viewing
-  const viewFile = (fileData) => {
-    // For demo purposes, we'll just open a new window
-    // In a real app, you would fetch the actual file from your server
-    const fileUrl = URL.createObjectURL(new Blob([fileData], { type: 'application/pdf' }));
-    window.open(fileUrl, '_blank');
-  };
+    )
+  }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-5xl mx-auto p-6">
       <h2 className="text-2xl font-bold mb-6 text-green-600">Advance Settlement Requests</h2>
 
       <div className="overflow-x-auto">
@@ -214,51 +349,48 @@ const ManagerReview = ({ currentUser }) => {
               <tr key={req.id} className="border">
                 <td className="p-3 border">{(currentPage - 1) * rowsPerPage + index + 1}</td>
                 <td className="p-3 border">{req.employeeName}</td>
+                <td className="p-3 border">{new Date(req.submittedAt).toLocaleDateString()}</td>
+
+                {/* ✅ FIXED: Excel File Column */}
                 <td className="p-3 border">
-                  {new Date(req.submittedAt).toLocaleDateString()}
-                </td>
-                
-                {/* Excel File Column */}
-                <td className="p-3 border">
-                  <div className="flex items-center gap-1 text-blue-600 cursor-pointer">
-                    <span 
-                      onClick={() => viewFile(req.excelFile)}
-                      className="underline"
+                  {req.excelFile ? (
+                    <button
+                      onClick={() => viewExcelFile(req.excelFile)}
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
+                      title="Open Excel File in New Tab"
                     >
-                      View Excel
-                    </span>
-                    <AiOutlineEye 
-                      onClick={() => viewFile(req.excelFile)}
-                      className="hover:text-blue-800"
-                      title="View Excel File"
-                    />
-                  </div>
+                      <AiOutlineEye size={18} />
+                      <span className="underline">{req.excelFile.name || 'Excel File'}</span>
+                    </button>
+                  ) : (
+                    <span className="text-gray-400">No file</span>
+                  )}
                 </td>
-                
-                {/* Attachments Column */}
+
+                {/* ✅ FIXED: Attachments Column */}
                 <td className="p-3 border">
                   <div className="space-y-1">
-                    {req.attachments?.map((attachment, idx) => (
-                      <div key={idx} className="flex items-center gap-1 text-blue-600 cursor-pointer">
-                        <span 
-                          onClick={() => viewFile(attachment)}
-                          className="underline text-sm"
+                    {req.attachments && req.attachments.length > 0 ? (
+                      req.attachments.map((attachment, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => viewAttachment(attachment)}
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 w-full text-left"
+                          title={`View ${attachment.name}`}
                         >
-                          {attachment.name || `Attachment ${idx + 1}`}
-                        </span>
-                        <AiOutlineEye 
-                          onClick={() => viewFile(attachment)}
-                          className="hover:text-blue-800"
-                          title={`View ${attachment.name || 'Attachment'}`}
-                        />
-                      </div>
-                    ))}
+                          <AiOutlineEye size={16} />
+                          <span className="underline text-sm truncate">
+                            {attachment.name || `Attachment ${idx + 1}`}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <span className="text-gray-400">No attachments</span>
+                    )}
                   </div>
                 </td>
-                
-                <td className="p-3 border">
-                  ₹{calculateTotalAmount(req.expenseItems).toFixed(2)}
-                </td>
+
+                <td className="p-3 border">₹{calculateTotalAmount(req.expenseItems).toFixed(2)}</td>
                 <td className="p-3 border">
                   <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
                     {req.status}
@@ -271,9 +403,7 @@ const ManagerReview = ({ currentUser }) => {
                     />
                   )}
                 </td>
-                <td className="p-3 border text-sm">
-                  {req.rejectionReason || '-'}
-                </td>
+                <td className="p-3 border text-sm">{req.rejectionReason || '-'}</td>
                 <td className="p-3 border">
                   {shouldShowActions(req) && (
                     <div className="flex gap-2">
@@ -302,7 +432,7 @@ const ManagerReview = ({ currentUser }) => {
         {filtered.length > rowsPerPage && (
           <div className="flex justify-end items-center mt-4 gap-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-3 py-1 border rounded disabled:opacity-50"
             >
@@ -312,8 +442,8 @@ const ManagerReview = ({ currentUser }) => {
               Page {currentPage} of {Math.ceil(filtered.length / rowsPerPage)}
             </span>
             <button
-              onClick={() => 
-                setCurrentPage(prev => 
+              onClick={() =>
+                setCurrentPage((prev) =>
                   Math.min(prev + 1, Math.ceil(filtered.length / rowsPerPage))
                 )
               }
@@ -328,8 +458,8 @@ const ManagerReview = ({ currentUser }) => {
         <RemarkModal
           isOpen={selectedRejectId !== null}
           onClose={() => {
-            setSelectedRejectId(null);
-            setRemarkInput('');
+            setSelectedRejectId(null)
+            setRemarkInput('')
           }}
           onSubmit={() => handleReject(selectedRejectId)}
           remark={remarkInput}
@@ -342,24 +472,22 @@ const ManagerReview = ({ currentUser }) => {
           onClose={() => setClarificationData(null)}
           data={{
             ...clarificationData,
-            // Include the rejection history
-            rejectionHistory: clarificationData?.history?.find(h => 
-              h.action.includes('rejected') && !h.action.includes('after-clarification')
+            rejectionHistory: clarificationData?.history?.find(
+              (h) => h.action.includes('rejected') && !h.action.includes('after-clarification')
             ),
-            // Include the clarification history if exists
-            clarificationHistory: clarificationData?.history?.find(h => 
+            clarificationHistory: clarificationData?.history?.find((h) =>
               h.action.includes('clarification')
-            )
+            ),
           }}
           onApprove={() => handleApprove(clarificationData.id)}
           onReject={() => {
-            setSelectedRejectId(clarificationData.id);
-            setClarificationData(null);
+            setSelectedRejectId(clarificationData.id)
+            setClarificationData(null)
           }}
         />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ManagerReview;
+export default ManagerReview

@@ -29,14 +29,14 @@ export class FixedAssetLedgerService {
       const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices')) || [];
-      
+
       const account = chartOfAccounts.find(acc => acc.code === accountCode);
-      
+
       if (!account) {
         console.log(`❌ Fixed Asset account not found: ${accountCode}`);
         return null;
       }
-      
+
       // Get asset name mapping
       const assetNames = {
         'A1001': 'FA COMPUTERS',
@@ -47,31 +47,31 @@ export class FixedAssetLedgerService {
         'A1006': 'FA BUILDING & PREMISES',
         'A1007': 'FA MACHINERIES'
       };
-      
+
       const assetCategory = assetNames[accountCode] || account.name;
-      
+
       // Get current balance from ledger balances
       const balance = ledgerBalances[accountCode] || { debit: 0, credit: 0, balance: 0 };
       const totalPurchaseValue = balance.debit || 0;
       const accumulatedDepreciation = balance.credit || 0;
       const netBookValue = totalPurchaseValue - accumulatedDepreciation;
-      
+
       // Filter transactions for this asset account
-      const assetTransactions = transactions.filter(txn => 
+      const assetTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode && entry.debit > 0)
       );
-      
+
       // Count assets from processed invoices
-      const assetInvoices = processedInvoices.filter(inv => 
-        inv.type === 'Fixed Asset' && 
+      const assetInvoices = processedInvoices.filter(inv =>
+        inv.type === 'Fixed Asset' &&
         inv.fixed_asset_gl_code === accountCode
       );
-      
+
       const totalAssets = assetInvoices.length;
-      const activeAssets = assetInvoices.filter(inv => 
+      const activeAssets = assetInvoices.filter(inv =>
         !inv.status || !inv.status.toLowerCase().includes('disposed')
       ).length;
-      
+
       // Get depreciation rate based on asset type
       const depreciationRates = {
         'A1001': '40%',
@@ -82,7 +82,7 @@ export class FixedAssetLedgerService {
         'A1006': '5%',
         'A1007': '15%'
       };
-      
+
       return {
         assetCode: accountCode,
         assetCategory: assetCategory,
@@ -116,7 +116,7 @@ export class FixedAssetLedgerService {
           underMaintenance: 0
         }
       };
-      
+
     } catch (error) {
       console.error('❌ Error getting Fixed Asset account details:', error);
       return null;
@@ -131,19 +131,19 @@ export class FixedAssetLedgerService {
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      
+
       console.log(`📊 Generating Fixed Asset ledger for: ${accountCode}`);
-      
+
       // Filter transactions that involve this Fixed Asset account (debit entries)
-      const assetTransactions = transactions.filter(txn => 
+      const assetTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode && entry.debit > 0)
       );
-      
+
       // Sort by date ascending
       assetTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+
       console.log(`📋 Found ${assetTransactions.length} Fixed Asset transactions for ${accountCode}`);
-      
+
       // Get depreciation rate
       const depreciationRates = {
         'A1001': '40',
@@ -154,46 +154,46 @@ export class FixedAssetLedgerService {
         'A1006': '5',
         'A1007': '15'
       };
-      
+
       const depreciationRate = depreciationRates[accountCode] || '15';
-      
+
       // Convert to ledger entries
       const ledgerEntries = [];
       let runningPurchaseValue = 0;
       let accumulatedDepreciation = 0;
-      
+
       assetTransactions.forEach(txn => {
         const assetEntry = txn.entries.find(entry => entry.glCode === accountCode && entry.debit > 0);
-        const vendorEntry = txn.entries.find(entry => 
+        const vendorEntry = txn.entries.find(entry =>
           entry.glCode.startsWith('L2005003_') ||
-          entry.glCode.startsWith('L2005-VEN-') || 
+          entry.glCode.startsWith('L2005-VEN-') ||
           entry.glCode.startsWith('L2005002_')
         );
-        
+
         if (assetEntry) {
           const purchaseValue = assetEntry.debit || 0;
           runningPurchaseValue += purchaseValue;
-          
+
           // Find corresponding invoice for asset details
           // Try multiple matching strategies
-          let invoice = processedInvoices.find(inv => 
+          let invoice = processedInvoices.find(inv =>
             inv.invoiceNumber === txn.invoiceNumber
           );
-          
+
           if (!invoice) {
-            invoice = processedInvoices.find(inv => 
+            invoice = processedInvoices.find(inv =>
               inv.voucher_id === txn.voucherNo
             );
           }
-          
+
           if (!invoice) {
-            invoice = processedInvoices.find(inv => 
-              inv.type === 'Fixed Asset' && 
+            invoice = processedInvoices.find(inv =>
+              inv.type === 'Fixed Asset' &&
               inv.fixed_asset_gl_code === accountCode &&
               Math.abs(new Date(inv.processedAtAM || inv.submittedAt) - new Date(txn.date)) < 86400000 // within 1 day
             );
           }
-          
+
           // Get asset details from invoice or transaction
           const assetDetails = invoice?.assetDetails || assetEntry.assetDetails || {};
           const assetTag = assetDetails.assetTag || assetEntry.assetTag || invoice?.assetDetails?.assetTag || '-';
@@ -201,18 +201,18 @@ export class FixedAssetLedgerService {
           const location = assetDetails.location || assetEntry.costCenter || invoice?.assetDetails?.location || 'Operations';
           const warranty = assetDetails.warranty || assetEntry.warranty || invoice?.assetDetails?.warranty || '-';
           const assetCategory = assetDetails.assetCategory || invoice?.asset_category || invoice?.assetDetails?.assetCategory || 'Fixed Asset';
-          const vendorName = invoice?.vendorName 
+          const vendorName = invoice?.vendorName
             || vendorEntry?.glName?.replace('FIXED ASSET VENDOR - ', '').replace('VENDOR - ', '').replace('HK MATERIAL VENDOR - ', '')
-            || txn.narration?.split('from ')[1]?.split(' - ')[0] 
+            || txn.narration?.split('from ')[1]?.split(' - ')[0]
             || '-';
-          
+
           // Format date for display
           const displayDate = this.formatDate(txn.date);
-          
+
           // Calculate net book value (purchase value - accumulated depreciation)
           // For now, depreciation is 0 as it's not being calculated automatically
           const netBookValue = purchaseValue;
-          
+
           ledgerEntries.push({
             date: displayDate,
             originalDate: txn.date,
@@ -250,16 +250,16 @@ export class FixedAssetLedgerService {
           });
         }
       });
-      
+
       console.log(`✅ Generated ${ledgerEntries.length} Fixed Asset ledger entries`);
       return ledgerEntries;
-      
+
     } catch (error) {
       console.error('❌ Error generating Fixed Asset ledger entries:', error);
       return [];
     }
   }
-  
+
   /**
    * Format date for display (DD-MM-YY format)
    */
@@ -280,7 +280,7 @@ export class FixedAssetLedgerService {
       } else {
         date = new Date(dateString);
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = String(date.getFullYear()).slice(-2);
@@ -289,7 +289,7 @@ export class FixedAssetLedgerService {
       return dateString;
     }
   }
-  
+
   /**
    * Get useful life based on asset type
    */
@@ -303,10 +303,10 @@ export class FixedAssetLedgerService {
       'A1006': '60 Years', // Building
       'A1007': '15 Years' // Machinery
     };
-    
+
     return usefulLives[accountCode] || '10 Years';
   }
-  
+
   /**
    * Get all Fixed Asset GL codes
    */

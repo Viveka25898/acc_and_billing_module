@@ -160,6 +160,10 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
     if (account.type === 'ACCOUNT') {
       console.log('🔍 Clicked Account:', account.code, account.name)
 
+      // ========================================
+      // NON-VENDOR ACCOUNT CHECKS
+      // ========================================
+
       const isRelieverPaymentAccount =
         account.code === 'X100101003' ||
         account.code === 'X1001001003' ||
@@ -177,11 +181,6 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
 
       const isEmployeeAccount =
         account.code.startsWith('A3002') || account.name.toLowerCase().includes('employee advance')
-
-      const isVendorAccount =
-        account.code.startsWith('L2005_') ||
-        account.parentCode === 'L2005' ||
-        account.name.toLowerCase().includes('vendor')
 
       const isTDSAccount =
         account.code.startsWith('L2003') ||
@@ -213,6 +212,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         (account.code.includes('X2001002') &&
           account.name.toLowerCase().includes('branch office rent'))
 
+      const isHKMaterialExpenseAccount =
+        account.code === 'X1001004001' ||
+        account.code.startsWith('X1001004') ||
+        (account.code.includes('X1001004') && account.name.toLowerCase().includes('hk material'))
+
       const isCGSTInputAccount =
         account.code === 'A300701001' || account.name.toLowerCase().includes('cgst input')
 
@@ -222,24 +226,6 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       const isIGSTInputAccount =
         account.code === 'A300701003' || account.name.toLowerCase().includes('igst input')
 
-      const isRentVendorAccount =
-        isVendorAccount &&
-        (account.name.toLowerCase().includes('owner') ||
-          account.name.toLowerCase().includes('landlord') ||
-          account.name.toLowerCase().includes('rent') ||
-          account.name.toLowerCase().includes('branch office rent'))
-
-      const isHKVendorAccount =
-        isVendorAccount && account.name.toLowerCase().includes('hk material')
-
-      const isFixedAssetVendorAccount =
-        isVendorAccount && account.name.toLowerCase().includes('fixed asset')
-
-      const isPrepaidUniformVendorAccount =
-        isVendorAccount &&
-        (account.name.toLowerCase().includes('uniform') ||
-          account.name.toLowerCase().includes('prepaid'))
-
       const isFixedAssetAccount =
         account.code === 'A1001' ||
         account.code === 'A1002' ||
@@ -248,15 +234,15 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         account.code === 'A1005' ||
         account.code === 'A1006' ||
         account.code === 'A1007' ||
-        account.code.startsWith('A100') ||
-        account.name.toLowerCase().includes('fa computers') ||
-        account.name.toLowerCase().includes('fa furniture') ||
-        account.name.toLowerCase().includes('fa motor cars') ||
-        account.name.toLowerCase().includes('fa softwares') ||
-        account.name.toLowerCase().includes('fa office equipment') ||
-        account.name.toLowerCase().includes('fa building') ||
-        account.name.toLowerCase().includes('fa machineries') ||
-        account.name.toLowerCase().includes('fixed asset')
+        (account.code.startsWith('A100') &&
+          (account.name.toLowerCase().includes('fa computers') ||
+            account.name.toLowerCase().includes('fa furniture') ||
+            account.name.toLowerCase().includes('fa motor cars') ||
+            account.name.toLowerCase().includes('fa softwares') ||
+            account.name.toLowerCase().includes('fa office equipment') ||
+            account.name.toLowerCase().includes('fa building') ||
+            account.name.toLowerCase().includes('fa machineries') ||
+            account.name.toLowerCase().includes('fixed asset')))
 
       const isUniformPrepaidExpenseAccount =
         account.code === 'A3005001' ||
@@ -264,25 +250,37 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('uniform') &&
           account.name.toLowerCase().includes('prepaid'))
 
-      // ✅ FIXED: Correct Uniform Expense Account detection
       const isUniformExpenseAccount =
         account.code === 'X2001004' ||
         (account.code.startsWith('X2001') &&
           account.name.toLowerCase().includes('uniform expense') &&
           !account.name.toLowerCase().includes('prepaid'))
 
+      // ========================================
+      // ✅ UNIFIED VENDOR ACCOUNT CHECK
+      // ========================================
+
+      // ANY account under L2005 is a vendor - route to unified vendor ledger
+      const isVendorAccount =
+        account.code.startsWith('L2005') ||
+        account.parentCode === 'L2005' ||
+        (account.name.toUpperCase().includes('VENDOR') && account.code.startsWith('L2005'))
+
       console.log('🎯 Account Classification:', {
-        isRelieverPaymentAccount,
-        isConveyanceExpenseAccount,
-        isConveyancePayableAccount,
-        isEmployeeAccount,
+        code: account.code,
+        name: account.name,
+        parentCode: account.parentCode,
         isVendorAccount,
-        isRentVendorAccount,
-        isHKVendorAccount,
-        isFixedAssetVendorAccount,
-        isPrepaidUniformVendorAccount,
+        isEmployeeAccount,
+        isBankAccount,
+        isFixedAssetAccount,
       })
 
+      // ========================================
+      // ROUTING LOGIC (Non-Vendor First, Then Vendor)
+      // ========================================
+
+      // Non-vendor accounts first
       if (isRelieverPaymentAccount) {
         console.log('✅ Navigating to Reliever Payment Page')
         navigate(`/dashboard/account-manager/reliever-payment-page`)
@@ -295,24 +293,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isEmployeeAccount) {
         console.log('✅ Navigating to Employee Ledger')
         navigate(`/dashboard/account-manager/ledger/${account.code}`)
-      } else if (isFixedAssetAccount && !isFixedAssetVendorAccount) {
+      } else if (isFixedAssetAccount) {
         console.log('✅ Navigating to Fixed Asset Ledger:', account.code)
         navigate(`/dashboard/account-manager/fixed-asset-ledger/${account.code}`)
-      } else if (isHKVendorAccount) {
-        console.log('✅ Navigating to HK Vendor Ledger')
-        navigate(`/dashboard/account-manager/hk-vendor-ledger/${account.code}`)
-      } else if (isPrepaidUniformVendorAccount) {
-        console.log('✅ Navigating to Prepaid Uniform Vendor Ledger')
-        navigate(`/dashboard/account-manager/prepaid-uniform-vendor-ledger/${account.code}`)
-      } else if (isFixedAssetVendorAccount) {
-        console.log('✅ Navigating to FA Vendor Ledger')
-        navigate(`/dashboard/account-manager/fa-vendor-ledger/${account.code}`)
-      } else if (isRentVendorAccount || isVendorAccount) {
-        console.log('✅ Navigating to Rent Vendor Ledger')
-        navigate(`/dashboard/account-manager/rent-vendor-ledger/${account.code}`)
-      } else if (isVendorAccount) {
-        console.log('✅ Navigating to Generic Vendor Ledger')
-        navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`)
       } else if (isTDSAccount) {
         const sectionCode = account.code.replace('L2003', '').replace(/^0+/, '') || '194C'
         console.log('✅ Navigating to TDS Ledger')
@@ -347,6 +330,15 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isUniformPrepaidExpenseAccount) {
         console.log('✅ Navigating to Uniform Prepaid Expense Ledger')
         navigate(`/dashboard/account-manager/fa-uniform-expense`)
+      }
+      // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here
+      else if (isVendorAccount) {
+        console.log('✅ Navigating to UNIFIED Vendor Ledger:', account.code)
+        console.log('   - This ledger will show ALL transactions (HK, FA, Uniform, Rent, etc.)')
+        navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`)
+      } else if (isHKMaterialExpenseAccount) {
+        console.log('✅ Navigating to HK Materials Expense Ledger')
+        navigate(`/dashboard/account-manager/hk-materials-expense-ledger`)
       } else {
         console.log('✅ Navigating to Generic Ledger')
         navigate(`/dashboard/account-manager/ledger/${account.code}`)

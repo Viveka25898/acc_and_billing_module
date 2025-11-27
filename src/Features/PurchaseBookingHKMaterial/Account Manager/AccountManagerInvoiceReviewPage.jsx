@@ -686,16 +686,6 @@ Invoice Processing Summary:
         </div>
       )}
 
-      {/* Info Banner */}
-      <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded">
-        <p className="text-sm text-purple-800">
-          <strong>ℹ️ New Flow:</strong> Procurement Prepaid invoices are now FINALLY approved by
-          Account Manager. After setting the prepaid period, GL entries are automatically posted and
-          all voucher buttons become available. Procurement Prepaid invoices stay in this table for
-          ongoing access to voucher functions.
-        </p>
-      </div>
-
       {/* Modal */}
       {selectedInvoice && (
         <AMInvoiceVerifyModal

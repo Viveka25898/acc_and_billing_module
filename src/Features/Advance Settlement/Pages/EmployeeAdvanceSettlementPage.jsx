@@ -13,6 +13,16 @@ const EmployeeAdvanceSettlementPage = () => {
   const [error, setError] = useState('')
   const [osBalance, setOsBalance] = useState(0)
 
+  // Add this helper function to convert file to Base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = (error) => reject(error)
+    })
+  }
+
   // Define expense heads with exact GL code mapping
   const expenseHeadsMaster = {
     Travel: {
@@ -360,20 +370,37 @@ const EmployeeAdvanceSettlementPage = () => {
       // Add GL code mapping to each expense item
       const expenseItemsWithGL = excelData.map((item) => ({
         ...item,
-        glCode: expenseHeadsMaster[item['Expense Head']]?.glCode || 'X2002002001', // Default to Other Expense
+        glCode: expenseHeadsMaster[item['Expense Head']]?.glCode || 'X2002002001',
       }))
+
+      // ✅ CONVERT EXCEL FILE TO BASE64
+      const excelBase64 = await fileToBase64(excelFile)
+
+      // ✅ CONVERT ALL ATTACHMENTS TO BASE64
+      const attachmentsWithData = await Promise.all(
+        attachments.map(async (file) => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          data: await fileToBase64(file), // Store Base64 data
+        }))
+      )
 
       const newSettlement = {
         id: `SET-${Date.now()}`,
         employeeName: currentUser.fullName || currentUser.username,
         employeeId: currentUser.empId,
-        expenseItems: expenseItemsWithGL, // Now includes GL codes
+        expenseItems: expenseItemsWithGL,
         totalAmount: totalAmount,
-        attachments: attachments.map((file) => ({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        })),
+        // ✅ STORE EXCEL FILE WITH DATA
+        excelFile: {
+          name: excelFile.name,
+          size: excelFile.size,
+          type: excelFile.type,
+          data: excelBase64, // Base64 data
+        },
+        // ✅ STORE ATTACHMENTS WITH DATA
+        attachments: attachmentsWithData,
         status: 'Pending Line Manager Approval',
         submittedAt: new Date().toISOString(),
         assignedTo: currentUser.reportsTo,
@@ -395,7 +422,7 @@ const EmployeeAdvanceSettlementPage = () => {
       const updatedSettlements = [...existingSettlements, newSettlement]
       localStorage.setItem('settlements', JSON.stringify(updatedSettlements))
 
-      console.log('✅ Settlement saved with GL mapping:', newSettlement)
+      console.log('✅ Settlement saved with files:', newSettlement)
       setSubmitted(true)
       toast.success('✅ Settlement submitted successfully!')
       return true
@@ -406,7 +433,6 @@ const EmployeeAdvanceSettlementPage = () => {
       return false
     }
   }
-
   const parseExcelFile = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()

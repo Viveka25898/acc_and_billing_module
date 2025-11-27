@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 // utils/hkMaterialLedgerService.js
 export class HKMaterialLedgerService {
-  
+
   /**
    * Get all vendor ledger entries for a specific HK Material vendor GL account
    */
@@ -9,53 +9,53 @@ export class HKMaterialLedgerService {
     try {
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      
+
       console.log(`📊 Generating HK Material vendor ledger for: ${accountCode}`);
-      
+
       // Filter transactions that involve this vendor account
-      const hkTransactions = transactions.filter(txn => 
+      const hkTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode)
       );
-      
+
       // Sort by date ascending
       hkTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+
       console.log(`📋 Found ${hkTransactions.length} HK Material transactions`);
-      
+
       // Convert to ledger entries
       const ledgerEntries = [];
       let runningBalance = 0;
       let balanceType = 'CR'; // Vendors typically have credit balance
-      
+
       hkTransactions.forEach(txn => {
         const vendorEntry = txn.entries.find(entry => entry.glCode === accountCode);
         const expenseEntry = txn.entries.find(entry => entry.glCode === "X1001004001");
         const cgstEntry = txn.entries.find(entry => entry.glCode === "A3007001001");
         const sgstEntry = txn.entries.find(entry => entry.glCode === "A3007001002");
-        
+
         if (vendorEntry) {
           const debit = vendorEntry.debit || 0;
           const credit = vendorEntry.credit || 0;
-          
+
           // Calculate running balance (vendor perspective)
           // For vendors: Credit increases liability (outstanding), Debit decreases (payment)
           runningBalance += credit - debit;
           balanceType = runningBalance >= 0 ? 'CR' : 'DR';
-          
+
           // Determine entry type
           const entryType = this.getVendorEntryType(debit, credit);
-          
+
           // Get counterparty info (usually the expense account or invoice details)
-          const counterparty = expenseEntry 
+          const counterparty = expenseEntry
             ? expenseEntry.glName || 'HK MATERIALS'
             : txn.narration || 'HK Material Purchase';
-          
+
           // Format date for display (DD-MM-YY format)
           const displayDate = this.formatDate(txn.date);
-          
+
           // Format balance
           const formattedBalance = `${Math.abs(runningBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${balanceType}`;
-          
+
           ledgerEntries.push({
             date: displayDate, // Formatted date for display (DD-MM-YY)
             originalDate: txn.date, // Original date for filtering (YYYY-MM-DD)
@@ -78,10 +78,10 @@ export class HKMaterialLedgerService {
           });
         }
       });
-      
+
       console.log(`✅ Generated ${ledgerEntries.length} HK Material vendor ledger entries`);
       return ledgerEntries;
-      
+
     } catch (error) {
       console.error('❌ Error generating HK Material vendor ledger:', error);
       return [];
@@ -95,34 +95,34 @@ export class HKMaterialLedgerService {
     try {
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
       const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
-      
+
       const account = chartOfAccounts.find(acc => acc.code === accountCode);
-      
+
       if (!account) {
         console.log(`❌ HK Material vendor account not found: ${accountCode}`);
         return null;
       }
-      
+
       // Extract vendor name from account name or code
-      const vendorName = account.name.replace('HK MATERIAL VENDOR - ', '') || 
-                        accountCode.split('_').slice(2).join(' ').replace(/_/g, ' ');
-      
+      const vendorName = account.name.replace('HK MATERIAL VENDOR - ', '') ||
+        accountCode.split('_').slice(2).join(' ').replace(/_/g, ' ');
+
       // Get current balance
       const balance = ledgerBalances[accountCode] || { debit: 0, credit: 0, balance: 0 };
       const outstandingBalance = Math.abs(balance.balance);
       const balanceType = balance.balance >= 0 ? 'Credit' : 'Debit';
-      
+
       // Get vendor transactions to calculate totals
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-      const hkTransactions = transactions.filter(txn => 
+      const hkTransactions = transactions.filter(txn =>
         txn.entries?.some(entry => entry.glCode === accountCode)
       );
-      
+
       // Calculate invoice and payment totals
       let totalInvoices = 0;
       let totalPayments = 0;
       let pendingInvoices = 0;
-      
+
       hkTransactions.forEach(txn => {
         const vendorEntry = txn.entries.find(entry => entry.glCode === accountCode);
         if (vendorEntry) {
@@ -135,7 +135,7 @@ export class HKMaterialLedgerService {
           }
         }
       });
-      
+
       return {
         vendorCode: accountCode,
         vendorName: vendorName,
@@ -168,7 +168,7 @@ export class HKMaterialLedgerService {
           pendingInvoices: `${pendingInvoices} Invoices`,
         }
       };
-      
+
     } catch (error) {
       console.error('❌ Error getting HK Material vendor account details:', error);
       return null;
@@ -204,7 +204,7 @@ export class HKMaterialLedgerService {
       } else {
         date = new Date(dateString);
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = String(date.getFullYear()).slice(-2);
@@ -213,7 +213,7 @@ export class HKMaterialLedgerService {
       return dateString;
     }
   }
-  
+
   /**
    * Parse date for filtering (convert DD-MM-YY to Date object)
    */

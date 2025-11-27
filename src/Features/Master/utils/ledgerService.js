@@ -1,5 +1,3 @@
-
-
 /**
  * Dynamic Ledger Service - Converts transactions to ledger entries
  */
@@ -17,9 +15,14 @@ export class LedgerService {
             console.log(`📊 Generating ledger for: ${accountCode}`);
 
             // Filter transactions that involve this account
-            const relevantTransactions = transactions.filter(txn =>
-                txn.entries.some(entry => entry.glCode === accountCode)
-            );
+            // ✅ FIX: Check if txn.entries exists before using .some()
+            const relevantTransactions = transactions.filter(txn => {
+                if (!txn.entries || !Array.isArray(txn.entries)) {
+                    console.warn('⚠️ Transaction missing entries array:', txn);
+                    return false;
+                }
+                return txn.entries.some(entry => entry.glCode === accountCode);
+            });
 
             console.log(`📋 Found ${relevantTransactions.length} relevant transactions`);
 
@@ -44,7 +47,7 @@ export class LedgerService {
                     const counterparty = this.getCounterpartyInfo(otherEntry, chartOfAccounts, users);
 
                     ledgerEntries.push({
-                        date: txn.date,
+                        date: txn.date || txn.transactionDate,
                         voucherNo: txn.voucherNo,
                         entryType: this.getEntryType(debit, credit),
                         debit: debit,
@@ -79,8 +82,8 @@ export class LedgerService {
         if (!entry) return { name: 'N/A', type: 'Unknown' };
 
         // Check if it's an employee account
-        if (entry.glCode && entry.glCode.startsWith('A3002-EMP-')) {
-            const empId = entry.glCode.replace('A3002-EMP-', '');
+        if (entry.glCode && entry.glCode.includes('EMP-')) {
+            const empId = entry.glCode.split('EMP-')[1];
             const employee = users.find(u => u.empId === empId);
             return {
                 name: employee?.fullName || `Employee ${empId}`,
@@ -89,7 +92,7 @@ export class LedgerService {
         }
 
         // Check if it's a bank account
-        if (entry.glCode && entry.glCode.startsWith('A3004003')) {
+        if (entry.glCode && entry.glCode.startsWith('A3004')) {
             const bank = chartOfAccounts.find(acc => acc.code === entry.glCode);
             return {
                 name: bank?.name || 'Bank Account',
@@ -140,8 +143,8 @@ export class LedgerService {
             }
 
             // Check if it's an employee account
-            if (accountCode.startsWith('A3002-EMP-')) {
-                const empId = accountCode.replace('A3002-EMP-', '');
+            if (accountCode.includes('EMP-')) {
+                const empId = accountCode.split('EMP-')[1];
                 const employee = users.find(u => u.empId === empId);
 
                 return {
@@ -154,7 +157,7 @@ export class LedgerService {
                     financialYear: '2025-2026',
                     period: 'Apr 2025 - Mar 2026',
                     openingBalance: {
-                        amount: 0, // You can calculate this from older transactions
+                        amount: 0,
                         date: '2025-04-01',
                         type: 'CR'
                     }
@@ -182,5 +185,45 @@ export class LedgerService {
             console.error('Error getting account details:', error);
             return null;
         }
+    }
+
+    /**
+     * ✅ NEW: Filter entries by date range
+     */
+    static filterByDateRange(entries, fromDate, toDate) {
+        if (!fromDate && !toDate) return entries;
+
+        return entries.filter(entry => {
+            const entryDate = new Date(entry.date);
+            const from = fromDate ? new Date(fromDate) : new Date('1900-01-01');
+            const to = toDate ? new Date(toDate) : new Date('2100-12-31');
+
+            return entryDate >= from && entryDate <= to;
+        });
+    }
+
+    /**
+     * ✅ NEW: Filter entries by entry type
+     */
+    static filterByEntryType(entries, entryType) {
+        if (!entryType) return entries;
+        return entries.filter(entry => entry.entryType === entryType);
+    }
+
+    /**
+     * ✅ NEW: Search entries by text
+     */
+    static searchEntries(entries, searchText) {
+        if (!searchText) return entries;
+
+        const search = searchText.toLowerCase();
+        return entries.filter(entry => {
+            return (
+                entry.voucherNo?.toLowerCase().includes(search) ||
+                entry.narration?.toLowerCase().includes(search) ||
+                entry.counterparty?.toLowerCase().includes(search) ||
+                entry.refNo?.toLowerCase().includes(search)
+            );
+        });
     }
 }

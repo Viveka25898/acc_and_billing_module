@@ -1,10 +1,9 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
-import RequestFilter from './RequestFilter';
-import { toast } from 'react-toastify';
+import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
+import RequestFilter from './RequestFilter'
+import { toast } from 'react-toastify'
 
-// const dummyRequests = [
 //   {
 //     id: 1,
 //     employeeId: 'EMP001',
@@ -41,70 +40,70 @@ import { toast } from 'react-toastify';
 // ];
 
 const MyRequests = () => {
-  const [requests, setRequests] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [dateFilter, setDateFilter] = useState('');
-  const [showClarifyModal, setShowClarifyModal] = useState(false);
-  const [clarificationText, setClarificationText] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [requests, setRequests] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [dateFilter, setDateFilter] = useState('')
+  const [showClarifyModal, setShowClarifyModal] = useState(false)
+  const [clarificationText, setClarificationText] = useState('')
+  const [selectedRequest, setSelectedRequest] = useState(null)
 
+  const itemsPerPage = 5
 
-  const itemsPerPage = 5;
-
-  const auth = useSelector((state) => state.auth);
-  const loggedInUserName = useSelector((state) => state.auth.user);
-
+  const auth = useSelector((state) => state.auth)
+  const loggedInUserName = useSelector((state) => state.auth.user)
 
   useEffect(() => {
     // Get all requests from localStorage
-    const stored = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-    console.log(stored);
+    const stored = JSON.parse(localStorage.getItem('advanceRequests')) || []
+    console.log(stored)
 
     // Filter only current employee's requests
     const userRequests = stored
       .filter((r) => r.employeeId === loggedInUserName)
       .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) // Sort latest first
-      .slice(0, 5); // Keep only last 5
-      console.log(userRequests);
+      .slice(0, 5) // Keep only last 5
+    console.log(userRequests)
 
-    setRequests(userRequests);
-  }, [loggedInUserName]);
+    setRequests(userRequests)
+  }, [loggedInUserName])
 
-  const filteredRequests = requests.filter((r) => !dateFilter || r.requestDate === dateFilter);
-  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
-  const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const filteredRequests = requests.filter((r) => !dateFilter || r.requestDate === dateFilter)
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
- const openClarifyModal = (req) => {
-  setSelectedRequest(req); // full request object
-  setClarificationText('');
-  setShowClarifyModal(true);
-};
-
-  const submitClarification = () => {
-  if (!clarificationText.trim()) {
-    toast.error('Clarification cannot be empty.');
-    return;
+  const openClarifyModal = (req) => {
+    setSelectedRequest(req) // full request object
+    setClarificationText('')
+    setShowClarifyModal(true)
   }
 
-  const updated = requests.map((r) =>
-    r.employeeId === selectedRequest.employeeId && r.submittedAt === selectedRequest.submittedAt
-      ? { ...r, clarification: clarificationText }
-      : r
-  );
-  setRequests(updated);
+  const submitClarification = () => {
+    if (!clarificationText.trim()) {
+      toast.error('Clarification cannot be empty.')
+      return
+    }
 
-  const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || [];
-  const updatedAllRequests = allRequests.map((r) =>
-    r.employeeId === selectedRequest.employeeId && r.submittedAt === selectedRequest.submittedAt
-      ? { ...r, clarification: clarificationText }
-      : r
-  );
-  localStorage.setItem('advanceRequests', JSON.stringify(updatedAllRequests));
+    const updated = requests.map((r) =>
+      r.employeeId === selectedRequest.employeeId && r.submittedAt === selectedRequest.submittedAt
+        ? { ...r, clarification: clarificationText }
+        : r
+    )
+    setRequests(updated)
 
-  setShowClarifyModal(false);
-  toast.success('Clarification submitted successfully.');
-};
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
+    const updatedAllRequests = allRequests.map((r) =>
+      r.employeeId === selectedRequest.employeeId && r.submittedAt === selectedRequest.submittedAt
+        ? { ...r, clarification: clarificationText }
+        : r
+    )
+    localStorage.setItem('advanceRequests', JSON.stringify(updatedAllRequests))
 
+    setShowClarifyModal(false)
+    toast.success('Clarification submitted successfully.')
+  }
 
   return (
     <div className="min-h-screen px-4 py-10 bg-white rounded shadow-md">
@@ -131,16 +130,18 @@ const MyRequests = () => {
               <tbody>
                 {paginatedRequests.map((req, index) => (
                   <tr key={index} className="text-center">
-                    <td className="border px-4 py-2 font-mono text-xs">
-                      {req.requestId || 'N/A'}
-                    </td>
+                    <td className="border px-4 py-2 font-mono text-xs">{req.requestId || 'N/A'}</td>
                     <td className="border px-4 py-2">₹{req.amount}</td>
                     <td className="border px-4 py-2">{req.requestDate}</td>
-                   <td
+                    <td
                       className={`border px-4 py-2 font-semibold ${
-                        req.status.includes('Rejected') ? 'text-red-600' :
-                        req.status.includes('Pending') ? 'text-yellow-600' :
-                        req.status.includes('Approved') ? 'text-green-600' : 'text-gray-600'
+                        req.status.includes('Rejected')
+                          ? 'text-red-600'
+                          : req.status.includes('Pending')
+                            ? 'text-yellow-600'
+                            : req.status.includes('Approved')
+                              ? 'text-green-600'
+                              : 'text-gray-600'
                       }`}
                     >
                       {req.status}
@@ -149,7 +150,7 @@ const MyRequests = () => {
                     <td className="border px-4 py-2">
                       {req.status.includes('Rejected') && !req.clarification ? (
                         <button
-                         onClick={() => openClarifyModal(req)}
+                          onClick={() => openClarifyModal(req)}
                           className="text-blue-600 underline hover:text-blue-800"
                         >
                           Clarification
@@ -216,7 +217,7 @@ const MyRequests = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default MyRequests;
+export default MyRequests

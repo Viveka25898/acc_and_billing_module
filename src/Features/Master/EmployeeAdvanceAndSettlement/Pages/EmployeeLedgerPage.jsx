@@ -7,13 +7,12 @@ import FooterSummary from '../Components/FooterSummary'
 import { LedgerService } from '../../utils/ledgerService'
 
 const EmployeeLedgerPage = () => {
-  // Get accountCode from URL params (e.g., /ledger/A3002-EMP-001)
   const { accountCode } = useParams()
   const navigate = useNavigate()
 
   const [filters, setFilters] = useState({
     fromDate: '2024-04-01',
-    toDate: '2025-03-31',
+    toDate: '2026-03-31', // Changed to 2026 to include all 2025 transactions
     entryType: '',
     status: '',
     searchText: '',
@@ -25,13 +24,14 @@ const EmployeeLedgerPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Load ledger data on mount or when accountCode changes
   useEffect(() => {
     loadLedgerData()
   }, [accountCode])
 
-  // Apply filters when entries or filter criteria change
   useEffect(() => {
+    console.log('🔄 Applying filters...')
+    console.log('📊 Ledger Entries:', ledgerEntries.length)
+    console.log('🔍 Filters:', filters)
     applyFilters()
   }, [ledgerEntries, filters])
 
@@ -42,7 +42,6 @@ const EmployeeLedgerPage = () => {
 
       console.log(`🔄 Loading ledger for account: ${accountCode}`)
 
-      // Get account details
       const details = LedgerService.getAccountDetails(accountCode)
 
       if (!details) {
@@ -53,8 +52,8 @@ const EmployeeLedgerPage = () => {
 
       setAccountData(details)
 
-      // Get ledger entries
       const entries = LedgerService.getLedgerEntries(accountCode)
+      console.log('📦 Raw entries from service:', entries)
       setLedgerEntries(entries)
 
       console.log(`✅ Loaded ${entries.length} entries for ${accountCode}`)
@@ -69,25 +68,34 @@ const EmployeeLedgerPage = () => {
   const applyFilters = () => {
     try {
       let filtered = [...ledgerEntries]
+      console.log('🔢 Starting with entries:', filtered.length)
 
       // Filter by date range
       if (filters.fromDate || filters.toDate) {
+        const beforeFilter = filtered.length
         filtered = LedgerService.filterByDateRange(filtered, filters.fromDate, filters.toDate)
+        console.log(`📅 After date filter: ${beforeFilter} → ${filtered.length}`)
       }
 
       // Filter by entry type
       if (filters.entryType) {
+        const beforeFilter = filtered.length
         filtered = LedgerService.filterByEntryType(filtered, filters.entryType)
+        console.log(`📝 After type filter: ${beforeFilter} → ${filtered.length}`)
       }
 
       // Search filter
       if (filters.searchText) {
+        const beforeFilter = filtered.length
         filtered = LedgerService.searchEntries(filtered, filters.searchText)
+        console.log(`🔍 After search filter: ${beforeFilter} → ${filtered.length}`)
       }
 
+      console.log('✅ Final filtered entries:', filtered.length)
+      console.log('📋 Sample filtered entry:', filtered[0])
       setFilteredEntries(filtered)
     } catch (error) {
-      console.error('Error applying filters:', error)
+      console.error('❌ Error applying filters:', error)
       setFilteredEntries(ledgerEntries)
     }
   }
@@ -95,6 +103,13 @@ const EmployeeLedgerPage = () => {
   const handleRefresh = () => {
     loadLedgerData()
   }
+
+  // 🐛 DEBUG: Log state changes
+  useEffect(() => {
+    console.log('🔔 State Update:')
+    console.log('   - ledgerEntries:', ledgerEntries.length)
+    console.log('   - filteredEntries:', filteredEntries.length)
+  }, [ledgerEntries, filteredEntries])
 
   if (loading) {
     return (
@@ -132,13 +147,9 @@ const EmployeeLedgerPage = () => {
   return (
     <div className="w-full min-h-screen bg-gray-100 p-2 md:p-4">
       <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-        {/* Header with account details */}
         <EmployeeHeader data={accountData} />
-
-        {/* Filter Section */}
         <FilterSection filters={filters} setFilters={setFilters} />
 
-        {/* Action Bar */}
         <div className="px-3 md:px-5 py-2 bg-gray-50 border-b flex justify-between items-center">
           <div className="text-sm text-gray-600">
             Showing {filteredEntries.length} of {ledgerEntries.length} transactions
@@ -151,10 +162,30 @@ const EmployeeLedgerPage = () => {
           </button>
         </div>
 
-        {/* Table Container with Scroll */}
         <div className="p-3 md:p-5">
+          {/* 🐛 Show raw data if no entries */}
+          {filteredEntries.length === 0 && ledgerEntries.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded p-4 mb-4">
+              <p className="text-red-800 font-semibold">⚠️ Entries exist but filtered out!</p>
+              <p className="text-sm text-red-600 mt-2">
+                You have {ledgerEntries.length} entries but filters are hiding them.
+              </p>
+              <button
+                onClick={() => {
+                  console.log('🔍 All Entries:', ledgerEntries)
+                  console.log('🔍 Current Filters:', filters)
+                }}
+                className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm"
+              >
+                Debug in Console
+              </button>
+            </div>
+          )}
+
           {filteredEntries.length > 0 ? (
-            <LedgerTable entries={filteredEntries} />
+            <>
+              <LedgerTable entries={filteredEntries} />
+            </>
           ) : ledgerEntries.length > 0 ? (
             <div className="text-center py-8 text-gray-500">
               <p className="text-lg font-medium">No transactions match your filters</p>
@@ -163,7 +194,7 @@ const EmployeeLedgerPage = () => {
                 onClick={() =>
                   setFilters({
                     fromDate: '2024-04-01',
-                    toDate: '2025-03-31',
+                    toDate: '2026-03-31',
                     entryType: '',
                     status: '',
                     searchText: '',
@@ -185,7 +216,6 @@ const EmployeeLedgerPage = () => {
           )}
         </div>
 
-        {/* Footer Summary */}
         {filteredEntries.length > 0 && <FooterSummary entries={filteredEntries} />}
       </div>
     </div>

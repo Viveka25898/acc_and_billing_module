@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { AiOutlineEye } from 'react-icons/ai';
-import RejectionReasonModal from './RejectionReasonModal';
+import React, { useState, useEffect } from 'react'
+import { AiOutlineEye } from 'react-icons/ai'
+import RejectionReasonModal from './RejectionReasonModal'
 
-const statuses = ['All', 'Pending', 'Approved', 'Rejected'];
+const statuses = ['All', 'Pending', 'Approved', 'Rejected']
 
 const FilterBar = ({ selectedStatus, onStatusChange, selectedDate, onDateChange }) => (
   <div className="w-full flex flex-col md:flex-row gap-6 mb-6 px-6">
@@ -30,126 +30,128 @@ const FilterBar = ({ selectedStatus, onStatusChange, selectedDate, onDateChange 
       </select>
     </div>
   </div>
-);
+)
 
 const MySettlements = () => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settlements, setSettlements] = useState([]);
-  const [selectedReason, setSelectedReason] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [clarificationModalOpen, setClarificationModalOpen] = useState(false);
-  const [clarificationText, setClarificationText] = useState('');
-  const [clarificationId, setClarificationId] = useState(null);
-  const [selectedStatus, setSelectedStatus] = useState('All');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [osBalance, setOsBalance] = useState(0);
-  const rowsPerPage = 5;
+  const [currentUser, setCurrentUser] = useState(null)
+  const [settlements, setSettlements] = useState([])
+  const [selectedReason, setSelectedReason] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [clarificationModalOpen, setClarificationModalOpen] = useState(false)
+  const [clarificationText, setClarificationText] = useState('')
+  const [clarificationId, setClarificationId] = useState(null)
+  const [selectedStatus, setSelectedStatus] = useState('All')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [osBalance, setOsBalance] = useState(0)
+  const rowsPerPage = 5
 
-  // Function to generate employee GL code
+  // ✅ FIXED: Function to generate employee GL code - CORRECT FORMAT
   const generateEmployeeGLCode = (employeeId) => {
-    if (!employeeId) return null;
-    const normalizedId = String(employeeId).replace('emp', '');
-    return `A3002-EMP-${normalizedId.padStart(3, '0')}`;
-  };
+    if (!employeeId) return null
+    const normalizedId = String(employeeId).replace('emp', '')
+    return `A3001001001-EMP-${normalizedId.padStart(3, '0')}` // Changed from A3002
+  }
 
   // CORRECT O/S Balance calculation from GL transactions
   const calculateRealOSBalance = (employeeId) => {
     try {
-      const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-      const employeeGLCode = generateEmployeeGLCode(employeeId);
-      
-      if (!employeeGLCode) return 0;
+      const transactions = JSON.parse(localStorage.getItem('transactions')) || []
+      const employeeGLCode = generateEmployeeGLCode(employeeId)
 
-      let totalDebits = 0;
-      let totalCredits = 0;
+      if (!employeeGLCode) return 0
 
-      transactions.forEach(txn => {
+      console.log('🔍 Calculating O/S balance for:', employeeGLCode)
+
+      let totalDebits = 0
+      let totalCredits = 0
+
+      transactions.forEach((txn) => {
         if (txn.entries && Array.isArray(txn.entries)) {
-          txn.entries.forEach(entry => {
+          txn.entries.forEach((entry) => {
             if (entry.glCode === employeeGLCode) {
-              totalDebits += entry.debit || 0;
-              totalCredits += entry.credit || 0;
+              totalDebits += entry.debit || 0
+              totalCredits += entry.credit || 0
+              console.log(`📝 Found: Dr ${entry.debit}, Cr ${entry.credit} in ${txn.voucherNo}`)
             }
-          });
+          })
         }
-      });
+      })
 
-      return totalDebits - totalCredits;
+      const balance = totalDebits - totalCredits
+      console.log(`💰 O/S Balance: ₹${balance} (Dr: ${totalDebits}, Cr: ${totalCredits})`)
+
+      return balance
     } catch (error) {
-      console.error('❌ Error calculating O/S balance:', error);
-      return 0;
+      console.error('❌ Error calculating O/S balance:', error)
+      return 0
     }
-  };
+  }
 
   // Get current user from localStorage
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
-    const fullUser = allUsers.find(u => u.username === user?.username);
-    setCurrentUser(fullUser);
-  }, []);
+    const user = JSON.parse(localStorage.getItem('user'))
+    const allUsers = JSON.parse(localStorage.getItem('users')) || []
+    const fullUser = allUsers.find((u) => u.username === user?.username)
+    setCurrentUser(fullUser)
+  }, [])
 
   useEffect(() => {
-    // Load settlements from localStorage when currentUser is available
     if (currentUser) {
-      const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
-      
-      // ✅ FIXED: Filter by employeeId instead of employeeName
+      const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || []
+
+      // Filter by employeeId
       const userSettlements = storedSettlements
-        .filter(s => s.employeeId === currentUser.empId)
-        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-      
-      setSettlements(userSettlements);
+        .filter((s) => s.employeeId === currentUser.empId)
+        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+
+      setSettlements(userSettlements)
 
       // Calculate O/S balance from actual GL transactions
-      const realBalance = calculateRealOSBalance(currentUser.empId);
-      setOsBalance(realBalance);
+      const realBalance = calculateRealOSBalance(currentUser.empId)
+      setOsBalance(realBalance)
     }
-  }, [currentUser]);
+  }, [currentUser])
 
   const openClarificationModal = (id) => {
-    setClarificationId(id);
-    setClarificationModalOpen(true);
-  };
+    setClarificationId(id)
+    setClarificationModalOpen(true)
+  }
 
   const submitClarification = () => {
     if (!clarificationText.trim()) {
-      alert('Please enter clarification details');
-      return;
+      alert('Please enter clarification details')
+      return
     }
 
-    if (!currentUser) return;
+    if (!currentUser) return
 
-    // Update the settlement with clarification
-    const updatedSettlements = settlements.map(settlement => {
+    const updatedSettlements = settlements.map((settlement) => {
       if (settlement.id === clarificationId) {
-        // Find who to assign the clarification to based on who rejected it
-        const rejectionHistory = settlement.history.find(h => 
-          h.action.includes('rejected') && !h.action.includes('after-clarification')
-        );
-        
-        let assignedTo = null;
-        let currentLevel = '';
-        let status = '';
+        const rejectionHistory = settlement.history.find(
+          (h) => h.action.includes('rejected') && !h.action.includes('after-clarification')
+        )
 
-        // Determine where to send the clarification based on who rejected it
+        let assignedTo = null
+        let currentLevel = ''
+        let status = ''
+
         if (rejectionHistory?.by) {
-          const allUsers = JSON.parse(localStorage.getItem("users")) || [];
-          const rejector = allUsers.find(u => u.username === rejectionHistory.by);
-          
+          const allUsers = JSON.parse(localStorage.getItem('users')) || []
+          const rejector = allUsers.find((u) => u.username === rejectionHistory.by)
+
           if (rejector?.role === 'line-manager') {
-            assignedTo = rejector.username;
-            currentLevel = 'line-manager';
-            status = 'Clarification Submitted to Line Manager';
+            assignedTo = rejector.username
+            currentLevel = 'line-manager'
+            status = 'Clarification Submitted to Line Manager'
           } else if (rejector?.role === 'vp-operations') {
-            assignedTo = rejector.username;
-            currentLevel = 'vp-operations';
-            status = 'Clarification Submitted to VP Operations';
+            assignedTo = rejector.username
+            currentLevel = 'vp-operations'
+            status = 'Clarification Submitted to VP Operations'
           } else if (rejector?.role === 'account-executive') {
-            assignedTo = rejector.username;
-            currentLevel = 'account-executive';
-            status = 'Clarification Submitted to Account Executive';
+            assignedTo = rejector.username
+            currentLevel = 'account-executive'
+            status = 'Clarification Submitted to Account Executive'
           }
         }
 
@@ -166,97 +168,87 @@ const MySettlements = () => {
               action: 'clarification-submitted',
               by: currentUser.username,
               date: new Date().toISOString(),
-              comments: clarificationText
-            }
-          ]
-        };
+              comments: clarificationText,
+            },
+          ],
+        }
       }
-      return settlement;
-    });
+      return settlement
+    })
 
-    // Update localStorage
-    setSettlements(updatedSettlements);
-    const allSettlements = JSON.parse(localStorage.getItem('settlements')) || [];
-    const updatedAllSettlements = allSettlements.map(settlement => {
-      const updated = updatedSettlements.find(s => s.id === settlement.id);
-      return updated || settlement;
-    });
-    localStorage.setItem("settlements", JSON.stringify(updatedAllSettlements));
+    setSettlements(updatedSettlements)
+    const allSettlements = JSON.parse(localStorage.getItem('settlements')) || []
+    const updatedAllSettlements = allSettlements.map((settlement) => {
+      const updated = updatedSettlements.find((s) => s.id === settlement.id)
+      return updated || settlement
+    })
+    localStorage.setItem('settlements', JSON.stringify(updatedAllSettlements))
 
-    // Close modal and reset
-    setClarificationModalOpen(false);
-    setClarificationText('');
-    setClarificationId(null);
-    
-    alert('Clarification submitted successfully!');
-  };
+    setClarificationModalOpen(false)
+    setClarificationText('')
+    setClarificationId(null)
+
+    alert('Clarification submitted successfully!')
+  }
 
   const openModal = (reason) => {
-    setSelectedReason(reason);
-    setModalOpen(true);
-  };
+    setSelectedReason(reason)
+    setModalOpen(true)
+  }
 
   const getStatusBadgeClass = (status) => {
-    if (status.includes('Rejected')) return 'bg-red-100 text-red-800';
-    if (status.includes('Approved')) return 'bg-green-100 text-green-800';
-    if (status.includes('Clarification')) return 'bg-purple-100 text-purple-800';
-    return 'bg-yellow-100 text-yellow-800'; // Pending status
-  };
+    if (status.includes('Rejected')) return 'bg-red-100 text-red-800'
+    if (status.includes('Approved')) return 'bg-green-100 text-green-800'
+    if (status.includes('Clarification')) return 'bg-purple-100 text-purple-800'
+    return 'bg-yellow-100 text-yellow-800'
+  }
 
   const canSubmitClarification = (settlement) => {
-    // Can submit clarification if:
-    // 1. Settlement is rejected
-    // 2. No clarification has been submitted yet (no clarificationText exists)
-    // 3. Or if previous clarification was also rejected
-    return settlement.status.includes('Rejected') && 
-           (!settlement.clarificationText || 
-            settlement.status.includes('Rejected After Clarification'));
-  };
+    return (
+      settlement.status.includes('Rejected') &&
+      (!settlement.clarificationText || settlement.status.includes('Rejected After Clarification'))
+    )
+  }
 
-  // Calculate total amount for each settlement
   const calculateTotalAmount = (expenseItems) => {
     return expenseItems.reduce((sum, item) => {
-      const amount = Number(item['Amount (₹)']) || 0;
-      return sum + amount;
-    }, 0);
-  };
+      const amount = Number(item['Amount (₹)']) || 0
+      return sum + amount
+    }, 0)
+  }
 
-  // ✅ FIXED: Better filtering logic
   const filteredRequests = settlements.filter((req) => {
-    const normalizedStatus = req.status.toLowerCase();
-    
-    // Status filtering
-    let matchStatus = false;
-    if (selectedStatus === 'All') {
-      matchStatus = true;
-    } else if (selectedStatus === 'Pending') {
-      matchStatus = normalizedStatus.includes('pending');
-    } else if (selectedStatus === 'Approved') {
-      matchStatus = normalizedStatus.includes('approved');
-    } else if (selectedStatus === 'Rejected') {
-      matchStatus = normalizedStatus.includes('rejected');
-    }
-    
-    // Date filtering
-    const matchDate = !selectedDate || 
-      new Date(req.submittedAt).toISOString().split('T')[0] === selectedDate;
-    
-    return matchStatus && matchDate;
-  });
+    const normalizedStatus = req.status.toLowerCase()
 
-  const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
+    let matchStatus = false
+    if (selectedStatus === 'All') {
+      matchStatus = true
+    } else if (selectedStatus === 'Pending') {
+      matchStatus = normalizedStatus.includes('pending')
+    } else if (selectedStatus === 'Approved') {
+      matchStatus = normalizedStatus.includes('approved')
+    } else if (selectedStatus === 'Rejected') {
+      matchStatus = normalizedStatus.includes('rejected')
+    }
+
+    const matchDate =
+      !selectedDate || new Date(req.submittedAt).toISOString().split('T')[0] === selectedDate
+
+    return matchStatus && matchDate
+  })
+
+  const totalPages = Math.ceil(filteredRequests.length / rowsPerPage)
   const paginatedData = filteredRequests.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
-  );
+  )
 
-  // Show loading state while currentUser is being fetched
   if (!currentUser) {
-    return <div className="text-center p-8">Loading...</div>;
+    return <div className="text-center p-8">Loading...</div>
   }
 
   return (
-    <div className='bg-white shadow-md rounded-md pb-8'>
+    <div className="bg-white shadow-md rounded-md pb-8">
       <div className="bg-green-50 p-4 border-b">
         <h3 className="text-2xl font-bold text-green-600">My Settlement Requests</h3>
         <div className="mt-2 flex items-center gap-4">
@@ -288,25 +280,23 @@ const MySettlements = () => {
           </thead>
           <tbody>
             {paginatedData.map((req, idx) => {
-              const amount = calculateTotalAmount(req.expenseItems);
+              const amount = calculateTotalAmount(req.expenseItems)
               return (
                 <tr key={req.id}>
                   <td className="p-3 border">{(currentPage - 1) * rowsPerPage + idx + 1}</td>
-                  <td className="p-3 border">
-                    {new Date(req.submittedAt).toLocaleDateString()}
-                  </td>
+                  <td className="p-3 border">{new Date(req.submittedAt).toLocaleDateString()}</td>
                   <td className="p-3 border">
                     <div>
                       <span className="font-medium">₹ {amount.toFixed(2)}</span>
                       {req.status === 'Approved by Account Executive' && (
-                        <div className="text-xs text-red-600 mt-1">
-                          - Deducted from O/S Balance
-                        </div>
+                        <div className="text-xs text-red-600 mt-1">- Deducted from O/S Balance</div>
                       )}
                     </div>
                   </td>
                   <td className="p-3 border">
-                    <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}
+                    >
                       {req.status}
                     </span>
                     {req.rejectionReason && (
@@ -341,20 +331,18 @@ const MySettlements = () => {
                     )}
                   </td>
                 </tr>
-              );
+              )
             })}
           </tbody>
         </table>
       </div>
 
-      {/* Show message if no settlements found */}
       {paginatedData.length === 0 && (
         <div className="text-center p-8 text-gray-500">
           No settlements found matching your criteria.
         </div>
       )}
 
-      {/* Pagination Controls */}
       {filteredRequests.length > rowsPerPage && (
         <div className="flex justify-end mt-6 px-6 gap-2">
           <button
@@ -402,9 +390,9 @@ const MySettlements = () => {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
-                  setClarificationModalOpen(false);
-                  setClarificationText('');
-                  setClarificationId(null);
+                  setClarificationModalOpen(false)
+                  setClarificationText('')
+                  setClarificationId(null)
                 }}
                 className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
               >
@@ -422,7 +410,7 @@ const MySettlements = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default MySettlements;
+export default MySettlements
