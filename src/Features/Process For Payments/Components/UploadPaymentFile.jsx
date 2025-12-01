@@ -1,27 +1,24 @@
 /* eslint-disable no-debugger */
 // src/features/processPayments/components/UploadPaymentFile.jsx
-import React, { useRef } from "react";
+import React, { useRef } from 'react'
 
 export default function UploadPaymentFile({ onFileUpload }) {
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef(null)
 
   const handleChange = (e) => {
-    
-    const file = e.target.files[0];
-    if (file && file.name.endsWith(".xlsx")) {
-      onFileUpload(file);
-      e.target.value=null; // Reset file input
+    const file = e.target.files[0]
+    if (file && file.name.endsWith('.xlsx')) {
+      onFileUpload(file)
+      e.target.value = null // Reset file input
     } else {
-      alert("Please upload a valid .xlsx file.");
+      alert('Please upload a valid .xlsx file.')
     }
-  };
+  }
 
   return (
     <div className=" p-6 w-full">
       <div className="text-center space-y-4">
-        <p className="text-gray-700 font-medium">
-          Upload Excel file with payment details (.xlsx)
-        </p>
+        <p className="text-gray-700 font-medium">Upload Excel file with payment details (.xlsx)</p>
         <input
           ref={fileInputRef}
           type="file"
@@ -37,5 +34,5 @@ export default function UploadPaymentFile({ onFileUpload }) {
         </button>
       </div>
     </div>
-  );
+  )
 }

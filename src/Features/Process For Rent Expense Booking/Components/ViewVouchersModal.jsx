@@ -1,37 +1,37 @@
-import React from "react";
+import React from 'react'
 
 export default function ViewVouchersModal({ site, agreement, vouchers, onClose }) {
-  if (!site) return null;
+  if (!site) return null
 
-  const formatDateTime = (iso) => new Date(iso).toLocaleString();
+  const formatDateTime = (iso) => new Date(iso).toLocaleString()
 
   const vouchersInAgreementPeriod = vouchers.filter((v) => {
-    if (!agreement) return true; // Show all if no agreement
-    
-    const voucherDate = new Date(v.month + "-01");
-    const start = new Date(agreement?.startDate);
-    const end = new Date(agreement?.endDate);
-    return start <= voucherDate && voucherDate <= end;
-  });
+    if (!agreement) return true // Show all if no agreement
+
+    const voucherDate = new Date(v.month + '-01')
+    const start = new Date(agreement?.startDate)
+    const end = new Date(agreement?.endDate)
+    return start <= voucherDate && voucherDate <= end
+  })
 
   const monthsBetween = (start, end) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    
-    let months = 0;
-    const current = new Date(startDate);
-    
-    while (current <= endDate) {
-      months++;
-      current.setMonth(current.getMonth() + 1);
-    }
-    
-    return months;
-  };
+    const startDate = new Date(start)
+    const endDate = new Date(end)
 
-  const totalMonths = agreement ? monthsBetween(agreement.startDate, agreement.endDate) : 0;
-  const totalCreated = vouchersInAgreementPeriod.length;
-  const totalRemaining = totalMonths - totalCreated;
+    let months = 0
+    const current = new Date(startDate)
+
+    while (current <= endDate) {
+      months++
+      current.setMonth(current.getMonth() + 1)
+    }
+
+    return months
+  }
+
+  const totalMonths = agreement ? monthsBetween(agreement.startDate, agreement.endDate) : 0
+  const totalCreated = vouchersInAgreementPeriod.length
+  const totalRemaining = totalMonths - totalCreated
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
@@ -66,7 +66,9 @@ export default function ViewVouchersModal({ site, agreement, vouchers, onClose }
 
         {vouchersInAgreementPeriod.length === 0 ? (
           <p className="text-center text-gray-500 italic">
-            {agreement ? "No vouchers found within the agreement period." : "No vouchers found for this site."}
+            {agreement
+              ? 'No vouchers found within the agreement period.'
+              : 'No vouchers found for this site.'}
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -87,10 +89,11 @@ export default function ViewVouchersModal({ site, agreement, vouchers, onClose }
                   </p>
                 )}
                 <p className="text-sm text-gray-700 mb-1">
-                  <strong>Created By:</strong> {v.createdBy || "Admin"}
+                  <strong>Created By:</strong> {v.createdBy || 'Admin'}
                 </p>
                 <p className="text-sm text-gray-700">
-                  <strong>Created:</strong> {formatDateTime(v.createdAt || new Date().toISOString())}
+                  <strong>Created:</strong>{' '}
+                  {formatDateTime(v.createdAt || new Date().toISOString())}
                 </p>
               </div>
             ))}
@@ -98,5 +101,5 @@ export default function ViewVouchersModal({ site, agreement, vouchers, onClose }
         )}
       </div>
     </div>
-  );
+  )
 }

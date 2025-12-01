@@ -35,6 +35,15 @@ export default function RentExpenseBookingPage() {
   const [expenseVoucherData, setExpenseVoucherData] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [pendingRentVoucher, setPendingRentVoucher] = useState(null)
+  const [vendorVouchers, setVendorVouchers] = useState(() => {
+    const stored = localStorage.getItem('vendorVouchers')
+    return stored ? JSON.parse(stored) : []
+  })
+
+  // Save vendor vouchers to localStorage
+  useEffect(() => {
+    localStorage.setItem('vendorVouchers', JSON.stringify(vendorVouchers))
+  }, [vendorVouchers])
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
@@ -66,7 +75,6 @@ export default function RentExpenseBookingPage() {
     toast.success('Rent agreement uploaded successfully')
   }
 
-  // Generate voucher and auto-process without bank selection UI
   const handleVoucherSubmit = async (voucherData) => {
     try {
       // Prepare rent voucher data
@@ -94,18 +102,69 @@ export default function RentExpenseBookingPage() {
 
       if (!result.success) throw new Error(result.message || 'Processing failed')
 
-      // Persist voucher with accounting details
+      // Create enhanced voucher with approval workflow tracking
       const updatedVoucher = {
         ...rentVoucher,
+        voucherId: `VOUCH-${Date.now()}`,
         accounting: {
           voucherNo: result.voucherNo,
           transactionId: result.transactionId,
           vendorGL: result.vendorGL,
           processedAt: new Date().toISOString(),
         },
-        status: 'Processed',
+        status: 'Approved', // Changed to 'Approved' for payment processing
+        paymentStatus: 'Pending Payment',
+        workflow: {
+          generatedBy: 'Billing Executive',
+          generatedAt: new Date().toISOString(),
+          approvedBy: 'Auto-Approval System',
+          approvedAt: new Date().toISOString(),
+          paidBy: null,
+          paidAt: null,
+        },
+        // Enhanced vendor details for payment processing
+        vendorDetails: {
+          vendorId: selectedSite.owners?.[0]?.ownerId,
+          vendorName: agreement?.owner || selectedSite.owners?.[0]?.ownerName,
+          vendorGL: result.vendorGL,
+          panNumber: selectedSite.owners?.[0]?.panNumber,
+          gstin: selectedSite.owners?.[0]?.gstin,
+          contactNumber: selectedSite.owners?.[0]?.contactNumber,
+          email: selectedSite.owners?.[0]?.email,
+          address: selectedSite.owners?.[0]?.address,
+          state: selectedSite.state, // Important for GST compliance
+        },
+        // Payment details (to be filled during payment processing)
+        paymentDetails: {
+          bankAccount: null,
+          ifscCode: null,
+          paymentMode: null,
+          utrNumber: null,
+          paidAmount: null,
+          paymentDate: null,
+        },
+        // Additional metadata for payment processing
+        paymentReady: true,
+        priority: 'Normal',
+        dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // 7 days from now
       }
+
+      // Save to main vouchers list
       setVouchers((prev) => [...prev, updatedVoucher])
+
+      // ✅ CRITICAL: Save to vendor vouchers for payment processing
+      const existingVendorVouchers = JSON.parse(localStorage.getItem('vendorVouchers') || '[]')
+      const vendorVoucherForPayment = {
+        ...updatedVoucher,
+        // Ensure all required fields for payment processing
+        id: `VENDOR-VOUCH-${Date.now()}`,
+        type: 'rent_payment',
+        category: 'Rent Expense',
+        department: 'Operations',
+      }
+
+      const updatedVendorVouchers = [...existingVendorVouchers, vendorVoucherForPayment]
+      localStorage.setItem('vendorVouchers', JSON.stringify(updatedVendorVouchers))
 
       // Update site owner with GL code if needed
       if (result.vendorGL && !selectedSite.owners[0]?.glCode) {
@@ -146,14 +205,72 @@ export default function RentExpenseBookingPage() {
           withGST: rentVoucher.gstDetails?.applicable || false,
         },
         entries: createRentAccountingEntries(rentVoucher, result.vendorGL),
+        // Add payment workflow info to the view
+        paymentWorkflow: {
+          status: 'Approved for Payment',
+          nextStep: 'Process Payment',
+          paymentDeadline: new Date(
+            new Date().setDate(new Date().getDate() + 7)
+          ).toLocaleDateString(),
+        },
       }
+
       setExpenseVoucherData(expenseData)
       setShowExpenseVoucherModal(true)
-      toast.success(`✅ ${result.message}`)
+      toast.success(`✅ ${result.message} - Voucher approved for payment processing!`)
+
+      // Log for debugging
+      console.log('Vendor voucher saved for payment:', vendorVoucherForPayment)
+      console.log('Total vendor vouchers pending payment:', updatedVendorVouchers.length)
     } catch (error) {
       console.error('Error in handleVoucherSubmit:', error)
       toast.error('Failed to process voucher')
     }
+  }
+
+  const approveVoucher = (voucherId) => {
+    const voucherToApprove = vouchers.find((v) => v.voucherId === voucherId)
+
+    if (!voucherToApprove) {
+      toast.error('Voucher not found')
+      return
+    }
+
+    // Update voucher status
+    const updatedVouchers = vouchers.map((v) =>
+      v.voucherId === voucherId
+        ? {
+            ...v,
+            status: 'Approved',
+            paymentStatus: 'Pending Payment',
+            workflow: {
+              ...v.workflow,
+              approvedBy: 'Finance Manager', // Replace with actual user
+              approvedAt: new Date().toISOString(),
+            },
+          }
+        : v
+    )
+
+    setVouchers(updatedVouchers)
+
+    // Add to vendor vouchers for payment processing
+    const vendorVoucher = {
+      ...voucherToApprove,
+      status: 'Approved',
+      paymentStatus: 'Pending Payment',
+      workflow: {
+        ...voucherToApprove.workflow,
+        approvedBy: 'Finance Manager',
+        approvedAt: new Date().toISOString(),
+      },
+      // Add payment-specific fields
+      paymentReady: true,
+      priority: 'Normal',
+    }
+
+    setVendorVouchers((prev) => [...prev, vendorVoucher])
+    toast.success('Voucher approved and moved to payment processing')
   }
   // ✅ FUNCTION TO CREATE REAL ACCOUNTING ENTRIES WITH ACTUAL GL CODES
   const createRentAccountingEntries = (rentVoucher, vendorGL) => {
@@ -526,6 +643,7 @@ export default function RentExpenseBookingPage() {
               setShowViewVoucherModal(false)
               setVoucherViewSite(null)
             }}
+            onApproveVoucher={approveVoucher} // Add this prop
           />
         )}
 

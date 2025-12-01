@@ -11,40 +11,71 @@ import VendorInvoiceTable from './Components/VendorInvoiceTable'
 import InvoiceViewer from './Components/InvoiceReviewer'
 import { toast } from 'react-toastify'
 import PaymentEntryModal from './Components/PaymentEntryModal'
-import AEBankSelectionModal from '../Advance Request/Components/AEBankSelectionModal'
+// import AEBankSelectionModal from '../Advance Request/Components/AEBankSelectionModal'
 import { processVendorPayments } from '../Master/utils/accountingHelpers'
 import RelieverPaymentsSection from './Components/RelieverPaymentSection'
 import ConveyancePaymentsSection from './Components/ConveyancePaymentsSection'
 import { processConveyanceBankPayments } from '../Master/utils/accountingHelpers'
+import PaymentBankSelectionModal from './Components/PaymentBankSelectonModal'
 
 // Function to load and transform invoices from localStorage
+// ✅ FIXED: More flexible filtering for approved invoices
 const loadInvoicesFromLocalStorage = () => {
   try {
-    // Load invoices processed by AM (Material and Fixed Asset)
     const processedInvoicesStr = localStorage.getItem('processed_invoices')
     const processedInvoices = processedInvoicesStr ? JSON.parse(processedInvoicesStr) : []
 
-    // Load invoices processed by BM (Procurement Prepaid)
     const finalProcessedInvoicesStr = localStorage.getItem('final_processed_invoices')
     const finalProcessedInvoices = finalProcessedInvoicesStr
       ? JSON.parse(finalProcessedInvoicesStr)
       : []
 
-    // Combine both arrays
     const allInvoices = [...processedInvoices, ...finalProcessedInvoices]
 
-    console.log('Loaded invoices from localStorage:', allInvoices)
+    console.log('🔍 DEBUG: All invoices loaded:', allInvoices)
 
-    // Group invoices by vendor
+    // ✅ Filter invoices based on YOUR approval workflow
+    const filteredInvoices = allInvoices.filter((invoice) => {
+      const approvalStatus = invoice.approvalStatus || invoice.status || invoice.approval_status
+
+      // ✅ Include invoices that are either:
+      // 1. Fully approved (various possible statuses)
+      // 2. Approved by AM/BM (ready for payment)
+      // 3. OR any invoice processed by AM/BM (in processed_invoices or final_processed_invoices)
+
+      const isApproved =
+        approvalStatus === 'Approved' ||
+        approvalStatus === 'Approved by AM' ||
+        approvalStatus === 'Approved by BM' ||
+        approvalStatus === 'Processed by AM' ||
+        approvalStatus === 'Processed by BM' ||
+        approvalStatus?.includes('Final Approved') ||
+        invoice.processedAtAM || // Has been processed by AM
+        invoice.processedAtBM // Has been processed by BM
+
+      console.log('🔍 Invoice check:', {
+        invoiceNumber: invoice.invoiceNumber,
+        approvalStatus,
+        processedAtAM: invoice.processedAtAM,
+        processedAtBM: invoice.processedAtBM,
+        willInclude: isApproved,
+      })
+
+      return isApproved
+    })
+
+    console.log('✅ Filtered invoices:', filteredInvoices.length, 'out of', allInvoices.length)
+
     const vendorMap = {}
 
-    allInvoices.forEach((invoice) => {
+    filteredInvoices.forEach((invoice, index) => {
       const vendorName = invoice.vendorName
 
       if (!vendorMap[vendorName]) {
-        // Create new vendor entry
+        const uniqueId = `VENDOR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
         vendorMap[vendorName] = {
-          id: Object.keys(vendorMap).length + 1,
+          id: uniqueId,
           vendorName: vendorName,
           debitBankAccountNumber: generateBankAccount(vendorName),
           debitAmount: 0,
@@ -56,7 +87,6 @@ const loadInvoicesFromLocalStorage = () => {
         }
       }
 
-      // Determine invoice type label
       let invoiceTypeLabel = ''
       if (invoice.type === 'Material') {
         invoiceTypeLabel = 'Material Invoice'
@@ -68,14 +98,15 @@ const loadInvoicesFromLocalStorage = () => {
         invoiceTypeLabel = invoice.type || 'Invoice'
       }
 
-      // Add invoice to vendor
+      const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`
+
       vendorMap[vendorName].invoices.push({
-        id: invoice.id || invoice.invoiceNumber,
+        id: invoiceId,
         invoiceNumber: invoice.invoiceNumber,
         amount: invoice.totalAmount,
         documentUrl: invoice.documentUrl || '/public/DxotBTxfHn.png',
         type: invoice.type,
-        invoiceTypeLabel: invoiceTypeLabel, // NEW: Add type label for display
+        invoiceTypeLabel: invoiceTypeLabel,
         gstRate: invoice.gstRate,
         hsnCode: invoice.hsnCode,
         processedAt: invoice.processedAt || invoice.processedAtAM || invoice.processedAtBM,
@@ -83,19 +114,87 @@ const loadInvoicesFromLocalStorage = () => {
         voucherNo: invoice.voucher_id || invoice.purchaseVoucherNo,
       })
 
-      // Update total debit amount for vendor
       vendorMap[vendorName].debitAmount += invoice.totalAmount
     })
 
-    // Convert map to array
     const vendorData = Object.values(vendorMap)
-
-    console.log('Transformed vendor data:', vendorData)
+    console.log('✅ Final vendor data:', vendorData)
 
     return vendorData
   } catch (error) {
     console.error('Error loading invoices from localStorage:', error)
     toast.error('Failed to load invoices from storage')
+    return []
+  }
+}
+
+const loadRentVouchersFromLocalStorage = () => {
+  try {
+    const rentVouchersStr = localStorage.getItem('vendorVouchers')
+    const rentVouchers = rentVouchersStr ? JSON.parse(rentVouchersStr) : []
+
+    console.log('Loaded rent vouchers from localStorage:', rentVouchers)
+
+    // Transform rent vouchers to match vendor data structure
+    const vendorMap = {}
+
+    rentVouchers.forEach((voucher, index) => {
+      if (voucher.status === 'Approved' && voucher.paymentStatus === 'Pending Payment') {
+        const vendorName = voucher.vendorDetails?.vendorName || voucher.ownerName
+
+        // ✅ FIX: Create TRULY unique vendor ID using timestamp + random
+        const vendorId = `RENT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`
+
+        if (!vendorMap[vendorId]) {
+          vendorMap[vendorId] = {
+            id: vendorId, // ✅ Use unique ID
+            vendorName: vendorName,
+            debitBankAccountNumber: generateBankAccount(vendorName),
+            debitAmount: 0,
+            currency: 'INR',
+            beneficiaryAccountNumber: extractBeneficiaryAccount(voucher),
+            ifscCode: extractIFSCCode(voucher),
+            narration: `Rent Payment - ${voucher.siteName}`,
+            invoices: [],
+            isRentVoucher: true,
+          }
+        }
+
+        // ✅ FIX: Create unique invoice ID
+        const invoiceId = `RENT-INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`
+
+        vendorMap[vendorId].invoices.push({
+          id: invoiceId, // ✅ Use unique invoice ID
+          invoiceNumber: voucher.accounting?.voucherNo || `RENT-${voucher.month}`,
+          amount: voucher.amount,
+          documentUrl: null,
+          type: 'Rent Payment',
+          invoiceTypeLabel: 'Rent Voucher',
+          gstRate: voucher.gstDetails?.rate || 0,
+          hsnCode: null,
+          processedAt: voucher.workflow?.generatedAt,
+          vendorGLCode: voucher.vendorDetails?.vendorGL,
+          voucherNo: voucher.accounting?.voucherNo,
+          isRentVoucher: true,
+          rentDetails: {
+            month: voucher.month,
+            siteName: voucher.siteName,
+            siteLocation: voucher.siteLocation,
+            agreementId: voucher.agreementId,
+            baseRent: voucher.breakdown?.baseRent,
+            gstAmount: voucher.breakdown?.gst,
+            gstType: voucher.gstType,
+          },
+          vendorDetails: voucher.vendorDetails,
+        })
+
+        vendorMap[vendorId].debitAmount += voucher.amount
+      }
+    })
+
+    return Object.values(vendorMap)
+  } catch (error) {
+    console.error('Error loading rent vouchers:', error)
     return []
   }
 }
@@ -108,10 +207,20 @@ const generateBankAccount = (vendorName) => {
 }
 
 // Helper function to extract beneficiary account
-const extractBeneficiaryAccount = (invoice) => {
-  // Try to extract from vendor GL mappings or generate one
-  if (invoice.vendor_gl_mappings && invoice.vendor_gl_mappings.payable_gl_code) {
-    const glCode = invoice.vendor_gl_mappings.payable_gl_code
+// Update extractBeneficiaryAccount to handle rent vouchers
+const extractBeneficiaryAccount = (invoiceOrVoucher) => {
+  // For rent vouchers
+  if (invoiceOrVoucher.vendorDetails?.vendorGL) {
+    const glCode = invoiceOrVoucher.vendorDetails.vendorGL
+    const match = glCode.match(/\d+/)
+    if (match) {
+      return `987654${match[0].substring(0, 6)}`
+    }
+  }
+
+  // For regular invoices (existing logic)
+  if (invoiceOrVoucher.vendor_gl_mappings && invoiceOrVoucher.vendor_gl_mappings.payable_gl_code) {
+    const glCode = invoiceOrVoucher.vendor_gl_mappings.payable_gl_code
     const match = glCode.match(/\d+/)
     if (match) {
       return `987654${match[0].substring(0, 6)}`
@@ -119,19 +228,48 @@ const extractBeneficiaryAccount = (invoice) => {
   }
 
   // Generate based on vendor name
-  const hash = invoice.vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return `987654${String(321000 + (hash % 10000))}`
+  const vendorName = invoiceOrVoucher.vendorName || invoiceOrVoucher.vendorDetails?.vendorName
+  if (vendorName) {
+    const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    return `987654${String(321000 + (hash % 10000))}`
+  }
+
+  return '987654321000'
 }
 
 // Helper function to extract IFSC code
-const extractIFSCCode = (invoice) => {
-  // Generate IFSC code based on vendor
-  const vendorHash = invoice.vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const banks = ['HDFC', 'ICIC', 'SBIN', 'YESB', 'AXIS']
-  const bankIndex = vendorHash % banks.length
-  const branchCode = String(1000 + (vendorHash % 9000)).padStart(4, '0')
+const extractIFSCCode = (invoiceOrVoucher) => {
+  const vendorName = invoiceOrVoucher.vendorName || invoiceOrVoucher.vendorDetails?.vendorName
+  if (vendorName) {
+    const vendorHash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    const banks = ['HDFC', 'ICIC', 'SBIN', 'YESB', 'AXIS']
+    const bankIndex = vendorHash % banks.length
+    const branchCode = String(1000 + (vendorHash % 9000)).padStart(4, '0')
+    return `${banks[bankIndex]}0${branchCode}`
+  }
+  return 'HDFC0000123'
+}
 
-  return `${banks[bankIndex]}0${branchCode}`
+// Add this function to validate and clean vendor data
+const validateAndCleanVendorData = (data) => {
+  if (!Array.isArray(data)) return []
+
+  return data
+    .filter(
+      (vendor) =>
+        vendor && vendor.vendorName && Array.isArray(vendor.invoices) && vendor.invoices.length > 0
+    )
+    .map((vendor) => ({
+      ...vendor,
+      invoices: vendor.invoices.filter(
+        (invoice) =>
+          invoice &&
+          invoice.invoiceNumber &&
+          typeof invoice.amount === 'number' &&
+          invoice.amount >= 0
+      ),
+    }))
+    .filter((vendor) => vendor.invoices.length > 0)
 }
 
 // New Tab Components (Placeholders for now)
@@ -213,15 +351,66 @@ const VendorPaymentsSection = ({
 }) => {
   // Load vendor data on component mount
   useEffect(() => {
-    const loadedVendorData = loadInvoicesFromLocalStorage()
-    setVendorData(loadedVendorData)
+    const loadInitialData = () => {
+      try {
+        // ✅ Load ONLY from fresh sources (no persisted data loading)
+        const loadedVendorData = loadInvoicesFromLocalStorage()
+        const rentVouchersData = loadRentVouchersFromLocalStorage()
 
-    if (loadedVendorData.length > 0) {
-      toast.info(`Loaded ${loadedVendorData.length} vendors with invoices from storage`)
-    } else {
-      toast.warning('No invoices found in storage')
+        // Combine fresh data only
+        const combinedVendorData = [...loadedVendorData, ...rentVouchersData]
+
+        setVendorData(combinedVendorData)
+
+        if (combinedVendorData.length > 0) {
+          const regularCount = loadedVendorData.length
+          const rentCount = rentVouchersData.length
+          const totalInvoices = combinedVendorData.reduce(
+            (sum, vendor) => sum + vendor.invoices.length,
+            0
+          )
+
+          toast.info(
+            `Loaded ${regularCount} vendors (${totalInvoices} invoices) + ${rentCount} rent vouchers`
+          )
+        } else {
+          toast.info('No pending payments found')
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error)
+        toast.error('Failed to load vendor data')
+      }
     }
+
+    loadInitialData()
   }, [])
+
+  // Add this function to persist vendor data
+  const persistVendorDataToLocalStorage = (vendorData) => {
+    try {
+      // Store the current state of vendor data
+      localStorage.setItem('vendor_payment_data', JSON.stringify(vendorData))
+      console.log('Vendor data persisted to localStorage:', vendorData.length, 'vendors')
+    } catch (error) {
+      console.error('Error persisting vendor data:', error)
+    }
+  }
+
+  // Add this cleanup function to VendorPaymentsSection
+  const clearAllPersistedData = () => {
+    try {
+      localStorage.removeItem('vendor_payment_data')
+      localStorage.removeItem('vendor_payment_selections')
+      localStorage.removeItem('vendor_selection_state')
+      setVendorData([])
+      setApprovedInvoices([])
+      setInvoicePayments({})
+      toast.info('Cleared all persisted vendor data')
+    } catch (error) {
+      console.error('Error clearing persisted data:', error)
+      toast.error('Failed to clear persisted data')
+    }
+  }
 
   const handleFileUpload = async (file) => {
     const data = await parseExcelFile(file)
@@ -412,8 +601,16 @@ const VendorPaymentsSection = ({
 
   // Store approved invoices before deleting them
   const handleInvoiceApproval = (selectedVendors, currentPayments = {}) => {
+    // Check if any vendors are selected
+    const selectedVendorIds = Object.keys(selectedVendors).filter((id) => selectedVendors[id])
+    if (selectedVendorIds.length === 0) {
+      toast.warning('Please select at least one vendor to approve')
+      return
+    }
+
     const updatedVendors = []
-    const newlyApprovedInvoices = [] // 🔥 Store newly approved invoices
+    const newlyApprovedInvoices = []
+    let processedCount = 0
 
     vendorData.forEach((vendor) => {
       const isVendorSelected = selectedVendors[vendor.id]
@@ -425,25 +622,31 @@ const VendorPaymentsSection = ({
       const updatedInvoices = []
 
       vendor.invoices.forEach((invoice) => {
-        // Use currentPayments passed from VendorInvoiceTable, fallback to invoicePayments, then default
         const payment = currentPayments[invoice.id] ||
           invoicePayments[invoice.id] || { amount: invoice.amount, paymentType: 'full' }
 
         const fullAmount = invoice.amount
         const paymentType = payment?.paymentType || 'full'
 
-        // FIXED: If payment type is 'full', always use the full invoice amount
-        const paidAmount = paymentType === 'full' ? fullAmount : Number(payment?.amount || 0)
+        // FIXED: Handle partial payment with 0 amount - keep the invoice
+        let paidAmount = paymentType === 'full' ? fullAmount : Number(payment?.amount || 0)
+
+        // Validate payment amount
+        if (paidAmount > fullAmount) {
+          toast.warning(
+            `Payment amount (${paidAmount}) exceeds invoice amount (${fullAmount}) for invoice ${invoice.invoiceNumber}. Using full amount.`
+          )
+          paidAmount = fullAmount
+        }
 
         console.log(`Processing Invoice ${invoice.invoiceNumber}:`, {
           originalAmount: fullAmount,
           paidAmount,
           paymentType,
           payment,
-          calculationNote: paymentType === 'full' ? 'Using full amount' : 'Using payment amount',
         })
 
-        // 🔥 STORE approved invoice data BEFORE processing
+        // Store approved invoice data only if payment is made
         if (paidAmount > 0) {
           newlyApprovedInvoices.push({
             vendorId: vendor.id,
@@ -461,21 +664,22 @@ const VendorPaymentsSection = ({
             originalAmount: fullAmount,
             paidAmount: paidAmount,
             paymentType: paymentType,
-            type: invoice.type, // preserve invoice type for GL mapping
+            type: invoice.type,
             invoiceTypeLabel: invoice.invoiceTypeLabel,
             approvedDate: new Date().toISOString(),
             utr: 'Bank',
           })
+          processedCount++
         }
 
-        // Full payment → don't keep this invoice (remove completely)
+        // Full payment → remove invoice completely
         if (paymentType === 'full' || paidAmount >= fullAmount) {
           console.log(`Full payment for ${invoice.invoiceNumber} - removing from table`)
-          return // Invoice is fully paid, remove it
+          return
         }
 
-        // Partial payment → keep with reduced amount
-        if (paymentType === 'partial' && paidAmount < fullAmount && paidAmount > 0) {
+        // Partial payment with amount > 0 → keep with reduced amount
+        if (paymentType === 'partial' && paidAmount > 0 && paidAmount < fullAmount) {
           const remainingAmount = fullAmount - paidAmount
           console.log(
             `Partial payment for ${invoice.invoiceNumber} - keeping with remaining amount: ${remainingAmount}`
@@ -485,8 +689,12 @@ const VendorPaymentsSection = ({
             ...invoice,
             amount: remainingAmount,
           })
-        } else if (paymentType === 'partial' && paidAmount <= 0) {
-          // Invalid partial payment, keep original invoice
+        }
+        // FIXED: Partial payment with 0 amount → keep original invoice unchanged
+        else if (paymentType === 'partial' && paidAmount <= 0) {
+          console.log(
+            `Partial payment with 0 amount for ${invoice.invoiceNumber} - keeping original`
+          )
           updatedInvoices.push(invoice)
         }
       })
@@ -504,15 +712,16 @@ const VendorPaymentsSection = ({
       // If no invoices left, vendor is completely removed from the table
     })
 
-    // 🔥 UPDATE approved invoices state
+    // Update approved invoices state
     setApprovedInvoices((prev) => [...prev, ...newlyApprovedInvoices])
 
-    const processedInvoices = newlyApprovedInvoices.length
+    // FIXED: Persist the updated vendor data to localStorage
+    persistVendorDataToLocalStorage(updatedVendors)
 
-    if (processedInvoices === 0) {
-      toast.warning('No valid invoices approved. Check vendor selection and payment details.')
+    if (processedCount === 0) {
+      toast.warning('No valid payments processed. Check payment amounts and selections.')
     } else {
-      toast.success(`${processedInvoices} invoice(s) processed successfully.`)
+      toast.success(`${processedCount} invoice(s) processed successfully.`)
     }
 
     setVendorData(updatedVendors)
@@ -544,6 +753,13 @@ const VendorPaymentsSection = ({
           >
             ⬇️ Download Payment Files ({approvedInvoices.length})
           </button>
+          {/* Optional: Add clear data button */}
+          {/* <button
+            onClick={clearAllPersistedData}
+            className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors duration-200"
+          >
+            Clear All Data
+          </button> */}
         </div>
 
         <UploadPaymentFile onFileUpload={handleFileUpload} />
@@ -607,7 +823,7 @@ const VendorPaymentsSection = ({
       </div>
 
       {/* Bank Selection Modal - opens after Accept */}
-      <AEBankSelectionModal
+      <PaymentBankSelectionModal
         isOpen={isBankModalOpen}
         onClose={() => {
           setIsBankModalOpen(false)
@@ -763,6 +979,7 @@ const VendorPaymentsSection = ({
           }
         }}
         requestData={pendingAcceptedData}
+        paymentType="vendor"
       />
 
       {/* Payment Entry Modal */}

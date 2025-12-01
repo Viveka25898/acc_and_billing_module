@@ -1,61 +1,125 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
+import { toast } from 'react-toastify'
 
 const VendorInvoiceTable = ({
   vendorData,
   onInvoiceSelect,
   onPaymentUpdate,
   invoicePayments,
+  onVendorDataUpdate,
   onInvoiceApprove,
 }) => {
   const [selectedVendors, setSelectedVendors] = useState({})
   const [expandedVendor, setExpandedVendor] = useState(null)
   const [localPayments, setLocalPayments] = useState({})
 
+  // Load persisted payment data on component mount
+  useEffect(() => {
+    const loadPersistedPaymentData = () => {
+      try {
+        const persistedPaymentsStr = localStorage.getItem('vendor_payment_selections')
+        const persistedPayments = persistedPaymentsStr ? JSON.parse(persistedPaymentsStr) : {}
+
+        const persistedSelectionsStr = localStorage.getItem('vendor_selection_state')
+        const persistedSelections = persistedSelectionsStr ? JSON.parse(persistedSelectionsStr) : {}
+
+        if (Object.keys(persistedPayments).length > 0) {
+          setLocalPayments(persistedPayments)
+          // Also update parent component with persisted payments
+          Object.entries(persistedPayments).forEach(([invoiceId, payment]) => {
+            onPaymentUpdate?.(invoiceId, payment.amount, payment.paymentType)
+          })
+        }
+
+        if (Object.keys(persistedSelections).length > 0) {
+          setSelectedVendors(persistedSelections)
+        }
+      } catch (error) {
+        console.error('Error loading persisted payment data:', error)
+      }
+    }
+
+    loadPersistedPaymentData()
+  }, [])
+
   useEffect(() => {
     setLocalPayments(invoicePayments)
   }, [invoicePayments])
+
+  // Persist payment data whenever it changes
+  const persistPaymentData = (payments, selections) => {
+    try {
+      localStorage.setItem('vendor_payment_selections', JSON.stringify(payments))
+      localStorage.setItem('vendor_selection_state', JSON.stringify(selections))
+    } catch (error) {
+      console.error('Error persisting payment data:', error)
+    }
+  }
 
   const handleVendorClick = (vendorId) => {
     setExpandedVendor(expandedVendor === vendorId ? null : vendorId)
   }
 
   const handleVendorCheckbox = (vendorId) => {
-    setSelectedVendors((prev) => ({
-      ...prev,
-      [vendorId]: !prev[vendorId],
-    }))
+    const newSelections = {
+      ...selectedVendors,
+      [vendorId]: !selectedVendors[vendorId],
+    }
+    setSelectedVendors(newSelections)
+    persistPaymentData(localPayments, newSelections)
   }
 
   const handleAmountChange = (invoiceId, amount) => {
+    const numericAmount = Number(amount)
+
+    // Allow 0 as valid amount for partial payments
+    if (numericAmount < 0) {
+      toast.error('Amount cannot be negative')
+      return
+    }
+
     const currentPayment = localPayments[invoiceId] || {}
     const updatedPayment = {
       ...currentPayment,
-      amount: Number(amount),
+      amount: numericAmount,
       paymentType: currentPayment.paymentType || 'partial',
     }
 
-    setLocalPayments((prev) => ({
-      ...prev,
+    const newPayments = {
+      ...localPayments,
       [invoiceId]: updatedPayment,
-    }))
+    }
+
+    setLocalPayments(newPayments)
+    persistPaymentData(newPayments, selectedVendors)
 
     // Immediately update parent component
-    onPaymentUpdate?.(invoiceId, Number(amount), updatedPayment.paymentType)
+    onPaymentUpdate?.(invoiceId, numericAmount, updatedPayment.paymentType)
   }
 
   const handlePaymentTypeChange = (invoiceId, paymentType, originalAmount) => {
-    const amount =
-      paymentType === 'full' ? originalAmount : localPayments[invoiceId]?.amount || originalAmount
+    let amount
+
+    if (paymentType === 'full') {
+      amount = originalAmount
+    } else {
+      // For partial payments, use existing amount or 0 if none set
+      amount = localPayments[invoiceId]?.amount || 0
+    }
 
     const updatedPayment = {
       amount: Number(amount),
       paymentType: paymentType,
     }
 
-    setLocalPayments((prev) => ({
-      ...prev,
+    const newPayments = {
+      ...localPayments,
       [invoiceId]: updatedPayment,
-    }))
+    }
+
+    setLocalPayments(newPayments)
+    persistPaymentData(newPayments, selectedVendors)
 
     // Immediately update parent component
     onPaymentUpdate?.(invoiceId, Number(amount), paymentType)
@@ -65,6 +129,8 @@ const VendorInvoiceTable = ({
   useEffect(() => {
     const initializePayments = () => {
       const defaultPayments = {}
+      let hasNewPayments = false
+
       vendorData.forEach((vendor) => {
         vendor.invoices.forEach((invoice) => {
           if (!localPayments[invoice.id]) {
@@ -72,33 +138,54 @@ const VendorInvoiceTable = ({
               amount: invoice.amount,
               paymentType: 'full',
             }
+            hasNewPayments = true
             // Also update parent component
             onPaymentUpdate?.(invoice.id, invoice.amount, 'full')
           }
         })
       })
 
-      if (Object.keys(defaultPayments).length > 0) {
-        setLocalPayments((prev) => ({
-          ...prev,
+      if (hasNewPayments) {
+        const newPayments = {
+          ...localPayments,
           ...defaultPayments,
-        }))
+        }
+        setLocalPayments(newPayments)
+        persistPaymentData(newPayments, selectedVendors)
       }
     }
 
-    initializePayments()
-  }, [vendorData]) // Run when vendorData changes
+    if (vendorData.length > 0) {
+      initializePayments()
+    }
+  }, [vendorData])
 
   const handleApproveSelectedInvoices = () => {
     // Pass both selected vendors and current payment state
     onInvoiceApprove(selectedVendors, localPayments)
 
-    // Reset selected vendors after approval
-    const resetSelections = {}
-    Object.keys(selectedVendors).forEach((id) => {
-      resetSelections[id] = false
-    })
-    setSelectedVendors(resetSelections)
+    // Clear persisted data for approved invoices
+    try {
+      const newPayments = { ...localPayments }
+      const newSelections = { ...selectedVendors }
+
+      vendorData.forEach((vendor) => {
+        if (selectedVendors[vendor.id]) {
+          // Remove payment data for approved vendor's invoices
+          vendor.invoices.forEach((invoice) => {
+            delete newPayments[invoice.id]
+          })
+          // Deselect the vendor
+          newSelections[vendor.id] = false
+        }
+      })
+
+      setLocalPayments(newPayments)
+      setSelectedVendors(newSelections)
+      persistPaymentData(newPayments, newSelections)
+    } catch (error) {
+      console.error('Error clearing persisted data after approval:', error)
+    }
   }
 
   const getVendorPaymentStatus = (vendor, payments) => {
@@ -143,6 +230,9 @@ const VendorInvoiceTable = ({
     const displayAmount =
       payment.amount !== undefined ? String(payment.amount) : String(invoice.amount)
 
+    // Check if this is a rent voucher
+    const isRentVoucher = invoice.isRentVoucher || vendor.isRentVoucher
+
     return (
       <tr key={invoice.id} className="bg-gray-100 border text-[10px] leading-tight">
         <td className="px-[2px] py-[2px] text-center border">-</td>
@@ -155,6 +245,11 @@ const VendorInvoiceTable = ({
               className="text-blue-600 hover:underline font-medium text-[10px] text-left"
             >
               {invoice.invoiceNumber}
+              {isRentVoucher && (
+                <span className="ml-1 bg-green-100 text-green-700 px-1 rounded text-[8px]">
+                  Rent
+                </span>
+              )}
             </button>
             {invoice.invoiceTypeLabel && (
               <span
@@ -246,11 +341,16 @@ const VendorInvoiceTable = ({
                   >
                     <span className="text-[10px]">{expandedVendor === vendor.id ? '▼' : '▶'}</span>
                     <span>{vendor.vendorName}</span>
+                    {vendor.isRentVoucher && (
+                      <span className="ml-1 text-[10px] text-green-600 bg-green-100 px-1 rounded-full">
+                        Rent
+                      </span>
+                    )}
                     <span className="ml-1 text-[10px] text-gray-500 bg-gray-100 px-1 rounded-full">
                       {getVendorPaymentStatus(vendor, localPayments).fullyPaid ? 'Paid' : 'Pending'}
                     </span>
                     <span className="text-[10px] text-gray-500 bg-gray-100 px-1 rounded-full">
-                      {vendor.invoices.length} inv
+                      {vendor.invoices.length} {vendor.isRentVoucher ? 'vouchers' : 'inv'}
                     </span>
                   </button>
                 </td>

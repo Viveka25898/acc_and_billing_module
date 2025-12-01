@@ -5,10 +5,10 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import ConveyancePaymentPreviewModal from './ConveyancePaymentPreviewModal'
 import ConveyancePaymentTable from './ConveyancePaymentTable'
-import AEBankSelectionModal from '../../Advance Request/Components/AEBankSelectionModal'
 import { processConveyanceBankPayments } from '../../Master/utils/accountingHelpers'
 import ConveyancePaymentEntryModal from './ConveyancePaymentEntryModal'
 import UploadPaymentFile from './UploadPaymentFile'
+import PaymentBankSelectionModal from './PaymentBankSelectonModal'
 
 const ConveyancePaymentsSection = () => {
   const [conveyanceData, setConveyanceData] = useState([])
@@ -483,7 +483,7 @@ const ConveyancePaymentsSection = () => {
       </div>
 
       {/* Bank Selection Modal */}
-      <AEBankSelectionModal
+      <PaymentBankSelectionModal
         isOpen={isBankModalOpen}
         onClose={() => {
           setIsBankModalOpen(false)
@@ -517,6 +517,7 @@ const ConveyancePaymentsSection = () => {
           }
         }}
         requestData={pendingAcceptedData}
+        paymentType="conveyance"
       />
 
       {/* Payment Entry Modal - Shows after Accept button is clicked */}

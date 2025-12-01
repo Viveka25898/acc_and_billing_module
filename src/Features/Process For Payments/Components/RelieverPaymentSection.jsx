@@ -6,11 +6,12 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import RelieverPaymentPreviewModal from './RelieverPaymentPreviewModal'
 import RelieverPaymentTable from './RelieverPaymentTable'
-import AEBankSelectionModal from '../../Advance Request/Components/AEBankSelectionModal'
+// import AEBankSelectionModal from '../../Advance Request/Components/AEBankSelectionModal'
 import { processRelieverBankPayments } from '../../Master/utils/accountingHelpers'
 import PaymentEntryModal from '../../Process For Payments/Components/PaymentEntryModal' // Use the main PaymentEntryModal
 import UploadPaymentFile from './UploadPaymentFile'
 import RelieverPaymentEntryModal from './RelieverPaymentEntryModal'
+import PaymentBankSelectionModal from './PaymentBankSelectonModal'
 
 const RelieverPaymentsSection = () => {
   const [relieverData, setRelieverData] = useState([])
@@ -491,7 +492,7 @@ const RelieverPaymentsSection = () => {
       </div>
 
       {/* Bank Selection Modal */}
-      <AEBankSelectionModal
+      <PaymentBankSelectionModal
         isOpen={isBankModalOpen}
         onClose={() => {
           setIsBankModalOpen(false)
@@ -522,6 +523,7 @@ const RelieverPaymentsSection = () => {
           }
         }}
         requestData={pendingAcceptedData}
+        paymentType="reliever"
       />
 
       {/* Payment Entry Modal - Shows after Accept button is clicked */}
