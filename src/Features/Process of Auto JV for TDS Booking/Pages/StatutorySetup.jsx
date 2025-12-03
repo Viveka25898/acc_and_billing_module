@@ -1,79 +1,89 @@
-import { useState, useEffect } from "react";
-import { statutoryData } from "../data/statutoryDummyData";
-import StatutoryFilter from "../Components/StatutoryFilter";
-import StatutoryModal from "../Components/StatutoryModal";
-import { toast } from "react-toastify";
+import { useState, useEffect } from 'react'
+import { statutoryData } from '../data/statutoryDummyData'
+import StatutoryFilter from '../Components/StatutoryFilter'
+import StatutoryModal from '../Components/StatutoryModal'
+import { toast } from 'react-toastify'
 
 export default function StatutorySetup() {
-  const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editData, setEditData] = useState(null);
+  const [data, setData] = useState([])
+  const [filteredData, setFilteredData] = useState([])
+  const [showModal, setShowModal] = useState(false)
+  const [editData, setEditData] = useState(null)
 
   // Load data from localStorage or fallback to dummy
   useEffect(() => {
-    const stored = localStorage.getItem("statutoryData");
-    const parsed = stored ? JSON.parse(stored) : statutoryData;
-    setData(parsed);
-    setFilteredData(parsed);
-  }, []);
+    const stored = localStorage.getItem('statutoryData')
+    const parsed = stored ? JSON.parse(stored) : statutoryData
+    setData(parsed)
+    setFilteredData(parsed)
+  }, [])
 
   const updateLocalStorage = (updatedData) => {
-    localStorage.setItem("statutoryData", JSON.stringify(updatedData));
-  };
+    localStorage.setItem('statutoryData', JSON.stringify(updatedData))
 
+    // Debug log
+    console.log('✅ Saved to localStorage:', {
+      key: 'statutoryData',
+      count: updatedData.length,
+      data: updatedData,
+    })
+
+    // Also log what's in localStorage after saving
+    const stored = localStorage.getItem('statutoryData')
+    console.log('🔍 Retrieved from localStorage:', JSON.parse(stored))
+  }
   const handleFilter = ({ section, description }) => {
     try {
       const result = data.filter(
         (item) =>
           (!section || item.section.includes(section)) &&
           (!description || item.description.toLowerCase().includes(description.toLowerCase()))
-      );
-      setFilteredData(result);
+      )
+      setFilteredData(result)
     } catch {
-      toast.error("Error filtering statutory data.");
+      toast.error('Error filtering statutory data.')
     }
-  };
+  }
 
   const handleSave = (newItem) => {
     try {
-      let updated;
+      let updated
       if (editData) {
         // Edit existing
-        updated = data.map((item) => (item.id === newItem.id ? newItem : item));
-        toast.success("Statutory detail updated.");
+        updated = data.map((item) => (item.id === newItem.id ? newItem : item))
+        toast.success('Statutory detail updated.')
       } else {
         // Add new
-        updated = [...data, newItem];
-        toast.success("Statutory detail added.");
+        updated = [...data, newItem]
+        toast.success('Statutory detail added.')
       }
-      setData(updated);
-      setFilteredData(updated);
-      updateLocalStorage(updated);
-      setEditData(null);
+      setData(updated)
+      setFilteredData(updated)
+      updateLocalStorage(updated)
+      setEditData(null)
     } catch {
-      toast.error("Save operation failed.");
+      toast.error('Save operation failed.')
     }
-  };
+  }
 
   const handleEdit = (item) => {
-    setEditData(item);
-    setShowModal(true);
-  };
+    setEditData(item)
+    setShowModal(true)
+  }
 
   const handleDelete = (id) => {
     try {
-      if (confirm("Are you sure you want to delete this entry?")) {
-        const updated = data.filter((item) => item.id !== id);
-        setData(updated);
-        setFilteredData(updated);
-        updateLocalStorage(updated);
-        toast.success("Statutory detail deleted.");
+      if (confirm('Are you sure you want to delete this entry?')) {
+        const updated = data.filter((item) => item.id !== id)
+        setData(updated)
+        setFilteredData(updated)
+        updateLocalStorage(updated)
+        toast.success('Statutory detail deleted.')
       }
     } catch {
-      toast.error("Failed to delete.");
+      toast.error('Failed to delete.')
     }
-  };
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white">
@@ -81,8 +91,8 @@ export default function StatutorySetup() {
       <StatutoryFilter onFilter={handleFilter} />
       <button
         onClick={() => {
-          setEditData(null);
-          setShowModal(true);
+          setEditData(null)
+          setShowModal(true)
         }}
         className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mb-4"
       >
@@ -132,13 +142,13 @@ export default function StatutorySetup() {
       {showModal && (
         <StatutoryModal
           onClose={() => {
-            setShowModal(false);
-            setEditData(null);
+            setShowModal(false)
+            setEditData(null)
           }}
           onSave={handleSave}
           editData={editData}
         />
       )}
     </div>
-  );
+  )
 }

@@ -1,8 +1,15 @@
 // File: src/features/billing/components/InvoiceFilters.jsx
 
-import React from "react";
+import React from 'react'
 
-export default function InvoiceFilters({ search, setSearch, statusFilter, setStatusFilter, dateFilter, setDateFilter }) {
+export default function InvoiceFilters({
+  search,
+  setSearch,
+  statusFilter,
+  setStatusFilter,
+  dateFilter,
+  setDateFilter,
+}) {
   return (
     <div className="flex flex-col md:flex-row gap-4">
       <input
@@ -29,5 +36,5 @@ export default function InvoiceFilters({ search, setSearch, statusFilter, setSta
         <option value="rejected">Rejected</option>
       </select>
     </div>
-  );
+  )
 }

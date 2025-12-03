@@ -166,6 +166,8 @@ import UniformExpenseLedgerPage from '../Features/Master/Process of Prepaid/Page
 import PrepaidUniformVendorLedgerPage from '../Features/Master/Process of Prepaid/Pages/PrepaidUniformVendorLedgerPage'
 import UnifiedVendorLedgerPage from '../Features/Master/Pages/UnifiedVendorLedgerPage'
 import HKMaterialsExpenseLedgerPage from '../Features/Master/Components/HKMaterialExpenseLedgerPage'
+import TdsLedgerPage from '../Features/Master/TDSLedger/Page/TDSLedgerPage'
+import GenericExpenseLedger from '../Features/Master/Professional Fes and Other Fees Ledger/Pages/GenericLedgerPage'
 
 export const router = createBrowserRouter([
   {
@@ -840,7 +842,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'tds-ledger/:sectionCode',
-        element: <TDSLedgerPage />,
+        element: <TdsLedgerPage />,
       },
       {
         path: 'bank-ledger/:accountCode',
@@ -917,6 +919,10 @@ export const router = createBrowserRouter([
       {
         path: 'hk-materials-expense-ledger',
         element: <HKMaterialsExpenseLedgerPage />,
+      },
+      {
+        path: 'expense-ledger/:accountCode',
+        element: <GenericExpenseLedger />,
       },
     ],
   },

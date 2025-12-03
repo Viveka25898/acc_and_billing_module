@@ -171,11 +171,12 @@ function App() {
       // 1. INITIALIZE USERS (Enhanced Structure)
       // ========================================
       const existingUsers = localStorage.getItem('users')
+      let users
       if (
         !existingUsers ||
         !JSON.parse(existingUsers).some((user) => user.role === 'payroll-team')
       ) {
-        const users = [
+        users = [
           // Employees
           {
             username: 'emp1',
@@ -515,10 +516,89 @@ function App() {
             email: 'vinod.pandey@company.com',
             mobile: '9876543231',
           },
+
+          // === ADDED USER m1 (Manager) ===
+          {
+            username: 'm1',
+            role: 'manager',
+            empId: '23',
+            reportsTo: 'fh1',
+            fullName: 'Manoj Tiwari',
+            site: 'MH01',
+            department: 'Finance',
+            designation: 'Manager',
+            glCode: null,
+            osBalance: 0,
+            email: 'manoj.tiwari@company.com',
+            mobile: '9876543232',
+          },
+
+          // === ADDED USER fh1 (Financial Head Manager) ===
+          {
+            username: 'fh1',
+            role: 'financial-head',
+            empId: '24',
+            reportsTo: null,
+            fullName: 'Farhan Hussain',
+            site: 'MH01',
+            department: 'Finance',
+            designation: 'Financial Head Manager',
+            glCode: null,
+            osBalance: 0,
+            email: 'farhan.hussain@company.com',
+            mobile: '9876543233',
+          },
         ]
 
         localStorage.setItem('users', JSON.stringify(users))
         console.log('✅ User roles initialized with accounting fields')
+      } else {
+        // Always ensure the two new users are present
+        users = JSON.parse(existingUsers)
+        const m1Exists = users.some((u) => u.username === 'm1')
+        const fh1Exists = users.some((u) => u.username === 'fh1')
+        let changed = false
+
+        if (!m1Exists) {
+          users.push({
+            username: 'm1',
+            role: 'manager',
+            empId: '23',
+            reportsTo: 'fh1',
+            fullName: 'Manoj Tiwari',
+            site: 'MH01',
+            department: 'Finance',
+            designation: 'Manager',
+            glCode: null,
+            osBalance: 0,
+            email: 'manoj.tiwari@company.com',
+            mobile: '9876543232',
+          })
+          changed = true
+        }
+
+        if (!fh1Exists) {
+          users.push({
+            username: 'fh1',
+            role: 'financial-head',
+            empId: '24',
+            reportsTo: null,
+            fullName: 'Farhan Hussain',
+            site: 'MH01',
+            department: 'Finance',
+            designation: 'Financial Head Manager',
+            glCode: null,
+            osBalance: 0,
+            email: 'farhan.hussain@company.com',
+            mobile: '9876543233',
+          })
+          changed = true
+        }
+
+        if (changed) {
+          localStorage.setItem('users', JSON.stringify(users))
+          console.log('✅ Added Manager (m1) and Financial Head (fh1) to users')
+        }
       }
 
       // ========================================

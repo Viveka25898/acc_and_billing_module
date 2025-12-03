@@ -1,200 +1,270 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
-import { toast } from "react-toastify";
+import React, { useState, useEffect } from 'react'
+import { toast } from 'react-toastify'
 
 export default function POForm({ onSubmit }) {
   const initialFormState = {
-    poNumber: "",
-    vendorName: "",
-    newVendorName: "",
-    poType: "",
-    expenseType: "",
-    description: "",
-    amount: "",
+    poNumber: '',
+    vendorName: '',
+    newVendorName: '',
+    poType: '',
+    expenseType: '',
+    description: '',
+    amount: '',
     attachment: null,
-    startDate: "",
-    endDate: "",
-  };
+    startDate: '',
+    endDate: '',
+    tdsSection: '',
+  }
 
-  const [formData, setFormData] = useState(initialFormState);
-  const [isNewVendor, setIsNewVendor] = useState(false);
+  const [formData, setFormData] = useState(initialFormState)
+  const [isNewVendor, setIsNewVendor] = useState(false)
+  const [tdsSections, setTdsSections] = useState([])
 
   // Existing vendors list
   const existingVendors = [
-    "Vendor 1",
-    "Vendor 2", 
-    "Vendor 3",
-    "ABC Solutions Pvt Ltd",
-    "XYZ Consultancy Services",
-    "Tech Support India",
-    "Legal Associates",
-    "Audit & Co.",
-    "Cleaning Services Ltd",
-    "Security Solutions"
-  ];
+    'Vendor 1',
+    'Vendor 2',
+    'Vendor 3',
+    'ABC Solutions Pvt Ltd',
+    'XYZ Consultancy Services',
+    'Tech Support India',
+    'Legal Associates',
+    'Audit & Co.',
+    'Cleaning Services Ltd',
+    'Security Solutions',
+  ]
 
   // Auto-generate PO number on component mount
   useEffect(() => {
     const generatePONumber = () => {
-      const currentYear = new Date().getFullYear();
-      const randomNum = Math.floor(Math.random() * 9000) + 1000; // 4 digit random number
-      return `PO-${currentYear}-${randomNum}`;
-    };
-    
-    setFormData(prev => ({
-      ...prev,
-      poNumber: generatePONumber()
-    }));
-  }, []);
-
-  const handleChange = (e) => {
-    const { name, value, files, type } = e.target;
-    const newValue = files ? files[0] : value;
-    
-    // Handle vendor selection
-    if (name === "vendorName") {
-      if (value === "other") {
-        setIsNewVendor(true);
-        setFormData(prev => ({
-          ...prev,
-          vendorName: "",
-          newVendorName: ""
-        }));
-      } else {
-        setIsNewVendor(false);
-        setFormData(prev => ({
-          ...prev,
-          vendorName: value,
-          newVendorName: ""
-        }));
-      }
-      return;
+      const currentYear = new Date().getFullYear()
+      const randomNum = Math.floor(Math.random() * 9000) + 1000 // 4 digit random number
+      return `PO-${currentYear}-${randomNum}`
     }
-    
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "radio" ? value : newValue,
-    }));
-  };
+      poNumber: generatePONumber(),
+    }))
+  }, [])
+
+  // Load TDS sections from localStorage on component mount
+  useEffect(() => {
+    const loadTdsSections = () => {
+      try {
+        console.log('=== DEBUG: Loading TDS Sections ===')
+
+        // Check ALL localStorage keys
+        console.log('All localStorage keys:', Object.keys(localStorage))
+
+        const storedData = localStorage.getItem('statutoryData')
+        console.log('statutoryData exists:', storedData !== null)
+
+        if (storedData) {
+          const statutoryData = JSON.parse(storedData)
+          console.log('Full statutoryData:', statutoryData)
+          console.log('Number of items:', statutoryData.length)
+
+          // Show all sections to debug
+          console.log('All sections found:')
+          statutoryData.forEach((item, index) => {
+            console.log(`Item ${index}:`, {
+              section: item.section,
+              description: item.description,
+              rate: item.rate,
+            })
+          })
+
+          // More flexible filtering
+          const tdsData = statutoryData.filter((item) => {
+            if (!item.section) return false
+
+            const sectionUpper = String(item.section).toUpperCase()
+            const descUpper = String(item.description || '').toUpperCase()
+
+            return (
+              sectionUpper.includes('TDS') ||
+              sectionUpper.includes('TAX') ||
+              sectionUpper.includes('194') || // Common TDS sections like 194C, 194J
+              sectionUpper.includes('DEDUCTION') ||
+              descUpper.includes('TDS') ||
+              descUpper.includes('TAX DEDUCTED AT SOURCE')
+            )
+          })
+
+          console.log('Filtered TDS sections:', tdsData)
+          console.log('Number of TDS sections:', tdsData.length)
+
+          setTdsSections(tdsData)
+
+          // If still empty, show ALL sections for testing
+          if (tdsData.length === 0) {
+            console.warn('No TDS sections filtered, showing all sections for debugging')
+            setTdsSections(statutoryData.slice(0, 10)) // Show first 10 for testing
+          }
+        } else {
+          console.warn('No statutoryData found in localStorage')
+          setTdsSections([])
+        }
+      } catch (error) {
+        console.error('Error loading TDS sections:', error)
+        setTdsSections([])
+      }
+    }
+
+    loadTdsSections()
+  }, [])
+
+  const handleChange = (e) => {
+    const { name, value, files, type } = e.target
+    const newValue = files ? files[0] : value
+
+    // Handle vendor selection
+    if (name === 'vendorName') {
+      if (value === 'other') {
+        setIsNewVendor(true)
+        setFormData((prev) => ({
+          ...prev,
+          vendorName: '',
+          newVendorName: '',
+        }))
+      } else {
+        setIsNewVendor(false)
+        setFormData((prev) => ({
+          ...prev,
+          vendorName: value,
+          newVendorName: '',
+        }))
+      }
+      return
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'radio' ? value : newValue,
+    }))
+  }
 
   const validateForm = () => {
-    const errors = [];
+    const errors = []
 
     // PO Number validation
     if (!formData.poNumber.trim()) {
-      errors.push("PO Number is required");
+      errors.push('PO Number is required')
     }
 
     // Vendor validation
     if (!isNewVendor && !formData.vendorName) {
-      errors.push("Please select a vendor");
+      errors.push('Please select a vendor')
     }
     if (isNewVendor && !formData.newVendorName.trim()) {
-      errors.push("Please enter new vendor name");
+      errors.push('Please enter new vendor name')
     }
     if (isNewVendor && formData.newVendorName.length < 3) {
-      errors.push("Vendor name must be at least 3 characters");
+      errors.push('Vendor name must be at least 3 characters')
     }
 
     // PO Type validation
     if (!formData.poType) {
-      errors.push("Please select PO type");
+      errors.push('Please select PO type')
     }
 
     // Expense Type validation
     if (!formData.expenseType) {
-      errors.push("Please select expense type");
+      errors.push('Please select expense type')
     }
 
     // Description validation
     if (!formData.description.trim()) {
-      errors.push("Description is required");
+      errors.push('Description is required')
     }
     if (formData.description.length < 10) {
-      errors.push("Description must be at least 10 characters");
+      errors.push('Description must be at least 10 characters')
     }
 
     // Amount validation
     if (!formData.amount) {
-      errors.push("Amount is required");
+      errors.push('Amount is required')
     }
     if (formData.amount <= 0) {
-      errors.push("Amount must be greater than 0");
+      errors.push('Amount must be greater than 0')
     }
-    if (formData.amount > 10000000) { // 1 crore limit
-      errors.push("Amount cannot exceed ₹1,00,00,000");
+    if (formData.amount > 10000000) {
+      // 1 crore limit
+      errors.push('Amount cannot exceed ₹1,00,00,000')
     }
 
     // Date validation
     if (!formData.startDate) {
-      errors.push("Start date is required");
+      errors.push('Start date is required')
     }
-    
-    const today = new Date().toISOString().split('T')[0];
+
+    const today = new Date().toISOString().split('T')[0]
     if (formData.startDate < today) {
-      errors.push("Start date cannot be in the past");
+      errors.push('Start date cannot be in the past')
     }
 
     if (formData.endDate && formData.endDate <= formData.startDate) {
-      errors.push("End date must be after start date");
+      errors.push('End date must be after start date')
     }
 
     // Attachment validation
     if (!formData.attachment) {
-      errors.push("Please upload an attachment");
+      errors.push('Please upload an attachment')
     }
-    
+
     if (formData.attachment) {
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 5 * 1024 * 1024 // 5MB
       if (formData.attachment.size > maxSize) {
-        errors.push("File size must be less than 5MB");
+        errors.push('File size must be less than 5MB')
       }
-      
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
       if (!allowedTypes.includes(formData.attachment.type)) {
-        errors.push("Only PDF and image files are allowed");
+        errors.push('Only PDF and image files are allowed')
       }
     }
 
-    return errors;
-  };
+    return errors
+  }
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    const errors = validateForm();
-    
+    e.preventDefault()
+
+    const errors = validateForm()
+
     if (errors.length > 0) {
-      errors.forEach(error => toast.error(error));
-      return;
+      errors.forEach((error) => toast.error(error))
+      return
     }
 
     // Prepare final form data
     const finalFormData = {
       ...formData,
       vendorName: isNewVendor ? formData.newVendorName : formData.vendorName,
-      isNewVendor: isNewVendor
-    };
-    
-    delete finalFormData.newVendorName; // Remove helper field
+      isNewVendor: isNewVendor,
+    }
 
-    onSubmit(finalFormData);
-    setFormData(initialFormState);
-    setIsNewVendor(false);
-    e.target.reset();
-    
+    delete finalFormData.newVendorName // Remove helper field
+
+    onSubmit(finalFormData)
+    setFormData(initialFormState)
+    setIsNewVendor(false)
+    e.target.reset()
+
     // Generate new PO number for next form
     const generatePONumber = () => {
-      const currentYear = new Date().getFullYear();
-      const randomNum = Math.floor(Math.random() * 9000) + 1000;
-      return `PO-${currentYear}-${randomNum}`;
-    };
-    
-    setFormData(prev => ({
+      const currentYear = new Date().getFullYear()
+      const randomNum = Math.floor(Math.random() * 9000) + 1000
+      return `PO-${currentYear}-${randomNum}`
+    }
+
+    setFormData((prev) => ({
       ...initialFormState,
-      poNumber: generatePONumber()
-    }));
-  };
+      poNumber: generatePONumber(),
+    }))
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -213,10 +283,12 @@ export default function POForm({ onSubmit }) {
 
       {/* Enhanced Vendor Selection */}
       <div>
-        <label className="block font-medium">Vendor Name <span className="text-red-500">*</span></label>
+        <label className="block font-medium">
+          Vendor Name <span className="text-red-500">*</span>
+        </label>
         <select
           name="vendorName"
-          value={isNewVendor ? "other" : formData.vendorName}
+          value={isNewVendor ? 'other' : formData.vendorName}
           onChange={handleChange}
           className="w-full border rounded p-2"
           required
@@ -234,7 +306,9 @@ export default function POForm({ onSubmit }) {
       {/* New Vendor Input */}
       {isNewVendor && (
         <div>
-          <label className="block font-medium">New Vendor Name <span className="text-red-500">*</span></label>
+          <label className="block font-medium">
+            New Vendor Name <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             name="newVendorName"
@@ -249,7 +323,9 @@ export default function POForm({ onSubmit }) {
       )}
 
       <div>
-        <label className="block font-medium">PO Type <span className="text-red-500">*</span></label>
+        <label className="block font-medium">
+          PO Type <span className="text-red-500">*</span>
+        </label>
         <select
           name="poType"
           value={formData.poType}
@@ -267,7 +343,9 @@ export default function POForm({ onSubmit }) {
       {formData.poType && (
         <>
           <div>
-            <label className="block font-medium">Start Date <span className="text-red-500">*</span></label>
+            <label className="block font-medium">
+              Start Date <span className="text-red-500">*</span>
+            </label>
             <input
               type="date"
               name="startDate"
@@ -280,9 +358,9 @@ export default function POForm({ onSubmit }) {
           </div>
           <div>
             <label className="block font-medium">
-              End Date 
-              {formData.poType === "yearly" && <span className="text-red-500">*</span>}
-              {formData.poType === "one-time" && <span className="text-gray-500">(Optional)</span>}
+              End Date
+              {formData.poType === 'yearly' && <span className="text-red-500">*</span>}
+              {formData.poType === 'one-time' && <span className="text-gray-500">(Optional)</span>}
             </label>
             <input
               type="date"
@@ -291,21 +369,112 @@ export default function POForm({ onSubmit }) {
               onChange={handleChange}
               className="w-full border rounded p-2"
               min={formData.startDate || new Date().toISOString().split('T')[0]}
-              required={formData.poType === "yearly"}
+              required={formData.poType === 'yearly'}
             />
           </div>
         </>
       )}
 
+      {(formData.expenseType === 'professional-fees' ||
+        formData.expenseType === 'one-time-service') && (
+        <div>
+          <label className="block font-medium mb-1">
+            TDS Section <span className="text-gray-500">(Optional)</span>
+          </label>
+          <div className="mb-4">
+            <select
+              name="tdsSection"
+              value={formData.tdsSection}
+              onChange={handleChange}
+              className="w-full border rounded p-2"
+            >
+              <option value="">Select TDS Section (if applicable)</option>
+              {tdsSections.length === 0 ? (
+                <option value="" disabled>
+                  No TDS sections found in statutory data
+                </option>
+              ) : (
+                tdsSections.map((item, index) => (
+                  <option key={index} value={item.section}>
+                    {item.section} - {item.description} ({item.rate})
+                  </option>
+                ))
+              )}
+            </select>
+            <div className="text-xs text-gray-500 mt-1 flex flex-col space-y-1">
+              {tdsSections.length > 0 ? (
+                <>
+                  <span>Select TDS section for professional fees (if applicable)</span>
+                  <span className="text-blue-600">
+                    {tdsSections.length} TDS sections loaded from statutory setup
+                  </span>
+                </>
+              ) : (
+                <span className="text-amber-600">
+                  No TDS sections found. Please add TDS sections in Statutory Setup first.
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* TDS Rate Display (if section selected) */}
+          {formData.tdsSection && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm font-medium text-blue-700">TDS Details:</p>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {(() => {
+                  const selectedSection = tdsSections.find(
+                    (item) => item.section === formData.tdsSection
+                  )
+                  if (selectedSection) {
+                    return (
+                      <>
+                        <div>
+                          <span className="text-xs text-gray-600">Section:</span>
+                          <p className="font-medium">{selectedSection.section}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-gray-600">Rate:</span>
+                          <p className="font-medium">{selectedSection.rate}%</p>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-xs text-gray-600">Description:</span>
+                          <p className="text-sm">{selectedSection.description}</p>
+                        </div>
+                        {formData.amount && (
+                          <div className="col-span-2 mt-2 p-2 bg-white border rounded">
+                            <span className="text-xs text-gray-600">Estimated TDS Amount:</span>
+                            <p className="font-medium text-blue-700">
+                              ₹
+                              {(
+                                (parseFloat(formData.amount) * parseFloat(selectedSection.rate)) /
+                                100
+                              ).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
-        <label className="block font-medium mb-1">Expense Type <span className="text-red-500">*</span></label>
+        <label className="block font-medium mb-1">
+          Expense Type <span className="text-red-500">*</span>
+        </label>
         <div className="flex gap-4">
           <label className="flex items-center gap-2">
             <input
               type="radio"
               name="expenseType"
               value="professional-fees"
-              checked={formData.expenseType === "professional-fees"}
+              checked={formData.expenseType === 'professional-fees'}
               onChange={handleChange}
               required
             />
@@ -316,7 +485,7 @@ export default function POForm({ onSubmit }) {
               type="radio"
               name="expenseType"
               value="one-time-service"
-              checked={formData.expenseType === "one-time-service"}
+              checked={formData.expenseType === 'one-time-service'}
               onChange={handleChange}
               required
             />
@@ -326,7 +495,9 @@ export default function POForm({ onSubmit }) {
       </div>
 
       <div>
-        <label className="block font-medium">Description <span className="text-red-500">*</span></label>
+        <label className="block font-medium">
+          Description <span className="text-red-500">*</span>
+        </label>
         <textarea
           name="description"
           value={formData.description}
@@ -342,7 +513,9 @@ export default function POForm({ onSubmit }) {
       </div>
 
       <div>
-        <label className="block font-medium">PO Amount (₹) <span className="text-red-500">*</span></label>
+        <label className="block font-medium">
+          PO Amount (₹) <span className="text-red-500">*</span>
+        </label>
         <input
           type="number"
           name="amount"
@@ -358,7 +531,9 @@ export default function POForm({ onSubmit }) {
       </div>
 
       <div>
-        <label className="block font-medium">Upload Attachment <span className="text-red-500">*</span></label>
+        <label className="block font-medium">
+          Upload Attachment <span className="text-red-500">*</span>
+        </label>
         <input
           type="file"
           name="attachment"
@@ -379,5 +554,5 @@ export default function POForm({ onSubmit }) {
         Generate PO
       </button>
     </form>
-  );
+  )
 }

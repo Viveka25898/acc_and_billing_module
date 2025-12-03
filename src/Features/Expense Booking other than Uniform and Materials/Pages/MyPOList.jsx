@@ -1,63 +1,124 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from "react";
-import POFakeData from "../data/POFakeData";
-import POSearchFilter from "../Components/POSearchFilter";
-import POListTable from "../Components/POListTable";
+import React, { useEffect, useState } from 'react'
+import POSearchFilter from '../Components/POSearchFilter'
+import POListTable from '../Components/POListTable'
 
 export default function MyPOsList() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [vendorStatusFilter, setVendorStatusFilter] = useState("all");
-  const [poTypeFilter, setPoTypeFilter] = useState("all");
-  const [filteredPOs, setFilteredPOs] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [vendorStatusFilter, setVendorStatusFilter] = useState('all')
+  const [poTypeFilter, setPoTypeFilter] = useState('all')
+  const [filteredPOs, setFilteredPOs] = useState([])
+  const [poData, setPoData] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 8
 
-  // Enhanced filtering logic
+  // Load POs from localStorage (key: "oneTimePo") and normalize structure to what's expected by the table
   useEffect(() => {
-    const result = POFakeData.filter((po) => {
-      // Search filter - check multiple fields
-      const searchLower = search.toLowerCase();
-      const matchSearch = search === "" || 
-        po.vendorName.toLowerCase().includes(searchLower) ||
-        po.poNumber.toLowerCase().includes(searchLower) ||
-        po.description.toLowerCase().includes(searchLower);
+    const loadFromStorage = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem('oneTimePo') || '[]')
+        const normalized = raw.map((po) => {
+          const status = po.status || 'submitted'
+          const financeApproval =
+            po.financeApproval || (status === 'submitted' ? 'pending' : status)
+          const vendorStatus =
+            po.vendorStatus ||
+            (status === 'submitted'
+              ? { status: 'po-sent', label: 'PO Sent' }
+              : { status: 'invoice-pending', label: 'Invoice Pending' })
+
+          return {
+            id: po.id || po.poNumber || Date.now().toString(),
+            poNumber: po.poNumber || '',
+            vendorName: po.vendorName || 'Unknown Vendor',
+            description: po.description || '',
+            createdDate: po.createdAt || po.createdDate || new Date().toISOString(),
+            amount: typeof po.amount === 'number' ? po.amount : parseFloat(po.amount || 0),
+            poType: po.poType || 'one-time',
+            expenseType: po.expenseType || '',
+            invoiceAmount: po.invoiceAmount || null,
+            vendorStatus,
+            financeApproval,
+            rejectionReason: po.rejectionReason || null,
+            status: status,
+            startDate: po.startDate || null,
+            endDate: po.endDate || null,
+          }
+        })
+
+        // Sort newest first by default
+        normalized.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate))
+
+        setPoData(normalized)
+      } catch (err) {
+        console.error('Error reading oneTimePo from localStorage:', err)
+        setPoData([])
+      }
+    }
+
+    loadFromStorage()
+
+    // Update when storage changes in other tabs
+    const handleStorage = (e) => {
+      if (e.key === 'oneTimePo') loadFromStorage()
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  // Enhanced filtering logic (uses poData instead of fake data)
+  useEffect(() => {
+    const result = poData.filter((po) => {
+      // Search filter - check multiple fields safely
+      const searchLower = search.toLowerCase()
+      const vendorName = (po.vendorName || '').toString().toLowerCase()
+      const poNumber = (po.poNumber || '').toString().toLowerCase()
+      const description = (po.description || '').toString().toLowerCase()
+
+      const matchSearch =
+        search === '' ||
+        vendorName.includes(searchLower) ||
+        poNumber.includes(searchLower) ||
+        description.includes(searchLower)
 
       // Finance Head Status filter
-      const matchStatus = statusFilter === "all" || po.financeApproval === statusFilter;
-      
-      // Vendor status filter
-      const matchVendorStatus = vendorStatusFilter === "all" || 
-        po.vendorStatus.status === vendorStatusFilter;
-      
-      // PO Type filter
-      const matchPoType = poTypeFilter === "all" || po.poType === poTypeFilter;
+      const matchStatus =
+        statusFilter === 'all' || (po.financeApproval || '').toString() === statusFilter
 
-      return matchSearch && matchStatus && matchVendorStatus && matchPoType;
-    });
+      // Vendor status filter
+      const matchVendorStatus =
+        vendorStatusFilter === 'all' ||
+        (po.vendorStatus?.status || '').toString() === vendorStatusFilter
+
+      // PO Type filter
+      const matchPoType = poTypeFilter === 'all' || (po.poType || '').toString() === poTypeFilter
+
+      return matchSearch && matchStatus && matchVendorStatus && matchPoType
+    })
 
     // Sort by creation date (newest first)
-    const sortedResult = result.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate));
-    
-    setFilteredPOs(sortedResult);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [search, statusFilter, vendorStatusFilter, poTypeFilter]);
+    const sortedResult = result.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate))
+
+    setFilteredPOs(sortedResult)
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [search, statusFilter, vendorStatusFilter, poTypeFilter, poData])
 
   // Pagination
   const paginatedPOs = filteredPOs.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
-  );
+  )
 
-  const totalPages = Math.ceil(filteredPOs.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredPOs.length / itemsPerPage)
 
-  // Statistics
+  // Statistics (derived from real data)
   const stats = {
-    total: POFakeData.length,
-    pending: POFakeData.filter(po => po.financeApproval === "pending").length,
-    approved: POFakeData.filter(po => po.financeApproval === "approved").length,
-    rejected: POFakeData.filter(po => po.financeApproval === "rejected").length,
-  };
+    total: poData.length,
+    pending: poData.filter((po) => po.financeApproval === 'pending').length,
+    approved: poData.filter((po) => po.financeApproval === 'approved').length,
+    rejected: poData.filter((po) => po.financeApproval === 'rejected').length,
+  }
 
   return (
     <div className="p-4 space-y-6">
@@ -116,8 +177,9 @@ export default function MyPOsList() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             {/* Page Info */}
             <div className="text-sm text-gray-600">
-              Showing {Math.min((currentPage - 1) * itemsPerPage + 1, filteredPOs.length)} to{" "}
-              {Math.min(currentPage * itemsPerPage, filteredPOs.length)} of {filteredPOs.length} entries
+              Showing {Math.min((currentPage - 1) * itemsPerPage + 1, filteredPOs.length)} to{' '}
+              {Math.min(currentPage * itemsPerPage, filteredPOs.length)} of {filteredPOs.length}{' '}
+              entries
             </div>
 
             {/* Pagination Controls */}
@@ -129,7 +191,7 @@ export default function MyPOsList() {
               >
                 First
               </button>
-              
+
               <button
                 className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
@@ -141,30 +203,30 @@ export default function MyPOsList() {
               {/* Page Numbers */}
               <div className="flex gap-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
+                  let pageNum
                   if (totalPages <= 5) {
-                    pageNum = i + 1;
+                    pageNum = i + 1
                   } else if (currentPage <= 3) {
-                    pageNum = i + 1;
+                    pageNum = i + 1
                   } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
+                    pageNum = totalPages - 4 + i
                   } else {
-                    pageNum = currentPage - 2 + i;
+                    pageNum = currentPage - 2 + i
                   }
-                  
+
                   return (
                     <button
                       key={pageNum}
                       className={`px-3 py-2 text-sm rounded ${
                         currentPage === pageNum
-                          ? "bg-green-600 text-white"
-                          : "border hover:bg-gray-50"
+                          ? 'bg-green-600 text-white'
+                          : 'border hover:bg-gray-50'
                       }`}
                       onClick={() => setCurrentPage(pageNum)}
                     >
                       {pageNum}
                     </button>
-                  );
+                  )
                 })}
               </div>
 
@@ -175,7 +237,7 @@ export default function MyPOsList() {
               >
                 Next
               </button>
-              
+
               <button
                 className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 onClick={() => setCurrentPage(totalPages)}
@@ -186,7 +248,6 @@ export default function MyPOsList() {
             </div>
 
             {/* Items per page */}
-
           </div>
         </div>
       )}
@@ -197,17 +258,23 @@ export default function MyPOsList() {
           <div className="text-gray-400 text-6xl mb-4">📋</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No POs Found</h3>
           <p className="text-gray-600 mb-4">
-            {search || statusFilter !== "all" || vendorStatusFilter !== "all" || poTypeFilter !== "all"
-              ? "No purchase orders match your current search and filter criteria."
+            {search ||
+            statusFilter !== 'all' ||
+            vendorStatusFilter !== 'all' ||
+            poTypeFilter !== 'all'
+              ? 'No purchase orders match your current search and filter criteria.'
               : "You haven't created any purchase orders yet."}
           </p>
-          {(search || statusFilter !== "all" || vendorStatusFilter !== "all" || poTypeFilter !== "all") && (
+          {(search ||
+            statusFilter !== 'all' ||
+            vendorStatusFilter !== 'all' ||
+            poTypeFilter !== 'all') && (
             <button
               onClick={() => {
-                setSearch("");
-                setStatusFilter("all");
-                setVendorStatusFilter("all");
-                setPoTypeFilter("all");
+                setSearch('')
+                setStatusFilter('all')
+                setVendorStatusFilter('all')
+                setPoTypeFilter('all')
               }}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
@@ -217,5 +284,5 @@ export default function MyPOsList() {
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -256,6 +256,23 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('uniform expense') &&
           !account.name.toLowerCase().includes('prepaid'))
 
+      //=============================================
+      // Professional Fess and Other Fees Ledger
+      //=============================================
+      //=============================================
+      // Professional Fees and Other Fees Ledger
+      //=============================================
+
+      const isProfessionalFeesAccount =
+        account.code === 'X2002002002' ||
+        (account.code.startsWith('X2002002002') &&
+          account.name.toLowerCase().includes('professional fees'))
+
+      const isOtherFeesAccount =
+        account.code === 'X2002002003' ||
+        (account.code.startsWith('X2002002003') &&
+          account.name.toLowerCase().includes('other fees'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -339,6 +356,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isHKMaterialExpenseAccount) {
         console.log('✅ Navigating to HK Materials Expense Ledger')
         navigate(`/dashboard/account-manager/hk-materials-expense-ledger`)
+      } else if (isProfessionalFeesAccount) {
+        console.log('✅ Navigating to Professional Fees Ledger')
+        navigate(`/dashboard/account-manager/expense-ledger/X2002002002`)
+      } else if (isOtherFeesAccount) {
+        console.log('✅ Navigating to Other Fees Ledger')
+        navigate(`/dashboard/account-manager/expense-ledger/X2002002003`)
       } else {
         console.log('✅ Navigating to Generic Ledger')
         navigate(`/dashboard/account-manager/ledger/${account.code}`)

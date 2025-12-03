@@ -3015,6 +3015,353 @@ export const createVendorPaymentTransaction = (payment, vendorGLCode, bankGLCode
 };
 
 /**
+ * Extract TDS rate from invoice data
+ */
+export const extractTdsRate = (invoice) => {
+  if (!invoice.tdsApplicable && !invoice.tdsSection) return 0
+
+  // Try to get rate from various sources
+  if (invoice.tdsRate) {
+    return parseFloat(invoice.tdsRate.replace('%', ''))
+  }
+
+  if (invoice.tdsDetails?.rate) {
+    return parseFloat(invoice.tdsDetails.rate.replace('%', ''))
+  }
+
+  if (invoice.tdsSection) {
+    // Default rates based on section
+    if (invoice.tdsSection.includes('194C')) return 2  // Contractors
+    if (invoice.tdsSection.includes('194J')) return 10 // Professional fees
+    if (invoice.tdsSection.includes('194I')) return 10 // Rent
+  }
+
+  return 10 // Default rate
+}
+
+/**
+ * Calculate TDS amount
+ */
+export const calculateTdsAmount = (invoice) => {
+  const totalAmount = Number(invoice.totalAmount ?? invoice.amount ?? invoice.total ?? 0)
+  if (totalAmount <= 0) return 0
+
+  const tdsRate = extractTdsRate(invoice)
+  if (tdsRate <= 0) return 0
+
+  return Math.round((totalAmount * tdsRate) / 100)
+}
+
+/* ---------- Constants (GL codes) ---------- */
+export const TDS_PAYABLE_GL = 'L2003001' // As requested: L2003001
+export const CGST_INPUT_GL = 'A3007001001'
+export const SGST_INPUT_GL = 'A3007001002'
+// Parent GST input (not required for entries but kept for reference)
+export const GST_INPUT_PARENT_GL = 'A3007001'
+
+/**
+ * Resolve GL for expense based on invoice.expenseType
+ * - Professional Fees -> X2002002002
+ * - Other Fees -> X2002002003
+ * - Fallback -> X2002002003
+ */
+export const resolveFinanceExpenseGL = (expenseType) => {
+  if (!expenseType) return 'X2002002003'
+  const t = expenseType.toString().toLowerCase()
+  if (t.includes('professional') || t.includes('professional fees') || t.includes('consult')) {
+    return 'X2002002002'
+  }
+  return 'X2002002003'
+}
+
+/**
+ * Create the Finance Approval transaction object (balanced)
+ *
+ * Rules implemented:
+ * - DR Expense (X2 expense GL determined from expenseType) : taxable amount (base)
+ * - DR CGST / SGST (A3007001001 / A3007001002) : split of GST if gstRate > 0
+ * - CR TDS payable (L2003001) : if invoice.tdsApplicable === true and invoice.tdsRate provided
+ * - CR Vendor ledger (L2005_...) : net payable (total - tds)
+ *
+ * The function does NOT post the transaction. Use processFinanceHeadApproval to post/update.
+ */
+export const createFinanceApprovalTransaction = (invoice, financeUser = 'fh1') => {
+  try {
+    if (!invoice) throw new Error('Invoice data required')
+
+    const totalAmount = Number(invoice.totalAmount ?? invoice.amount ?? invoice.total ?? 0)
+    if (!(totalAmount > 0)) throw new Error('Invalid invoice total amount')
+
+    // Check if TDS is applicable
+    const tdsApplicable = invoice.tdsApplicable || !!invoice.tdsSection
+    let tdsRate = 0
+    let tdsAmount = 0
+
+    if (tdsApplicable) {
+      // Try to get TDS rate from various sources
+      if (invoice.tdsRate) {
+        tdsRate = parseFloat(invoice.tdsRate.replace('%', ''))
+      } else if (invoice.tdsDetails?.rate) {
+        tdsRate = parseFloat(invoice.tdsDetails.rate.replace('%', ''))
+      } else if (invoice.tdsSection) {
+        // Default rates based on section
+        if (invoice.tdsSection.includes('194C')) tdsRate = 2  // Contractors
+        else if (invoice.tdsSection.includes('194J')) tdsRate = 10  // Professional fees
+        else if (invoice.tdsSection.includes('194I')) tdsRate = 10  // Rent
+        else tdsRate = 10  // Default
+      }
+
+      // Calculate TDS amount (TDS is calculated on taxable amount before GST)
+      tdsAmount = Math.round((totalAmount * tdsRate) / 100)
+      console.log(`📊 TDS Calculation: ${totalAmount} × ${tdsRate}% = ₹${tdsAmount}`)
+    }
+
+    // GST calculations
+    const gstRate = Number(invoice.gstRate || 0)
+    let taxableAmount = totalAmount
+    let totalGST = 0
+    let cgstAmount = 0
+    let sgstAmount = 0
+
+    if (gstRate > 0) {
+      // Calculate taxable amount (base amount before GST)
+      taxableAmount = Math.round((totalAmount * 100) / (100 + gstRate))
+      totalGST = Number((totalAmount - taxableAmount).toFixed(2))
+
+      // If TDS applies, it should be on taxable amount (before GST)
+      if (tdsApplicable && tdsRate > 0) {
+        // Recalculate TDS on taxable amount (common practice)
+        tdsAmount = Math.round((taxableAmount * tdsRate) / 100)
+        console.log(`📊 Updated TDS Calculation (on taxable): ${taxableAmount} × ${tdsRate}% = ₹${tdsAmount}`)
+      }
+
+      // Split GST equally for CGST and SGST
+      const halfGST = totalGST / 2
+      cgstAmount = Math.round(halfGST * 100) / 100
+      sgstAmount = totalGST - cgstAmount
+    }
+
+    // Net payable to vendor = Total - TDS
+    const netPayable = Number((totalAmount - tdsAmount).toFixed(2))
+
+    // Resolve expense GL
+    const expenseGL = resolveFinanceExpenseGL(invoice.expenseType)
+
+    // Vendor GL: find or create under L2005
+    let vendorGL = getVendorGLCode(invoice.vendorName)
+    if (!vendorGL) {
+      vendorGL = createVendorLedger(invoice.vendorName, invoice.vendorName)
+    }
+
+    // Determine site for voucher number
+    const site = invoice.site || 'MH01'
+    const voucherNo = generateVoucherNumber(site)
+
+    // Build entries
+    const entries = []
+    let lineNo = 1
+
+    // 1) DR Expense (FULL invoice amount or taxable amount if GST)
+    entries.push({
+      lineNo: lineNo++,
+      glCode: expenseGL,
+      glName: invoice.expenseType ? `${invoice.expenseType.toUpperCase()}` : 'INDIRECT EXPENSE',
+      debit: gstRate > 0 ? Number(taxableAmount) : Number(totalAmount),
+      credit: 0,
+      narration: `${invoice.expenseType || 'Expense'} - Invoice ${invoice.invoiceNumber || invoice.invoiceNo || 'N/A'}`,
+      costCenter: invoice.costCenter || invoice.site || 'Operations',
+    })
+
+    // 2) DR CGST (if applicable)
+    if (cgstAmount > 0) {
+      entries.push({
+        lineNo: lineNo++,
+        glCode: CGST_INPUT_GL,
+        glName: 'CGST INPUT',
+        debit: Number(cgstAmount),
+        credit: 0,
+        narration: `CGST @${(gstRate / 2).toFixed(2)}% on Invoice ${invoice.invoiceNumber || invoice.invoiceNo || 'N/A'}`,
+      })
+    }
+
+    // 3) DR SGST (if applicable)
+    if (sgstAmount > 0) {
+      entries.push({
+        lineNo: lineNo++,
+        glCode: SGST_INPUT_GL,
+        glName: 'SGST INPUT',
+        debit: Number(sgstAmount),
+        credit: 0,
+        narration: `SGST @${(gstRate / 2).toFixed(2)}% on Invoice ${invoice.invoiceNumber || invoice.invoiceNo || 'N/A'}`,
+      })
+    }
+
+    // 4) CR TDS payable (if applicable) - IMPORTANT: TDS is CREDIT entry
+    if (tdsAmount > 0) {
+      entries.push({
+        lineNo: lineNo++,
+        glCode: TDS_PAYABLE_GL,
+        glName: 'TDS PAYABLE',
+        debit: 0,
+        credit: Number(tdsAmount),
+        narration: `TDS @${tdsRate}% on Invoice ${invoice.invoiceNumber || invoice.invoiceNo || 'N/A'} - Section ${invoice.tdsSection || 'N/A'}`,
+      })
+    }
+
+    // 5) CR Vendor payable - net payable (total - tds)
+    entries.push({
+      lineNo: lineNo++,
+      glCode: vendorGL,
+      glName: `VENDOR - ${invoice.vendorName}`,
+      debit: 0,
+      credit: Number(netPayable),
+      narration: `Invoice ${invoice.invoiceNumber || invoice.invoiceNo || 'N/A'} - Payable (Net of TDS)`,
+    })
+
+    // Calculate totals
+    const totalDebit = entries.reduce((sum, e) => sum + (e.debit || 0), 0)
+    const totalCredit = entries.reduce((sum, e) => sum + (e.credit || 0), 0)
+
+    // Compose transaction object
+    const transaction = {
+      id: `TXN_FIN_APPR_${Date.now()}_${invoice.id || ''}`,
+      voucherNo,
+      voucherType: 'Purchase Voucher',
+      date: getCurrentDate(),
+      invoiceNumber: invoice.invoiceNumber || invoice.invoiceNo || 'N/A',
+      entries,
+      totalDebit: Number(totalDebit.toFixed(2)),
+      totalCredit: Number(totalCredit.toFixed(2)),
+      narration: `Finance approval posting for Invoice ${invoice.invoiceNumber || invoice.invoiceNo || 'N/A'} - ${invoice.vendorName}${tdsAmount > 0 ? ` (TDS: ₹${tdsAmount} @${tdsRate}%)` : ''}`,
+      approvedBy: financeUser || 'fh1',
+      approvedDate: new Date().toISOString(),
+      source: 'finance-approval',
+      invoiceRef: invoice.id || null,
+      meta: {
+        totalAmount,
+        gstRate,
+        taxableAmount: gstRate > 0 ? taxableAmount : totalAmount,
+        totalGST,
+        tdsApplicable,
+        tdsSection: invoice.tdsSection,
+        tdsRate,
+        tdsAmount,
+        netPayable,
+      },
+    }
+
+    // Validation check
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      console.error('❌ Unbalanced transaction!', {
+        totalDebit,
+        totalCredit,
+        difference: Math.abs(totalDebit - totalCredit)
+      })
+      throw new Error(`Unbalanced transaction: Debit ₹${totalDebit} ≠ Credit ₹${totalCredit}`)
+    }
+
+    console.log('✅ Finance transaction created:', {
+      voucherNo,
+      totalAmount,
+      tdsAmount,
+      netPayable,
+      entries: transaction.entries.map(e => ({
+        gl: e.glCode,
+        name: e.glName,
+        debit: e.debit,
+        credit: e.credit
+      }))
+    })
+
+    return transaction
+  } catch (error) {
+    console.error('❌ Error creating finance approval transaction:', error)
+    throw error
+  }
+}
+
+/**
+ * processFinanceHeadApproval
+ * - Creates the finance approval transaction
+ * - Posts the transaction (postTransaction)
+ * - Updates ledger balances (updateLedgerBalances)
+ * - Updates invoice records in localStorage:
+ *    - invoices (master)
+ *    - invoicesForFinance
+ *    - processed_invoices (for unified vendor ledger)
+ */
+export const processFinanceHeadApproval = (invoice, opts = {}) => {
+  try {
+    const financeUser = opts.financeUser || 'fh1'
+    const persistProcessedInvoice = opts.persistProcessedInvoice !== undefined ? opts.persistProcessedInvoice : true
+
+    // Build transaction
+    const transaction = createFinanceApprovalTransaction(invoice, financeUser)
+
+    // Post transaction
+    const postResult = postTransaction(transaction)
+    if (!postResult.success) {
+      throw new Error(postResult.error || 'Failed to post finance approval transaction')
+    }
+
+    // Update ledger balances
+    try {
+      updateLedgerBalances(transaction.entries)
+    } catch (err) {
+      console.warn('Warning: failed to update ledger balances after finance approval post', err)
+    }
+
+    // Persist invoice updates
+    try {
+      // Update master invoices list
+      const allInvoices = safeGetItem('invoices', [])
+      const updatedMaster = (Array.isArray(allInvoices) ? allInvoices : []).map(inv =>
+        inv.id === invoice.id ? { ...inv, financialHeadStatus: 'approved', financeApprovedAt: new Date().toISOString(), accountingResult: { transactionId: postResult.transaction.id, voucherNo: transaction.voucherNo } } : inv
+      )
+      safeSetItem('invoices', updatedMaster)
+
+      // Update invoicesForFinance
+      const invForFinance = safeGetItem('invoicesForFinance', [])
+      const updatedFinance = (Array.isArray(invForFinance) ? invForFinance : []).map(inv =>
+        inv.id === invoice.id ? { ...inv, financialHeadStatus: 'approved' } : inv
+      )
+      safeSetItem('invoicesForFinance', updatedFinance)
+
+      // Add to processed_invoices for unified vendor ledger use
+      if (persistProcessedInvoice) {
+        const processed = safeGetItem('processed_invoices', [])
+        const processedInvoice = {
+          ...invoice,
+          status: 'finance_approved',
+          voucherNo: transaction.voucherNo,
+          transactionId: postResult.transaction.id,
+          accountingEntries: transaction.entries,
+          processedAt: new Date().toISOString(),
+        }
+        processed.unshift(processedInvoice)
+        safeSetItem('processed_invoices', processed)
+      }
+    } catch (err) {
+      console.warn('Warning: failed to persist invoice approval updates to localStorage', err)
+    }
+
+    return {
+      success: true,
+      transactionId: postResult.transaction.id,
+      voucherNo: transaction.voucherNo,
+      message: `Invoice ${invoice.invoiceNumber} posted to GL (Voucher ${transaction.voucherNo})`,
+      accounting: {
+        entries: transaction.entries,
+        totals: { debit: transaction.totalDebit, credit: transaction.totalCredit },
+      },
+    }
+  } catch (error) {
+    console.error('❌ ERROR in processFinanceHeadApproval:', error)
+    return { success: false, error: error.message || String(error) }
+  }
+}
+
+/**
  * Process multiple vendor invoice payments
  * payments: [{ vendorName, invoiceNumber, amount, type }]
  * bank: { bankCode, bankName }

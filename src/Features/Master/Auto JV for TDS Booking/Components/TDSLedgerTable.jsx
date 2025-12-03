@@ -1,34 +1,34 @@
 // src/features/Process of Auto JV for TDS Booking/Components/TDSLedgerTable.jsx
-import React from 'react';
+import React from 'react'
 
 const TDSLedgerTable = ({ entries }) => {
   const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined) return '-';
+    if (amount === null || amount === undefined) return '-'
     return new Intl.NumberFormat('en-IN', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount);
-  };
+    }).format(amount)
+  }
 
   const getEntryTypeClass = (type) => {
     const classes = {
       opening: 'bg-gray-100 text-gray-800',
       deduction: 'bg-purple-100 text-purple-800',
       payment: 'bg-green-100 text-green-800',
-      reversal: 'bg-red-100 text-red-800'
-    };
-    return classes[type] || 'bg-gray-100 text-gray-800';
-  };
+      reversal: 'bg-red-100 text-red-800',
+    }
+    return classes[type] || 'bg-gray-100 text-gray-800'
+  }
 
   const getRowClass = (entryType) => {
-    if (entryType === 'deduction') return 'bg-purple-50 hover:bg-purple-100';
-    if (entryType === 'payment') return 'bg-green-50 hover:bg-green-100';
-    return 'hover:bg-gray-50';
-  };
+    if (entryType === 'deduction') return 'bg-purple-50 hover:bg-purple-100'
+    if (entryType === 'payment') return 'bg-green-50 hover:bg-green-100'
+    return 'hover:bg-gray-50'
+  }
 
   const getDueDateClass = (status) => {
-    return status === 'overdue' ? 'text-red-600' : 'text-green-600';
-  };
+    return status === 'overdue' ? 'text-red-600' : 'text-green-600'
+  }
 
   return (
     <div className="p-6">
@@ -36,22 +36,54 @@ const TDSLedgerTable = ({ entries }) => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voucher No</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry Type</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Debit (₹)</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Credit (₹)</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance (₹)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Narration</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Voucher</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor / Party</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PAN</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Amount</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">TDS Rate</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">TDS Amount</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quarter</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Attachments</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Voucher No
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Entry Type
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Debit (₹)
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Credit (₹)
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Balance (₹)
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Narration
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payment Voucher
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Vendor / Party
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                PAN
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payment Amount
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                TDS Rate
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                TDS Amount
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Quarter
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Due Date
+              </th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Attachments
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -64,7 +96,9 @@ const TDSLedgerTable = ({ entries }) => {
                   </span>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEntryTypeClass(entry.entryType)}`}>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEntryTypeClass(entry.entryType)}`}
+                  >
                     {entry.entryType}
                   </span>
                 </td>
@@ -96,12 +130,8 @@ const TDSLedgerTable = ({ entries }) => {
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                   {entry.paymentVoucher}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-900 max-w-xs">
-                  {entry.vendor}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                  {entry.pan}
-                </td>
+                <td className="px-4 py-3 text-sm text-gray-900 max-w-xs">{entry.vendor}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{entry.pan}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                   {entry.paymentAmount ? formatCurrency(entry.paymentAmount) : '-'}
                 </td>
@@ -138,7 +168,7 @@ const TDSLedgerTable = ({ entries }) => {
         </table>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default TDSLedgerTable;
+export default TDSLedgerTable

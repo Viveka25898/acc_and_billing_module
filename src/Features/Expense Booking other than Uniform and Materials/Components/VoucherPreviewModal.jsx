@@ -1,39 +1,41 @@
 /* eslint-disable no-unused-vars */
-import React from "react";
+import React from 'react'
 
 const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
   // Set default values if invoice data is not provided
-  const header = {
-    company: "iSmart",
-    voucherNo: `JV-2025-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-    financialYear: "2025-26",
-    date: new Date().toISOString().split('T')[0],
-    reference: `${invoice.poNo || 'PO-2025-001'}/${invoice.invoiceNo || 'INV-001'}`,
-    preparedBy: "Account Manager"
-  };
+  const header = invoice.header || {
+    company: 'iSmart Facitech',
+    voucherNo:
+      invoice.voucherNo || `JV-2025-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+    financialYear: invoice.financialYear || '2025-26',
+    date: invoice.date || new Date().toISOString().split('T')[0],
+    reference:
+      invoice.reference || `${invoice.poNo || 'PO-2025-001'}/${invoice.invoiceNo || 'INV-001'}`,
+    preparedBy: invoice.preparedBy || 'Account Manager',
+  }
 
-  // TDS calculation
-  const tdsRate = 10; // You can change this later or make dynamic
-  const invoiceAmount = invoice.amount || 0;
-  const tdsAmount = (invoiceAmount * tdsRate) / 100;
-  const payableAmount = invoiceAmount - tdsAmount;
+  // TDS calculation (from invoice payload)
+  const tdsRate = invoice.tdsRate || 10
+  const invoiceAmount = Number(invoice.amount || invoice.invoiceAmount || 0)
+  const tdsAmount = Math.round((invoiceAmount * tdsRate) / 100)
+  const payableAmount = invoiceAmount - tdsAmount
 
-  // Create journal entries based on invoice data
-  const lines = [
+  // Use provided lines or create sample lines from payload
+  const lines = invoice.entries || [
     {
       id: 1,
-      particulars: "Expense Account",
-      gl: "5000",
-      costCenter: "GENERAL",
+      particulars: 'Expense Account',
+      gl: '5000',
+      costCenter: 'GENERAL',
       debit: invoiceAmount,
       credit: 0,
       note: `Invoice: ${invoice.invoiceNo || 'N/A'}`,
     },
     {
       id: 2,
-      particulars: "TDS Payable",
-      gl: "2100",
-      costCenter: "",
+      particulars: 'TDS Payable',
+      gl: '2100',
+      costCenter: '',
       debit: 0,
       credit: tdsAmount,
       note: `TDS @ ${tdsRate}%`,
@@ -41,34 +43,36 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
     {
       id: 3,
       particulars: `Vendor - ${invoice.vendorName || 'Unknown Vendor'}`,
-      gl: "2000",
-      costCenter: "",
+      gl: '2000',
+      costCenter: '',
       debit: 0,
       credit: payableAmount,
       note: `Vendor Payment`,
     },
-  ];
+  ]
 
-  const narration = `Payment against Invoice No. ${invoice.invoiceNo || 'N/A'} for ${invoice.vendorName || 'vendor'} (₹${invoiceAmount.toLocaleString()}). TDS deducted @ ${tdsRate}% (₹${tdsAmount.toFixed(2)}). Net payable: ₹${payableAmount.toLocaleString()}.`;
-  
-  const approvals = {
-    preparer: "Account Manager",
-    reviewer: "Pending",
-    approver: "Pending",
-    date: new Date().toISOString().split('T')[0]
-  };
+  const narration =
+    invoice.narration ||
+    `Payment against Invoice No. ${invoice.invoiceNo || 'N/A'} for ${invoice.vendorName || 'vendor'}.`
+
+  const approvals = invoice.approvals || {
+    preparer: 'Account Manager',
+    reviewer: 'Pending',
+    approver: 'Pending',
+    date: invoice.date || new Date().toISOString().split('T')[0],
+  }
 
   // Calculate totals
   const totals = {
-    debit: lines.reduce((sum, line) => sum + (line.debit || 0), 0),
-    credit: lines.reduce((sum, line) => sum + (line.credit || 0), 0)
-  };
+    debit: lines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0),
+    credit: lines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0),
+  }
 
-  const isBalanced = totals.debit === totals.credit;
+  const isBalanced = totals.debit === totals.credit
 
   const handlePrint = () => {
-    window.print();
-  };
+    window.print()
+  }
 
   const handleExport = () => {
     const payload = {
@@ -77,19 +81,19 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
       totals,
       narration,
       approvals,
-      invoiceDetails: invoice
-    };
-    
-    const dataStr = JSON.stringify(payload, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `JV_${header.voucherNo}_${header.date}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
+      invoiceDetails: invoice,
+    }
+
+    const dataStr = JSON.stringify(payload, null, 2)
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
+
+    const exportFileDefaultName = `JV_${header.voucherNo}_${header.date}.json`
+
+    const linkElement = document.createElement('a')
+    linkElement.setAttribute('href', dataUri)
+    linkElement.setAttribute('download', exportFileDefaultName)
+    linkElement.click()
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
@@ -98,7 +102,7 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
         <div className="sticky top-0 bg-green-600 text-white p-3 sm:p-4 flex justify-between items-center">
           <h2 className="text-lg sm:text-xl font-semibold">Voucher Preview - Journal Entry</h2>
           <div className="flex items-center space-x-2">
-            <button 
+            <button
               onClick={onClose}
               className="ml-2 text-white hover:text-blue-200 text-xl font-bold"
               aria-label="Close"
@@ -139,9 +143,11 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
           </div>
 
           {/* Balance Status */}
-          <div className={`mb-4 sm:mb-6 p-3 rounded-lg text-center ${
-            isBalanced ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-          }`}>
+          <div
+            className={`mb-4 sm:mb-6 p-3 rounded-lg text-center ${
+              isBalanced ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}
+          >
             <p className="font-medium">
               {isBalanced ? '✓ Journal Entry is Balanced' : '⚠ Journal Entry is NOT Balanced'}
             </p>
@@ -154,7 +160,9 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
 
           {/* Invoice Details Section */}
           <div className="mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg">
-            <h3 className="text-sm sm:text-base font-semibold text-blue-800 mb-2">Invoice Details</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-blue-800 mb-2">
+              Invoice Details
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs sm:text-sm">
               <div>
                 <span className="text-gray-600">Invoice No:</span>
@@ -182,7 +190,9 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
               </div>
               <div className="md:col-span-2">
                 <span className="text-gray-600">Net Payable:</span>
-                <span className="ml-2 font-medium text-green-600">₹{payableAmount.toLocaleString()}</span>
+                <span className="ml-2 font-medium text-green-600">
+                  ₹{payableAmount.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -192,36 +202,57 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
             <table className="min-w-full border border-gray-200 text-xs sm:text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border">Particulars</th>
-                  <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">GL Code</th>
-                  <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">Cost Center</th>
-                  <th className="px-2 sm:px-4 py-2 text-right font-medium text-gray-700 border">Debit (₹)</th>
-                  <th className="px-2 sm:px-4 py-2 text-right font-medium text-gray-700 border">Credit (₹)</th>
+                  <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border">
+                    Particulars
+                  </th>
+                  <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">
+                    GL Code
+                  </th>
+                  <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">
+                    Cost Center
+                  </th>
+                  <th className="px-2 sm:px-4 py-2 text-right font-medium text-gray-700 border">
+                    Debit (₹)
+                  </th>
+                  <th className="px-2 sm:px-4 py-2 text-right font-medium text-gray-700 border">
+                    Credit (₹)
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {lines.map((line, idx) => (
                   <tr key={line.id || idx} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-4 py-2 border">
-                      <div className="font-medium">{line.particulars || "N/A"}</div>
-                      {line.note && (
-                        <div className="text-xs text-gray-500 mt-1">{line.note}</div>
-                      )}
+                      <div className="font-medium">{line.particulars || 'N/A'}</div>
+                      {line.note && <div className="text-xs text-gray-500 mt-1">{line.note}</div>}
                     </td>
-                    <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">{line.gl || "N/A"}</td>
-                    <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">{line.costCenter || "-"}</td>
-                    <td className="px-2 sm:px-4 py-2 border text-right">
-                      {line.debit ? `₹${line.debit.toLocaleString()}` : "-"}
+                    <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">
+                      {line.gl || 'N/A'}
+                    </td>
+                    <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">
+                      {line.costCenter || '-'}
                     </td>
                     <td className="px-2 sm:px-4 py-2 border text-right">
-                      {line.credit ? `₹${line.credit.toLocaleString()}` : "-"}
+                      {line.debit ? `₹${Number(line.debit).toLocaleString()}` : '-'}
+                    </td>
+                    <td className="px-2 sm:px-4 py-2 border text-right">
+                      {line.credit ? `₹${Number(line.credit).toLocaleString()}` : '-'}
                     </td>
                   </tr>
                 ))}
                 <tr className="bg-indigo-50 font-bold">
-                  <td colSpan={3} className="px-2 sm:px-4 py-2 border text-right hidden sm:table-cell">Total</td>
-                  <td className="px-2 sm:px-4 py-2 border text-right text-green-700">₹{totals.debit.toLocaleString()}</td>
-                  <td className="px-2 sm:px-4 py-2 border text-right text-red-700">₹{totals.credit.toLocaleString()}</td>
+                  <td
+                    colSpan={3}
+                    className="px-2 sm:px-4 py-2 border text-right hidden sm:table-cell"
+                  >
+                    Total
+                  </td>
+                  <td className="px-2 sm:px-4 py-2 border text-right text-green-700">
+                    ₹{totals.debit.toLocaleString()}
+                  </td>
+                  <td className="px-2 sm:px-4 py-2 border text-right text-red-700">
+                    ₹{totals.credit.toLocaleString()}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -231,7 +262,9 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             {/* Narration */}
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Narration:</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                Narration:
+              </p>
               <div className="text-xs sm:text-sm text-gray-600 bg-gray-50 p-2 sm:p-3 rounded border">
                 {narration}
               </div>
@@ -241,15 +274,18 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
             <div className="bg-slate-50 p-2 sm:p-3 rounded-lg border">
               <div className="text-xs sm:text-sm">
                 <div className="font-semibold text-gray-700 mb-1 sm:mb-2">Transaction Summary</div>
-                
                 <div className="space-y-1 sm:space-y-2">
                   <div className="flex justify-between">
                     <span>Total Debit:</span>
-                    <span className="font-medium text-green-700">₹{totals.debit.toLocaleString()}</span>
+                    <span className="font-medium text-green-700">
+                      ₹{totals.debit.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Total Credit:</span>
-                    <span className="font-medium text-red-700">₹{totals.credit.toLocaleString()}</span>
+                    <span className="font-medium text-red-700">
+                      ₹{totals.credit.toLocaleString()}
+                    </span>
                   </div>
                 </div>
 
@@ -277,7 +313,9 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
 
           {/* Approvals Section */}
           <div className="border-t pt-3 sm:pt-4">
-            <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">Approvals & Authorization</p>
+            <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
+              Approvals & Authorization
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="text-center">
                 <div className="border-b border-gray-300 pb-1 sm:pb-2 mb-1 sm:mb-2 h-8 sm:h-10"></div>
@@ -285,18 +323,34 @@ const VoucherPreviewModal = ({ invoice = {}, onClose }) => {
                 <p className="text-2xs sm:text-xs text-gray-500">{approvals.preparer}</p>
                 <p className="text-2xs sm:text-xs text-gray-400">{approvals.date}</p>
               </div>
-             
             </div>
           </div>
 
           {/* Footer Note */}
           <div className="mt-3 sm:mt-4 p-2 bg-blue-50 text-blue-700 text-2xs sm:text-xs text-center rounded">
-            This is a system-generated Journal Voucher for Invoice Processing. All amounts are in Indian Rupees (₹).
+            This is a system-generated Journal Voucher for Invoice Processing. All amounts are in
+            Indian Rupees (₹).
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={handlePrint}
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            >
+              Print
+            </button>
+            <button
+              onClick={handleExport}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Export JSON
+            </button>
           </div>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default VoucherPreviewModal;
+export default VoucherPreviewModal
