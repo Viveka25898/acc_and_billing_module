@@ -25,6 +25,96 @@ const persistArray = (key, arr) => {
   }
 }
 
+// Helper to save processed invoice for payment page
+const saveProcessedInvoiceForPayment = (invoiceData, transactionResult) => {
+  try {
+    // Get existing processed invoices or create new array
+    const existingProcessed = safeParse(localStorage.getItem('oneTimeFinalProcessedInvoice')) || []
+
+    // Create payment-ready invoice object
+    const paymentInvoice = {
+      // Invoice details
+      id: invoiceData.id,
+      invoiceNo: invoiceData.invoiceNo,
+      vendorId: invoiceData.vendorId,
+      vendorName: invoiceData.vendorName,
+      poNo: invoiceData.poNo,
+      amount: Number(invoiceData.amount || 0),
+      invoiceDate: invoiceData.invoiceDate,
+      dueDate:
+        invoiceData.dueDate ||
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+
+      // Accounting details
+      transactionId: transactionResult.transactionId,
+      voucherNo: transactionResult.voucherNo,
+      glEntries: transactionResult.glEntries || [],
+      accountingDate: new Date().toISOString(),
+
+      // TDS details
+      tdsApplicable: invoiceData.tdsApplicable || false,
+      tdsSection: invoiceData.tdsSection,
+      tdsRate: invoiceData.tdsRate,
+      tdsAmount: invoiceData.tdsAmount || 0,
+      netPayable: Number(invoiceData.amount || 0) - (invoiceData.tdsAmount || 0),
+
+      // Payment status
+      paymentStatus: 'pending', // pending, scheduled, paid
+      paymentMethod: null,
+      paymentDate: null,
+      paymentReference: null,
+      paymentRemarks: null,
+
+      // Vendor bank details (to be filled later)
+      vendorBankDetails: {
+        bankName: null,
+        accountNumber: null,
+        ifscCode: null,
+        accountName: null,
+        upiId: null,
+      },
+
+      // Document references
+      documentUrl: invoiceData.documentUrl,
+      expenseType: invoiceData.expenseType,
+      department: invoiceData.department,
+
+      // Timestamps
+      processedAt: new Date().toISOString(),
+      financeApprovedAt: new Date().toISOString(),
+
+      // Metadata
+      source: 'finance_head_approval',
+      financeUserId: JSON.parse(localStorage.getItem('currentUser') || '{}').username || 'fh1',
+    }
+
+    // Check if invoice already exists in processed list
+    const existingIndex = existingProcessed.findIndex((item) => item.id === invoiceData.id)
+
+    if (existingIndex >= 0) {
+      // Update existing entry
+      existingProcessed[existingIndex] = paymentInvoice
+    } else {
+      // Add new entry
+      existingProcessed.push(paymentInvoice)
+    }
+
+    // Save to localStorage
+    localStorage.setItem('oneTimeFinalProcessedInvoice', JSON.stringify(existingProcessed))
+
+    console.log('✅ Processed invoice saved for payment:', {
+      invoiceNo: paymentInvoice.invoiceNo,
+      voucherNo: paymentInvoice.voucherNo,
+      paymentStatus: paymentInvoice.paymentStatus,
+    })
+
+    return paymentInvoice
+  } catch (error) {
+    console.error('❌ Error saving processed invoice for payment:', error)
+    throw error
+  }
+}
+
 // Helper to get TDS display info
 const getTdsDisplayInfo = (invoice) => {
   if (!invoice.tdsSection && !invoice.tdsApplicable) {
@@ -383,7 +473,8 @@ export default function FinancialHeadInvoiceApprovalPage() {
         e.key === 'invoicesForFinance' ||
         e.key === 'invoices' ||
         e.key === 'vendors' ||
-        e.key === 'oneTimePo'
+        e.key === 'oneTimePo' ||
+        e.key === 'oneTimeFinalProcessedInvoice' // Listen for changes in processed invoices
       ) {
         load()
       }
@@ -426,6 +517,17 @@ export default function FinancialHeadInvoiceApprovalPage() {
       })
 
       if (result.success) {
+        // Save processed invoice to localStorage for payment page
+        try {
+          const paymentInvoice = saveProcessedInvoiceForPayment(invoice, result)
+          console.log('Processed invoice saved for payment:', paymentInvoice)
+        } catch (saveError) {
+          console.warn(
+            'Warning: Could not save invoice for payment, but accounting succeeded:',
+            saveError
+          )
+        }
+
         // Update UI state to approved
         setInvoices((prev) =>
           prev.map((inv) =>
@@ -472,7 +574,7 @@ export default function FinancialHeadInvoiceApprovalPage() {
           : master
         persistArray('invoices', masterUpdated)
 
-        toast.success(`Invoice ${invoice.invoiceNumber} posted to GL (Voucher ${result.voucherNo})`)
+        toast.success(`Invoice ${invoice.invoiceNo} posted to GL (Voucher ${result.voucherNo})`)
       } else {
         // result.success false
         throw new Error(result.error || 'Unknown error during posting')

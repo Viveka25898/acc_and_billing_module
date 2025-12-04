@@ -75,7 +75,7 @@ export default function TDSLedgerPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-        <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
+        <div className="max-w-5xl mx-auto bg-white p-8 rounded-lg shadow-lg">
           <div className="text-red-500 mb-4">
             <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
               <path

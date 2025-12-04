@@ -11,7 +11,6 @@ import VendorInvoiceTable from './Components/VendorInvoiceTable'
 import InvoiceViewer from './Components/InvoiceReviewer'
 import { toast } from 'react-toastify'
 import PaymentEntryModal from './Components/PaymentEntryModal'
-// import AEBankSelectionModal from '../Advance Request/Components/AEBankSelectionModal'
 import { processVendorPayments } from '../Master/utils/accountingHelpers'
 import RelieverPaymentsSection from './Components/RelieverPaymentSection'
 import ConveyancePaymentsSection from './Components/ConveyancePaymentsSection'
@@ -19,7 +18,7 @@ import { processConveyanceBankPayments } from '../Master/utils/accountingHelpers
 import PaymentBankSelectionModal from './Components/PaymentBankSelectonModal'
 
 // Function to load and transform invoices from localStorage
-// ✅ FIXED: More flexible filtering for approved invoices
+// ✅ UPDATED: Enhanced load function to include oneTimeFinalProcessedInvoice
 const loadInvoicesFromLocalStorage = () => {
   try {
     const processedInvoicesStr = localStorage.getItem('processed_invoices')
@@ -30,18 +29,37 @@ const loadInvoicesFromLocalStorage = () => {
       ? JSON.parse(finalProcessedInvoicesStr)
       : []
 
-    const allInvoices = [...processedInvoices, ...finalProcessedInvoices]
+    // ✅ NEW: Load finance head approved invoices (oneTimeFinalProcessedInvoice)
+    const oneTimeFinalProcessedStr = localStorage.getItem('oneTimeFinalProcessedInvoice')
+    const oneTimeFinalProcessed = oneTimeFinalProcessedStr
+      ? JSON.parse(oneTimeFinalProcessedStr)
+      : []
 
-    console.log('🔍 DEBUG: All invoices loaded:', allInvoices)
+    const allInvoices = [
+      ...processedInvoices,
+      ...finalProcessedInvoices,
+      ...oneTimeFinalProcessed, // ✅ Added finance head invoices
+    ]
 
-    // ✅ Filter invoices based on YOUR approval workflow
+    console.log('🔍 DEBUG: All invoices loaded:', {
+      fromAM: processedInvoices.length,
+      fromBM: finalProcessedInvoices.length,
+      fromFinanceHead: oneTimeFinalProcessed.length, // ✅ New count
+      total: allInvoices.length,
+    })
+
+    // ✅ FIXED: More flexible filtering for approved invoices
     const filteredInvoices = allInvoices.filter((invoice) => {
       const approvalStatus = invoice.approvalStatus || invoice.status || invoice.approval_status
+
+      // For finance head invoices, check paymentStatus
+      const paymentStatus = invoice.paymentStatus || 'pending'
 
       // ✅ Include invoices that are either:
       // 1. Fully approved (various possible statuses)
       // 2. Approved by AM/BM (ready for payment)
-      // 3. OR any invoice processed by AM/BM (in processed_invoices or final_processed_invoices)
+      // 3. Finance head approved with pending payment status
+      // 4. OR any invoice processed by AM/BM
 
       const isApproved =
         approvalStatus === 'Approved' ||
@@ -51,13 +69,14 @@ const loadInvoicesFromLocalStorage = () => {
         approvalStatus === 'Processed by BM' ||
         approvalStatus?.includes('Final Approved') ||
         invoice.processedAtAM || // Has been processed by AM
-        invoice.processedAtBM // Has been processed by BM
+        invoice.processedAtBM || // Has been processed by BM
+        (invoice.source === 'finance_head_approval' && paymentStatus === 'pending') // ✅ Finance head approved
 
       console.log('🔍 Invoice check:', {
-        invoiceNumber: invoice.invoiceNumber,
+        invoiceNumber: invoice.invoiceNo || invoice.invoiceNumber,
+        source: invoice.source || 'unknown',
         approvalStatus,
-        processedAtAM: invoice.processedAtAM,
-        processedAtBM: invoice.processedAtBM,
+        paymentStatus,
         willInclude: isApproved,
       })
 
@@ -69,6 +88,8 @@ const loadInvoicesFromLocalStorage = () => {
     const vendorMap = {}
 
     filteredInvoices.forEach((invoice, index) => {
+      // Use invoiceNo (from finance head) or invoiceNumber (from AM/BM)
+      const invoiceNo = invoice.invoiceNo || invoice.invoiceNumber
       const vendorName = invoice.vendorName
 
       if (!vendorMap[vendorName]) {
@@ -84,6 +105,8 @@ const loadInvoicesFromLocalStorage = () => {
           ifscCode: extractIFSCCode(invoice),
           narration: vendorName.substring(0, 20),
           invoices: [],
+          // Add source tracking
+          source: invoice.source || 'am_bm_approval',
         }
       }
 
@@ -94,27 +117,73 @@ const loadInvoicesFromLocalStorage = () => {
         invoiceTypeLabel = 'Fixed Asset'
       } else if (invoice.type === 'Procurement Prepaid') {
         invoiceTypeLabel = 'Uniform Prepaid'
+      } else if (invoice.expenseType) {
+        invoiceTypeLabel = invoice.expenseType // For finance head invoices
       } else {
         invoiceTypeLabel = invoice.type || 'Invoice'
       }
 
       const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`
 
+      // ✅ FIXED: CORRECT ORDER for amount calculation - NET PAYABLE FIRST!
+      let amount = 0
+      // 1. FIRST check netPayable (for oneTimePo invoices with TDS deduction)
+      if (invoice.netPayable !== undefined && invoice.netPayable !== null) {
+        amount = invoice.netPayable
+        console.log(
+          `💰 Using netPayable for ${invoiceNo}: ${invoice.netPayable} (after TDS: ${invoice.tdsAmount || 0})`
+        )
+      }
+      // 2. THEN check amount (gross amount for invoices without TDS)
+      else if (invoice.amount) {
+        amount = invoice.amount
+        console.log(`💰 Using gross amount for ${invoiceNo}: ${invoice.amount}`)
+      }
+      // 3. LAST check totalAmount (for AM/BM invoices)
+      else if (invoice.totalAmount) {
+        amount = invoice.totalAmount
+        console.log(`💰 Using totalAmount for ${invoiceNo}: ${invoice.totalAmount}`)
+      }
+
+      // Debug log to see what's being used
+      console.log(`Invoice ${invoiceNo}:`, {
+        grossAmount: invoice.amount,
+        netPayable: invoice.netPayable,
+        tdsAmount: invoice.tdsAmount,
+        finalAmountUsed: amount,
+      })
+
       vendorMap[vendorName].invoices.push({
         id: invoiceId,
-        invoiceNumber: invoice.invoiceNumber,
-        amount: invoice.totalAmount,
+        invoiceNumber: invoiceNo,
+        amount: amount,
         documentUrl: invoice.documentUrl || '/public/DxotBTxfHn.png',
-        type: invoice.type,
+        type: invoice.type || invoice.expenseType,
         invoiceTypeLabel: invoiceTypeLabel,
         gstRate: invoice.gstRate,
         hsnCode: invoice.hsnCode,
-        processedAt: invoice.processedAt || invoice.processedAtAM || invoice.processedAtBM,
-        vendorGLCode: invoice.vendor_gl_code || invoice.vendorGLCode,
-        voucherNo: invoice.voucher_id || invoice.purchaseVoucherNo,
+        processedAt:
+          invoice.processedAt ||
+          invoice.processedAtAM ||
+          invoice.processedAtBM ||
+          invoice.financeApprovedAt,
+        vendorGLCode: invoice.vendorGLCode || invoice.vendor_gl_code || invoice.vendorGL,
+        voucherNo:
+          invoice.voucherNo ||
+          invoice.voucher_id ||
+          invoice.purchaseVoucherNo ||
+          invoice.accountingResult?.voucherNo,
+        // Add finance head specific data
+        tdsApplicable: invoice.tdsApplicable,
+        tdsSection: invoice.tdsSection,
+        tdsRate: invoice.tdsRate,
+        tdsAmount: invoice.tdsAmount,
+        netPayable: invoice.netPayable,
+        accountingResult: invoice.accountingResult,
+        source: invoice.source || 'am_bm_approval',
       })
 
-      vendorMap[vendorName].debitAmount += invoice.totalAmount
+      vendorMap[vendorName].debitAmount += amount
     })
 
     const vendorData = Object.values(vendorMap)
@@ -353,7 +422,7 @@ const VendorPaymentsSection = ({
   useEffect(() => {
     const loadInitialData = () => {
       try {
-        // ✅ Load ONLY from fresh sources (no persisted data loading)
+        // ✅ Load from all sources including oneTimeFinalProcessedInvoice
         const loadedVendorData = loadInvoicesFromLocalStorage()
         const rentVouchersData = loadRentVouchersFromLocalStorage()
 
@@ -668,6 +737,7 @@ const VendorPaymentsSection = ({
             invoiceTypeLabel: invoice.invoiceTypeLabel,
             approvedDate: new Date().toISOString(),
             utr: 'Bank',
+            source: invoice.source, // Preserve source
           })
           processedCount++
         }
@@ -882,13 +952,22 @@ const VendorPaymentsSection = ({
             // Delete processed invoices from localStorage stores
             try {
               const paidInvoiceNumbers = new Set(result.results.map((r) => r.invoiceNumber))
+
+              // Function to remove paid invoices from a storage key
               const removePaid = (key) => {
                 const arr = JSON.parse(localStorage.getItem(key) || '[]')
-                const filtered = arr.filter((inv) => !paidInvoiceNumbers.has(inv.invoiceNumber))
+                const filtered = arr.filter((inv) => {
+                  const invNo = inv.invoiceNo || inv.invoiceNumber
+                  return !paidInvoiceNumbers.has(invNo)
+                })
                 localStorage.setItem(key, JSON.stringify(filtered))
               }
+
+              // Remove from all sources
               removePaid('processed_invoices') // AM processed (Material/Fixed Asset)
               removePaid('final_processed_invoices') // BM final processed (Prepaid/Uniform)
+              removePaid('oneTimeFinalProcessedInvoice') // ✅ Also remove from finance head invoices
+
               toast.info(`Removed ${paidInvoiceNumbers.size} invoice(s) from approval queues`)
             } catch (e) {
               console.error('Error cleaning localStorage invoices:', e)
