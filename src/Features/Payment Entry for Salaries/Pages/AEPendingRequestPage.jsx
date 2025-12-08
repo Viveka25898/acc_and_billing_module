@@ -1,8 +1,7 @@
-/* eslint-disable no-undef */
 import React, { useRef, useState, useEffect } from 'react'
 import PaymentEntriesFilter from '../Components/PaymentEntriesFilter'
 import AERejectionModal from '../Components/AERejectionModal'
-import SalaryPaymentEntryModal from '../Components/SalaryPaymentEntryModal' // Import the modal
+import GLMappingModal from '../Components/GLMappingModal' // NEW: Import GL Mapping Modal
 import { toast } from 'react-toastify'
 import * as XLSX from 'xlsx'
 
@@ -43,8 +42,8 @@ export default function AEPendingRequestsPage() {
   const [currentRejectId, setCurrentRejectId] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
 
-  // NEW STATE FOR PAYMENT ENTRY MODAL
-  const [showPaymentEntryModal, setShowPaymentEntryModal] = useState(false)
+  // NEW STATE FOR GL MAPPING MODAL (replacing old payment entry modal)
+  const [showGLMappingModal, setShowGLMappingModal] = useState(false)
   const [approvedBatchData, setApprovedBatchData] = useState(null)
   const [approvedBatches, setApprovedBatches] = useState([]) // For bulk approval
 
@@ -337,74 +336,72 @@ export default function AEPendingRequestsPage() {
     setSelectedIds(allSelected ? [] : allIds)
   }
 
-  // NEW: Handle bulk approval with modal
+  // UPDATED: Handle bulk approve with GL Mapping Modal
   const handleBulkApprove = () => {
     if (selectedIds.length === 0) {
       toast.warn('Please select at least one payroll batch to approve.')
       return
     }
 
-    const updatedBatches = payrollBatches.map((batch) => {
-      if (selectedIds.includes(batch.id)) {
-        return {
-          ...batch,
-          status: 'Approved',
-          history: [
-            ...batch.history,
-            {
-              action: 'approved',
-              by: currentUser.username,
-              date: new Date().toISOString(),
-              comments: 'Bulk approved by AE',
-            },
-          ],
-        }
-      }
-      return batch
-    })
+    // Get the approved batches data BEFORE updating status
+    const approvedBatchesData = payrollBatches.filter((batch) => selectedIds.includes(batch.id))
 
-    setPayrollBatches(updatedBatches)
-
-    // Get the approved batches data for the modal
-    const approvedBatchData = payrollBatches.filter((batch) => selectedIds.includes(batch.id))
-    setApprovedBatches(approvedBatchData)
+    // DO NOT update batch status here anymore.
+    // Open GL Mapping Modal and let the user click Approve inside the modal.
+    setApprovedBatches(approvedBatchesData)
     setApprovedBatchData(null) // Clear single batch data
-    setShowPaymentEntryModal(true)
+    setShowGLMappingModal(true) // Open GL Mapping Modal
 
-    setSelectedIds([])
-    toast.success(`${selectedIds.length} payroll batches approved!`)
+    toast.info(
+      `Open GL Mapping for ${selectedIds.length} batches. Click "Approve" in the modal to confirm approval.`
+    )
+    // Do NOT clear selectedIds here; clear after user hits Approve in modal.
   }
 
-  // NEW: Handle single approval with modal
+  // UPDATED: Handle single approval with GL Mapping Modal
   const handleApprove = (id) => {
-    const updatedBatches = payrollBatches.map((batch) => {
-      if (batch.id === id) {
-        return {
-          ...batch,
-          status: 'Approved',
-          history: [
-            ...batch.history,
-            {
-              action: 'approved',
-              by: currentUser.username,
-              date: new Date().toISOString(),
-              comments: 'Approved by AE',
-            },
-          ],
-        }
-      }
-      return batch
-    })
-
-    setPayrollBatches(updatedBatches)
-
-    // Get the approved batch data for the modal
+    // Get the batch data but DO NOT update status here.
     const approvedBatch = payrollBatches.find((batch) => batch.id === id)
+
     setApprovedBatchData(approvedBatch)
     setApprovedBatches([]) // Clear bulk batches data
-    setShowPaymentEntryModal(true)
+    setShowGLMappingModal(true) // Open GL Mapping Modal
 
-    toast.success('Payroll batch approved!')
+    toast.info('Open GL Mapping modal. Click "Approve" in the modal to confirm the approval.')
+  }
+
+  // Callback invoked by the modal when user explicitly clicks Approve inside the modal
+  const handleApproveFromModal = (batchIds = []) => {
+    if (!Array.isArray(batchIds) || batchIds.length === 0) {
+      toast.warn('No batches provided to approve.')
+      return
+    }
+
+    setPayrollBatches((prev) =>
+      prev.map((batch) => {
+        if (batchIds.includes(batch.id)) {
+          return {
+            ...batch,
+            status: 'Approved',
+            history: [
+              ...(batch.history || []),
+              {
+                action: 'approved',
+                by: currentUser.username,
+                date: new Date().toISOString(),
+                comments: 'Approved by AE via GL Modal',
+              },
+            ],
+          }
+        }
+        return batch
+      })
+    )
+
+    // Clear selection of approved ids in the main table
+    setSelectedIds((prev) => prev.filter((id) => !batchIds.includes(id)))
+
+    toast.success(`${batchIds.length} payroll batch(es) marked as Approved.`)
   }
 
   const openRejectModal = (id) => {
@@ -441,11 +438,27 @@ export default function AEPendingRequestsPage() {
     toast.error('Payroll Batch Rejected!')
   }
 
-  // NEW: Close payment entry modal
-  const closePaymentEntryModal = () => {
-    setShowPaymentEntryModal(false)
+  // NEW: Close GL Mapping modal
+  const closeGLMappingModal = () => {
+    setShowGLMappingModal(false)
     setApprovedBatchData(null)
     setApprovedBatches([])
+  }
+
+  // NEW: Handle GL Mapping Save - This function will be called by the GLMappingModal
+  const handleGLMappingSave = () => {
+    // Note: The GLMappingModal component already handles saving to localStorage
+    // and updating batch status internally. This is just a callback for the modal close.
+
+    // Refresh the data from localStorage to show updated status
+    const savedBatches = JSON.parse(localStorage.getItem('salaryPayments')) || []
+    const filteredBatches = savedBatches.filter(
+      (batch) => batch.assignedTo === currentUser.username
+    )
+    setPayrollBatches(filteredBatches)
+
+    toast.success('GL Mapping completed successfully!')
+    closeGLMappingModal()
   }
 
   return (
@@ -603,7 +616,9 @@ export default function AEPendingRequestsPage() {
                             ? 'bg-yellow-100 text-yellow-800'
                             : tableData.status === 'Approved'
                               ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
+                              : tableData.status === 'GL Mapped'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-red-100 text-red-800'
                         }`}
                       >
                         {tableData.status}
@@ -625,6 +640,19 @@ export default function AEPendingRequestsPage() {
                             Reject
                           </button>
                         </div>
+                      ) : tableData.status === 'Approved' ? (
+                        <button
+                          onClick={() => {
+                            // Reopen GL Mapping for already approved batches
+                            const found = payrollBatches.find((b) => b.id === batch.id)
+                            setApprovedBatchData(found)
+                            setApprovedBatches([])
+                            setShowGLMappingModal(true)
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs"
+                        >
+                          Map GL
+                        </button>
                       ) : (
                         <span className="text-xs italic text-gray-500">Action taken</span>
                       )}
@@ -751,10 +779,12 @@ export default function AEPendingRequestsPage() {
         }}
       />
 
-      {/* NEW: Payment Entry Modal */}
-      <SalaryPaymentEntryModal
-        isOpen={showPaymentEntryModal}
-        onClose={closePaymentEntryModal}
+      {/* NEW: GL Mapping Modal */}
+      <GLMappingModal
+        isOpen={showGLMappingModal}
+        onClose={closeGLMappingModal}
+        onApprove={handleApproveFromModal}
+        onSave={handleGLMappingSave}
         batchData={approvedBatchData}
         approvedBatches={approvedBatches}
       />

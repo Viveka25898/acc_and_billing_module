@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { toast } from 'react-toastify'
+import VirtualizedPayrollTable from './VertualizedPayrollTable'
 
 export default function UploadPayrollFile() {
   const [data, setData] = useState([])
@@ -8,6 +9,7 @@ export default function UploadPayrollFile() {
   const [error, setError] = useState('')
   const fileInputRef = useRef(null)
   const [currentUser, setCurrentUser] = useState(null)
+  const [tableLoading, setTableLoading] = useState(false) // PARENT-CONTROLLED LOADER
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'))
@@ -326,18 +328,31 @@ export default function UploadPayrollFile() {
     const file = e.target.files[0]
     if (!file) return
 
+    setTableLoading(true) // start loader before parsing
+
     const reader = new FileReader()
     reader.onload = (evt) => {
-      const bstr = evt.target.result
-      const wb = XLSX.read(bstr, { type: 'binary' })
-      const wsname = wb.SheetNames[0]
-      const ws = wb.Sheets[wsname]
-      const parsedData = XLSX.utils.sheet_to_json(ws, { defval: '' })
+      try {
+        const bstr = evt.target.result
+        const wb = XLSX.read(bstr, { type: 'binary' })
+        const wsname = wb.SheetNames[0]
+        const ws = wb.Sheets[wsname]
+        const parsedData = XLSX.utils.sheet_to_json(ws, { defval: '' })
 
-      setData(parsedData)
-      setSummaryData(processEmployeeDataToSummary(parsedData))
-      setError('')
-      toast.success(`✅ File uploaded successfully! ${parsedData.length} employees found.`)
+        setData(parsedData)
+        setSummaryData(processEmployeeDataToSummary(parsedData))
+        setError('')
+        toast.success(`✅ File uploaded successfully! ${parsedData.length} employees found.`)
+
+        // Give the table a short moment to initialize before hiding loader (ensures table renders)
+        setTimeout(() => {
+          setTableLoading(false)
+        }, 250)
+      } catch (err) {
+        setTableLoading(false)
+        setError('Error processing file')
+        toast.error(`❌ Error processing the payroll file: ${err.message || err}`)
+      }
     }
     reader.readAsBinaryString(file)
   }
@@ -376,6 +391,7 @@ export default function UploadPayrollFile() {
 
     setData([])
     setSummaryData(null)
+    setTableLoading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
 
     toast.success('✅ Salary payment submitted to Account Executive!')
@@ -462,30 +478,7 @@ export default function UploadPayrollFile() {
               📋 View Employee Details ({data.length} employees)
             </summary>
             <div className="p-3 max-h-96 overflow-y-auto overflow-x-auto">
-              <table className="min-w-full text-sm text-left border-collapse">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    {Object.keys(data[0]).map((key, idx) => (
-                      <th key={idx} className="p-2 border font-medium text-xs whitespace-nowrap">
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((row, idx) => (
-                    <tr key={idx} className="border-t hover:bg-gray-50">
-                      {Object.keys(data[0]).map((key, i) => (
-                        <td key={i} className="p-2 border text-xs whitespace-nowrap">
-                          {typeof row[key] === 'number'
-                            ? row[key].toLocaleString('en-IN')
-                            : row[key]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <VirtualizedPayrollTable data={data} loading={tableLoading} />
             </div>
           </details>
 
