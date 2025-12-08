@@ -1,387 +1,456 @@
 /* eslint-disable no-undef */
-import React, { useRef, useState, useEffect } from 'react';
-import PaymentEntriesFilter from "../Components/PaymentEntriesFilter";
-import AERejectionModal from "../Components/AERejectionModal";
-import SalaryPaymentEntryModal from "../Components/SalaryPaymentEntryModal"; // Import the modal
-import { toast } from "react-toastify";
-import * as XLSX from "xlsx";
+import React, { useRef, useState, useEffect } from 'react'
+import PaymentEntriesFilter from '../Components/PaymentEntriesFilter'
+import AERejectionModal from '../Components/AERejectionModal'
+import SalaryPaymentEntryModal from '../Components/SalaryPaymentEntryModal' // Import the modal
+import { toast } from 'react-toastify'
+import * as XLSX from 'xlsx'
 
 export default function AEPendingRequestsPage() {
   // Initialize state with data from localStorage
-  const [payrollBatches, setPayrollBatches] = useState([]);
-  const currentUser = JSON.parse(localStorage.getItem('user')) || { username: 'ae1', role: 'ae' };
+  const [payrollBatches, setPayrollBatches] = useState([])
+  const currentUser = JSON.parse(localStorage.getItem('user')) || { username: 'ae1', role: 'ae' }
 
   // Load data from localStorage on component mount
   useEffect(() => {
-    const savedBatches = JSON.parse(localStorage.getItem('salaryPayments')) || [];
+    const savedBatches = JSON.parse(localStorage.getItem('salaryPayments')) || []
     // Filter batches assigned to the current user
-    const filteredBatches = savedBatches.filter(batch => batch.assignedTo === currentUser.username);
-    setPayrollBatches(filteredBatches);
-  }, [currentUser.username]);
+    const filteredBatches = savedBatches.filter(
+      (batch) => batch.assignedTo === currentUser.username
+    )
+    setPayrollBatches(filteredBatches)
+  }, [currentUser.username])
 
   // Save to localStorage whenever payrollBatches changes
   useEffect(() => {
-    const allPayments = JSON.parse(localStorage.getItem('salaryPayments')) || [];
-    const updatedPayments = allPayments.map(payment => {
-      const updatedBatch = payrollBatches.find(b => b.id === payment.id);
-      return updatedBatch || payment;
-    });
-    localStorage.setItem('salaryPayments', JSON.stringify(updatedPayments));
-  }, [payrollBatches]);
+    const allPayments = JSON.parse(localStorage.getItem('salaryPayments')) || []
+    const updatedPayments = allPayments.map((payment) => {
+      const updatedBatch = payrollBatches.find((b) => b.id === payment.id)
+      return updatedBatch || payment
+    })
+    localStorage.setItem('salaryPayments', JSON.stringify(updatedPayments))
+  }, [payrollBatches])
 
   // Rest of your existing state
-  const [filters, setFilters] = useState({ name: "", code: "", status: "All" });
-  const [currentPage, setCurrentPage] = useState(1);
-  const entriesPerPage = 5;
-  const [expandedBatch, setExpandedBatch] = useState(null);
-  const [editingAmount, setEditingAmount] = useState({});
-  const fileInputRef = useRef(null);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [currentRejectId, setCurrentRejectId] = useState(null);
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [filters, setFilters] = useState({ name: '', code: '', status: 'All' })
+  const [currentPage, setCurrentPage] = useState(1)
+  const entriesPerPage = 5
+  const [expandedBatch, setExpandedBatch] = useState(null)
+  const [editingAmount, setEditingAmount] = useState({})
+  const fileInputRef = useRef(null)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [currentRejectId, setCurrentRejectId] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
 
   // NEW STATE FOR PAYMENT ENTRY MODAL
-  const [showPaymentEntryModal, setShowPaymentEntryModal] = useState(false);
-  const [approvedBatchData, setApprovedBatchData] = useState(null);
-  const [approvedBatches, setApprovedBatches] = useState([]); // For bulk approval
+  const [showPaymentEntryModal, setShowPaymentEntryModal] = useState(false)
+  const [approvedBatchData, setApprovedBatchData] = useState(null)
+  const [approvedBatches, setApprovedBatches] = useState([]) // For bulk approval
 
   // For Sorting
   const getStatusOrder = (status) => {
     switch (status) {
-      case "Pending Approval":
-        return 1;
-      case "Approved":
-        return 2;
-      case "Rejected":
-        return 3;
+      case 'Pending Approval':
+        return 1
+      case 'Approved':
+        return 2
+      case 'Rejected':
+        return 3
       default:
-        return 4;
+        return 4
     }
-  };
+  }
+
+  // Function to calculate payroll summary from employee details
+  const calculatePayrollSummary = (employeeDetails) => {
+    if (!employeeDetails || employeeDetails.length === 0) {
+      return {
+        grossAmount: 0,
+        totalDeductions: 0,
+        netPayable: 0,
+        pfEmployee: 0,
+        esicEmployee: 0,
+        pt: 0,
+        employeeCount: 0,
+      }
+    }
+
+    let grossAmount = 0
+    let totalDeductions = 0
+    let netPayable = 0
+    let pfEmployee = 0
+    let esicEmployee = 0
+    let pt = 0
+    const employeeCount = employeeDetails.length
+
+    // Calculate from employee details (using the 112 salary heads structure)
+    employeeDetails.forEach((emp) => {
+      // Gross amount calculation
+      grossAmount += Number(emp['GROSS AMT']) || 0
+
+      // Deductions calculation
+      totalDeductions += Number(emp['TOTALDEDUCTION']) || 0
+
+      // Net payable
+      netPayable += Number(emp['NETPAYABLE']) || 0
+
+      // Individual deductions
+      pfEmployee += Number(emp['PF']) || 0
+      esicEmployee += Number(emp['ESIC']) || 0
+      pt += Number(emp['PT']) || 0
+    })
+
+    return {
+      grossAmount,
+      totalDeductions,
+      netPayable,
+      pfEmployee,
+      esicEmployee,
+      pt,
+      employeeCount,
+    }
+  }
 
   // Filter by payroll period and status
   const filteredBatches = payrollBatches.filter((batch) => {
-    const matchStatus = filters.status === "All" || batch.status === filters.status;
-    const matchName = batch.payrollPeriod.toLowerCase().includes(filters.name.toLowerCase());
-    const matchCode = batch.id.toLowerCase().includes(filters.code.toLowerCase());
-    return matchStatus && matchName && matchCode;
-  });
+    const matchStatus = filters.status === 'All' || batch.status === filters.status
+    const matchName = batch.payrollPeriod.toLowerCase().includes(filters.name.toLowerCase())
+    const matchCode = batch.id.toLowerCase().includes(filters.code.toLowerCase())
+    return matchStatus && matchName && matchCode
+  })
 
   // Sort the filtered batches by status order before paginating
   const sortedBatches = [...filteredBatches].sort((a, b) => {
-    return getStatusOrder(a.status) - getStatusOrder(b.status);
-  });
+    return getStatusOrder(a.status) - getStatusOrder(b.status)
+  })
 
-  const totalPages = Math.ceil(sortedBatches.length / entriesPerPage);
+  const totalPages = Math.ceil(sortedBatches.length / entriesPerPage)
   const paginatedBatches = sortedBatches.slice(
     (currentPage - 1) * entriesPerPage,
     currentPage * entriesPerPage
-  );
+  )
 
-  // Convert your data structure to match the table display
-  const getTableData = (batch) => ({
-    id: batch.id,
-    batchName: `${batch.payrollPeriod} - ${batch.id.slice(-4)}`,
-    type: batch.bankFile?.TYPE || "NEFT",
-    debitAccount: batch.bankFile?.["DEBIT BANK A/C NO"] || "",
-    totalAmount: batch.totalAmount,
-    currency: batch.bankFile?.CUR || "INR",
-    narration: batch.payrollPeriod,
-    status: batch.status,
-    excelFileName: `salary_batch_${batch.id}.xlsx`,
-    employees: batch.employeeDetails?.map(emp => ({
-      id: emp["BENEFICIARY A/C NO"],
-      code: emp["BENEFICIARY A/C NO"]?.slice(-6),
-      name: emp["NARRATION/NAME (NOT MORE THAN 20)"],
-      amount: emp["DEBIT AMT"],
-      account: emp["BENEFICIARY A/C NO"],
-      ifsc: emp["IFSC CODE"]
-    })) || []
-  });
+  // Convert your data structure to match the table display with payroll GL data
+  const getTableData = (batch) => {
+    const summary = calculatePayrollSummary(batch.employeeDetails)
+
+    return {
+      id: batch.id,
+      batchName: `${batch.payrollPeriod} - ${batch.id.slice(-4)}`,
+      employeeCount: summary.employeeCount,
+      grossAmount: summary.grossAmount,
+      totalDeductions: summary.totalDeductions,
+      netPayable: summary.netPayable,
+      pfEmployee: summary.pfEmployee,
+      esicEmployee: summary.esicEmployee,
+      pt: summary.pt,
+      status: batch.status,
+      excelFileName: `salary_batch_${batch.id}.xlsx`,
+      employees:
+        batch.employeeDetails?.map((emp) => ({
+          empCode: emp['EMPCODE'] || emp['BENEFICIARY A/C NO']?.slice(-6),
+          name: emp['FULLNAME'] || emp['NARRATION/NAME (NOT MORE THAN 20)'],
+          grossAmount: emp['GROSS AMT'] || 0,
+          totalDeductions: emp['TOTALDEDUCTION'] || 0,
+          netPayable: emp['NETPAYABLE'] || emp['DEBIT AMT'] || 0,
+          basic: emp['BASIC'] || 0,
+          hra: emp['HRA'] || 0,
+          conveyance: emp['CONVEYANCE'] || 0,
+          pf: emp['PF'] || 0,
+          esic: emp['ESIC'] || 0,
+          pt: emp['PT'] || 0,
+          account: emp['BANK ACCOUNT NO AS PER EMPLOYEE'] || emp['BENEFICIARY A/C NO'],
+          ifsc: emp['IFS CODE AS PER EMPLOYEE'] || emp['IFSC CODE'],
+          designation: emp['DESIGNATIONNAME'] || '',
+        })) || [],
+    }
+  }
 
   // Handle batch expansion
   const handleBatchClick = (batchId) => {
-    setExpandedBatch(expandedBatch === batchId ? null : batchId);
-  };
+    setExpandedBatch(expandedBatch === batchId ? null : batchId)
+  }
 
-  // Handle amount editing
+  // Handle amount editing - now editing net payable
   const handleAmountEdit = (batchId, newAmount) => {
-    setEditingAmount(prev => ({
+    setEditingAmount((prev) => ({
       ...prev,
-      [batchId]: newAmount
-    }));
-  };
+      [batchId]: newAmount,
+    }))
+  }
 
   const saveAmountEdit = (batchId) => {
-    const newAmount = parseFloat(editingAmount[batchId]);
-    if (isNaN(newAmount) || newAmount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
+    const newNetPayable = parseFloat(editingAmount[batchId])
+    if (isNaN(newNetPayable) || newNetPayable <= 0) {
+      toast.error('Please enter a valid amount')
+      return
     }
 
-    setPayrollBatches(prev => prev.map(batch => {
-      if (batch.id === batchId) {
-        const ratio = newAmount / batch.totalAmount;
-        const updatedEmployeeDetails = batch.employeeDetails.map(emp => ({
-          ...emp,
-          "DEBIT AMT": emp["DEBIT AMT"] * ratio
-        }));
-        
-        return {
-          ...batch,
-          totalAmount: newAmount,
-          employeeDetails: updatedEmployeeDetails,
-          bankFile: {
-            ...batch.bankFile,
-            "DEBIT AMT": newAmount
+    setPayrollBatches((prev) =>
+      prev.map((batch) => {
+        if (batch.id === batchId) {
+          const currentTableData = getTableData(batch)
+          const ratio = newNetPayable / currentTableData.netPayable
+          const updatedEmployeeDetails = batch.employeeDetails.map((emp) => {
+            const currentNetPayable = emp['NETPAYABLE'] || emp['DEBIT AMT'] || 0
+            return {
+              ...emp,
+              NETPAYABLE: currentNetPayable * ratio,
+              'DEBIT AMT': (emp['DEBIT AMT'] || 0) * ratio,
+            }
+          })
+
+          return {
+            ...batch,
+            totalAmount: newNetPayable,
+            employeeDetails: updatedEmployeeDetails,
+            bankFile: {
+              ...batch.bankFile,
+              'DEBIT AMT': newNetPayable,
+            },
           }
-        };
-      }
-      return batch;
-    }));
+        }
+        return batch
+      })
+    )
 
-    setEditingAmount(prev => {
-      const updated = { ...prev };
-      delete updated[batchId];
-      return updated;
-    });
+    setEditingAmount((prev) => {
+      const updated = { ...prev }
+      delete updated[batchId]
+      return updated
+    })
 
-    toast.success("Amount updated successfully!");
-  };
+    toast.success('Net payable amount updated successfully!')
+  }
 
   const cancelAmountEdit = (batchId) => {
-    setEditingAmount(prev => {
-      const updated = { ...prev };
-      delete updated[batchId];
-      return updated;
-    });
-  };
+    setEditingAmount((prev) => {
+      const updated = { ...prev }
+      delete updated[batchId]
+      return updated
+    })
+  }
 
-  // Download Excel file for editing
+  // Download Excel file for editing with all salary heads
   const handleDownloadExcel = (batch) => {
-    const employeeData = batch.employeeDetails?.map(emp => ({
-      "TYPE": batch.bankFile?.TYPE || "NEFT",
-      "DEBIT BANK A/C NO": batch.bankFile?.["DEBIT BANK A/C NO"] || "",
-      "DEBIT AMT": emp["DEBIT AMT"],
-      "CUR": batch.bankFile?.CUR || "INR",
-      "BENEFICIARY A/C NO": emp["BENEFICIARY A/C NO"],
-      "IFSC CODE": emp["IFSC CODE"],
-      "NARRATION/NAME (NOT MORE THAN 20)": emp["NARRATION/NAME (NOT MORE THAN 20)"]
-    })) || [];
+    // Use the original employee details with all salary heads
+    const employeeData = batch.employeeDetails || []
 
-    const ws = XLSX.utils.json_to_sheet(employeeData);
-    ws["!cols"] = [
-      { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 25 }
-    ];
+    const ws = XLSX.utils.json_to_sheet(employeeData)
+    // Set column widths for better readability
+    ws['!cols'] = Array(Object.keys(employeeData[0] || {}).length).fill({ wch: 15 })
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Employee_Data");
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Employee_Data')
 
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(file);
-    link.download = `salary_batch_${batch.id}.xlsx`;
-    link.click();
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    const file = new Blob([excelBuffer], { type: 'application/octet-stream' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(file)
+    link.download = `salary_batch_${batch.id}.xlsx`
+    link.click()
 
-    toast.success("Excel file downloaded for editing!");
-  };
+    toast.success('Payroll Excel file downloaded for editing!')
+  }
 
   // Delete batch functionality
   const handleDeleteBatch = (batchId) => {
-    if (window.confirm("Are you sure you want to delete this batch? This action cannot be undone.")) {
-      setPayrollBatches(prev => prev.filter(batch => batch.id !== batchId));
-      toast.success("Batch deleted successfully!");
+    if (
+      window.confirm(
+        'Are you sure you want to delete this payroll batch? This action cannot be undone.'
+      )
+    ) {
+      setPayrollBatches((prev) => prev.filter((batch) => batch.id !== batchId))
+      toast.success('Payroll batch deleted successfully!')
     }
-  };
+  }
 
   // File reupload functionality
   const handleReupload = (batchId) => {
-    fileInputRef.current.dataset.batchId = batchId;
-    fileInputRef.current.click();
-  };
+    fileInputRef.current.dataset.batchId = batchId
+    fileInputRef.current.click()
+  }
 
   const handleFileReupload = (e) => {
-    const file = e.target.files[0];
-    const batchId = e.target.dataset.batchId;
-    
-    if (!file) return;
+    const file = e.target.files[0]
+    const batchId = e.target.dataset.batchId
 
-    const reader = new FileReader();
+    if (!file) return
+
+    const reader = new FileReader()
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: "binary" });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const parsedData = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        const bstr = evt.target.result
+        const wb = XLSX.read(bstr, { type: 'binary' })
+        const wsname = wb.SheetNames[0]
+        const ws = wb.Sheets[wsname]
+        const parsedData = XLSX.utils.sheet_to_json(ws, { defval: '' })
 
-        const newTotalAmount = parsedData.reduce((sum, row) => sum + (parseFloat(row["DEBIT AMT"]) || 0), 0);
-        const employeeCount = parsedData.length;
+        const summary = calculatePayrollSummary(parsedData)
 
-        setPayrollBatches(prev => prev.map(batch => {
-          if (batch.id === batchId) {
-            return {
-              ...batch,
-              employeeDetails: parsedData,
-              employeeCount,
-              totalAmount: newTotalAmount,
-              bankFile: {
-                ...batch.bankFile,
-                "DEBIT AMT": newTotalAmount
-              },
-              history: [
-                ...batch.history,
-                {
-                  action: "reuploaded",
-                  by: currentUser.username,
-                  date: new Date().toISOString(),
-                  comments: "File reuploaded"
-                }
-              ]
-            };
-          }
-          return batch;
-        }));
+        setPayrollBatches((prev) =>
+          prev.map((batch) => {
+            if (batch.id === batchId) {
+              return {
+                ...batch,
+                employeeDetails: parsedData,
+                employeeCount: summary.employeeCount,
+                totalAmount: summary.netPayable,
+                bankFile: {
+                  ...batch.bankFile,
+                  'DEBIT AMT': summary.netPayable,
+                },
+                history: [
+                  ...batch.history,
+                  {
+                    action: 'reuploaded',
+                    by: currentUser.username,
+                    date: new Date().toISOString(),
+                    comments: 'Payroll file reuploaded',
+                  },
+                ],
+              }
+            }
+            return batch
+          })
+        )
 
-        toast.success("Excel file reuploaded successfully!");
+        toast.success('Payroll Excel file reuploaded successfully!')
       } catch (error) {
-        toast.error("Error processing the file: " + error.message);
+        toast.error('Error processing the payroll file: ' + error.message)
       }
-    };
-    reader.readAsBinaryString(file);
+    }
+    reader.readAsBinaryString(file)
 
-    e.target.value = "";
-  };
+    e.target.value = ''
+  }
 
   // Multiple Select and Approve
   const handleSelect = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
-    );
-  };
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]))
+  }
 
   const handleSelectAll = () => {
-    const allIds = paginatedBatches.map((batch) => batch.id);
-    const allSelected = allIds.every((id) => selectedIds.includes(id));
-    setSelectedIds(allSelected ? [] : allIds);
-  };
+    const allIds = paginatedBatches.map((batch) => batch.id)
+    const allSelected = allIds.every((id) => selectedIds.includes(id))
+    setSelectedIds(allSelected ? [] : allIds)
+  }
 
   // NEW: Handle bulk approval with modal
   const handleBulkApprove = () => {
     if (selectedIds.length === 0) {
-      toast.warn("Please select at least one batch to approve.");
-      return;
+      toast.warn('Please select at least one payroll batch to approve.')
+      return
     }
 
-    const updatedBatches = payrollBatches.map(batch => {
+    const updatedBatches = payrollBatches.map((batch) => {
       if (selectedIds.includes(batch.id)) {
         return {
           ...batch,
-          status: "Approved",
+          status: 'Approved',
           history: [
             ...batch.history,
             {
-              action: "approved",
+              action: 'approved',
               by: currentUser.username,
               date: new Date().toISOString(),
-              comments: "Bulk approved by AE"
-            }
-          ]
-        };
+              comments: 'Bulk approved by AE',
+            },
+          ],
+        }
       }
-      return batch;
-    });
+      return batch
+    })
 
-    setPayrollBatches(updatedBatches);
-    
+    setPayrollBatches(updatedBatches)
+
     // Get the approved batches data for the modal
-    const approvedBatchData = payrollBatches.filter(batch => selectedIds.includes(batch.id));
-    setApprovedBatches(approvedBatchData);
-    setApprovedBatchData(null); // Clear single batch data
-    setShowPaymentEntryModal(true);
-    
-    setSelectedIds([]);
-    toast.success(`${selectedIds.length} batches approved!`);
-  };
+    const approvedBatchData = payrollBatches.filter((batch) => selectedIds.includes(batch.id))
+    setApprovedBatches(approvedBatchData)
+    setApprovedBatchData(null) // Clear single batch data
+    setShowPaymentEntryModal(true)
+
+    setSelectedIds([])
+    toast.success(`${selectedIds.length} payroll batches approved!`)
+  }
 
   // NEW: Handle single approval with modal
   const handleApprove = (id) => {
-    const updatedBatches = payrollBatches.map(batch => {
+    const updatedBatches = payrollBatches.map((batch) => {
       if (batch.id === id) {
         return {
           ...batch,
-          status: "Approved",
+          status: 'Approved',
           history: [
             ...batch.history,
             {
-              action: "approved",
+              action: 'approved',
               by: currentUser.username,
               date: new Date().toISOString(),
-              comments: "Approved by AE"
-            }
-          ]
-        };
+              comments: 'Approved by AE',
+            },
+          ],
+        }
       }
-      return batch;
-    });
+      return batch
+    })
 
-    setPayrollBatches(updatedBatches);
-    
+    setPayrollBatches(updatedBatches)
+
     // Get the approved batch data for the modal
-    const approvedBatch = payrollBatches.find(batch => batch.id === id);
-    setApprovedBatchData(approvedBatch);
-    setApprovedBatches([]); // Clear bulk batches data
-    setShowPaymentEntryModal(true);
-    
-    toast.success("Batch approved!");
-  };
+    const approvedBatch = payrollBatches.find((batch) => batch.id === id)
+    setApprovedBatchData(approvedBatch)
+    setApprovedBatches([]) // Clear bulk batches data
+    setShowPaymentEntryModal(true)
+
+    toast.success('Payroll batch approved!')
+  }
 
   const openRejectModal = (id) => {
-    setCurrentRejectId(id);
-    setShowRejectModal(true);
-  };
+    setCurrentRejectId(id)
+    setShowRejectModal(true)
+  }
 
   const confirmReject = () => {
-    setPayrollBatches(prev => prev.map(batch => {
-      if (batch.id === currentRejectId) {
-        return {
-          ...batch,
-          status: "Rejected",
-          reason: rejectionReason,
-          history: [
-            ...batch.history,
-            {
-              action: "rejected",
-              by: currentUser.username,
-              date: new Date().toISOString(),
-              comments: rejectionReason
-            }
-          ]
-        };
-      }
-      return batch;
-    }));
-    
-    setShowRejectModal(false);
-    setRejectionReason("");
-    setCurrentRejectId(null);
-    toast.error("Payment Batch Rejected!");
-  };
+    setPayrollBatches((prev) =>
+      prev.map((batch) => {
+        if (batch.id === currentRejectId) {
+          return {
+            ...batch,
+            status: 'Rejected',
+            reason: rejectionReason,
+            history: [
+              ...batch.history,
+              {
+                action: 'rejected',
+                by: currentUser.username,
+                date: new Date().toISOString(),
+                comments: rejectionReason,
+              },
+            ],
+          }
+        }
+        return batch
+      })
+    )
+
+    setShowRejectModal(false)
+    setRejectionReason('')
+    setCurrentRejectId(null)
+    toast.error('Payroll Batch Rejected!')
+  }
 
   // NEW: Close payment entry modal
   const closePaymentEntryModal = () => {
-    setShowPaymentEntryModal(false);
-    setApprovedBatchData(null);
-    setApprovedBatches([]);
-  };
+    setShowPaymentEntryModal(false)
+    setApprovedBatchData(null)
+    setApprovedBatches([])
+  }
 
   return (
     <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
-      <h1 className="text-2xl font-bold text-green-600 mb-6">
-        Pending Salary Payment Approvals
-      </h1>
+      <h1 className="text-2xl font-bold text-green-600 mb-6">Pending Salary Payment Approvals</h1>
 
       <PaymentEntriesFilter filters={filters} onChange={setFilters} />
 
@@ -402,24 +471,28 @@ export default function AEPendingRequestsPage() {
                   type="checkbox"
                   checked={
                     paginatedBatches.length > 0 &&
-                    paginatedBatches.every(batch => selectedIds.includes(batch.id))
+                    paginatedBatches.every((batch) => selectedIds.includes(batch.id))
                   }
                   onChange={handleSelectAll}
                 />
               </th>
-              <th className="p-2 border">TYPE</th>
-              <th className="p-2 border">DEBIT BANK A/C NO</th>
-              <th className="p-2 border">DEBIT AMT</th>
-              <th className="p-2 border">CUR</th>
-              <th className="p-2 border">PAYROLL PERIOD</th>
+              <th className="p-2 border">Batch ID</th>
+              <th className="p-2 border">Employees</th>
+              <th className="p-2 border">Gross Amount</th>
+              <th className="p-2 border">Total Deductions</th>
+              <th className="p-2 border">Net Payable</th>
+              <th className="p-2 border">PF (Emp)</th>
+              <th className="p-2 border">ESIC (Emp)</th>
+              <th className="p-2 border">PT</th>
+              <th className="p-2 border">Payroll Period</th>
               <th className="p-2 border">Excel File</th>
               <th className="p-2 border">Status</th>
               <th className="p-2 border">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedBatches.map(batch => {
-              const tableData = getTableData(batch);
+            {paginatedBatches.map((batch) => {
+              const tableData = getTableData(batch)
               return (
                 <React.Fragment key={batch.id}>
                   <tr className="border-t hover:bg-gray-50">
@@ -428,11 +501,17 @@ export default function AEPendingRequestsPage() {
                         type="checkbox"
                         checked={selectedIds.includes(batch.id)}
                         onChange={() => handleSelect(batch.id)}
-                        disabled={batch.status !== "Pending Approval"}
+                        disabled={batch.status !== 'Pending Approval'}
                       />
                     </td>
-                    <td className="p-2 border font-medium">{tableData.type}</td>
-                    <td className="p-2 border">{tableData.debitAccount}</td>
+                    <td className="p-2 border font-medium">{tableData.batchName}</td>
+                    <td className="p-2 border text-center">{tableData.employeeCount}</td>
+                    <td className="p-2 border font-medium text-blue-600">
+                      ₹{tableData.grossAmount.toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-2 border text-red-600">
+                      ₹{tableData.totalDeductions.toLocaleString('en-IN')}
+                    </td>
                     <td className="p-2 border">
                       {editingAmount[batch.id] !== undefined ? (
                         <div className="flex items-center gap-1">
@@ -458,11 +537,11 @@ export default function AEPendingRequestsPage() {
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-green-600">
-                            ₹{tableData.totalAmount.toLocaleString()}
+                            ₹{tableData.netPayable.toLocaleString('en-IN')}
                           </span>
-                          {tableData.status === "Pending Approval" && (
+                          {tableData.status === 'Pending Approval' && (
                             <button
-                              onClick={() => handleAmountEdit(batch.id, tableData.totalAmount)}
+                              onClick={() => handleAmountEdit(batch.id, tableData.netPayable)}
                               className="text-blue-600 hover:text-blue-800 text-xs"
                             >
                               ✏️
@@ -471,16 +550,23 @@ export default function AEPendingRequestsPage() {
                         </div>
                       )}
                     </td>
-                    <td className="p-2 border">{tableData.currency}</td>
+                    <td className="p-2 border text-orange-600">
+                      ₹{tableData.pfEmployee.toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-2 border text-purple-600">
+                      ₹{tableData.esicEmployee.toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-2 border text-pink-600">
+                      ₹{tableData.pt.toLocaleString('en-IN')}
+                    </td>
                     <td className="p-2 border">
                       <button
                         onClick={() => handleBatchClick(batch.id)}
                         className="text-blue-600 hover:text-blue-800 underline text-left"
                       >
-                        {tableData.narration}
+                        {batch.payrollPeriod}
                         <span className="ml-2 text-xs text-gray-500">
-                          ({tableData.employees.length} employees)
-                          {expandedBatch === batch.id ? " ▼" : " ▶"}
+                          {expandedBatch === batch.id ? ' ▼' : ' ▶'}
                         </span>
                       </button>
                     </td>
@@ -492,7 +578,7 @@ export default function AEPendingRequestsPage() {
                         >
                           📥 Download
                         </button>
-                        {tableData.status === "Pending Approval" && (
+                        {tableData.status === 'Pending Approval' && (
                           <>
                             <button
                               onClick={() => handleReupload(batch.id)}
@@ -511,16 +597,20 @@ export default function AEPendingRequestsPage() {
                       </div>
                     </td>
                     <td className="p-2 border">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        tableData.status === "Pending Approval" ? "bg-yellow-100 text-yellow-800" :
-                        tableData.status === "Approved" ? "bg-green-100 text-green-800" :
-                        "bg-red-100 text-red-800"
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          tableData.status === 'Pending Approval'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : tableData.status === 'Approved'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                        }`}
+                      >
                         {tableData.status}
                       </span>
                     </td>
                     <td className="p-2 border">
-                      {tableData.status === "Pending Approval" ? (
+                      {tableData.status === 'Pending Approval' ? (
                         <div className="flex gap-1 flex-wrap">
                           <button
                             onClick={() => handleApprove(batch.id)}
@@ -543,7 +633,7 @@ export default function AEPendingRequestsPage() {
 
                   {expandedBatch === batch.id && (
                     <tr>
-                      <td colSpan="9" className="p-0 border-0">
+                      <td colSpan="13" className="p-0 border-0">
                         <div className="bg-gray-50 border-t border-b">
                           <div className="p-3">
                             <h4 className="font-semibold text-sm mb-2 text-gray-700">
@@ -553,21 +643,57 @@ export default function AEPendingRequestsPage() {
                               <table className="w-full text-xs border border-gray-200">
                                 <thead className="bg-gray-100">
                                   <tr>
-                                    <th className="p-2 border">Code</th>
+                                    <th className="p-2 border">Emp Code</th>
                                     <th className="p-2 border">Name</th>
+                                    <th className="p-2 border">Designation</th>
+                                    <th className="p-2 border">Basic</th>
+                                    <th className="p-2 border">HRA</th>
+                                    <th className="p-2 border">Conveyance</th>
+                                    <th className="p-2 border">Gross</th>
+                                    <th className="p-2 border">PF</th>
+                                    <th className="p-2 border">ESIC</th>
+                                    <th className="p-2 border">PT</th>
+                                    <th className="p-2 border">Deductions</th>
+                                    <th className="p-2 border">Net Pay</th>
                                     <th className="p-2 border">Account</th>
                                     <th className="p-2 border">IFSC</th>
-                                    <th className="p-2 border">Amount</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {tableData.employees.map((employee, index) => (
-                                    <tr key={index} className="border-t">
-                                      <td className="p-2 border">{employee.code}</td>
+                                    <tr key={index} className="border-t hover:bg-gray-50">
+                                      <td className="p-2 border font-medium">{employee.empCode}</td>
                                       <td className="p-2 border">{employee.name}</td>
-                                      <td className="p-2 border">{employee.account}</td>
-                                      <td className="p-2 border">{employee.ifsc}</td>
-                                      <td className="p-2 border">₹{employee.amount.toLocaleString()}</td>
+                                      <td className="p-2 border text-xs">{employee.designation}</td>
+                                      <td className="p-2 border">
+                                        ₹{employee.basic.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border">
+                                        ₹{employee.hra.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border">
+                                        ₹{employee.conveyance.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border font-medium text-blue-600">
+                                        ₹{employee.grossAmount.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border text-orange-600">
+                                        ₹{employee.pf.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border text-purple-600">
+                                        ₹{employee.esic.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border text-pink-600">
+                                        ₹{employee.pt.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border text-red-600">
+                                        ₹{employee.totalDeductions.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border font-bold text-green-600">
+                                        ₹{employee.netPayable.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="p-2 border text-xs">{employee.account}</td>
+                                      <td className="p-2 border text-xs">{employee.ifsc}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -579,7 +705,7 @@ export default function AEPendingRequestsPage() {
                     </tr>
                   )}
                 </React.Fragment>
-              );
+              )
             })}
           </tbody>
         </table>
@@ -633,5 +759,5 @@ export default function AEPendingRequestsPage() {
         approvedBatches={approvedBatches}
       />
     </div>
-  );
+  )
 }
