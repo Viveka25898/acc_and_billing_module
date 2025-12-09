@@ -168,6 +168,12 @@ import UnifiedVendorLedgerPage from '../Features/Master/Pages/UnifiedVendorLedge
 import HKMaterialsExpenseLedgerPage from '../Features/Master/Components/HKMaterialExpenseLedgerPage'
 import TdsLedgerPage from '../Features/Master/TDSLedger/Page/TDSLedgerPage'
 import GenericExpenseLedger from '../Features/Master/Professional Fes and Other Fees Ledger/Pages/GenericLedgerPage'
+import SalaryWagesLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/SalaryWagesLedger'
+import SalaryPayableLedger from '../Features/Master/Payment Entry For Salaries/Liability/Pages/SalaryPaybleLedger'
+import PFContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/PFContributionLedgerPage'
+import PFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/PFPayableLedgerPage'
+import ESICContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/ESICContributionLedgerPage'
+import ESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ESICPayableLedgerPage'
 
 export const router = createBrowserRouter([
   {
@@ -923,6 +929,30 @@ export const router = createBrowserRouter([
       {
         path: 'expense-ledger/:accountCode',
         element: <GenericExpenseLedger />,
+      },
+      {
+        path: 'salary-expense-ledger',
+        element: <SalaryWagesLedgerPage />,
+      },
+      {
+        path: 'salary-payable-ledger',
+        element: <SalaryPayableLedger />,
+      },
+      {
+        path: 'pf-contribution-ledger',
+        element: <PFContributionLedgerPage />,
+      },
+      {
+        path: 'pf-payable-ledger',
+        element: <PFPayableLedgerPage />,
+      },
+      {
+        path: 'esic-contribution-ledger',
+        element: <ESICContributionLedgerPage />,
+      },
+      {
+        path: 'esic-payable-ledger',
+        element: <ESICPayableLedgerPage />,
       },
     ],
   },

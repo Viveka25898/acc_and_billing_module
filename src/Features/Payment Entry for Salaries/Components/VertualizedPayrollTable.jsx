@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { TableVirtuoso } from 'react-virtuoso'
 import { useMemo } from 'react'
 
@@ -120,7 +121,9 @@ export default function VirtualizedPayrollTable({ data, loading = false }) {
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {typeof row[key] === 'number' ? row[key].toLocaleString('en-IN') : row[key] ?? ''}
+                  {typeof row[key] === 'number'
+                    ? row[key].toLocaleString('en-IN')
+                    : (row[key] ?? '')}
                 </td>
               ))}
             </>

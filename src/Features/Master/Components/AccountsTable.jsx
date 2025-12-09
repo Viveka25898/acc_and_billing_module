@@ -256,6 +256,53 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('uniform expense') &&
           !account.name.toLowerCase().includes('prepaid'))
 
+      // ADD THIS CHECK FOR SALARY EXPENSE
+      const isSalaryExpenseAccount =
+        account.code === 'X2001001001' || // Exact match
+        (account.code.startsWith('X2001001001') && // Starts with exact code
+          account.name.toLowerCase().includes('salary') &&
+          !account.name.toLowerCase().includes('pf'))
+
+      // ADD THIS CHECK FOR SALARY PAYABLE LIABILITY (GL Code: L2002001)
+      const isSalaryPayableAccount =
+        account.code === 'L2002001' ||
+        account.code.startsWith('L2002001') ||
+        (account.code.includes('L2002001') &&
+          account.name.toLowerCase().includes('salary') &&
+          account.name.toLowerCase().includes('payable'))
+      //Employeer
+      const isPFContributionAccount =
+        account.code === 'X2001001002' || // Exact match
+        (account.code.startsWith('X2001001002') && // Starts with exact code
+          (account.name.toLowerCase().includes('pf') ||
+            account.name.toLowerCase().includes('provident') ||
+            account.name.toLowerCase().includes('employer')))
+
+      //PF Payable:- Employeer
+      const isPFPayableAccount =
+        account.code === 'L2002002' ||
+        account.code.startsWith('L2002002') ||
+        (account.code.includes('L2002002') &&
+          account.name.toLowerCase().includes('pf') &&
+          account.name.toLowerCase().includes('payable'))
+
+      //ESIC Employeer
+      const isESICContributionAccount =
+        account.code === 'X2001001003' ||
+        account.code.startsWith('X2001001003') ||
+        (account.code.includes('2001001003') &&
+          (account.name.toLowerCase().includes('esic') ||
+            account.name.toLowerCase().includes('esi') ||
+            (account.name.toLowerCase().includes('employer') &&
+              account.name.toLowerCase().includes('contribution'))))
+
+      //ESIC xployeer Liabilty
+      const isESICPayableAccount =
+        account.code === 'L2002003' ||
+        account.code.startsWith('L2002003') ||
+        (account.code.includes('L2002') &&
+          account.name.toLowerCase().includes('esic') &&
+          account.name.toLowerCase().includes('payable'))
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -348,6 +395,27 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         console.log('✅ Navigating to Uniform Prepaid Expense Ledger')
         navigate(`/dashboard/account-manager/fa-uniform-expense`)
       }
+
+      if (isSalaryExpenseAccount) {
+        console.log('✅ Navigating to Salary Expense Ledger')
+        navigate(`/dashboard/account-manager/salary-expense-ledger`)
+      } else if (isSalaryPayableAccount) {
+        console.log('✅ Navigating to Salary Payable Ledger (Liability Account)')
+        navigate(`/dashboard/account-manager/salary-payable-ledger`)
+      } else if (isPFContributionAccount) {
+        console.log('✅ Navigating to Employer PF Contribution Ledger')
+        navigate(`/dashboard/account-manager/pf-contribution-ledger`)
+      } else if (isPFPayableAccount) {
+        console.log('✅ Navigating to PF Payable Liability Ledger')
+        navigate(`/dashboard/account-manager/pf-payable-ledger`)
+      } else if (isESICContributionAccount) {
+        console.log('✅ Navigating to Employer ESIC Contribution Ledger')
+        navigate(`/dashboard/account-manager/esic-contribution-ledger`)
+      } else if (isESICPayableAccount) {
+        console.log('✅ Navigating to ESIC Payable Liability Ledger')
+        navigate(`/dashboard/account-manager/esic-payable-ledger`)
+      }
+
       // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here
       else if (isVendorAccount) {
         console.log('✅ Navigating to UNIFIED Vendor Ledger:', account.code)
