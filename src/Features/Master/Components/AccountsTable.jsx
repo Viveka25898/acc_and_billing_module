@@ -350,6 +350,13 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('employee contribution') &&
           account.name.toLowerCase().includes('pf'))
 
+      //Liability employee ESIC
+      const isEmployeeESICPayableAccount =
+        account.code === 'L2002007' ||
+        (account.code.startsWith('L2002007') &&
+          account.name.toLowerCase().includes('esic') &&
+          account.name.toLowerCase().includes('employee'))
+
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -455,11 +462,14 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isPFPayableAccount) {
         console.log('✅ Navigating to PF Payable Liability Ledger')
         navigate(`/dashboard/account-manager/pf-payable-ledger`)
+      } else if (isEmployeeESICPayableAccount) {
+        console.log('✅ Navigating to Employee ESIC Payable Ledger')
+        navigate(`/dashboard/account-manager/employee-esic-payable-ledger`)
       } else if (isESICContributionAccount) {
         console.log('✅ Navigating to Employer ESIC Contribution Ledger')
         navigate(`/dashboard/account-manager/esic-contribution-ledger`)
       } else if (isESICPayableAccount) {
-        console.log('✅ Navigating to ESIC Payable Liability Ledger')
+        console.log('✅ Navigating to Employer ESIC Payable Liability Ledger')
         navigate(`/dashboard/account-manager/esic-payable-ledger`)
       } else if (isLWFContributionAccount) {
         console.log('✅ Navigating to Employer LWF Contribution Ledger')
