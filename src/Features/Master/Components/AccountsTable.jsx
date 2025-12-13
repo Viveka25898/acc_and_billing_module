@@ -322,6 +322,21 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('lwf') &&
           account.name.toLowerCase().includes('payable') &&
           account.name.toLowerCase().includes('employer'))
+
+      //Leave Provision Expense Account
+      const isLeaveProvisionExpenseAccount =
+        account.code === 'X2001001005' ||
+        (account.code.startsWith('X2001001005') &&
+          account.name.toLowerCase().includes('leave') &&
+          account.name.toLowerCase().includes('provision'))
+
+      //Leave Provision Encashment Liability Account
+      const isLeaveEncashmentProvisionAccount =
+        account.code === 'L2002005' ||
+        (account.code.startsWith('L2002005') &&
+          account.name.toLowerCase().includes('provision') &&
+          account.name.toLowerCase().includes('leave encashment'))
+
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -439,6 +454,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isLWFPayableAccount) {
         console.log('✅ Navigating to LWF Payable - Employer Share Ledger')
         navigate(`/dashboard/account-manager/lwf-payable-ledger`)
+      } else if (isLeaveProvisionExpenseAccount) {
+        console.log('✅ Navigating to Leave Provision Expense Ledger')
+        navigate(`/dashboard/account-manager/leave-provision-ledger`)
+      } else if (isLeaveEncashmentProvisionAccount) {
+        console.log('✅ Navigating to Leave Encashment Provision Ledger')
+        navigate(`/dashboard/account-manager/leave-encashment-provision-ledger`)
       }
 
       // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here

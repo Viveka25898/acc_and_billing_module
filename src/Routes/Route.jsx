@@ -176,6 +176,8 @@ import ESICContributionLedgerPage from '../Features/Master/Payment Entry For Sal
 import ESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ESICPayableLedgerPage'
 import LWFContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/LWFCintributionLedgerPage'
 import LWFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/LWFPayableLedgerPage'
+import LeaveProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/LeaveProvisionExpenseLedgerPage'
+import LeaveEncashmentProvisionLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/LeaveEncashmentProvisionLedger'
 
 export const router = createBrowserRouter([
   {
@@ -961,8 +963,16 @@ export const router = createBrowserRouter([
         element: <LWFContributionLedgerPage />,
       },
       {
-        path: 'lwf-payable-ledger', // Add this route
+        path: 'lwf-payable-ledger',
         element: <LWFPayableLedgerPage />,
+      },
+      {
+        path: 'leave-provision-ledger',
+        element: <LeaveProvisionExpenseLedgerPage />,
+      },
+      {
+        path: 'leave-encashment-provision-ledger',
+        element: <LeaveEncashmentProvisionLedgerPage />,
       },
     ],
   },
