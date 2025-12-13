@@ -296,13 +296,32 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
             (account.name.toLowerCase().includes('employer') &&
               account.name.toLowerCase().includes('contribution'))))
 
-      //ESIC xployeer Liabilty
+      //ESIC employeer Liabilty
       const isESICPayableAccount =
         account.code === 'L2002003' ||
         account.code.startsWith('L2002003') ||
         (account.code.includes('L2002') &&
           account.name.toLowerCase().includes('esic') &&
           account.name.toLowerCase().includes('payable'))
+
+      //LWF Employeer Expense
+      const isLWFContributionAccount =
+        account.code === 'X2001001004' ||
+        account.code.startsWith('X2001001004') ||
+        (account.code.includes('2001001004') &&
+          (account.name.toLowerCase().includes('lwf') ||
+            account.name.toLowerCase().includes('labour') ||
+            account.name.toLowerCase().includes('welfare') ||
+            (account.name.toLowerCase().includes('employer') &&
+              account.name.toLowerCase().includes('contribution'))))
+
+      //LWF employeer Liability
+      const isLWFPayableAccount =
+        account.code === 'L2002004' ||
+        (account.code.startsWith('L2002004') &&
+          account.name.toLowerCase().includes('lwf') &&
+          account.name.toLowerCase().includes('payable') &&
+          account.name.toLowerCase().includes('employer'))
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -414,6 +433,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isESICPayableAccount) {
         console.log('✅ Navigating to ESIC Payable Liability Ledger')
         navigate(`/dashboard/account-manager/esic-payable-ledger`)
+      } else if (isLWFContributionAccount) {
+        console.log('✅ Navigating to Employer LWF Contribution Ledger')
+        navigate(`/dashboard/account-manager/lwf-contribution-ledger`)
+      } else if (isLWFPayableAccount) {
+        console.log('✅ Navigating to LWF Payable - Employer Share Ledger')
+        navigate(`/dashboard/account-manager/lwf-payable-ledger`)
       }
 
       // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here
