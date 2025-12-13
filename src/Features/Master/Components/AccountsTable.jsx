@@ -364,6 +364,14 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('lwf') &&
           account.name.toLowerCase().includes('employee'))
 
+      //Liability PT Employee Share
+      const isProfessionalTaxPayableAccount =
+        account.code === 'L2002009' ||
+        (account.code.startsWith('L2002009') &&
+          (account.name.toLowerCase().includes('pt') ||
+            account.name.toLowerCase().includes('professional tax')) &&
+          account.name.toLowerCase().includes('employee'))
+
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -499,6 +507,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isEmployeeLWFPayableAccount) {
         console.log('✅ Navigating to Employee LWF Payable Ledger')
         navigate(`/dashboard/account-manager/employee-lwf-payable-ledger`)
+      } else if (isProfessionalTaxPayableAccount) {
+        console.log('✅ Navigating to Professional Tax Payable Ledger')
+        navigate(`/dashboard/account-manager/professional-tax-payable-ledger`)
       }
 
       // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here

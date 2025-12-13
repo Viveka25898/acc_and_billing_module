@@ -182,6 +182,7 @@ import OtherDeductionsLedgerPage from '../Features/Master/Payment Entry For Sala
 import EmployeePFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeePFPayableLedgerPage'
 import EmployeeESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeESICPayableLedgerPage'
 import EmployeeLWFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeLWFPayableLedgerPage'
+import ProfessionalTaxPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ProfessionalTaxPayableLedgerPage'
 
 export const router = createBrowserRouter([
   {
@@ -993,6 +994,10 @@ export const router = createBrowserRouter([
       {
         path: 'employee-lwf-payable-ledger',
         element: <EmployeeLWFPayableLedgerPage />,
+      },
+      {
+        path: 'professional-tax-payable-ledger',
+        element: <ProfessionalTaxPayableLedgerPage />,
       },
     ],
   },
