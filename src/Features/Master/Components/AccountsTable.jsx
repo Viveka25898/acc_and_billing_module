@@ -337,6 +337,19 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('provision') &&
           account.name.toLowerCase().includes('leave encashment'))
 
+      //Other Deductions Expense Ledger
+      const isOtherDeductionsExpenseAccount =
+        account.code === 'X2001001006' ||
+        (account.code.startsWith('X2001001006') &&
+          account.name.toLowerCase().includes('other deductions'))
+
+      //Liability Employee PF
+      const isEmployeePFPayableAccount =
+        account.code === 'L2002006' ||
+        (account.code.startsWith('L2002006') &&
+          account.name.toLowerCase().includes('employee contribution') &&
+          account.name.toLowerCase().includes('pf'))
+
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -460,6 +473,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isLeaveEncashmentProvisionAccount) {
         console.log('✅ Navigating to Leave Encashment Provision Ledger')
         navigate(`/dashboard/account-manager/leave-encashment-provision-ledger`)
+      } else if (isOtherDeductionsExpenseAccount) {
+        console.log('✅ Navigating to Other Deductions Expense Ledger')
+        navigate(`/dashboard/account-manager/other-deductions-ledger`)
+      } else if (isEmployeePFPayableAccount) {
+        console.log('✅ Navigating to Employee PF Payable Ledger')
+        navigate(`/dashboard/account-manager/employee-pf-payable-ledger`)
       }
 
       // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here
