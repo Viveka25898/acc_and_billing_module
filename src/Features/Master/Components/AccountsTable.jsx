@@ -357,6 +357,13 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('esic') &&
           account.name.toLowerCase().includes('employee'))
 
+      //Liability Employee LWF
+      const isEmployeeLWFPayableAccount =
+        account.code === 'L2002008' ||
+        (account.code.startsWith('L2002008') &&
+          account.name.toLowerCase().includes('lwf') &&
+          account.name.toLowerCase().includes('employee'))
+
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -489,6 +496,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isEmployeePFPayableAccount) {
         console.log('✅ Navigating to Employee PF Payable Ledger')
         navigate(`/dashboard/account-manager/employee-pf-payable-ledger`)
+      } else if (isEmployeeLWFPayableAccount) {
+        console.log('✅ Navigating to Employee LWF Payable Ledger')
+        navigate(`/dashboard/account-manager/employee-lwf-payable-ledger`)
       }
 
       // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here

@@ -181,6 +181,7 @@ import LeaveEncashmentProvisionLedgerPage from '../Features/Master/Payment Entry
 import OtherDeductionsLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/OtherDeductionsLedgerPage'
 import EmployeePFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeePFPayableLedgerPage'
 import EmployeeESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeESICPayableLedgerPage'
+import EmployeeLWFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeLWFPayableLedgerPage'
 
 export const router = createBrowserRouter([
   {
@@ -988,6 +989,10 @@ export const router = createBrowserRouter([
       {
         path: 'employee-esic-payable-ledger',
         element: <EmployeeESICPayableLedgerPage />,
+      },
+      {
+        path: 'employee-lwf-payable-ledger',
+        element: <EmployeeLWFPayableLedgerPage />,
       },
     ],
   },
