@@ -1,46 +1,45 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 const AdvanceRequestForm = () => {
-
   //Get the emp name from local storage
   useEffect(() => {
-  const currentUser = JSON.parse(localStorage.getItem("user"));
-  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const currentUser = JSON.parse(localStorage.getItem('user'))
+    const allUsers = JSON.parse(localStorage.getItem('users')) || []
 
-  if (currentUser) {
-    const fullUser = allUsers.find(u => u.username === currentUser.username);
+    if (currentUser) {
+      const fullUser = allUsers.find((u) => u.username === currentUser.username)
 
-    setFormData((prev) => ({
-      ...prev,
-      employeeName: fullUser?.fullName || '',
-      employeeId: fullUser?.employeeId || fullUser?.username || '',
-    }));
-  }
-}, []);
-  const navigate = useNavigate();
+      setFormData((prev) => ({
+        ...prev,
+        employeeName: fullUser?.fullName || '',
+        employeeId: fullUser?.employeeId || fullUser?.username || '',
+      }))
+    }
+  }, [])
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     employeeName: '',
     employeeId: '',
     amount: '',
-    reason: [],  // Changed to array for multiple selections
+    reason: [], // Changed to array for multiple selections
     customReason: '',
     requestDate: new Date().toISOString().slice(0, 10),
-  });
+  })
 
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
 
   // Function to generate unique request ID
   const generateRequestId = () => {
-    const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
-    const currentDate = new Date();
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const nextNumber = existingRequests.length + 1;
-    return `ADV-${year}${month}-${String(nextNumber).padStart(4, '0')}`;
-  };
+    const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]')
+    const currentDate = new Date()
+    const year = currentDate.getFullYear()
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0')
+    const nextNumber = existingRequests.length + 1
+    return `ADV-${year}${month}-${String(nextNumber).padStart(4, '0')}`
+  }
 
   // Available reason options
   const reasonOptions = [
@@ -48,36 +47,36 @@ const AdvanceRequestForm = () => {
     'Travelling Allowance',
     'Petrol Expense',
     'Office Expense',
-    'Other'
-  ];
+    'Other',
+  ]
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
+  }
 
   // Handle reason selection
   const handleReasonSelect = (selectedReason) => {
     if (!formData.reason.includes(selectedReason)) {
       setFormData({
         ...formData,
-        reason: [...formData.reason, selectedReason]
-      });
+        reason: [...formData.reason, selectedReason],
+      })
     }
-  };
+  }
 
   // Handle reason removal
   const handleReasonRemove = (reasonToRemove) => {
     setFormData({
       ...formData,
-      reason: formData.reason.filter(reason => reason !== reasonToRemove)
-    });
-  };
+      reason: formData.reason.filter((reason) => reason !== reasonToRemove),
+    })
+  }
 
   const isFormValid = () => {
-    const { employeeName, employeeId, amount, reason, customReason } = formData;
-    const hasOtherReason = reason.includes('Other');
-    
+    const { employeeName, employeeId, amount, reason, customReason } = formData
+    const hasOtherReason = reason.includes('Other')
+
     if (hasOtherReason) {
       return (
         employeeName.trim() &&
@@ -85,61 +84,61 @@ const AdvanceRequestForm = () => {
         amount.trim() &&
         reason.length > 0 &&
         customReason.trim()
-      );
+      )
     }
-    return employeeName.trim() && employeeId.trim() && amount.trim() && reason.length > 0;
-  };
+    return employeeName.trim() && employeeId.trim() && amount.trim() && reason.length > 0
+  }
 
   const handleSubmit = (e) => {
-  e.preventDefault();
-  setError('');
+    e.preventDefault()
+    setError('')
 
-  if (!isFormValid()) {
-    setError('All fields are required.');
-    return;
+    if (!isFormValid()) {
+      setError('All fields are required.')
+      return
+    }
+
+    // Combine selected reasons with custom reason if "Other" is selected
+    let finalReasons = [...formData.reason]
+    if (formData.reason.includes('Other') && formData.customReason.trim()) {
+      finalReasons = finalReasons.map((reason) =>
+        reason === 'Other' ? formData.customReason : reason
+      )
+    }
+
+    // 🔹 Get current user and hierarchy info
+    const currentUser = JSON.parse(localStorage.getItem('user'))
+    const allUsers = JSON.parse(localStorage.getItem('users')) || []
+
+    const fullUser = allUsers.find((u) => u.username === currentUser.username)
+    const assignedTo = fullUser?.reportsTo
+
+    if (!assignedTo) {
+      alert("❌ No reporting manager assigned to this employee. Please set 'reportsTo' in users.")
+      return
+    }
+
+    const newRequest = {
+      requestId: generateRequestId(), // Add unique request ID
+      ...formData,
+      reason: finalReasons, // Store as array of reasons
+      status: 'Pending Manager Approval',
+      remarks: '',
+      submittedAt: new Date().toISOString(),
+      assignedTo: assignedTo, // 🔹 Track who should review this request
+      submittedBy: currentUser.username,
+      currentLevel: 'line-manager', // 🔹 used to track approval level
+    }
+
+    const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]')
+    existingRequests.push(newRequest)
+    localStorage.setItem('advanceRequests', JSON.stringify(existingRequests))
+
+    // Store the request ID in form data to show in success message
+    setFormData((prev) => ({ ...prev, requestId: newRequest.requestId }))
+
+    setSubmitted(true)
   }
-
-  // Combine selected reasons with custom reason if "Other" is selected
-  let finalReasons = [...formData.reason];
-  if (formData.reason.includes('Other') && formData.customReason.trim()) {
-    finalReasons = finalReasons.map(reason => 
-      reason === 'Other' ? formData.customReason : reason
-    );
-  }
-
-  // 🔹 Get current user and hierarchy info
-  const currentUser = JSON.parse(localStorage.getItem("user"));
-  const allUsers = JSON.parse(localStorage.getItem("users")) || [];
-
-  const fullUser = allUsers.find(u => u.username === currentUser.username);
-  const assignedTo = fullUser?.reportsTo;
-
-  if (!assignedTo) {
-    alert("❌ No reporting manager assigned to this employee. Please set 'reportsTo' in users.");
-    return;
-  }
-
-  const newRequest = {
-    requestId: generateRequestId(), // Add unique request ID
-    ...formData,
-    reason: finalReasons, // Store as array of reasons
-    status: 'Pending Manager Approval',
-    remarks: '',
-    submittedAt: new Date().toISOString(),
-    assignedTo: assignedTo, // 🔹 Track who should review this request
-    submittedBy: currentUser.username,
-    currentLevel: 'line-manager', // 🔹 used to track approval level
-  };
-
-  const existingRequests = JSON.parse(localStorage.getItem('advanceRequests') || '[]');
-  existingRequests.push(newRequest);
-  localStorage.setItem('advanceRequests', JSON.stringify(existingRequests));
-
-  // Store the request ID in form data to show in success message
-  setFormData(prev => ({ ...prev, requestId: newRequest.requestId }));
-
-  setSubmitted(true);
-};
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white shadow rounded-md">
@@ -206,7 +205,7 @@ const AdvanceRequestForm = () => {
 
               <div className="sm:col-span-2">
                 <label className="block mb-1 font-semibold">Reason for Advance</label>
-                
+
                 {/* Selected Reasons Display Box */}
                 {formData.reason.length > 0 && (
                   <div className="mb-3 p-3 border rounded bg-gray-50 min-h-[60px]">
@@ -235,16 +234,16 @@ const AdvanceRequestForm = () => {
                 <select
                   onChange={(e) => {
                     if (e.target.value) {
-                      handleReasonSelect(e.target.value);
-                      e.target.value = ''; // Reset dropdown
+                      handleReasonSelect(e.target.value)
+                      e.target.value = '' // Reset dropdown
                     }
                   }}
                   className="w-full border px-3 py-2 rounded focus:outline-none focus:ring focus:ring-blue-300"
                 >
                   <option value="">-- Select Reason to Add --</option>
                   {reasonOptions
-                    .filter(option => !formData.reason.includes(option))
-                    .map(option => (
+                    .filter((option) => !formData.reason.includes(option))
+                    .map((option) => (
                       <option key={option} value={option}>
                         {option}
                       </option>
@@ -295,7 +294,7 @@ const AdvanceRequestForm = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AdvanceRequestForm;
+export default AdvanceRequestForm

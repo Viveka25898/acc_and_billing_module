@@ -386,9 +386,6 @@ export default function AERelieverApprovalPage() {
         <h1 className="text-2xl font-bold text-green-600">
           Account Executive - Reliever Payment Approvals
         </h1>
-        <div className="text-sm text-gray-600">
-          Approve reliever payments and create liabilities
-        </div>
       </div>
 
       <FilterBar onFilter={handleFilter} />

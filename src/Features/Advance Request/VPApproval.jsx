@@ -1,167 +1,176 @@
-import React, { useEffect, useState } from 'react';
-import { FaEye } from 'react-icons/fa';
-import { toast } from 'react-toastify';
-import ManagerFilter from './ManagerFilter';
-import { useSelector } from 'react-redux';
+import React, { useEffect, useState } from 'react'
+import { FaEye } from 'react-icons/fa'
+import { toast } from 'react-toastify'
+import ManagerFilter from './ManagerFilter'
+import { useSelector } from 'react-redux'
 
 const VPApproval = () => {
-  const loggedInUser = useSelector((state) => state.auth.user);
-  const [requests, setRequests] = useState([]);
-  const [filters, setFilters] = useState({ name: '', employeeId: '', date: '', requestId: '' });
-  const [modalData, setModalData] = useState(null);
-  const [remarks, setRemarks] = useState('');
-  const [rejectId, setRejectId] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const loggedInUser = useSelector((state) => state.auth.user)
+  const [requests, setRequests] = useState([])
+  const [filters, setFilters] = useState({ name: '', employeeId: '', date: '', requestId: '' })
+  const [modalData, setModalData] = useState(null)
+  const [remarks, setRemarks] = useState('')
+  const [rejectId, setRejectId] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
-  const itemsPerPage = 5;
+  const itemsPerPage = 5
 
   // Helper function to format multiple reasons
   const formatReasons = (reason, customReason) => {
-    const reasons = [];
-    
+    const reasons = []
+
     if (reason) {
       // Handle case where reason might be an array or comma-separated string
       if (Array.isArray(reason)) {
-        reasons.push(...reason.filter(r => r && r.toString().trim()));
+        reasons.push(...reason.filter((r) => r && r.toString().trim()))
       } else if (typeof reason === 'string' && reason.trim()) {
         // Split by comma and clean up each reason
-        const splitReasons = reason.split(',').map(r => r.trim()).filter(r => r);
-        reasons.push(...splitReasons);
+        const splitReasons = reason
+          .split(',')
+          .map((r) => r.trim())
+          .filter((r) => r)
+        reasons.push(...splitReasons)
       } else if (reason && typeof reason === 'object') {
         // Handle case where reason might be an object
-        reasons.push(reason.toString().trim());
+        reasons.push(reason.toString().trim())
       } else if (reason) {
         // Handle any other type
-        reasons.push(reason.toString().trim());
+        reasons.push(reason.toString().trim())
       }
     }
-    
+
     if (customReason && customReason.toString().trim()) {
-      reasons.push(customReason.toString().trim());
+      reasons.push(customReason.toString().trim())
     }
-    
+
     // Remove duplicates and join with comma and space
-    const uniqueReasons = [...new Set(reasons.filter(r => r))];
-    return uniqueReasons.length > 0 ? uniqueReasons.join(', ') : 'No reason provided';
-  };
+    const uniqueReasons = [...new Set(reasons.filter((r) => r))]
+    return uniqueReasons.length > 0 ? uniqueReasons.join(', ') : 'No reason provided'
+  }
 
   useEffect(() => {
-    const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
-    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
+    const allUsers = JSON.parse(localStorage.getItem('users')) || []
 
     // Find all line managers who report to this VP
     const lineManagersUnderThisVP = allUsers.filter(
-      (user) => user.reportsTo === loggedInUser && user.role === "line-manager"
-    );
+      (user) => user.reportsTo === loggedInUser && user.role === 'line-manager'
+    )
 
     // Get the usernames of these line managers
-    const lineManagerUsernames = lineManagersUnderThisVP.map(lm => lm.username);
+    const lineManagerUsernames = lineManagersUnderThisVP.map((lm) => lm.username)
 
     // Filter requests that VP should see
     const filteredRequests = allRequests.filter((req) => {
       // Type 1: Employee requests approved by line managers under this VP
-      const isEmployeeRequestApprovedByMyLM = 
-        lineManagerUsernames.includes(req.assignedTo) && 
-        (req.status === 'Pending VP Approval' || 
-         req.status === 'Pending AE Approval' ||
-         (req.status === 'Rejected by VP Operations' && req.clarification));
+      const isEmployeeRequestApprovedByMyLM =
+        lineManagerUsernames.includes(req.assignedTo) &&
+        (req.status === 'Pending VP Approval' ||
+          req.status === 'Pending AE Approval' ||
+          (req.status === 'Rejected by VP Operations' && req.clarification))
 
       // Type 2: Line Manager's own requests that are assigned to this VP
-      const isLineManagerRequestForThisVP = 
-        req.assignedTo === loggedInUser && 
+      const isLineManagerRequestForThisVP =
+        req.assignedTo === loggedInUser &&
         lineManagerUsernames.includes(req.submittedBy) &&
         (req.status === 'Pending VP Approval' ||
-         req.status === 'Pending AE Approval' ||
-         (req.status === 'Rejected by VP Operations' && req.clarification));
+          req.status === 'Pending AE Approval' ||
+          (req.status === 'Rejected by VP Operations' && req.clarification))
 
-      return isEmployeeRequestApprovedByMyLM || isLineManagerRequestForThisVP;
-    });
+      return isEmployeeRequestApprovedByMyLM || isLineManagerRequestForThisVP
+    })
 
-    setRequests(filteredRequests);
-  }, [loggedInUser]);
+    setRequests(filteredRequests)
+  }, [loggedInUser])
 
   // Helper function to get employee O/S balance
-const getEmployeeOSBalance = (employeeId) => {
-  try {
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    
-    // Find the employee by employeeId
-    const employee = users.find(user => 
-      user.empId === employeeId || 
-      user.username === employeeId ||
-      (user.empId && user.empId.toString() === employeeId.toString())
-    );
-    
-    return employee?.osBalance || 0;
-  } catch (error) {
-    console.error('Error getting employee O/S balance:', error);
-    return 0;
+  const getEmployeeOSBalance = (employeeId) => {
+    try {
+      const users = JSON.parse(localStorage.getItem('users')) || []
+
+      // Find the employee by employeeId
+      const employee = users.find(
+        (user) =>
+          user.empId === employeeId ||
+          user.username === employeeId ||
+          (user.empId && user.empId.toString() === employeeId.toString())
+      )
+
+      return employee?.osBalance || 0
+    } catch (error) {
+      console.error('Error getting employee O/S balance:', error)
+      return 0
+    }
   }
-};
 
   const handleApprove = (submittedAt) => {
-    const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
-    const approvalTime = new Date();
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
+    const approvalTime = new Date()
 
     // Check if approval is before 15:59 PM deadline
-    const isBeforeDeadline = approvalTime.getHours() < 19 || 
-                           (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59);
+    const isBeforeDeadline =
+      approvalTime.getHours() < 19 ||
+      (approvalTime.getHours() === 19 && approvalTime.getMinutes() <= 59)
 
     const updatedAllRequests = allRequests.map((req) =>
       req.submittedAt === submittedAt
-        ? { 
-            ...req, 
-            status: 'Pending AE Approval', 
-            remarks: '', 
+        ? {
+            ...req,
+            status: 'Pending AE Approval',
+            remarks: '',
             vpApprovedBy: loggedInUser,
             vpApprovedAt: approvalTime.toISOString(), // Added timestamp
             isVPRequest: true, // Mark as VP request
-            vpApprovedBeforeDeadline: isBeforeDeadline // Track if approved before deadline
+            vpApprovedBeforeDeadline: isBeforeDeadline, // Track if approved before deadline
           }
         : req
-    );
+    )
 
-    localStorage.setItem("advanceRequests", JSON.stringify(updatedAllRequests));
+    localStorage.setItem('advanceRequests', JSON.stringify(updatedAllRequests))
 
     // Update local state with the same filtering logic as initial load
-    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const allUsers = JSON.parse(localStorage.getItem('users')) || []
     const lineManagersUnderThisVP = allUsers.filter(
-      (user) => user.reportsTo === loggedInUser && user.role === "line-manager"
-    );
-    const lineManagerUsernames = lineManagersUnderThisVP.map(lm => lm.username);
-    
-    const filtered = updatedAllRequests.filter((req) => {
-      const isEmployeeRequestApprovedByMyLM = 
-        lineManagerUsernames.includes(req.assignedTo) && 
-        (req.status === 'Pending VP Approval' || 
-         req.status === 'Pending AE Approval' ||
-         (req.status === 'Rejected by VP Operations' && req.clarification));
+      (user) => user.reportsTo === loggedInUser && user.role === 'line-manager'
+    )
+    const lineManagerUsernames = lineManagersUnderThisVP.map((lm) => lm.username)
 
-      const isLineManagerRequestForThisVP = 
-        req.assignedTo === loggedInUser && 
+    const filtered = updatedAllRequests.filter((req) => {
+      const isEmployeeRequestApprovedByMyLM =
+        lineManagerUsernames.includes(req.assignedTo) &&
+        (req.status === 'Pending VP Approval' ||
+          req.status === 'Pending AE Approval' ||
+          (req.status === 'Rejected by VP Operations' && req.clarification))
+
+      const isLineManagerRequestForThisVP =
+        req.assignedTo === loggedInUser &&
         lineManagerUsernames.includes(req.submittedBy) &&
         (req.status === 'Pending VP Approval' ||
-         req.status === 'Pending AE Approval' ||
-         (req.status === 'Rejected by VP Operations' && req.clarification));
+          req.status === 'Pending AE Approval' ||
+          (req.status === 'Rejected by VP Operations' && req.clarification))
 
-      return isEmployeeRequestApprovedByMyLM || isLineManagerRequestForThisVP;
-    });
-    
-    setRequests(filtered);
-    
+      return isEmployeeRequestApprovedByMyLM || isLineManagerRequestForThisVP
+    })
+
+    setRequests(filtered)
+
     // Show different messages based on timing
     if (isBeforeDeadline) {
-      toast.success("Request Approved - Sent to Account Executive (Eligible for same-day processing)");
+      toast.success(
+        'Request Approved - Sent to Account Executive (Eligible for same-day processing)'
+      )
     } else {
-      toast.warning("Request Approved - Sent to Account Executive (Will be processed next working day - approved after 15:59)");
+      toast.warning(
+        'Request Approved - Sent to Account Executive (Will be processed next working day - approved after 15:59)'
+      )
     }
-  };
+  }
 
   const handleReject = () => {
-    if (!remarks.trim()) return alert('Please provide rejection remarks');
+    if (!remarks.trim()) return alert('Please provide rejection remarks')
 
-    const allRequests = JSON.parse(localStorage.getItem("advanceRequests")) || [];
-    const rejectionTime = new Date();
+    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
+    const rejectionTime = new Date()
 
     const updatedAllRequests = allRequests.map((req) =>
       req.submittedAt === rejectId
@@ -171,87 +180,89 @@ const getEmployeeOSBalance = (employeeId) => {
             remarks,
             clarification: '',
             vpRejectedBy: loggedInUser,
-            vpRejectedAt: rejectionTime.toISOString() // Added rejection timestamp
+            vpRejectedAt: rejectionTime.toISOString(), // Added rejection timestamp
           }
         : req
-    );
+    )
 
-    localStorage.setItem("advanceRequests", JSON.stringify(updatedAllRequests));
+    localStorage.setItem('advanceRequests', JSON.stringify(updatedAllRequests))
 
     // Update local state with the same filtering logic
-    const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const allUsers = JSON.parse(localStorage.getItem('users')) || []
     const lineManagersUnderThisVP = allUsers.filter(
-      (user) => user.reportsTo === loggedInUser && user.role === "line-manager"
-    );
-    const lineManagerUsernames = lineManagersUnderThisVP.map(lm => lm.username);
-    
-    const filtered = updatedAllRequests.filter((req) => {
-      const isEmployeeRequestApprovedByMyLM = 
-        lineManagerUsernames.includes(req.assignedTo) && 
-        (req.status === 'Pending VP Approval' || 
-         req.status === 'Pending AE Approval' ||
-         (req.status === 'Rejected by VP Operations' && req.clarification));
+      (user) => user.reportsTo === loggedInUser && user.role === 'line-manager'
+    )
+    const lineManagerUsernames = lineManagersUnderThisVP.map((lm) => lm.username)
 
-      const isLineManagerRequestForThisVP = 
-        req.assignedTo === loggedInUser && 
+    const filtered = updatedAllRequests.filter((req) => {
+      const isEmployeeRequestApprovedByMyLM =
+        lineManagerUsernames.includes(req.assignedTo) &&
+        (req.status === 'Pending VP Approval' ||
+          req.status === 'Pending AE Approval' ||
+          (req.status === 'Rejected by VP Operations' && req.clarification))
+
+      const isLineManagerRequestForThisVP =
+        req.assignedTo === loggedInUser &&
         lineManagerUsernames.includes(req.submittedBy) &&
         (req.status === 'Pending VP Approval' ||
-         req.status === 'Pending AE Approval' ||
-         (req.status === 'Rejected by VP Operations' && req.clarification));
+          req.status === 'Pending AE Approval' ||
+          (req.status === 'Rejected by VP Operations' && req.clarification))
 
-      return isEmployeeRequestApprovedByMyLM || isLineManagerRequestForThisVP;
-    });
-    
-    setRequests(filtered);
-    setRemarks('');
-    setRejectId(null);
-    toast.error('Request Rejected by VP Operations');
-  };
+      return isEmployeeRequestApprovedByMyLM || isLineManagerRequestForThisVP
+    })
+
+    setRequests(filtered)
+    setRemarks('')
+    setRejectId(null)
+    toast.error('Request Rejected by VP Operations')
+  }
 
   const filteredRequests = requests
-    .filter((req) =>
-      req.employeeName.toLowerCase().includes(filters.name.toLowerCase()) &&
-      req.employeeId.toLowerCase().includes(filters.employeeId.toLowerCase()) &&
-      (filters.date === '' || req.requestDate === filters.date) &&
-      (filters.requestId === '' || (req.requestId && req.requestId.toLowerCase().includes(filters.requestId.toLowerCase())))
+    .filter(
+      (req) =>
+        req.employeeName.toLowerCase().includes(filters.name.toLowerCase()) &&
+        req.employeeId.toLowerCase().includes(filters.employeeId.toLowerCase()) &&
+        (filters.date === '' || req.requestDate === filters.date) &&
+        (filters.requestId === '' ||
+          (req.requestId && req.requestId.toLowerCase().includes(filters.requestId.toLowerCase())))
     )
     .sort((a, b) => {
       // Sort by status priority first (Pending VP Approval at top)
       const statusPriority = {
         'Pending VP Approval': 1,
         'Rejected by VP Operations': 2,
-        'Pending AE Approval': 3
-      };
-      
-      const aPriority = statusPriority[a.status] || 4;
-      const bPriority = statusPriority[b.status] || 4;
-      
-      if (aPriority !== bPriority) {
-        return aPriority - bPriority;
+        'Pending AE Approval': 3,
       }
-      
-      // Then sort by request date - newest first
-      return new Date(b.requestDate) - new Date(a.requestDate);
-    });
 
-  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+      const aPriority = statusPriority[a.status] || 4
+      const bPriority = statusPriority[b.status] || 4
+
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority
+      }
+
+      // Then sort by request date - newest first
+      return new Date(b.requestDate) - new Date(a.requestDate)
+    })
+
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
   const paginatedRequests = filteredRequests.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
-  );
+  )
 
   const isActionAllowed = (req) => {
     return (
       req.status === 'Pending VP Approval' ||
       (req.status === 'Rejected by VP Operations' && req.clarification)
-    );
-  };
+    )
+  }
 
   // Helper function to check if current time is before deadline
   const isCurrentlyBeforeDeadline = () => {
-    const now = new Date();
-    return now.getHours() < 15 || (now.getHours() === 19 && now.getMinutes() <= 59);
-  };
+    const now = new Date()
+    return now.getHours() < 15 || (now.getHours() === 19 && now.getMinutes() <= 59)
+  }
 
   return (
     <div className="min-h-screen px-2 py-6 bg-white rounded shadow-md overflow-x-hidden">
@@ -260,15 +271,16 @@ const getEmployeeOSBalance = (employeeId) => {
           <h2 className="text-xl font-bold text-green-800">
             Advance Requests – VP Operations Approval
           </h2>
-          <div className={`text-sm px-3 py-1 rounded ${
-            isCurrentlyBeforeDeadline() 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
-          }`}>
-            {isCurrentlyBeforeDeadline() 
-              ? '🟢 Before 15:59 - Same day processing available' 
-              : '🔴 After 15:59 - Next day processing only'
-            }
+          <div
+            className={`text-sm px-3 py-1 rounded ${
+              isCurrentlyBeforeDeadline()
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
+            }`}
+          >
+            {isCurrentlyBeforeDeadline()
+              ? '🟢 Before 15:59 - Same day processing available'
+              : '🔴 After 15:59 - Next day processing only'}
           </div>
         </div>
 
@@ -302,7 +314,7 @@ const getEmployeeOSBalance = (employeeId) => {
                   <td className="border px-2 py-1 whitespace-nowrap">₹{req.amount}</td>
                   <td className="border px-2 py-1 whitespace-nowrap">{req.requestDate}</td>
                   <td className="border px-2 py-1 whitespace-nowrap">
-                     ₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}
+                    ₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}
                   </td>
                   <td className="border px-2 py-1 whitespace-nowrap">
                     <button
@@ -310,7 +322,7 @@ const getEmployeeOSBalance = (employeeId) => {
                         setModalData({
                           reason: req.reason,
                           customReason: req.customReason,
-                          formattedReason: formatReasons(req.reason, req.customReason)
+                          formattedReason: formatReasons(req.reason, req.customReason),
                         })
                       }
                       className="text-green-600 hover:text-green-800"
@@ -324,11 +336,13 @@ const getEmployeeOSBalance = (employeeId) => {
                     </span>
                   </td>
                   <td className="border px-2 py-1 whitespace-nowrap">
-                    <span className={`px-1 py-0.5 rounded text-xs font-medium ${
-                      req.assignedTo === loggedInUser 
-                        ? 'bg-blue-100 text-blue-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
+                    <span
+                      className={`px-1 py-0.5 rounded text-xs font-medium ${
+                        req.assignedTo === loggedInUser
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
                       {req.assignedTo === loggedInUser ? 'Manager' : 'Employee'}
                     </span>
                   </td>
@@ -339,8 +353,8 @@ const getEmployeeOSBalance = (employeeId) => {
                           req.status.includes('Rejected')
                             ? 'text-red-600'
                             : req.status.includes('Pending')
-                            ? 'text-yellow-600'
-                            : 'text-green-600'
+                              ? 'text-yellow-600'
+                              : 'text-green-600'
                         }`}
                       >
                         {req.status.split('by')[0]}
@@ -351,7 +365,10 @@ const getEmployeeOSBalance = (employeeId) => {
                             setModalData({
                               reason: req.remarks || req.reason,
                               clarification: req.clarification,
-                              formattedReason: formatReasons(req.remarks || req.reason, req.customReason)
+                              formattedReason: formatReasons(
+                                req.remarks || req.reason,
+                                req.customReason
+                              ),
                             })
                           }
                           title="View Remarks / Clarification"
@@ -374,9 +391,9 @@ const getEmployeeOSBalance = (employeeId) => {
                             : 'bg-gray-300 text-gray-600 cursor-not-allowed'
                         }`}
                         title={
-                          isCurrentlyBeforeDeadline() 
-                            ? "Approve for same-day processing" 
-                            : "Approve for next-day processing (after 15:59)"
+                          isCurrentlyBeforeDeadline()
+                            ? 'Approve for same-day processing'
+                            : 'Approve for next-day processing (after 15:59)'
                         }
                       >
                         Approve
@@ -398,7 +415,7 @@ const getEmployeeOSBalance = (employeeId) => {
               ))}
             </tbody>
           </table>
-          
+
           {paginatedRequests.length === 0 && (
             <div className="text-center py-4 text-gray-500 text-sm">
               No requests pending VP approval at this time.
@@ -435,7 +452,8 @@ const getEmployeeOSBalance = (employeeId) => {
               <div className="mb-3">
                 <h4 className="font-semibold text-gray-700 text-sm">Reason:</h4>
                 <p className="text-gray-800 mt-1 text-sm">
-                  {modalData.formattedReason || formatReasons(modalData.reason, modalData.customReason)}
+                  {modalData.formattedReason ||
+                    formatReasons(modalData.reason, modalData.customReason)}
                 </p>
               </div>
             )}
@@ -478,8 +496,8 @@ const getEmployeeOSBalance = (employeeId) => {
               </button>
               <button
                 onClick={() => {
-                  setRejectId(null);
-                  setRemarks('');
+                  setRejectId(null)
+                  setRemarks('')
                 }}
                 className="bg-gray-300 text-black px-3 py-1 rounded text-sm hover:bg-gray-400"
               >
@@ -490,7 +508,7 @@ const getEmployeeOSBalance = (employeeId) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default VPApproval;
+export default VPApproval

@@ -1,11 +1,17 @@
 import React, { useRef, useState, useEffect } from 'react'
 import PaymentEntriesFilter from '../Components/PaymentEntriesFilter'
 import AERejectionModal from '../Components/AERejectionModal'
-import GLMappingModal from '../Components/GLMappingModal' // NEW: Import GL Mapping Modal
+import GLMappingModal from '../Components/GLMappingModal'
 import { toast } from 'react-toastify'
 import * as XLSX from 'xlsx'
+import SalaryPaymentTab from '../Components/SalaryPaymentTab'
+import AETabNavigation from '../Components/AETabNavigation'
+import MonthLockTabContent from '../Components/MonthLockTabContent'
 
 export default function AEPendingRequestsPage() {
+  // Tab state
+  const [activeTab, setActiveTab] = useState('monthLock')
+
   // Initialize state with data from localStorage
   const [payrollBatches, setPayrollBatches] = useState([])
   const currentUser = JSON.parse(localStorage.getItem('user')) || { username: 'ae1', role: 'ae' }
@@ -13,10 +19,9 @@ export default function AEPendingRequestsPage() {
   // Load data from localStorage on component mount
   useEffect(() => {
     const savedBatches = JSON.parse(localStorage.getItem('salaryPayments')) || []
-    // Filter batches assigned to the current user
-    const filteredBatches = savedBatches.filter(
-      (batch) => batch.assignedTo === currentUser.username
-    )
+    const filteredBatches = savedBatches
+      .filter((batch) => batch.assignedTo === currentUser.username)
+      .map((batch) => ({ ...batch, history: batch.history || [] }))
     setPayrollBatches(filteredBatches)
   }, [currentUser.username])
 
@@ -42,10 +47,10 @@ export default function AEPendingRequestsPage() {
   const [currentRejectId, setCurrentRejectId] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
 
-  // NEW STATE FOR GL MAPPING MODAL (replacing old payment entry modal)
+  // GL MAPPING MODAL STATE
   const [showGLMappingModal, setShowGLMappingModal] = useState(false)
   const [approvedBatchData, setApprovedBatchData] = useState(null)
-  const [approvedBatches, setApprovedBatches] = useState([]) // For bulk approval
+  const [approvedBatches, setApprovedBatches] = useState([])
 
   // For Sorting
   const getStatusOrder = (status) => {
@@ -83,18 +88,10 @@ export default function AEPendingRequestsPage() {
     let pt = 0
     const employeeCount = employeeDetails.length
 
-    // Calculate from employee details (using the 112 salary heads structure)
     employeeDetails.forEach((emp) => {
-      // Gross amount calculation
       grossAmount += Number(emp['GROSS AMT']) || 0
-
-      // Deductions calculation
       totalDeductions += Number(emp['TOTALDEDUCTION']) || 0
-
-      // Net payable
       netPayable += Number(emp['NETPAYABLE']) || 0
-
-      // Individual deductions
       pfEmployee += Number(emp['PF']) || 0
       esicEmployee += Number(emp['ESIC']) || 0
       pt += Number(emp['PT']) || 0
@@ -171,7 +168,7 @@ export default function AEPendingRequestsPage() {
     setExpandedBatch(expandedBatch === batchId ? null : batchId)
   }
 
-  // Handle amount editing - now editing net payable
+  // Handle amount editing
   const handleAmountEdit = (batchId, newAmount) => {
     setEditingAmount((prev) => ({
       ...prev,
@@ -190,6 +187,13 @@ export default function AEPendingRequestsPage() {
       prev.map((batch) => {
         if (batch.id === batchId) {
           const currentTableData = getTableData(batch)
+
+          // Guard against divide-by-zero
+          if (currentTableData.netPayable <= 0) {
+            toast.error('Cannot update amount: current net payable is zero or invalid')
+            return batch
+          }
+
           const ratio = newNetPayable / currentTableData.netPayable
           const updatedEmployeeDetails = batch.employeeDetails.map((emp) => {
             const currentNetPayable = emp['NETPAYABLE'] || emp['DEBIT AMT'] || 0
@@ -233,11 +237,9 @@ export default function AEPendingRequestsPage() {
 
   // Download Excel file for editing with all salary heads
   const handleDownloadExcel = (batch) => {
-    // Use the original employee details with all salary heads
     const employeeData = batch.employeeDetails || []
 
     const ws = XLSX.utils.json_to_sheet(employeeData)
-    // Set column widths for better readability
     ws['!cols'] = Array(Object.keys(employeeData[0] || {}).length).fill({ wch: 15 })
 
     const wb = XLSX.utils.book_new()
@@ -257,7 +259,7 @@ export default function AEPendingRequestsPage() {
   const handleDeleteBatch = (batchId) => {
     if (
       window.confirm(
-        'Are you sure you want to delete this payroll batch? This action cannot be undone.'
+        'Are you sure you want to delete this payroll batch?  This action cannot be undone.'
       )
     ) {
       setPayrollBatches((prev) => prev.filter((batch) => batch.id !== batchId))
@@ -280,8 +282,8 @@ export default function AEPendingRequestsPage() {
     const reader = new FileReader()
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target.result
-        const wb = XLSX.read(bstr, { type: 'binary' })
+        const data = new Uint8Array(evt.target.result)
+        const wb = XLSX.read(data, { type: 'array' })
         const wsname = wb.SheetNames[0]
         const ws = wb.Sheets[wsname]
         const parsedData = XLSX.utils.sheet_to_json(ws, { defval: '' })
@@ -320,7 +322,7 @@ export default function AEPendingRequestsPage() {
         toast.error('Error processing the payroll file: ' + error.message)
       }
     }
-    reader.readAsBinaryString(file)
+    reader.readAsArrayBuffer(file)
 
     e.target.value = ''
   }
@@ -336,38 +338,33 @@ export default function AEPendingRequestsPage() {
     setSelectedIds(allSelected ? [] : allIds)
   }
 
-  // UPDATED: Handle bulk approve with GL Mapping Modal
+  // Handle bulk approve with GL Mapping Modal
   const handleBulkApprove = () => {
     if (selectedIds.length === 0) {
       toast.warn('Please select at least one payroll batch to approve.')
       return
     }
 
-    // Get the approved batches data BEFORE updating status
     const approvedBatchesData = payrollBatches.filter((batch) => selectedIds.includes(batch.id))
 
-    // DO NOT update batch status here anymore.
-    // Open GL Mapping Modal and let the user click Approve inside the modal.
     setApprovedBatches(approvedBatchesData)
-    setApprovedBatchData(null) // Clear single batch data
-    setShowGLMappingModal(true) // Open GL Mapping Modal
+    setApprovedBatchData(null)
+    setShowGLMappingModal(true)
 
     toast.info(
       `Open GL Mapping for ${selectedIds.length} batches. Click "Approve" in the modal to confirm approval.`
     )
-    // Do NOT clear selectedIds here; clear after user hits Approve in modal.
   }
 
-  // UPDATED: Handle single approval with GL Mapping Modal
+  // Handle single approval with GL Mapping Modal
   const handleApprove = (id) => {
-    // Get the batch data but DO NOT update status here.
     const approvedBatch = payrollBatches.find((batch) => batch.id === id)
 
     setApprovedBatchData(approvedBatch)
-    setApprovedBatches([]) // Clear bulk batches data
-    setShowGLMappingModal(true) // Open GL Mapping Modal
+    setApprovedBatches([])
+    setShowGLMappingModal(true)
 
-    toast.info('Open GL Mapping modal. Click "Approve" in the modal to confirm the approval.')
+    toast.info('Open GL Mapping modal.  Click "Approve" in the modal to confirm the approval.')
   }
 
   // Callback invoked by the modal when user explicitly clicks Approve inside the modal
@@ -398,7 +395,6 @@ export default function AEPendingRequestsPage() {
       })
     )
 
-    // Clear selection of approved ids in the main table
     setSelectedIds((prev) => prev.filter((id) => !batchIds.includes(id)))
 
     toast.success(`${batchIds.length} payroll batch(es) marked as Approved.`)
@@ -438,19 +434,15 @@ export default function AEPendingRequestsPage() {
     toast.error('Payroll Batch Rejected!')
   }
 
-  // NEW: Close GL Mapping modal
+  // Close GL Mapping modal
   const closeGLMappingModal = () => {
     setShowGLMappingModal(false)
     setApprovedBatchData(null)
     setApprovedBatches([])
   }
 
-  // NEW: Handle GL Mapping Save - This function will be called by the GLMappingModal
+  // Handle GL Mapping Save
   const handleGLMappingSave = () => {
-    // Note: The GLMappingModal component already handles saving to localStorage
-    // and updating batch status internally. This is just a callback for the modal close.
-
-    // Refresh the data from localStorage to show updated status
     const savedBatches = JSON.parse(localStorage.getItem('salaryPayments')) || []
     const filteredBatches = savedBatches.filter(
       (batch) => batch.assignedTo === currentUser.username
@@ -462,332 +454,65 @@ export default function AEPendingRequestsPage() {
   }
 
   return (
-    <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
-      <h1 className="text-2xl font-bold text-green-600 mb-6">Pending Salary Payment Approvals</h1>
+    <div className="min-h-screen bg-gray-50 py-4 md:py-6">
+      <div className="max-w-7xl mx-auto px-3 md:px-4 lg:px-6">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-green-700 mb-2">
+            Account Executive Dashboard
+          </h1>
+          <p className="text-gray-600 text-sm md:text-base">
+            Review and manage payment requests and month locks
+          </p>
+        </div>
 
-      <PaymentEntriesFilter filters={filters} onChange={setFilters} />
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-lg shadow-sm mb-4 md:mb-6">
+          <AETabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept=".xlsx, .xls, .csv"
-        onChange={handleFileReupload}
-        className="hidden"
-      />
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full table-auto text-sm border border-gray-300">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-2 border">
-                <input
-                  type="checkbox"
-                  checked={
-                    paginatedBatches.length > 0 &&
-                    paginatedBatches.every((batch) => selectedIds.includes(batch.id))
-                  }
-                  onChange={handleSelectAll}
-                />
-              </th>
-              <th className="p-2 border">Batch ID</th>
-              <th className="p-2 border">Employees</th>
-              <th className="p-2 border">Gross Amount</th>
-              <th className="p-2 border">Total Deductions</th>
-              <th className="p-2 border">Net Payable</th>
-              <th className="p-2 border">PF (Emp)</th>
-              <th className="p-2 border">ESIC (Emp)</th>
-              <th className="p-2 border">PT</th>
-              <th className="p-2 border">Payroll Period</th>
-              <th className="p-2 border">Excel File</th>
-              <th className="p-2 border">Status</th>
-              <th className="p-2 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedBatches.map((batch) => {
-              const tableData = getTableData(batch)
-              return (
-                <React.Fragment key={batch.id}>
-                  <tr className="border-t hover:bg-gray-50">
-                    <td className="p-2 border">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(batch.id)}
-                        onChange={() => handleSelect(batch.id)}
-                        disabled={batch.status !== 'Pending Approval'}
-                      />
-                    </td>
-                    <td className="p-2 border font-medium">{tableData.batchName}</td>
-                    <td className="p-2 border text-center">{tableData.employeeCount}</td>
-                    <td className="p-2 border font-medium text-blue-600">
-                      ₹{tableData.grossAmount.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border text-red-600">
-                      ₹{tableData.totalDeductions.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border">
-                      {editingAmount[batch.id] !== undefined ? (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            value={editingAmount[batch.id]}
-                            onChange={(e) => handleAmountEdit(batch.id, e.target.value)}
-                            className="w-24 px-1 py-1 border rounded text-xs"
-                          />
-                          <button
-                            onClick={() => saveAmountEdit(batch.id)}
-                            className="bg-green-600 text-white px-1 py-1 rounded text-xs"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            onClick={() => cancelAmountEdit(batch.id)}
-                            className="bg-gray-500 text-white px-1 py-1 rounded text-xs"
-                          >
-                            ✗
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-green-600">
-                            ₹{tableData.netPayable.toLocaleString('en-IN')}
-                          </span>
-                          {tableData.status === 'Pending Approval' && (
-                            <button
-                              onClick={() => handleAmountEdit(batch.id, tableData.netPayable)}
-                              className="text-blue-600 hover:text-blue-800 text-xs"
-                            >
-                              ✏️
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-2 border text-orange-600">
-                      ₹{tableData.pfEmployee.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border text-purple-600">
-                      ₹{tableData.esicEmployee.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border text-pink-600">
-                      ₹{tableData.pt.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border">
-                      <button
-                        onClick={() => handleBatchClick(batch.id)}
-                        className="text-blue-600 hover:text-blue-800 underline text-left"
-                      >
-                        {batch.payrollPeriod}
-                        <span className="ml-2 text-xs text-gray-500">
-                          {expandedBatch === batch.id ? ' ▼' : ' ▶'}
-                        </span>
-                      </button>
-                    </td>
-                    <td className="p-2 border">
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => handleDownloadExcel(batch)}
-                          className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700"
-                        >
-                          📥 Download
-                        </button>
-                        {tableData.status === 'Pending Approval' && (
-                          <>
-                            <button
-                              onClick={() => handleReupload(batch.id)}
-                              className="bg-orange-600 text-white px-2 py-1 rounded text-xs hover:bg-orange-700"
-                            >
-                              🔄 Reupload
-                            </button>
-                            <button
-                              onClick={() => handleDeleteBatch(batch.id)}
-                              className="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700"
-                            >
-                              🗑️ Delete
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-2 border">
-                      <span
-                        className={`px-2 py-1 rounded text-xs ${
-                          tableData.status === 'Pending Approval'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : tableData.status === 'Approved'
-                              ? 'bg-green-100 text-green-800'
-                              : tableData.status === 'GL Mapped'
-                                ? 'bg-purple-100 text-purple-800'
-                                : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {tableData.status}
-                      </span>
-                    </td>
-                    <td className="p-2 border">
-                      {tableData.status === 'Pending Approval' ? (
-                        <div className="flex gap-1 flex-wrap">
-                          <button
-                            onClick={() => handleApprove(batch.id)}
-                            className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => openRejectModal(batch.id)}
-                            className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      ) : tableData.status === 'Approved' ? (
-                        <button
-                          onClick={() => {
-                            // Reopen GL Mapping for already approved batches
-                            const found = payrollBatches.find((b) => b.id === batch.id)
-                            setApprovedBatchData(found)
-                            setApprovedBatches([])
-                            setShowGLMappingModal(true)
-                          }}
-                          className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs"
-                        >
-                          Map GL
-                        </button>
-                      ) : (
-                        <span className="text-xs italic text-gray-500">Action taken</span>
-                      )}
-                    </td>
-                  </tr>
-
-                  {expandedBatch === batch.id && (
-                    <tr>
-                      <td colSpan="13" className="p-0 border-0">
-                        <div className="bg-gray-50 border-t border-b">
-                          <div className="p-3">
-                            <h4 className="font-semibold text-sm mb-2 text-gray-700">
-                              Employee Details ({tableData.employees.length} employees)
-                            </h4>
-                            <div className="max-h-60 overflow-y-auto">
-                              <table className="w-full text-xs border border-gray-200">
-                                <thead className="bg-gray-100">
-                                  <tr>
-                                    <th className="p-2 border">Emp Code</th>
-                                    <th className="p-2 border">Name</th>
-                                    <th className="p-2 border">Designation</th>
-                                    <th className="p-2 border">Basic</th>
-                                    <th className="p-2 border">HRA</th>
-                                    <th className="p-2 border">Conveyance</th>
-                                    <th className="p-2 border">Gross</th>
-                                    <th className="p-2 border">PF</th>
-                                    <th className="p-2 border">ESIC</th>
-                                    <th className="p-2 border">PT</th>
-                                    <th className="p-2 border">Deductions</th>
-                                    <th className="p-2 border">Net Pay</th>
-                                    <th className="p-2 border">Account</th>
-                                    <th className="p-2 border">IFSC</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {tableData.employees.map((employee, index) => (
-                                    <tr key={index} className="border-t hover:bg-gray-50">
-                                      <td className="p-2 border font-medium">{employee.empCode}</td>
-                                      <td className="p-2 border">{employee.name}</td>
-                                      <td className="p-2 border text-xs">{employee.designation}</td>
-                                      <td className="p-2 border">
-                                        ₹{employee.basic.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border">
-                                        ₹{employee.hra.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border">
-                                        ₹{employee.conveyance.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border font-medium text-blue-600">
-                                        ₹{employee.grossAmount.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border text-orange-600">
-                                        ₹{employee.pf.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border text-purple-600">
-                                        ₹{employee.esic.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border text-pink-600">
-                                        ₹{employee.pt.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border text-red-600">
-                                        ₹{employee.totalDeductions.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border font-bold text-green-600">
-                                        ₹{employee.netPayable.toLocaleString('en-IN')}
-                                      </td>
-                                      <td className="p-2 border text-xs">{employee.account}</td>
-                                      <td className="p-2 border text-xs">{employee.ifsc}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              )
-            })}
-          </tbody>
-        </table>
-
-        {selectedIds.length > 0 && (
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={handleBulkApprove}
-              className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
-            >
-              Approve Selected ({selectedIds.length})
-            </button>
-          </div>
+        {/* Tab Content */}
+        {activeTab === 'salary' ? (
+          <SalaryPaymentTab />
+        ) : (
+          <MonthLockTabContent
+            filters={filters}
+            setFilters={setFilters}
+            paginatedBatches={paginatedBatches}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+            selectedIds={selectedIds}
+            handleSelectAll={handleSelectAll}
+            handleSelect={handleSelect}
+            getTableData={getTableData}
+            expandedBatch={expandedBatch}
+            handleBatchClick={handleBatchClick}
+            editingAmount={editingAmount}
+            handleAmountEdit={handleAmountEdit}
+            saveAmountEdit={saveAmountEdit}
+            cancelAmountEdit={cancelAmountEdit}
+            handleDownloadExcel={handleDownloadExcel}
+            handleReupload={handleReupload}
+            handleDeleteBatch={handleDeleteBatch}
+            handleFileReupload={handleFileReupload}
+            fileInputRef={fileInputRef}
+            handleApprove={handleApprove}
+            openRejectModal={openRejectModal}
+            handleBulkApprove={handleBulkApprove}
+            showRejectModal={showRejectModal}
+            setShowRejectModal={setShowRejectModal}
+            setRejectionReason={setRejectionReason}
+            confirmReject={confirmReject}
+            showGLMappingModal={showGLMappingModal}
+            closeGLMappingModal={closeGLMappingModal}
+            handleApproveFromModal={handleApproveFromModal}
+            handleGLMappingSave={handleGLMappingSave}
+            approvedBatchData={approvedBatchData}
+            approvedBatches={approvedBatches}
+          />
         )}
       </div>
-
-      <div className="flex justify-end items-center mt-4 gap-4 text-sm">
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-        >
-          Prev
-        </button>
-        <span>
-          Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
-        </span>
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
-
-      <AERejectionModal
-        isOpen={showRejectModal}
-        onClose={() => setShowRejectModal(false)}
-        onSubmit={{
-          reasonChange: setRejectionReason,
-          confirm: confirmReject,
-        }}
-      />
-
-      {/* NEW: GL Mapping Modal */}
-      <GLMappingModal
-        isOpen={showGLMappingModal}
-        onClose={closeGLMappingModal}
-        onApprove={handleApproveFromModal}
-        onSave={handleGLMappingSave}
-        batchData={approvedBatchData}
-        approvedBatches={approvedBatches}
-      />
     </div>
   )
 }

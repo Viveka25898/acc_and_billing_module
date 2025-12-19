@@ -1,31 +1,31 @@
-import React, { useState } from "react";
+import React, { useState } from 'react'
 
 const AMInvoiceFilter = ({ filters, setFilters }) => {
-  const [localFilters, setLocalFilters] = useState(filters);
+  const [localFilters, setLocalFilters] = useState(filters)
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setLocalFilters((prev) => ({ ...prev, [name]: value }));
-  };
+    const { name, value } = e.target
+    setLocalFilters((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleApplyFilter = () => {
-    setFilters(localFilters);
-  };
+    setFilters(localFilters)
+  }
 
   const handleClearFilter = () => {
     const clearedFilters = {
-      invoiceNumber: "",
-      vendorName: "",
-      date: "",
-    };
-    setLocalFilters(clearedFilters);
-    setFilters(clearedFilters);
-  };
+      invoiceNumber: '',
+      vendorName: '',
+      date: '',
+    }
+    setLocalFilters(clearedFilters)
+    setFilters(clearedFilters)
+  }
 
   return (
     <div className="bg-gray-50 p-4 rounded-lg mb-4 border">
       <h3 className="text-md font-semibold mb-3 text-blue-700">Filter Invoices</h3>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         {/* Invoice Number Filter */}
         <div>
@@ -82,7 +82,7 @@ const AMInvoiceFilter = ({ filters, setFilters }) => {
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AMInvoiceFilter;
+export default AMInvoiceFilter

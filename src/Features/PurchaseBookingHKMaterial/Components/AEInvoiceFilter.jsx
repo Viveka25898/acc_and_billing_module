@@ -1,10 +1,10 @@
-import React from "react";
+import React from 'react'
 
 const AEInvoiceFilter = ({ filters, setFilters }) => {
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFilters({ ...filters, [name]: value });
-  };
+    const { name, value } = e.target
+    setFilters({ ...filters, [name]: value })
+  }
 
   return (
     <div className="flex flex-wrap gap-4 mb-4">
@@ -32,7 +32,7 @@ const AEInvoiceFilter = ({ filters, setFilters }) => {
         className="border px-3 py-2 rounded"
       />
     </div>
-  );
-};
+  )
+}
 
-export default AEInvoiceFilter;
+export default AEInvoiceFilter
