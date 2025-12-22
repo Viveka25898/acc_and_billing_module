@@ -1,8 +1,10 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import * as XLSX from 'xlsx'
 import AERejectionModal from './AERejectionModal'
+import SalaryPaymentEntryModal from './SalaryPaymentEntryModal'
+import { processSalaryBatchApproval } from '../../Master/utils/accountingHelpers'
 
 const SalaryPaymentTab = () => {
   const [requests, setRequests] = useState([])
@@ -13,119 +15,69 @@ const SalaryPaymentTab = () => {
   const [rejectionReason, setRejectionReason] = useState('')
   const [currentRejectId, setCurrentRejectId] = useState(null)
 
-  // Generate dummy salary data based on the Excel structure
-  const generateDummyEmployeeData = () => {
-    const employees = [
-      {
-        code: '22001',
-        name: 'Kiran Kadam',
-        basic: 15000,
-        hra: 6000,
-        conveyance: 2000,
-        pf: 1800,
-        esic: 450,
-        pt: 200,
-      },
-      {
-        code: '22002',
-        name: 'Mahesh Babar',
-        basic: 16000,
-        hra: 6400,
-        conveyance: 2000,
-        pf: 1920,
-        esic: 480,
-        pt: 200,
-      },
-      {
-        code: '22003',
-        name: 'Sanjay Patil',
-        basic: 14500,
-        hra: 5800,
-        conveyance: 2000,
-        pf: 1740,
-        esic: 435,
-        pt: 200,
-      },
-      {
-        code: '22004',
-        name: 'Rahul Deshmukh',
-        basic: 17000,
-        hra: 6800,
-        conveyance: 2000,
-        pf: 2040,
-        esic: 510,
-        pt: 200,
-      },
-      {
-        code: '22005',
-        name: 'Amit Sharma',
-        basic: 15500,
-        hra: 6200,
-        conveyance: 2000,
-        pf: 1860,
-        esic: 465,
-        pt: 200,
-      },
-      {
-        code: '22006',
-        name: 'Vijay Kumar',
-        basic: 16500,
-        hra: 6600,
-        conveyance: 2000,
-        pf: 1980,
-        esic: 495,
-        pt: 200,
-      },
-      {
-        code: '22007',
-        name: 'Suresh Jadhav',
-        basic: 14000,
-        hra: 5600,
-        conveyance: 2000,
-        pf: 1680,
-        esic: 420,
-        pt: 200,
-      },
-      {
-        code: '22008',
-        name: 'Prakash Yadav',
-        basic: 18000,
-        hra: 7200,
-        conveyance: 2000,
-        pf: 2160,
-        esic: 540,
-        pt: 200,
-      },
-    ]
+  // Payment Entry Modal states
+  const [showPaymentEntryModal, setShowPaymentEntryModal] = useState(false)
+  const [currentApprovalBatch, setCurrentApprovalBatch] = useState(null)
 
-    return employees.map((emp) => {
-      const grossAmount = emp.basic + emp.hra + emp.conveyance
-      const totalDeductions = emp.pf + emp.esic + emp.pt
-      const netPayable = grossAmount - totalDeductions
-
-      return {
-        EMPCODE: emp.code,
-        FULLNAME: emp.name,
-        BASIC: emp.basic,
-        HRA: emp.hra,
-        CONVEYANCE: emp.conveyance,
-        'GROSS AMT': grossAmount,
-        PF: emp.pf,
-        ESIC: emp.esic,
-        PT: emp.pt,
-        TOTALDEDUCTION: totalDeductions,
-        NETPAYABLE: netPayable,
-        'BANK ACCOUNT NO AS PER EMPLOYEE': `${Math.floor(Math.random() * 1000000000000)}`,
-        'IFS CODE AS PER EMPLOYEE': 'SBIN0001234',
-        DESIGNATIONNAME: 'Employee',
+  // Load salary payment requests from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedRequests = localStorage.getItem('salaryPaymentRequests')
+      if (savedRequests) {
+        const parsed = JSON.parse(savedRequests)
+        setRequests(parsed)
+        console.log('✅ Loaded salary payment requests from localStorage:', parsed.length)
       }
-    })
+    } catch (error) {
+      console.error('Error loading salary payment requests:', error)
+      toast.error('Failed to load saved requests')
+    }
+  }, [])
+
+  // Save requests to localStorage whenever they change
+  useEffect(() => {
+    if (requests.length > 0) {
+      try {
+        localStorage.setItem('salaryPaymentRequests', JSON.stringify(requests))
+        console.log('💾 Saved salary payment requests to localStorage')
+      } catch (error) {
+        console.error('Error saving salary payment requests:', error)
+      }
+    }
+  }, [requests])
+
+  // Load Excel file from public folder
+  const loadExcelFromPublic = async () => {
+    try {
+      const response = await fetch('/dummy-files/salary-data.xlsx')
+      const arrayBuffer = await response.arrayBuffer()
+      const data = new Uint8Array(arrayBuffer)
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+      return jsonData
+    } catch (error) {
+      toast.error('Error loading Excel file: ' + error.message)
+      return []
+    }
   }
 
-  // Add dummy request
-  const handleAddDummyRequest = () => {
-    const employeeData = generateDummyEmployeeData()
-    const totalSalary = employeeData.reduce((sum, emp) => sum + emp.NETPAYABLE, 0)
+  // Add dummy request using real Excel data
+  const handleAddDummyRequest = async () => {
+    const employeeData = await loadExcelFromPublic()
+
+    if (employeeData.length === 0) {
+      toast.error('No data found in Excel file!')
+      return
+    }
+
+    // Calculate total salary from DEBIT AMT column
+    const totalSalary = employeeData.reduce((sum, emp) => {
+      const debitAmt = Number(emp['DEBIT AMT']) || 0
+      return sum + debitAmt
+    }, 0)
+
     const batchId = `BATCH-${Date.now()}`
     const submittedBy = 'Payroll Team'
     const submittedAt = new Date().toISOString()
@@ -171,30 +123,87 @@ const SalaryPaymentTab = () => {
     toast.success('Excel file downloaded successfully!')
   }
 
-  // Approve request
+  // Approve request - show payment entry modal first
   const handleApprove = (id) => {
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id === id) {
-          return {
-            ...req,
-            status: 'Approved',
-            history: [
-              ...(req.history || []),
-              {
-                action: 'approved',
-                by: 'Account Executive',
-                date: new Date().toISOString(),
-                comments: 'Approved for payment processing',
-              },
-            ],
-          }
-        }
-        return req
-      })
-    )
+    try {
+      // Find the request to approve
+      const request = requests.find((req) => req.id === id)
+      if (!request) {
+        toast.error('Request not found')
+        return
+      }
 
-    toast.success('Request approved successfully!')
+      // Store the batch and show payment entry modal
+      setCurrentApprovalBatch(request)
+      setShowPaymentEntryModal(true)
+    } catch (error) {
+      console.error('Error in handleApprove:', error)
+      toast.error('Failed to open payment entry modal: ' + error.message)
+    }
+  }
+
+  // Confirm approval after viewing payment entry modal
+  const confirmApproval = () => {
+    try {
+      if (!currentApprovalBatch) {
+        toast.error('No batch selected')
+        return
+      }
+
+      // Get current user
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+      const approvedBy = currentUser.username || 'ae1'
+
+      // Process accounting transaction
+      const result = processSalaryBatchApproval(currentApprovalBatch, approvedBy)
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to process salary payment')
+        console.error('Salary approval error:', result.error)
+        setShowPaymentEntryModal(false)
+        setCurrentApprovalBatch(null)
+        return
+      }
+
+      // Update local state
+      setRequests((prev) =>
+        prev.map((req) => {
+          if (req.id === currentApprovalBatch.id) {
+            return {
+              ...req,
+              status: 'Approved',
+              approvedBy: approvedBy,
+              approvedAt: new Date().toISOString(),
+              voucherNo: result.voucherNo,
+              transactionId: result.transactionId,
+              history: [
+                ...(req.history || []),
+                {
+                  action: 'approved',
+                  by: 'Account Executive',
+                  date: new Date().toISOString(),
+                  comments: `Approved - ${result.message}`,
+                  voucherNo: result.voucherNo,
+                },
+              ],
+            }
+          }
+          return req
+        })
+      )
+
+      // Close modal and reset state
+      setShowPaymentEntryModal(false)
+      setCurrentApprovalBatch(null)
+
+      toast.success(result.message)
+      console.log('✅ Salary batch approved:', result)
+    } catch (error) {
+      console.error('Error in confirmApproval:', error)
+      toast.error('Failed to approve request: ' + error.message)
+      setShowPaymentEntryModal(false)
+      setCurrentApprovalBatch(null)
+    }
   }
 
   // Reject request - open modal
@@ -631,6 +640,17 @@ const SalaryPaymentTab = () => {
           reasonChange: setRejectionReason,
           confirm: confirmReject,
         }}
+      />
+
+      {/* Payment Entry Modal */}
+      <SalaryPaymentEntryModal
+        isOpen={showPaymentEntryModal}
+        onClose={() => {
+          setShowPaymentEntryModal(false)
+          setCurrentApprovalBatch(null)
+        }}
+        onConfirm={confirmApproval}
+        batchData={currentApprovalBatch}
       />
     </div>
   )

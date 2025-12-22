@@ -947,7 +947,172 @@ export const processMultipleAdvanceApprovals = (advanceRequests, bankData) => {
 };
 
 // ========================================
-// 10. QUERY FUNCTIONS
+// 10. SALARY PAYMENT PROCESSING (BATCH-WISE)
+// ========================================
+
+/**
+ * Create salary payment transaction for batch approval
+ * Creates batch-wise entry (NOT employee-wise)
+ * Debit: L2002001 (SALARY PAYABLE)
+ * Credit: A3004001002 (Punjab Bank)
+ */
+export const createSalaryPaymentTransaction = (salaryBatch, voucherNo) => {
+  try {
+    const totalSalary = parseFloat(salaryBatch.totalSalary);
+    const employeeCount = salaryBatch.employeeCount || 0;
+
+    // Bank details - Punjab Bank
+    const bankGLCode = 'A3004001002';
+    const bankName = 'Punjab Bank';
+
+    // Salary Payable GL Code
+    const salaryPayableGL = 'L2002001';
+    const salaryPayableName = 'SALARY PAYABLE';
+
+    return {
+      id: `TXN_${Date.now()}_${salaryBatch.batchId}`,
+      voucherNo: voucherNo,
+      voucherType: "Payment Entry",
+      date: getCurrentDate(),
+      batchId: salaryBatch.batchId,
+
+      entries: [
+        {
+          lineNo: 1,
+          glCode: salaryPayableGL,
+          glName: salaryPayableName,
+          debit: totalSalary,
+          credit: 0,
+          narration: `Net Salary Paid - ${employeeCount} employees`,
+          costCenter: 'HEAD OFFICE',
+          department: 'Payroll',
+          referenceDoc: salaryBatch.batchId,
+          paymentMethod: 'Bank Transfer'
+        },
+        {
+          lineNo: 2,
+          glCode: bankGLCode,
+          glName: bankName,
+          debit: 0,
+          credit: totalSalary,
+          narration: `Salary payment via ${bankName}`,
+          costCenter: 'HEAD OFFICE',
+          department: 'Payroll',
+          referenceDoc: salaryBatch.batchId,
+          paymentMethod: 'Bank Transfer'
+        }
+      ],
+
+      totalDebit: totalSalary,
+      totalCredit: totalSalary,
+      narration: `Net Salary Paid - Batch ${salaryBatch.batchId}`,
+      approvedBy: salaryBatch.approvedBy || 'ae1',
+      approvedDate: new Date().toISOString(),
+      status: 'Posted',
+      postedBy: salaryBatch.approvedBy || 'ae1',
+      paymentMethod: 'Bank Transfer'
+    };
+  } catch (error) {
+    console.error('Error creating salary payment transaction:', error);
+    throw new Error(`Failed to create salary transaction: ${error.message}`);
+  }
+};
+
+/**
+ * Process salary batch approval - saves to both transactions and salaryPayments
+ */
+export const processSalaryBatchApproval = (salaryBatch, approvedBy) => {
+  try {
+    if (DEBUG) console.log('🚀 Starting salary batch approval...', salaryBatch);
+
+    // Validate batch data
+    if (!salaryBatch.batchId) {
+      throw new Error('Batch ID is missing');
+    }
+    if (!salaryBatch.totalSalary || parseFloat(salaryBatch.totalSalary) <= 0) {
+      throw new Error('Invalid total salary amount');
+    }
+    if (!salaryBatch.employeeCount || salaryBatch.employeeCount <= 0) {
+      throw new Error('Invalid employee count');
+    }
+
+    // Generate voucher number (use HEAD OFFICE as site for salary)
+    const voucherNo = generateVoucherNumber('HEAD OFFICE');
+
+    // Create transaction
+    const transaction = createSalaryPaymentTransaction({
+      ...salaryBatch,
+      approvedBy
+    }, voucherNo);
+
+    // Validate transaction
+    const validation = validateTransaction(transaction);
+    if (!validation.isValid) {
+      throw new Error(`Transaction validation failed: ${validation.errors.join(', ')}`);
+    }
+
+    // Post transaction to localStorage
+    const postResult = postTransaction(transaction);
+    if (!postResult.success) {
+      throw new Error(postResult.error);
+    }
+
+    // Update ledger balances
+    updateLedgerBalances(transaction.entries);
+
+    // Save to salaryPayments in localStorage
+    const salaryPayments = safeGetItem('salaryPayments', []);
+    const salaryPaymentRecord = {
+      id: salaryBatch.id || salaryBatch.batchId,
+      batchId: salaryBatch.batchId,
+      submittedBy: salaryBatch.submittedBy,
+      submittedAt: salaryBatch.submittedAt,
+      approvedBy: approvedBy,
+      approvedAt: new Date().toISOString(),
+      employeeCount: salaryBatch.employeeCount,
+      totalSalary: parseFloat(salaryBatch.totalSalary),
+      status: 'Approved',
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      bankGLCode: 'A3004001002',
+      bankName: 'Punjab Bank',
+      salaryPayableGL: 'L2002001',
+      employeeData: salaryBatch.employeeData || [],
+      history: salaryBatch.history || []
+    };
+
+    salaryPayments.push(salaryPaymentRecord);
+
+    if (!safeSetItem('salaryPayments', salaryPayments)) {
+      throw new Error('Failed to save salary payment record');
+    }
+
+    console.log('✅ Salary batch approval completed!');
+
+    return {
+      success: true,
+      voucherNo: voucherNo,
+      transactionId: postResult.transaction.id,
+      batchId: salaryBatch.batchId,
+      totalSalary: parseFloat(salaryBatch.totalSalary),
+      employeeCount: salaryBatch.employeeCount,
+      bankGLCode: 'A3004001002',
+      salaryPayableGL: 'L2002001',
+      message: `Salary batch ${salaryBatch.batchId} approved - ₹${parseFloat(salaryBatch.totalSalary).toLocaleString()} for ${salaryBatch.employeeCount} employees`
+    };
+
+  } catch (error) {
+    console.error('❌ ERROR in processSalaryBatchApproval:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: `Failed to process salary batch: ${error.message}`
+    };
+  }
+};
+
+// ========================================
+// 11. QUERY FUNCTIONS
 // ========================================
 
 export const getAllTransactions = () => safeGetItem('transactions', []);
@@ -3520,5 +3685,7 @@ export default {
   generateMonthlyAmortizationJVNumber,
   getMonthlyAmortizationCount,
   createMonthlyAmortizationTransaction,
-  processMonthlyAmortization
+  processMonthlyAmortization,
+  createSalaryPaymentTransaction,
+  processSalaryBatchApproval
 };

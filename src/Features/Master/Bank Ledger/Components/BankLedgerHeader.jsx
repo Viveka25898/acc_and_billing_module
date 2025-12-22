@@ -1,9 +1,9 @@
 // src/components/BankLedger/BankLedgerHeader.jsx - UPDATED
-import React from 'react';
+import React from 'react'
 
 const BankLedgerHeader = ({ bankDetails }) => {
   if (!bankDetails) {
-    return <div>Loading bank details...</div>;
+    return <div>Loading bank details...</div>
   }
 
   return (
@@ -11,7 +11,7 @@ const BankLedgerHeader = ({ bankDetails }) => {
       <div className="text-2xl sm:text-3xl font-semibold mb-6">
         BANK LEDGER - {bankDetails.bankName.toUpperCase()}
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="flex flex-col">
           <div className="text-xs opacity-90 mb-1">GL Account Code</div>
@@ -46,13 +46,13 @@ const BankLedgerHeader = ({ bankDetails }) => {
           <div className="text-base font-semibold">{bankDetails.financialYear}</div>
         </div>
       </div>
-      
+
       <div className="bg-green-900 bg-opacity-20 p-4 rounded-lg mt-4">
         <div className="text-xs opacity-90 mb-1">Opening Balance (01-Apr-2024)</div>
         <div className="text-2xl font-bold">₹5,00,000.00 DR</div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default BankLedgerHeader;
+export default BankLedgerHeader

@@ -105,12 +105,12 @@ const LiabilityFilterBar = ({
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Employee Name / ID</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Batch ID</label>
           <input
             type="text"
-            placeholder="Search by employee name or ID..."
-            value={filters.employeeSearch}
-            onChange={(e) => onFilterChange('employeeSearch', e.target.value)}
+            placeholder="Search by batch ID..."
+            value={filters.batchSearch}
+            onChange={(e) => onFilterChange('batchSearch', e.target.value)}
             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from 'react'
 
 const LiabilityLedgerTable = ({ transactions }) => {
@@ -28,13 +29,11 @@ const LiabilityLedgerTable = ({ transactions }) => {
                 'Payment Due',
                 'Voucher Type',
                 'Voucher No',
-                'Employee ID',
-                'Employee Name',
                 'Cost Center',
                 'Department',
                 'Reference Doc',
                 'Narration',
-                'Status',
+                'Batch',
                 'Posted By',
                 'Payment Method',
                 'Debit (₹)',
@@ -56,18 +55,12 @@ const LiabilityLedgerTable = ({ transactions }) => {
                 key={transaction.id}
                 className={`hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
               >
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.id}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{transaction.srNo}</td>
                 <td className="px-4 py-3 text-sm text-gray-900 font-medium">{transaction.date}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.paymentDueDate}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.voucherType}</td>
                 <td className="px-4 py-3 text-sm text-blue-600 font-medium">
                   {transaction.voucherNo}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                  {transaction.employeeId}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900 font-semibold">
-                  {transaction.employeeName}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.costCenter}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.department}</td>
@@ -80,13 +73,7 @@ const LiabilityLedgerTable = ({ transactions }) => {
                 >
                   {transaction.narration}
                 </td>
-                <td className="px-4 py-3 text-sm">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}
-                  >
-                    {transaction.status}
-                  </span>
-                </td>
+                <td className="px-4 py-3 text-sm text-gray-900 font-mono">{transaction.batchId}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.postedBy}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.paymentMethod}</td>
                 <td
@@ -101,9 +88,9 @@ const LiabilityLedgerTable = ({ transactions }) => {
                 </td>
                 <td
                   className={`px-4 py-3 text-sm font-bold ${
-                    transaction.balance.includes('Cr')
+                    transaction.balance.includes('CR')
                       ? 'text-green-600'
-                      : transaction.balance.includes('Dr')
+                      : transaction.balance.includes('DR')
                         ? 'text-red-600'
                         : 'text-gray-600'
                   }`}

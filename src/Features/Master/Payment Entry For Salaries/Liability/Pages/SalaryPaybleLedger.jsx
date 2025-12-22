@@ -1,19 +1,49 @@
-import React, { useState, useMemo } from 'react'
-import { liabilityData } from '../data/SalaryLiabilityData'
+import React, { useState, useMemo, useEffect } from 'react'
+import { SalaryPayableLedgerService } from '../../../utils/SalaryPayableLedgerService'
 import LiabilityLedgerHeader from '../Component/LedgerHeader'
 import LiabilityFilterBar from '../Component/FilterBar'
 import LiabilityLedgerTable from '../Component/LedgerTable'
 import LiabilityFooter from '../Component/Footer'
+
 const SalaryPayableLedger = () => {
+  const [allTransactions, setAllTransactions] = useState([])
+  const [ledgerDetails, setLedgerDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+
   const [filters, setFilters] = useState({
     department: 'All',
     costCenter: 'All',
     status: 'All',
     paymentMethod: 'All',
-    employeeSearch: '',
+    batchSearch: '',
     startDate: '',
     endDate: '',
   })
+
+  // Load real transactions from localStorage on component mount
+  useEffect(() => {
+    try {
+      console.log('🔄 Loading salary payable ledger data...')
+
+      // Get ledger details
+      const details = SalaryPayableLedgerService.getSalaryPayableLedgerDetails('L2002001')
+      setLedgerDetails(details)
+
+      // Get transactions
+      const transactions = SalaryPayableLedgerService.getSalaryPayableTransactions('L2002001')
+      setAllTransactions(transactions)
+
+      console.log('✅ Loaded salary payable ledger:', {
+        details,
+        transactionCount: transactions.length,
+      })
+
+      setLoading(false)
+    } catch (error) {
+      console.error('❌ Error loading salary payable ledger:', error)
+      setLoading(false)
+    }
+  }, [])
 
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({
@@ -23,7 +53,10 @@ const SalaryPayableLedger = () => {
   }
 
   const filteredTransactions = useMemo(() => {
-    return liabilityData.transactions.filter((transaction) => {
+    return allTransactions.filter((transaction) => {
+      // Skip opening balance in filters
+      if (transaction.entryType === 'opening') return true
+
       // Department filter
       if (filters.department !== 'All' && transaction.department !== filters.department)
         return false
@@ -39,65 +72,108 @@ const SalaryPayableLedger = () => {
       if (filters.paymentMethod !== 'All' && transaction.paymentMethod !== filters.paymentMethod)
         return false
 
-      // Employee search filter
-      if (
-        filters.employeeSearch &&
-        !transaction.employeeName.toLowerCase().includes(filters.employeeSearch.toLowerCase()) &&
-        !transaction.employeeId.toLowerCase().includes(filters.employeeSearch.toLowerCase())
-      )
-        return false
+      // Batch ID search filter
+      if (filters.batchSearch) {
+        const searchLower = filters.batchSearch.toLowerCase()
+        const matchesBatch = transaction.batchId?.toLowerCase().includes(searchLower)
+        if (!matchesBatch) return false
+      }
 
       // Date range filter
       if (filters.startDate) {
-        const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
-        const startDate = new Date(filters.startDate)
-        if (transactionDate < startDate) return false
+        try {
+          const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
+          const startDate = new Date(filters.startDate)
+          if (transactionDate < startDate) return false
+        } catch {
+          // Skip invalid dates
+        }
       }
 
       if (filters.endDate) {
-        const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
-        const endDate = new Date(filters.endDate)
-        if (transactionDate > endDate) return false
+        try {
+          const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
+          const endDate = new Date(filters.endDate)
+          if (transactionDate > endDate) return false
+        } catch {
+          // Skip invalid dates
+        }
       }
 
       return true
     })
-  }, [filters])
+  }, [allTransactions, filters])
 
-  // Calculate summary statistics
+  // Calculate summary statistics using real data
   const calculateSummary = useMemo(() => {
-    const totalPayable = filteredTransactions.reduce((sum, t) => sum + (t.creditAmount || 0), 0)
+    const summary = SalaryPayableLedgerService.getSalaryPayableSummary(filteredTransactions)
 
-    const pendingTransactions = filteredTransactions.filter((t) => t.status === 'Pending')
-    const totalPending = pendingTransactions.reduce((sum, t) => sum + (t.creditAmount || 0), 0)
-
-    const paidTransactions = filteredTransactions.filter((t) => t.status === 'Paid')
-    const totalPaid = paidTransactions.reduce((sum, t) => {
-      const debitValue = parseInt(t.debit.replace(/[^0-9]/g, '') || '0')
-      return sum + debitValue
-    }, 0)
-
-    return { totalPayable, totalPending, totalPaid }
+    return {
+      totalPayable: summary.totalProvision,
+      totalPending: summary.closingBalance, // Closing balance represents pending liability
+      totalPaid: summary.totalPayment,
+    }
   }, [filteredTransactions])
 
   // Get closing balance
   const closingBalance =
     filteredTransactions.length > 0
-      ? filteredTransactions[filteredTransactions.length - 1].balance
-      : '₹ 0.00'
+      ? filteredTransactions[filteredTransactions.length - 1].runningBalance
+      : '0.00 CR'
+
+  // Extract unique values for filter dropdowns
+  const departments = useMemo(() => {
+    const depts = [...new Set(allTransactions.map((t) => t.department).filter(Boolean))]
+    return ['All', ...depts]
+  }, [allTransactions])
+
+  const costCenters = useMemo(() => {
+    const centers = [...new Set(allTransactions.map((t) => t.costCenter).filter(Boolean))]
+    return ['All', ...centers]
+  }, [allTransactions])
+
+  const statusOptions = useMemo(() => {
+    const statuses = [...new Set(allTransactions.map((t) => t.status).filter(Boolean))]
+    return ['All', ...statuses]
+  }, [allTransactions])
+
+  const paymentMethods = useMemo(() => {
+    const methods = [...new Set(allTransactions.map((t) => t.paymentMethod).filter(Boolean))]
+    return ['All', ...methods]
+  }, [allTransactions])
+
+  // Account info for header
+  const accountInfo = ledgerDetails || {
+    glAccountCode: 'L2002001',
+    accountName: 'SALARY PAYABLE',
+    accountType: 'Current Liability',
+    category: 'Employee Payables',
+    financialYear: '2024-25',
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 p-4 md:p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading salary payable ledger...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <LiabilityLedgerHeader accountInfo={liabilityData.accountInfo} />
+        <LiabilityLedgerHeader accountInfo={accountInfo} />
 
         <LiabilityFilterBar
           filters={filters}
           onFilterChange={handleFilterChange}
-          departments={liabilityData.departments}
-          costCenters={liabilityData.costCenters}
-          statusOptions={liabilityData.statusOptions}
-          paymentMethods={liabilityData.paymentMethods}
+          departments={departments}
+          costCenters={costCenters}
+          statusOptions={statusOptions}
+          paymentMethods={paymentMethods}
         />
 
         <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -117,7 +193,7 @@ const SalaryPayableLedger = () => {
                   costCenter: 'All',
                   status: 'All',
                   paymentMethod: 'All',
-                  employeeSearch: '',
+                  batchSearch: '',
                   startDate: '',
                   endDate: '',
                 })
