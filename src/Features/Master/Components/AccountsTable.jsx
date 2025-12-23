@@ -372,6 +372,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
             account.name.toLowerCase().includes('professional tax')) &&
           account.name.toLowerCase().includes('employee'))
 
+      //Bonus Expense Ledger
+      const isBonusExpenseLedger =
+        account.code === 'X2001001007' ||
+        (account.code.startsWith('X2001001007') && account.name.toLowerCase().includes('bonus'))
+
       //=============================================
       // Professional Fess and Other Fees Ledger
       //=============================================
@@ -510,6 +515,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isProfessionalTaxPayableAccount) {
         console.log('✅ Navigating to Professional Tax Payable Ledger')
         navigate(`/dashboard/account-manager/professional-tax-payable-ledger`)
+      } else if (isBonusExpenseLedger) {
+        console.log('✅ Navigating to Professional Tax Payable Ledger')
+        navigate(`/dashboard/account-manager/bonus-expense-ledger`)
       }
 
       // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here

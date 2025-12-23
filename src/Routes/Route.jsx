@@ -183,6 +183,8 @@ import EmployeePFPayableLedgerPage from '../Features/Master/Payment Entry For Sa
 import EmployeeESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeESICPayableLedgerPage'
 import EmployeeLWFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeLWFPayableLedgerPage'
 import ProfessionalTaxPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ProfessionalTaxPayableLedgerPage'
+import BonusProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
+import BonusExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
 
 export const router = createBrowserRouter([
   {
@@ -998,6 +1000,10 @@ export const router = createBrowserRouter([
       {
         path: 'professional-tax-payable-ledger',
         element: <ProfessionalTaxPayableLedgerPage />,
+      },
+      {
+        path: 'bonus-expense-ledger',
+        element: <BonusExpenseLedgerPage />,
       },
     ],
   },
