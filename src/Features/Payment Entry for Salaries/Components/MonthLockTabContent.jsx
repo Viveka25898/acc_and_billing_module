@@ -39,6 +39,7 @@ export default function MonthLockTabContent({
   handleApprove,
   openRejectModal,
   handleBulkApprove,
+  handleViewJV,
 
   // Modal Props - Rejection
   showRejectModal,
@@ -303,13 +304,18 @@ export default function MonthLockTabContent({
                                 </button>
                               </>
                             ) : tableData.status === 'Approved' ? (
-                              <button
-                                onClick={() => handleApprove(batch.id)}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors duration-200 whitespace-nowrap"
-                                title="Map GL accounts"
-                              >
-                                Map GL
-                              </button>
+                              <>
+                                <div className="text-xs font-semibold text-green-600 text-center py-1 bg-green-50 rounded">
+                                  ✓ Approved
+                                </div>
+                                <button
+                                  onClick={() => handleViewJV(batch.id)}
+                                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors duration-200 whitespace-nowrap"
+                                  title="View Journal Voucher"
+                                >
+                                  📄 View JV
+                                </button>
+                              </>
                             ) : (
                               <span className="text-xs italic text-gray-500 text-center py-1">
                                 Done

@@ -1,10 +1,16 @@
-import React, { useState, useMemo } from 'react'
-import { pfContributionData } from '../data/PFContributionData'
+/* eslint-disable no-unused-vars */
+import React, { useState, useMemo, useEffect } from 'react'
+import SalaryLedgerService from '../../../utils/SalaryLedgerService'
 import PFLedgerHeader from '../Components/PFLedgerHeader'
 import PFFilterBar from '../Components/PFFilterBar'
 import PFLedgerTable from '../Components/PFLedgerTable'
 import PFFooter from '../Components/PFFooter'
+
 const PFContributionLedgerPage = () => {
+  const [allTransactions, setAllTransactions] = useState([])
+  const [ledgerDetails, setLedgerDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+
   const [filters, setFilters] = useState({
     month: 'All',
     site: 'All',
@@ -13,6 +19,25 @@ const PFContributionLedgerPage = () => {
     employeeSearch: '',
     challanSearch: '',
   })
+
+  // Load real transactions from localStorage
+  useEffect(() => {
+    try {
+      console.log('🔄 Loading Employer PF Contribution ledger data...')
+      const details = SalaryLedgerService.getLedgerDetails('X2001001002')
+      setLedgerDetails(details)
+      const transactions = SalaryLedgerService.getLedgerTransactions('X2001001002')
+      setAllTransactions(transactions)
+      console.log('✅ Loaded Employer PF Contribution ledger:', {
+        details,
+        transactionCount: transactions.length,
+      })
+      setLoading(false)
+    } catch (error) {
+      console.error('❌ Error loading PF Contribution ledger:', error)
+      setLoading(false)
+    }
+  }, [])
 
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({
@@ -23,95 +48,164 @@ const PFContributionLedgerPage = () => {
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
-    return pfContributionData.transactions.filter((transaction) => {
-      // Month filter
-      if (filters.month !== 'All' && transaction.pfPostingMonth !== filters.month) return false
+    try {
+      if (!allTransactions || allTransactions.length === 0) return []
 
-      // Site filter
-      if (filters.site !== 'All' && transaction.siteCostCenter !== filters.site) return false
+      return allTransactions.filter((transaction) => {
+        // Skip opening balance in filters
+        if (transaction.entryType === 'opening') return true
 
-      // Payment Status filter
-      if (filters.paymentStatus !== 'All' && transaction.paymentStatus !== filters.paymentStatus)
-        return false
+        // Month filter
+        if (filters.month !== 'All' && transaction.payrollPeriod !== filters.month) return false
 
-      // Payment Mode filter
-      if (filters.paymentMode !== 'All' && transaction.paymentMode !== filters.paymentMode)
-        return false
+        // Site filter
+        if (filters.site !== 'All' && transaction.costCenter !== filters.site) return false
 
-      // Employee search filter
-      if (
-        filters.employeeSearch &&
-        !transaction.employeeName.toLowerCase().includes(filters.employeeSearch.toLowerCase()) &&
-        !transaction.employeeUan.includes(filters.employeeSearch) &&
-        !transaction.employeeId.toLowerCase().includes(filters.employeeSearch.toLowerCase())
-      )
-        return false
+        // Payment Status filter
+        if (filters.paymentStatus !== 'All' && transaction.status !== filters.paymentStatus)
+          return false
 
-      // Challan/ECR search filter
-      if (
-        filters.challanSearch &&
-        !transaction.ecrNo.toLowerCase().includes(filters.challanSearch.toLowerCase()) &&
-        !transaction.challanNo.toLowerCase().includes(filters.challanSearch.toLowerCase())
-      )
-        return false
+        // Payment Mode filter
+        if (filters.paymentMode !== 'All' && transaction.paymentMethod !== filters.paymentMode)
+          return false
 
-      return true
-    })
-  }, [filters])
+        // Employee search filter
+        if (
+          filters.employeeSearch &&
+          !transaction.narration.toLowerCase().includes(filters.employeeSearch.toLowerCase()) &&
+          !transaction.referenceDoc.toLowerCase().includes(filters.employeeSearch.toLowerCase())
+        )
+          return false
+
+        // Challan/ECR search filter
+        if (
+          filters.challanSearch &&
+          !transaction.voucherNo.toLowerCase().includes(filters.challanSearch.toLowerCase()) &&
+          !transaction.batchId.toLowerCase().includes(filters.challanSearch.toLowerCase())
+        )
+          return false
+
+        return true
+      })
+    } catch (error) {
+      console.error('❌ Error filtering transactions:', error)
+      return []
+    }
+  }, [allTransactions, filters])
 
   // Calculate summary statistics
   const calculateSummary = useMemo(() => {
-    const totalEmployerContribution = filteredTransactions.reduce(
-      (sum, t) => sum + (t.amounts?.total || 0),
-      0
-    )
+    try {
+      const totalEmployerContribution = filteredTransactions.reduce(
+        (sum, t) => sum + (t.debit || 0),
+        0
+      )
 
-    const pendingTransactions = filteredTransactions.filter((t) => t.paymentStatus === 'Pending')
-    const totalPendingAmount = pendingTransactions.reduce(
-      (sum, t) => sum + (t.amounts?.total || 0),
-      0
-    )
+      const pendingTransactions = filteredTransactions.filter((t) => t.status === 'Pending')
+      const totalPendingAmount = pendingTransactions.reduce((sum, t) => sum + (t.debit || 0), 0)
 
-    const paidTransactions = filteredTransactions.filter(
-      (t) => t.paymentStatus === 'Paid' || t.paymentStatus === 'Late Paid'
-    )
-    const totalPaidAmount = paidTransactions.reduce((sum, t) => sum + (t.amounts?.total || 0), 0)
+      const paidTransactions = filteredTransactions.filter(
+        (t) => t.status === 'Posted' || t.status === 'Paid'
+      )
+      const totalPaidAmount = paidTransactions.reduce((sum, t) => sum + (t.debit || 0), 0)
 
-    // Count unique employees
-    const uniqueEmployees = new Set(
-      filteredTransactions.filter((t) => t.employeeId !== '-').map((t) => t.employeeId)
-    )
-    const totalEmployees = uniqueEmployees.size
+      // Count transactions
+      const totalEmployees = filteredTransactions.filter((t) => t.entryType !== 'opening').length
 
-    return {
-      totalEmployerContribution,
-      totalPendingAmount,
-      totalPaidAmount,
-      totalEmployees,
+      return {
+        totalEmployerContribution,
+        totalPendingAmount,
+        totalPaidAmount,
+        totalEmployees,
+      }
+    } catch (error) {
+      console.error('❌ Error calculating summary:', error)
+      return {
+        totalEmployerContribution: 0,
+        totalPendingAmount: 0,
+        totalPaidAmount: 0,
+        totalEmployees: 0,
+      }
     }
   }, [filteredTransactions])
 
   // Get closing balance
   const closingBalance =
     filteredTransactions.length > 0
-      ? filteredTransactions[filteredTransactions.length - 1].balance
+      ? filteredTransactions[filteredTransactions.length - 1].balanceFormatted || '₹ 0.00 Dr'
       : '₹ 0.00 Dr'
+
+  // Get summary from service
+  const summary = useMemo(() => {
+    try {
+      return SalaryLedgerService.getLedgerSummary(filteredTransactions, 'X2001001002')
+    } catch (error) {
+      console.error('❌ Error getting ledger summary:', error)
+      return {
+        openingBalance: 0,
+        totalDebit: 0,
+        totalCredit: 0,
+        closingBalance: 0,
+        transactionCount: 0,
+      }
+    }
+  }, [filteredTransactions])
+
+  // Extract unique values for filters
+  const months = useMemo(() => {
+    const m = new Set(['All'])
+    allTransactions.forEach((t) => {
+      if (t.payrollPeriod && t.payrollPeriod !== '-') m.add(t.payrollPeriod)
+    })
+    return Array.from(m)
+  }, [allTransactions])
+
+  const sites = useMemo(() => {
+    const s = new Set(['All'])
+    allTransactions.forEach((t) => {
+      if (t.costCenter && t.costCenter !== '-') s.add(t.costCenter)
+    })
+    return Array.from(s)
+  }, [allTransactions])
+
+  const paymentStatuses = ['All', 'Posted', 'Pending', 'Paid']
+  const paymentModes = ['All', 'Bank Transfer', 'NEFT', 'RTGS', 'Cheque']
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading ledger data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const accountInfo = ledgerDetails
+    ? {
+        glAccountCode: ledgerDetails.glAccountCode,
+        accountName: ledgerDetails.accountName,
+        accountType: ledgerDetails.accountType,
+        category: ledgerDetails.category,
+        financialYear: ledgerDetails.financialYear,
+      }
+    : null
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <PFLedgerHeader
-          accountInfo={pfContributionData.accountInfo}
-          pfRates={pfContributionData.pfRates}
-        />
+        {accountInfo && (
+          <PFLedgerHeader accountInfo={accountInfo} pfRates={{ employer: 12, eps: 8.33 }} />
+        )}
 
         <PFFilterBar
           filters={filters}
           onFilterChange={handleFilterChange}
-          months={pfContributionData.months}
-          sites={pfContributionData.sites}
-          paymentStatuses={pfContributionData.paymentStatuses}
-          paymentModes={pfContributionData.paymentModes}
+          months={months}
+          sites={sites}
+          paymentStatuses={paymentStatuses}
+          paymentModes={paymentModes}
         />
 
         <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

@@ -18,10 +18,10 @@ const LiabilityLedgerTable = ({ transactions }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-green-600">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-blue-900">
+          <thead className="bg-gradient-to-r from-green-700 to-green-600">
             <tr>
               {[
                 'Sr No',
@@ -42,7 +42,7 @@ const LiabilityLedgerTable = ({ transactions }) => {
               ].map((header) => (
                 <th
                   key={header}
-                  className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                  className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider whitespace-nowrap"
                 >
                   {header}
                 </th>
@@ -50,55 +50,90 @@ const LiabilityLedgerTable = ({ transactions }) => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {transactions.map((transaction, index) => (
-              <tr
-                key={transaction.id}
-                className={`hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-              >
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.srNo}</td>
-                <td className="px-4 py-3 text-sm text-gray-900 font-medium">{transaction.date}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.paymentDueDate}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.voucherType}</td>
-                <td className="px-4 py-3 text-sm text-blue-600 font-medium">
-                  {transaction.voucherNo}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.costCenter}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.department}</td>
-                <td className="px-4 py-3 text-sm text-gray-600 font-mono">
-                  {transaction.referenceDocNo}
-                </td>
-                <td
-                  className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate"
-                  title={transaction.narration}
+            {transactions.map((transaction, index) => {
+              const isOpeningBalance = transaction.entryType === 'opening'
+              const rowBgColor = isOpeningBalance
+                ? 'bg-green-50 font-semibold'
+                : index % 2 === 0
+                  ? 'bg-white'
+                  : 'bg-gray-50'
+
+              return (
+                <tr
+                  key={transaction.id || index}
+                  className={`hover:bg-green-50 transition-colors ${rowBgColor}`}
                 >
-                  {transaction.narration}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900 font-mono">{transaction.batchId}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.postedBy}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.paymentMethod}</td>
-                <td
-                  className={`px-4 py-3 text-sm font-medium ${transaction.debit === '-' ? 'text-gray-500' : 'text-red-600'}`}
-                >
-                  {transaction.debit}
-                </td>
-                <td
-                  className={`px-4 py-3 text-sm font-medium ${transaction.credit === '-' ? 'text-gray-500' : 'text-green-600'}`}
-                >
-                  {transaction.credit}
-                </td>
-                <td
-                  className={`px-4 py-3 text-sm font-bold ${
-                    transaction.balance.includes('CR')
-                      ? 'text-green-600'
-                      : transaction.balance.includes('DR')
-                        ? 'text-red-600'
-                        : 'text-gray-600'
-                  }`}
-                >
-                  {transaction.balance}
-                </td>
-              </tr>
-            ))}
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    {transaction.srNo || index + 1}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap">
+                    {transaction.date}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.paymentDueDate || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.voucherType}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-green-700 font-medium whitespace-nowrap">
+                    {transaction.voucherNo}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.costCenter || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.department || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 font-mono whitespace-nowrap">
+                    {transaction.referenceDocNo || '-'}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate"
+                    title={transaction.narration}
+                  >
+                    {transaction.narration}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 font-mono whitespace-nowrap">
+                    {transaction.batchId || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.postedBy || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.paymentMethod || '-'}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                      transaction.debit === '-' || !transaction.debit
+                        ? 'text-gray-400'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {transaction.debit || '-'}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                      transaction.credit === '-' || !transaction.credit
+                        ? 'text-gray-400'
+                        : 'text-green-600'
+                    }`}
+                  >
+                    {transaction.credit || '-'}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-sm font-bold whitespace-nowrap ${
+                      transaction.runningBalance?.includes('CR')
+                        ? 'text-green-600'
+                        : transaction.runningBalance?.includes('DR')
+                          ? 'text-red-600'
+                          : 'text-gray-600'
+                    }`}
+                  >
+                    {transaction.runningBalance || transaction.balance || '-'}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

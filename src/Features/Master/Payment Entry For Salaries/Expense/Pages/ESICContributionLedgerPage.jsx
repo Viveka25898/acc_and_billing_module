@@ -1,11 +1,15 @@
-import React, { useState, useMemo } from 'react'
-import { esicContributionData } from './../data/esicContributionData'
+import React, { useState, useMemo, useEffect } from 'react'
+import SalaryLedgerService from '../../../utils/SalaryLedgerService'
 import ESICLedgerHeader from '../Components/ESICLedgerHeader'
 import ESICFilterBar from '../Components/ESICFilterBar'
 import ESICLedgerTable from '../Components/ESICLedgerTable'
 import ESICFooter from '../Components/ESICFooter'
 
 const ESICContributionLedgerPage = () => {
+  const [allTransactions, setAllTransactions] = useState([])
+  const [ledgerDetails, setLedgerDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+
   const [filters, setFilters] = useState({
     month: 'All',
     branch: 'All',
@@ -15,6 +19,25 @@ const ESICContributionLedgerPage = () => {
     maxWages: '',
     challanSearch: '',
   })
+
+  // Load real transactions from localStorage
+  useEffect(() => {
+    try {
+      console.log('🔄 Loading Employer ESIC Contribution ledger data...')
+      const details = SalaryLedgerService.getLedgerDetails('X2001001003')
+      setLedgerDetails(details)
+      const transactions = SalaryLedgerService.getLedgerTransactions('X2001001003')
+      setAllTransactions(transactions)
+      console.log('✅ Loaded Employer ESIC Contribution ledger:', {
+        details,
+        transactionCount: transactions.length,
+      })
+      setLoading(false)
+    } catch (error) {
+      console.error('❌ Error loading ESIC Contribution ledger:', error)
+      setLoading(false)
+    }
+  }, [])
 
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({

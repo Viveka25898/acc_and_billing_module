@@ -1,12 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react'
-import {
-  accountInfo,
-  actuarialAssumptions,
-  complianceRequirements,
-  ledgerData,
-  summaryData,
-} from '../data/leaveProvisionData'
+import React, { useState, useEffect } from 'react'
+import SalaryLedgerService from '../../../utils/SalaryLedgerService'
 import LeaveProvisionHeader from '../Components/LeaveProvisionHeader'
 import AccountInfoLeaveProvision from '../Components/AccountInfoLeaveProvision'
 import ControlsPanelLeaveProvision from '../Components/ControlsPannelLeaveProvision'
@@ -15,14 +9,37 @@ import LedgerTableLeaveProvision from '../Components/LedgerTableLeaveProvision'
 import LeaveProvisionFooter from '../Components/LeaveProisionFooter'
 
 const LeaveProvisionExpenseLedgerPage = () => {
+  const [allTransactions, setAllTransactions] = useState([])
+  const [ledgerDetails, setLedgerDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+
   const [filters, setFilters] = useState({
     period: 'fy-2024-25',
     department: 'all',
     fromDate: '2024-04-01',
     toDate: '2024-09-30',
-    ledgerView: 'monthly', // monthly, quarterly, yearly
+    ledgerView: 'monthly',
     showActuarialDetails: false,
   })
+
+  // Load real transactions from localStorage
+  useEffect(() => {
+    try {
+      console.log('🔄 Loading Leave Wages ledger data...')
+      const details = SalaryLedgerService.getLedgerDetails('X2001001005')
+      setLedgerDetails(details)
+      const transactions = SalaryLedgerService.getLedgerTransactions('X2001001005')
+      setAllTransactions(transactions)
+      console.log('✅ Loaded Leave Wages ledger:', {
+        details,
+        transactionCount: transactions.length,
+      })
+      setLoading(false)
+    } catch (error) {
+      console.error('❌ Error loading Leave Wages ledger:', error)
+      setLoading(false)
+    }
+  }, [])
 
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({ ...prev, [filterType]: value }))

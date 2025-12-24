@@ -2,11 +2,13 @@ import React, { useRef, useState, useEffect } from 'react'
 import PaymentEntriesFilter from '../Components/PaymentEntriesFilter'
 import AERejectionModal from '../Components/AERejectionModal'
 import GLMappingModal from '../Components/GLMappingModal'
+import SalaryJVModal from '../Components/SalaryJVModal'
 import { toast } from 'react-toastify'
 import * as XLSX from 'xlsx'
 import SalaryPaymentTab from '../Components/SalaryPaymentTab'
 import AETabNavigation from '../Components/AETabNavigation'
 import MonthLockTabContent from '../Components/MonthLockTabContent'
+import { SalaryGLMappingService } from '../Services/SalaryGLMappingService'
 
 export default function AEPendingRequestsPage() {
   // Tab state
@@ -51,6 +53,10 @@ export default function AEPendingRequestsPage() {
   const [showGLMappingModal, setShowGLMappingModal] = useState(false)
   const [approvedBatchData, setApprovedBatchData] = useState(null)
   const [approvedBatches, setApprovedBatches] = useState([])
+
+  // JV MODAL STATE
+  const [showJVModal, setShowJVModal] = useState(false)
+  const [jvModalData, setJvModalData] = useState(null)
 
   // For Sorting
   const getStatusOrder = (status) => {
@@ -347,12 +353,58 @@ export default function AEPendingRequestsPage() {
 
     const approvedBatchesData = payrollBatches.filter((batch) => selectedIds.includes(batch.id))
 
+    // ==========================================
+    // AUTO GL MAPPING - Generate GL Entries for Multiple Batches
+    // ==========================================
+    console.log('🚀 Starting Bulk Auto GL Mapping for', selectedIds.length, 'batches')
+
+    try {
+      const bulkGLEntries = SalaryGLMappingService.generateBulkGLEntries(approvedBatchesData)
+
+      // Log each batch's GL entries
+      bulkGLEntries.forEach((batchEntry) => {
+        SalaryGLMappingService.logGLEntries(batchEntry.entries)
+      })
+
+      // Validate all batches
+      const allValid = bulkGLEntries.every((batchEntry) => {
+        const validation = SalaryGLMappingService.validateGLEntries(batchEntry.entries)
+        if (!validation.isValid) {
+          console.error(`❌ Validation failed for batch ${batchEntry.batchId}:`, validation.errors)
+        }
+        return validation.isValid
+      })
+
+      if (!allValid) {
+        toast.error('GL Entry validation failed for one or more batches. Check console.')
+        return
+      }
+
+      console.log('✅ All batches validated successfully')
+
+      // Store GL entries in each batch
+      approvedBatchesData.forEach((batch, index) => {
+        batch._glEntries = bulkGLEntries[index].entries
+      })
+
+      const totalDebit = bulkGLEntries.reduce((sum, b) => sum + b.entries.summary.totalDebit, 0)
+      const totalCredit = bulkGLEntries.reduce((sum, b) => sum + b.entries.summary.totalCredit, 0)
+
+      toast.success(
+        `GL Entries generated for ${selectedIds.length} batches! Total: Dr ₹${totalDebit.toLocaleString()} = Cr ₹${totalCredit.toLocaleString()}`
+      )
+    } catch (error) {
+      console.error('❌ Error generating bulk GL entries:', error)
+      toast.error('Failed to generate GL entries. Check console.')
+      return
+    }
+
     setApprovedBatches(approvedBatchesData)
     setApprovedBatchData(null)
     setShowGLMappingModal(true)
 
     toast.info(
-      `Open GL Mapping for ${selectedIds.length} batches. Click "Approve" in the modal to confirm approval.`
+      `Review GL entries in console for ${selectedIds.length} batches. Click "Approve" in modal to confirm.`
     )
   }
 
@@ -360,11 +412,90 @@ export default function AEPendingRequestsPage() {
   const handleApprove = (id) => {
     const approvedBatch = payrollBatches.find((batch) => batch.id === id)
 
-    setApprovedBatchData(approvedBatch)
-    setApprovedBatches([])
-    setShowGLMappingModal(true)
+    if (!approvedBatch) {
+      toast.error('Batch not found')
+      return
+    }
 
-    toast.info('Open GL Mapping modal.  Click "Approve" in the modal to confirm the approval.')
+    // ==========================================
+    // AUTO GL MAPPING - Generate Debit/Credit Entries
+    // ==========================================
+    console.log('🚀 Starting Auto GL Mapping for Batch:', id)
+    console.log('📦 Batch Data:', approvedBatch)
+
+    try {
+      // Generate GL entries using the mapping service
+      const glEntries = SalaryGLMappingService.generateGLEntries(approvedBatch)
+
+      // Log aggregated GL entries
+      SalaryGLMappingService.logGLEntries(glEntries)
+
+      // Validate GL entries
+      const validation = SalaryGLMappingService.validateGLEntries(glEntries)
+
+      if (!validation.isValid) {
+        console.error('❌ GL Entry Validation Failed:', validation.errors)
+        toast.error(`GL Entry Validation Failed: ${validation.errors.join(', ')}`)
+        return
+      }
+
+      console.log('✅ GL Entries validated successfully')
+
+      // Create transaction and post to localStorage
+      const transactionResult = SalaryGLMappingService.createSalaryTransaction(
+        approvedBatch,
+        glEntries,
+        currentUser.fullName || currentUser.username
+      )
+
+      if (!transactionResult.success) {
+        console.error('❌ Transaction creation failed:', transactionResult.error)
+        toast.error(`Failed to create transaction: ${transactionResult.error}`)
+        return
+      }
+
+      console.log('✅ Transaction created successfully:', transactionResult.voucherNo)
+
+      // Update batch status to Approved
+      setPayrollBatches((prev) =>
+        prev.map((batch) => {
+          if (batch.id === id) {
+            return {
+              ...batch,
+              status: 'Approved',
+              history: [
+                ...(batch.history || []),
+                {
+                  action: 'approved',
+                  by: currentUser.username,
+                  date: new Date().toISOString(),
+                  comments: `Transaction posted - ${transactionResult.voucherNo}`,
+                },
+              ],
+            }
+          }
+          return batch
+        })
+      )
+
+      // Prepare JV modal data
+      const jvData = SalaryGLMappingService.prepareJVModalData(
+        approvedBatch,
+        glEntries,
+        transactionResult.voucherNo,
+        currentUser.fullName || currentUser.username
+      )
+
+      // Store data and show JV modal
+      setJvModalData(jvData)
+      setShowJVModal(true)
+
+      toast.success(`Transaction posted successfully! Voucher No: ${transactionResult.voucherNo}`)
+    } catch (error) {
+      console.error('❌ Error in approval process:', error)
+      toast.error('Failed to process approval. Check console for details.')
+      return
+    }
   }
 
   // Callback invoked by the modal when user explicitly clicks Approve inside the modal
@@ -453,6 +584,61 @@ export default function AEPendingRequestsPage() {
     closeGLMappingModal()
   }
 
+  // Handle View JV for approved batch
+  const handleViewJV = (batchId) => {
+    // Find the batch
+    const batch = payrollBatches.find((b) => b.id === batchId)
+    if (!batch) {
+      toast.error('Batch not found')
+      return
+    }
+
+    // Find the transaction in localStorage
+    const transactions = JSON.parse(localStorage.getItem('transactions') || '[]')
+    const transaction = transactions.find((t) => t.batchId === batchId)
+
+    if (!transaction) {
+      toast.error('Transaction not found for this batch')
+      return
+    }
+
+    // Prepare JV modal data from transaction
+    const jvData = {
+      header: {
+        company: 'I SMART FACTECH PRIVATE LIMITED',
+        address:
+          '317, 3RD FLOOR, J/2, NILGIRI MANDLA TRUCK TERMINAL, NEAR WADALA STD, MUMBAI - 400037',
+        gstNo: '27AACCD4328112E',
+        state: 'Maharashtra (27)',
+        voucherNo: transaction.voucherNo,
+        date: transaction.date,
+        reference: `Salary Payment - ${transaction.batchId}`,
+        preparedBy: transaction.createdBy,
+      },
+      entries: transaction.entries,
+      totals: {
+        debit: transaction.totalDebit,
+        credit: transaction.totalCredit,
+      },
+      narration: transaction.narration,
+      approvals: {
+        preparedBy: transaction.createdBy,
+        checkedBy: 'Pending',
+        authorizedBy: transaction.approvedBy,
+        date: transaction.date,
+      },
+      batchInfo: {
+        batchId: transaction.batchId,
+        payrollPeriod: transaction.payrollPeriod,
+        employeeCount: transaction.employeeCount,
+      },
+    }
+
+    // Show JV modal
+    setJvModalData(jvData)
+    setShowJVModal(true)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-6">
       <div className="max-w-7xl mx-auto px-3 md:px-4 lg:px-6">
@@ -500,6 +686,7 @@ export default function AEPendingRequestsPage() {
             handleApprove={handleApprove}
             openRejectModal={openRejectModal}
             handleBulkApprove={handleBulkApprove}
+            handleViewJV={handleViewJV}
             showRejectModal={showRejectModal}
             setShowRejectModal={setShowRejectModal}
             setRejectionReason={setRejectionReason}
@@ -513,6 +700,11 @@ export default function AEPendingRequestsPage() {
           />
         )}
       </div>
+
+      {/* JV Modal */}
+      {showJVModal && jvModalData && (
+        <SalaryJVModal data={jvModalData} onClose={() => setShowJVModal(false)} />
+      )}
     </div>
   )
 }

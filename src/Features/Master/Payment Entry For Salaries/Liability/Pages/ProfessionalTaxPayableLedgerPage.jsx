@@ -1,15 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import SalaryLedgerService from '../../../utils/SalaryLedgerService'
 import ProfessionalTaxHeader from './../Component/ProfessionalTaxHeader'
 import ProfessionalTaxFilter from './../Component/ProfessionalTaxFilter'
 import ProfessionalTaxTable from './../Component/ProfessionalTaxTable'
-import {
-  accountInfo,
-  filterOptions,
-  ledgerData,
-  summaryData,
-} from '../data/professionalTaxPayableData'
 
 const ProfessionalTaxPayableLedgerPage = () => {
+  const [allTransactions, setAllTransactions] = useState([])
+  const [ledgerDetails, setLedgerDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+
   const [filters, setFilters] = useState({
     dateFrom: '2024-01-01',
     dateTo: '2024-12-31',
@@ -19,6 +18,29 @@ const ProfessionalTaxPayableLedgerPage = () => {
     status: 'all',
     voucherSearch: '',
   })
+
+  // Load real transactions from localStorage
+  useEffect(() => {
+    try {
+      console.log('🔄 Loading Professional Tax Payable ledger data...')
+      const details = SalaryLedgerService.getLedgerDetails('L2002009')
+      setLedgerDetails(details)
+      const transactions = SalaryLedgerService.getLedgerTransactions('L2002009')
+      setAllTransactions(transactions)
+      console.log('✅ Loaded Professional Tax Payable ledger:', {
+        details,
+        transactionCount: transactions.length,
+      })
+      setLoading(false)
+    } catch (error) {
+      console.error('❌ Error loading Professional Tax Payable ledger:', error)
+      setLoading(false)
+    }
+  }, [])
+
+  const summary = useMemo(() => {
+    return SalaryLedgerService.getLedgerSummary(allTransactions, 'L2002009')
+  }, [allTransactions])
 
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({ ...prev, [filterType]: value }))

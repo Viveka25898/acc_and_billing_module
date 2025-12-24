@@ -12,8 +12,7 @@ const LedgerTable = ({ transactions }) => {
                 'Date',
                 'Voucher Type',
                 'Voucher No',
-                'Employee ID',
-                'Employee Name',
+
                 'Cost Center',
                 'Department',
                 'Counterparty Ledger',
@@ -45,10 +44,10 @@ const LedgerTable = ({ transactions }) => {
                 <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                   {transaction.voucherNo}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.employeeId}</td>
+                {/* <td className="px-4 py-3 text-sm text-gray-900">{transaction.employeeId}</td>
                 <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                   {transaction.employeeName}
-                </td>
+                </td> */}
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.costCenter}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.department}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">

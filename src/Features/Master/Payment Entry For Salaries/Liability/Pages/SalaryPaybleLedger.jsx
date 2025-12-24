@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { SalaryPayableLedgerService } from '../../../utils/SalaryPayableLedgerService'
+import SalaryLedgerService from '../../../utils/SalaryLedgerService'
 import LiabilityLedgerHeader from '../Component/LedgerHeader'
 import LiabilityFilterBar from '../Component/FilterBar'
 import LiabilityLedgerTable from '../Component/LedgerTable'
@@ -9,6 +9,7 @@ const SalaryPayableLedger = () => {
   const [allTransactions, setAllTransactions] = useState([])
   const [ledgerDetails, setLedgerDetails] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [filters, setFilters] = useState({
     department: 'All',
@@ -22,27 +23,37 @@ const SalaryPayableLedger = () => {
 
   // Load real transactions from localStorage on component mount
   useEffect(() => {
-    try {
-      console.log('🔄 Loading salary payable ledger data...')
+    const loadLedgerData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        console.log('🔄 Loading SALARY PAYABLE ledger data...')
 
-      // Get ledger details
-      const details = SalaryPayableLedgerService.getSalaryPayableLedgerDetails('L2002001')
-      setLedgerDetails(details)
+        // Get ledger details
+        const details = SalaryLedgerService.getLedgerDetails('L2002001')
+        if (!details) {
+          throw new Error('Failed to load ledger details')
+        }
+        setLedgerDetails(details)
 
-      // Get transactions
-      const transactions = SalaryPayableLedgerService.getSalaryPayableTransactions('L2002001')
-      setAllTransactions(transactions)
+        // Get transactions
+        const transactions = SalaryLedgerService.getLedgerTransactions('L2002001')
+        setAllTransactions(transactions || [])
 
-      console.log('✅ Loaded salary payable ledger:', {
-        details,
-        transactionCount: transactions.length,
-      })
+        console.log('✅ Loaded SALARY PAYABLE ledger:', {
+          details,
+          transactionCount: transactions.length,
+        })
 
-      setLoading(false)
-    } catch (error) {
-      console.error('❌ Error loading salary payable ledger:', error)
-      setLoading(false)
+        setLoading(false)
+      } catch (error) {
+        console.error('❌ Error loading SALARY PAYABLE ledger:', error)
+        setError(error.message || 'Failed to load ledger data')
+        setLoading(false)
+      }
     }
+
+    loadLedgerData()
   }, [])
 
   const handleFilterChange = (filterType, value) => {
@@ -53,73 +64,92 @@ const SalaryPayableLedger = () => {
   }
 
   const filteredTransactions = useMemo(() => {
-    return allTransactions.filter((transaction) => {
-      // Skip opening balance in filters
-      if (transaction.entryType === 'opening') return true
+    try {
+      return allTransactions.filter((transaction) => {
+        // Skip opening balance in filters
+        if (transaction.entryType === 'opening') return true
 
-      // Department filter
-      if (filters.department !== 'All' && transaction.department !== filters.department)
-        return false
+        // Department filter
+        if (filters.department !== 'All' && transaction.department !== filters.department)
+          return false
 
-      // Cost Center filter
-      if (filters.costCenter !== 'All' && transaction.costCenter !== filters.costCenter)
-        return false
+        // Cost Center filter
+        if (filters.costCenter !== 'All' && transaction.costCenter !== filters.costCenter)
+          return false
 
-      // Status filter
-      if (filters.status !== 'All' && transaction.status !== filters.status) return false
+        // Status filter
+        if (filters.status !== 'All' && transaction.status !== filters.status) return false
 
-      // Payment Method filter
-      if (filters.paymentMethod !== 'All' && transaction.paymentMethod !== filters.paymentMethod)
-        return false
+        // Payment Method filter
+        if (filters.paymentMethod !== 'All' && transaction.paymentMethod !== filters.paymentMethod)
+          return false
 
-      // Batch ID search filter
-      if (filters.batchSearch) {
-        const searchLower = filters.batchSearch.toLowerCase()
-        const matchesBatch = transaction.batchId?.toLowerCase().includes(searchLower)
-        if (!matchesBatch) return false
-      }
-
-      // Date range filter
-      if (filters.startDate) {
-        try {
-          const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
-          const startDate = new Date(filters.startDate)
-          if (transactionDate < startDate) return false
-        } catch {
-          // Skip invalid dates
+        // Batch ID search filter
+        if (filters.batchSearch) {
+          const searchLower = filters.batchSearch.toLowerCase()
+          const matchesBatch = transaction.batchId?.toLowerCase().includes(searchLower)
+          if (!matchesBatch) return false
         }
-      }
 
-      if (filters.endDate) {
-        try {
-          const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
-          const endDate = new Date(filters.endDate)
-          if (transactionDate > endDate) return false
-        } catch {
-          // Skip invalid dates
+        // Date range filter
+        if (filters.startDate) {
+          try {
+            const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
+            const startDate = new Date(filters.startDate)
+            if (transactionDate < startDate) return false
+          } catch {
+            // Skip invalid dates
+          }
         }
-      }
 
-      return true
-    })
+        if (filters.endDate) {
+          try {
+            const transactionDate = new Date(transaction.date.split('-').reverse().join('-'))
+            const endDate = new Date(filters.endDate)
+            if (transactionDate > endDate) return false
+          } catch {
+            // Skip invalid dates
+          }
+        }
+
+        return true
+      })
+    } catch (error) {
+      console.error('❌ Error filtering transactions:', error)
+      return allTransactions
+    }
   }, [allTransactions, filters])
 
   // Calculate summary statistics using real data
   const calculateSummary = useMemo(() => {
-    const summary = SalaryPayableLedgerService.getSalaryPayableSummary(filteredTransactions)
+    try {
+      const summary = SalaryLedgerService.getLedgerSummary(filteredTransactions, 'L2002001')
 
-    return {
-      totalPayable: summary.totalProvision,
-      totalPending: summary.closingBalance, // Closing balance represents pending liability
-      totalPaid: summary.totalPayment,
+      return {
+        totalPayable: summary.totalCredit,
+        totalPending: summary.closingBalance,
+        totalPaid: summary.totalDebit,
+      }
+    } catch (error) {
+      console.error('❌ Error calculating summary:', error)
+      return {
+        totalPayable: '0.00',
+        totalPending: '0.00 CR',
+        totalPaid: '0.00',
+      }
     }
   }, [filteredTransactions])
 
   // Get closing balance
-  const closingBalance =
-    filteredTransactions.length > 0
-      ? filteredTransactions[filteredTransactions.length - 1].runningBalance
-      : '0.00 CR'
+  const closingBalance = useMemo(() => {
+    try {
+      return filteredTransactions.length > 0
+        ? filteredTransactions[filteredTransactions.length - 1].runningBalance
+        : '0.00 CR'
+    } catch {
+      return '0.00 CR'
+    }
+  }, [filteredTransactions])
 
   // Extract unique values for filter dropdowns
   const departments = useMemo(() => {
@@ -153,18 +183,48 @@ const SalaryPayableLedger = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 p-4 md:p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading salary payable ledger...</p>
         </div>
       </div>
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white p-4 md:p-8 flex items-center justify-center">
+        <div className="text-center bg-red-50 border border-red-200 rounded-xl p-8 max-w-md">
+          <svg
+            className="w-16 h-16 mx-auto mb-4 text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <h3 className="text-xl font-semibold text-red-800 mb-2">Error Loading Ledger</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
         <LiabilityLedgerHeader accountInfo={accountInfo} />
 
         <LiabilityFilterBar
@@ -198,12 +258,17 @@ const SalaryPayableLedger = () => {
                   endDate: '',
                 })
               }
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-md"
             >
               Clear All Filters
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-              Add New Transaction
+            <button
+              onClick={() =>
+                SalaryLedgerService.exportLedgerToExcel('L2002001', filteredTransactions)
+              }
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+            >
+              Export to Excel
             </button>
           </div>
         </div>

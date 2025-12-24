@@ -1,17 +1,30 @@
 import React from 'react'
 
-const Footer = ({ closingBalance, totalTransactions, transactions }) => {
+const Footer = ({ closingBalance, totalTransactions, transactions, summary }) => {
   // Calculate total debit
   const calculateTotalDebit = () => {
-    if (!transactions || transactions.length === 0) return '0'
+    try {
+      if (!transactions || transactions.length === 0) return '0'
 
-    const total = transactions.reduce((sum, transaction) => {
-      // Extract numeric value from debit string (e.g., "₹ 35,000" → 35000)
-      const debitValue = parseInt(transaction.debit.replace(/[^0-9]/g, '') || '0')
-      return sum + debitValue
-    }, 0)
+      const total = transactions.reduce((sum, transaction) => {
+        // Handle both numeric and string debit values
+        let debitValue = 0
 
-    return total.toLocaleString('en-IN')
+        if (typeof transaction.debit === 'number') {
+          debitValue = transaction.debit
+        } else if (typeof transaction.debit === 'string') {
+          // Extract numeric value from string (e.g., "₹ 35,000" → 35000)
+          debitValue = parseInt(transaction.debit.replace(/[^0-9]/g, '') || '0')
+        }
+
+        return sum + debitValue
+      }, 0)
+
+      return total.toLocaleString('en-IN')
+    } catch (error) {
+      console.error('❌ Error calculating total debit:', error)
+      return '0'
+    }
   }
 
   return (
