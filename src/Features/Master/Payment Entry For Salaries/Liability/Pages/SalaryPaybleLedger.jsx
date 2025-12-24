@@ -224,7 +224,7 @@ const SalaryPayableLedger = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <LiabilityLedgerHeader accountInfo={accountInfo} />
 
         <LiabilityFilterBar

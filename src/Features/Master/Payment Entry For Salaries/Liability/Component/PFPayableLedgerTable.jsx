@@ -30,10 +30,10 @@ const PFPayableLedgerTable = ({ transactions }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="bg-white rounded-lg shadow-lg border-t-4 border-green-600 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-blue-900">
+          <thead className="bg-gradient-to-r from-green-700 to-green-600">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                 Sr No
@@ -63,7 +63,7 @@ const PFPayableLedgerTable = ({ transactions }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {transactions.map((transaction) => (
-              <tr key={transaction.id} className="hover:bg-blue-50">
+              <tr key={transaction.id} className="hover:bg-green-50">
                 {/* Column 1: Sr No */}
                 <td className="px-4 py-3 text-sm text-center text-gray-900">{transaction.id}</td>
 

@@ -1,192 +1,194 @@
-import React, { useState, useMemo } from 'react'
-import { esicPayableData } from '../data/esicPayableData'
-import ESICPayableHeader from '../Component/ESICPayableHeader'
-import ESICPayableFilterBar from '../Component/ESICPayableFilterBar'
-import ESICPayableLedgerTable from '../Component/ESICPayableLedgerTable'
-import ESICPayableFooter from '../Component/ESICPayableFooter'
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect, useMemo } from 'react'
+import SalaryLedgerService from '../../../utils/SalaryLedgerService'
+import LiabilityLedgerHeader from '../Component/LedgerHeader'
+import LiabilityFilterBar from '../Component/FilterBar'
+import LiabilityLedgerTable from '../Component/LedgerTable'
+import LiabilityFooter from '../Component/Footer'
 
 const ESICPayableLedgerPage = () => {
+  const [allTransactions, setAllTransactions] = useState([])
+  const [ledgerDetails, setLedgerDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   const [filters, setFilters] = useState({
-    month: 'All',
-    paymentStatus: 'All',
-    voucherType: 'All',
-    showOnly: 'all',
-    minWages: '',
-    maxWages: '',
-    challanSearch: '',
+    department: 'All',
+    costCenter: 'All',
+    status: 'All',
+    paymentMethod: 'All',
+    batchSearch: '',
+    startDate: '',
+    endDate: '',
   })
 
-  const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }))
-  }
+  // Load real transactions from localStorage
+  useEffect(() => {
+    const loadLedgerData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        console.log('🔄 Loading Employer ESIC Payable ledger data...')
+        const details = SalaryLedgerService.getLedgerDetails('L2002003')
+        setLedgerDetails(details)
+        const transactions = SalaryLedgerService.getLedgerTransactions('L2002003')
+        setAllTransactions(transactions)
+        console.log('✅ Loaded Employer ESIC Payable ledger:', {
+          details,
+          transactionCount: transactions.length,
+        })
+        setLoading(false)
+      } catch (error) {
+        console.error('❌ Error loading Employer ESIC Payable ledger:', error)
+        setError('Failed to load ledger data. Please try again.')
+        setLoading(false)
+      }
+    }
+    loadLedgerData()
+  }, [])
 
-  // Filter transactions
+  // Apply filters to transactions
   const filteredTransactions = useMemo(() => {
-    return esicPayableData.transactions.filter((transaction) => {
-      // Month filter
-      if (filters.month !== 'All' && transaction.esicMonth !== filters.month) return false
-
-      // Payment Status filter
-      if (filters.paymentStatus !== 'All' && transaction.paymentStatus !== filters.paymentStatus)
+    return allTransactions.filter((transaction) => {
+      if (filters.department !== 'All' && transaction.department !== filters.department)
         return false
-
-      // Voucher Type filter
-      if (filters.voucherType !== 'All' && transaction.voucherType !== filters.voucherType)
+      if (filters.costCenter !== 'All' && transaction.costCenter !== filters.costCenter)
         return false
-
-      // Show Only filter
-      if (filters.showOnly === 'credit' && transaction.credit === '-') return false
-      if (filters.showOnly === 'debit' && transaction.debit === '-') return false
-
-      // ESI Wages range filter
-      if (filters.minWages && transaction.esiWages !== '-') {
-        const esiWages = parseInt(transaction.esiWages.replace(/[^0-9]/g, '') || '0')
-        if (esiWages < parseInt(filters.minWages)) return false
-      }
-
-      if (filters.maxWages && transaction.esiWages !== '-') {
-        const esiWages = parseInt(transaction.esiWages.replace(/[^0-9]/g, '') || '0')
-        if (esiWages > parseInt(filters.maxWages)) return false
-      }
-
-      // Challan/TRRN search filter
+      if (filters.status !== 'All' && transaction.status !== filters.status) return false
+      if (filters.paymentMethod !== 'All' && transaction.paymentMethod !== filters.paymentMethod)
+        return false
       if (
-        filters.challanSearch &&
-        !transaction.trrnNo.toLowerCase().includes(filters.challanSearch.toLowerCase()) &&
-        !transaction.esicChallanNo.toLowerCase().includes(filters.challanSearch.toLowerCase())
+        filters.batchSearch &&
+        !transaction.batchId?.toLowerCase().includes(filters.batchSearch.toLowerCase())
       )
         return false
-
+      if (filters.startDate && new Date(transaction.date) < new Date(filters.startDate))
+        return false
+      if (filters.endDate && new Date(transaction.date) > new Date(filters.endDate)) return false
       return true
     })
-  }, [filters])
+  }, [allTransactions, filters])
 
-  // Calculate summary statistics
+  // Calculate summary
   const calculateSummary = useMemo(() => {
-    const totalDebit = filteredTransactions.reduce(
-      (sum, t) => sum + parseInt(t.debit.replace(/[^0-9]/g, '') || 0),
-      0
-    )
-
-    const totalCredit = filteredTransactions.reduce(
-      (sum, t) => sum + parseInt(t.credit.replace(/[^0-9]/g, '') || 0),
-      0
-    )
-
-    // Calculate pending liabilities (credit entries that haven't been paid)
-    const pendingTransactions = filteredTransactions.filter(
-      (t) => t.paymentStatus === 'Accrued' || t.paymentStatus === 'Overdue'
-    )
-    const pendingLiabilities = pendingTransactions.reduce(
-      (sum, t) => sum + parseInt(t.credit.replace(/[^0-9]/g, '') || 0),
-      0
-    )
-
-    // Calculate penalties
-    const penaltyTransactions = filteredTransactions.filter(
-      (t) =>
-        t.paymentStatus === 'Late Paid' ||
-        (t.penaltyAmount && t.penaltyAmount !== '-' && t.penaltyAmount !== '₹ 0')
-    )
-    const penaltiesIncurred = penaltyTransactions.reduce(
-      (sum, t) => sum + parseInt(t.penaltyAmount?.replace(/[^0-9]/g, '') || 0),
-      0
-    )
-
-    return {
-      totalDebit,
-      totalCredit,
-      pendingLiabilities,
-      penaltiesIncurred,
-    }
+    return SalaryLedgerService.getLedgerSummary(filteredTransactions, 'L2002003')
   }, [filteredTransactions])
 
-  // Get closing balance from the last transaction
-  const closingBalance =
-    filteredTransactions.length > 0
-      ? filteredTransactions[filteredTransactions.length - 1].balance
-      : '₹ 0.00'
+  const closingBalance = useMemo(() => {
+    if (filteredTransactions.length === 0) return calculateSummary.openingBalance
+    return filteredTransactions[filteredTransactions.length - 1].runningBalance
+  }, [filteredTransactions, calculateSummary])
+
+  const departments = useMemo(() => {
+    const depts = [...new Set(allTransactions.map((t) => t.department).filter(Boolean))]
+    return ['All', ...depts]
+  }, [allTransactions])
+
+  const costCenters = useMemo(() => {
+    const centers = [...new Set(allTransactions.map((t) => t.costCenter).filter(Boolean))]
+    return ['All', ...centers]
+  }, [allTransactions])
+
+  const statusOptions = useMemo(() => {
+    const statuses = [...new Set(allTransactions.map((t) => t.status).filter(Boolean))]
+    return ['All', ...statuses]
+  }, [allTransactions])
+
+  const paymentMethods = useMemo(() => {
+    const methods = [...new Set(allTransactions.map((t) => t.paymentMethod).filter(Boolean))]
+    return ['All', ...methods]
+  }, [allTransactions])
+
+  const handleFilterChange = (filterType, value) => {
+    setFilters((prev) => ({ ...prev, [filterType]: value }))
+  }
+
+  const handleExportToExcel = () => {
+    SalaryLedgerService.exportLedgerToExcel('L2002003', filteredTransactions)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading Employer ESIC Payable ledger...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-xl mb-4">⚠️ Error</div>
+          <p className="text-gray-600">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <ESICPayableHeader
-          accountInfo={esicPayableData.accountInfo}
-          complianceInfo={esicPayableData.complianceInfo}
-          journalEntries={esicPayableData.journalEntries}
-        />
-
-        <ESICPayableFilterBar
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
+      <LiabilityLedgerHeader
+        accountInfo={ledgerDetails}
+        openingBalance={calculateSummary.openingBalance}
+        closingBalance={closingBalance}
+        totalDebit={calculateSummary.totalDebit}
+        totalCredit={calculateSummary.totalCredit}
+      />
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <LiabilityFilterBar
           filters={filters}
           onFilterChange={handleFilterChange}
-          months={esicPayableData.months}
-          paymentStatuses={esicPayableData.paymentStatuses}
-          voucherTypes={esicPayableData.voucherTypes}
+          departments={departments}
+          costCenters={costCenters}
+          statusOptions={statusOptions}
+          paymentMethods={paymentMethods}
         />
-
-        <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-800">
-              ESIC Payable Transactions ({filteredTransactions.length} records)
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Liability account showing amounts payable to ESIC @ 3.25% of ESI wages
+        {filteredTransactions.length > 0 ? (
+          <LiabilityLedgerTable
+            transactions={filteredTransactions}
+            onExportToExcel={handleExportToExcel}
+          />
+        ) : (
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center border-t-4 border-green-600">
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">No Transactions Found</h3>
+            <p className="text-gray-500 mb-4">
+              No employer ESIC payable transactions match your current filters.
             </p>
-          </div>
-          <div className="flex gap-2">
             <button
               onClick={() =>
                 setFilters({
-                  month: 'All',
-                  paymentStatus: 'All',
-                  voucherType: 'All',
-                  showOnly: 'all',
-                  minWages: '',
-                  maxWages: '',
-                  challanSearch: '',
+                  department: 'All',
+                  costCenter: 'All',
+                  status: 'All',
+                  paymentMethod: 'All',
+                  batchSearch: '',
+                  startDate: '',
+                  endDate: '',
                 })
               }
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              Clear All Filters
+              Clear Filters
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-              Add ESIC Liability Entry
-            </button>
-          </div>
-        </div>
-
-        {filteredTransactions.length > 0 ? (
-          <ESICPayableLedgerTable transactions={filteredTransactions} />
-        ) : (
-          <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-            <div className="w-16 h-16 mx-auto mb-4 text-gray-400">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            </div>
-            <p className="text-gray-500 text-lg">No ESIC payable transactions found.</p>
-            <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
           </div>
         )}
 
-        <ESICPayableFooter
+        <LiabilityFooter
           closingBalance={closingBalance}
           totalTransactions={filteredTransactions.length}
-          totalDebit={calculateSummary.totalDebit}
-          totalCredit={calculateSummary.totalCredit}
-          pendingLiabilities={calculateSummary.pendingLiabilities}
-          penaltiesIncurred={calculateSummary.penaltiesIncurred}
-          complianceInfo={esicPayableData.complianceInfo}
-          journalEntries={esicPayableData.journalEntries}
+          totalPayable={calculateSummary.totalCredit}
+          totalPending={closingBalance}
+          totalPaid={calculateSummary.totalDebit}
         />
       </div>
     </div>

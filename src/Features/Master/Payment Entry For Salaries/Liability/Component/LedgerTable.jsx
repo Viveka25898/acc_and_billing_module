@@ -122,9 +122,11 @@ const LiabilityLedgerTable = ({ transactions }) => {
                   </td>
                   <td
                     className={`px-4 py-3 text-sm font-bold whitespace-nowrap ${
-                      transaction.runningBalance?.includes('CR')
+                      String(transaction.runningBalance || transaction.balance || '').includes('CR')
                         ? 'text-green-600'
-                        : transaction.runningBalance?.includes('DR')
+                        : String(transaction.runningBalance || transaction.balance || '').includes(
+                              'DR'
+                            )
                           ? 'text-red-600'
                           : 'text-gray-600'
                     }`}

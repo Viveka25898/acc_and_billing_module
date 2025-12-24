@@ -1,202 +1,194 @@
-import React, { useState, useMemo } from 'react'
-import { pfPayableData } from './../data/PFPayableLedgerData'
-import PFPayableHeader from '../Component/PFPayableHeader'
-import PFPayableFilterBar from '../Component/PFPayableFilterBar'
-import PFPayableLedgerTable from '../Component/PFPayableLedgerTable'
-import PFPayableFooter from '../Component/PFPayableFooter'
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect, useMemo } from 'react'
+import SalaryLedgerService from '../../../utils/SalaryLedgerService'
+import LiabilityLedgerHeader from '../Component/LedgerHeader'
+import LiabilityFilterBar from '../Component/FilterBar'
+import LiabilityLedgerTable from '../Component/LedgerTable'
+import LiabilityFooter from '../Component/Footer'
+
 const PFPayableLedgerPage = () => {
+  const [allTransactions, setAllTransactions] = useState([])
+  const [ledgerDetails, setLedgerDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   const [filters, setFilters] = useState({
-    month: 'All',
+    department: 'All',
     costCenter: 'All',
-    paymentStatus: 'All',
-    showOnly: 'all',
-    challanSearch: '',
-    dueDateStart: '',
-    dueDateEnd: '',
+    status: 'All',
+    paymentMethod: 'All',
+    batchSearch: '',
+    startDate: '',
+    endDate: '',
   })
 
-  const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }))
-  }
+  // Load real transactions from localStorage
+  useEffect(() => {
+    const loadLedgerData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        console.log('🔄 Loading Employer PF Payable ledger data...')
+        const details = SalaryLedgerService.getLedgerDetails('L2002002')
+        setLedgerDetails(details)
+        const transactions = SalaryLedgerService.getLedgerTransactions('L2002002')
+        setAllTransactions(transactions)
+        console.log('✅ Loaded Employer PF Payable ledger:', {
+          details,
+          transactionCount: transactions.length,
+        })
+        setLoading(false)
+      } catch (error) {
+        console.error('❌ Error loading Employer PF Payable ledger:', error)
+        setError('Failed to load ledger data. Please try again.')
+        setLoading(false)
+      }
+    }
+    loadLedgerData()
+  }, [])
 
-  // Filter transactions
+  // Apply filters to transactions
   const filteredTransactions = useMemo(() => {
-    return pfPayableData.transactions.filter((transaction) => {
-      // Month filter
-      if (filters.month !== 'All' && transaction.pfMonth !== filters.month) return false
-
-      // Cost Center filter
+    return allTransactions.filter((transaction) => {
+      if (filters.department !== 'All' && transaction.department !== filters.department)
+        return false
       if (filters.costCenter !== 'All' && transaction.costCenter !== filters.costCenter)
         return false
-
-      // Payment Status filter
-      if (filters.paymentStatus !== 'All' && transaction.paymentStatus !== filters.paymentStatus)
+      if (filters.status !== 'All' && transaction.status !== filters.status) return false
+      if (filters.paymentMethod !== 'All' && transaction.paymentMethod !== filters.paymentMethod)
         return false
-
-      // Show Only filter
-      if (filters.showOnly === 'liability' && !transaction.credit.includes('₹')) return false
-      if (filters.showOnly === 'payment' && !transaction.debit.includes('₹')) return false
-
-      // Challan/ECR search filter
       if (
-        filters.challanSearch &&
-        !transaction.ecrNo.toLowerCase().includes(filters.challanSearch.toLowerCase()) &&
-        !transaction.challanNo.toLowerCase().includes(filters.challanSearch.toLowerCase())
+        filters.batchSearch &&
+        !transaction.batchId?.toLowerCase().includes(filters.batchSearch.toLowerCase())
       )
         return false
-
-      // Due Date range filter
-      if (filters.dueDateStart) {
-        const dueDate = new Date(transaction.dueDate.split('-').reverse().join('-'))
-        const startDate = new Date(filters.dueDateStart)
-        if (dueDate < startDate) return false
-      }
-
-      if (filters.dueDateEnd) {
-        const dueDate = new Date(transaction.dueDate.split('-').reverse().join('-'))
-        const endDate = new Date(filters.dueDateEnd)
-        if (dueDate > endDate) return false
-      }
-
+      if (filters.startDate && new Date(transaction.date) < new Date(filters.startDate))
+        return false
+      if (filters.endDate && new Date(transaction.date) > new Date(filters.endDate)) return false
       return true
     })
-  }, [filters])
+  }, [allTransactions, filters])
 
-  // Calculate summary statistics
+  // Calculate summary
   const calculateSummary = useMemo(() => {
-    const totalLiability = filteredTransactions.reduce((sum, t) => {
-      if (t.credit !== '-') {
-        const creditValue = parseInt(t.credit.replace(/[^0-9]/g, '') || '0')
-        return sum + creditValue
-      }
-      return sum
-    }, 0)
-
-    const unpaidTransactions = filteredTransactions.filter(
-      (t) => t.paymentStatus === 'Unpaid' || t.paymentStatus === 'Overdue'
-    )
-    const totalUnpaidAmount = unpaidTransactions.reduce((sum, t) => {
-      if (t.credit !== '-') {
-        const creditValue = parseInt(t.credit.replace(/[^0-9]/g, '') || '0')
-        return sum + creditValue
-      }
-      return sum
-    }, 0)
-
-    // Calculate overdue (past due date)
-    const today = new Date()
-    const overdueTransactions = filteredTransactions.filter((t) => {
-      if (t.paymentStatus === 'Unpaid' || t.paymentStatus === 'Overdue') {
-        const dueDate = new Date(t.dueDate.split('-').reverse().join('-'))
-        return dueDate < today
-      }
-      return false
-    })
-    const overdueAmount = overdueTransactions.reduce((sum, t) => {
-      if (t.credit !== '-') {
-        const creditValue = parseInt(t.credit.replace(/[^0-9]/g, '') || '0')
-        return sum + creditValue
-      }
-      return sum
-    }, 0)
-
-    // Calculate penalties
-    const penaltyTransactions = filteredTransactions.filter(
-      (t) => t.paymentStatus === 'Late Paid' || (t.amounts && t.amounts.penalty)
-    )
-    const penaltyAmount = penaltyTransactions.reduce((sum, t) => sum + (t.amounts?.penalty || 0), 0)
-
-    return {
-      totalLiability,
-      totalUnpaidAmount,
-      overdueAmount,
-      penaltyAmount,
-    }
+    return SalaryLedgerService.getLedgerSummary(filteredTransactions, 'L2002002')
   }, [filteredTransactions])
 
-  // Get closing balance
-  const closingBalance =
-    filteredTransactions.length > 0
-      ? filteredTransactions[filteredTransactions.length - 1].balance
-      : '₹ 0.00'
+  const closingBalance = useMemo(() => {
+    if (filteredTransactions.length === 0) return calculateSummary.openingBalance
+    return filteredTransactions[filteredTransactions.length - 1].runningBalance
+  }, [filteredTransactions, calculateSummary])
+
+  const departments = useMemo(() => {
+    const depts = [...new Set(allTransactions.map((t) => t.department).filter(Boolean))]
+    return ['All', ...depts]
+  }, [allTransactions])
+
+  const costCenters = useMemo(() => {
+    const centers = [...new Set(allTransactions.map((t) => t.costCenter).filter(Boolean))]
+    return ['All', ...centers]
+  }, [allTransactions])
+
+  const statusOptions = useMemo(() => {
+    const statuses = [...new Set(allTransactions.map((t) => t.status).filter(Boolean))]
+    return ['All', ...statuses]
+  }, [allTransactions])
+
+  const paymentMethods = useMemo(() => {
+    const methods = [...new Set(allTransactions.map((t) => t.paymentMethod).filter(Boolean))]
+    return ['All', ...methods]
+  }, [allTransactions])
+
+  const handleFilterChange = (filterType, value) => {
+    setFilters((prev) => ({ ...prev, [filterType]: value }))
+  }
+
+  const handleExportToExcel = () => {
+    SalaryLedgerService.exportLedgerToExcel('L2002002', filteredTransactions)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading Employer PF Payable ledger...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-xl mb-4">⚠️ Error</div>
+          <p className="text-gray-600">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <PFPayableHeader
-          accountInfo={pfPayableData.accountInfo}
-          complianceInfo={pfPayableData.complianceInfo}
-        />
-
-        <PFPayableFilterBar
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
+      <LiabilityLedgerHeader
+        accountInfo={ledgerDetails}
+        openingBalance={calculateSummary.openingBalance}
+        closingBalance={closingBalance}
+        totalDebit={calculateSummary.totalDebit}
+        totalCredit={calculateSummary.totalCredit}
+      />
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <LiabilityFilterBar
           filters={filters}
           onFilterChange={handleFilterChange}
-          months={pfPayableData.months}
-          costCenters={pfPayableData.costCenters}
-          paymentStatuses={pfPayableData.paymentStatuses}
+          departments={departments}
+          costCenters={costCenters}
+          statusOptions={statusOptions}
+          paymentMethods={paymentMethods}
         />
-
-        <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-800">
-              PF Payable Transactions ({filteredTransactions.length} records)
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Liability account showing amounts payable to EPFO
+        {filteredTransactions.length > 0 ? (
+          <LiabilityLedgerTable
+            transactions={filteredTransactions}
+            onExportToExcel={handleExportToExcel}
+          />
+        ) : (
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center border-t-4 border-green-600">
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">No Transactions Found</h3>
+            <p className="text-gray-500 mb-4">
+              No employer PF payable transactions match your current filters.
             </p>
-          </div>
-          <div className="flex gap-2">
             <button
               onClick={() =>
                 setFilters({
-                  month: 'All',
+                  department: 'All',
                   costCenter: 'All',
-                  paymentStatus: 'All',
-                  showOnly: 'all',
-                  challanSearch: '',
-                  dueDateStart: '',
-                  dueDateEnd: '',
+                  status: 'All',
+                  paymentMethod: 'All',
+                  batchSearch: '',
+                  startDate: '',
+                  endDate: '',
                 })
               }
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              Clear All Filters
+              Clear Filters
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-              Add PF Liability Entry
-            </button>
-          </div>
-        </div>
-
-        {filteredTransactions.length > 0 ? (
-          <PFPayableLedgerTable transactions={filteredTransactions} />
-        ) : (
-          <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-            <div className="w-16 h-16 mx-auto mb-4 text-gray-400">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <p className="text-gray-500 text-lg">No PF payable transactions found.</p>
-            <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
           </div>
         )}
 
-        <PFPayableFooter
+        <LiabilityFooter
           closingBalance={closingBalance}
           totalTransactions={filteredTransactions.length}
-          totalLiability={calculateSummary.totalLiability}
-          totalUnpaidAmount={calculateSummary.totalUnpaidAmount}
-          overdueAmount={calculateSummary.overdueAmount}
-          penaltyAmount={calculateSummary.penaltyAmount}
+          totalPayable={calculateSummary.totalCredit}
+          totalPending={closingBalance}
+          totalPaid={calculateSummary.totalDebit}
         />
       </div>
     </div>

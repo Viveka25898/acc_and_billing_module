@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
+  const [showFilters, setShowFilters] = useState(true)
+
   const handleApplyFilter = () => {
     console.log('Applying filters:', filters)
   }
@@ -15,12 +17,31 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-      <div className="p-5 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-teal-700">Filter & Search</h2>
+    <div className="bg-white rounded-lg shadow-lg border-l-4 border-green-600 mb-6">
+      <div className="p-5 border-b border-green-200 flex justify-between items-center">
+        <div>
+          <h2 className="text-lg font-semibold text-green-800 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+            Filter & Search
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">Filter ESIC payable transactions</p>
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+        >
+          {showFilters ? 'Hide' : 'Show'} Filters
+        </button>
       </div>
 
-      <div className="p-5">
+      <div className={`p-5 transition-all duration-300 ${showFilters ? 'block' : 'hidden'}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
@@ -28,7 +49,7 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
               type="date"
               value={filters.dateFrom}
               onChange={(e) => onFilterChange('dateFrom', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
             />
           </div>
 
@@ -38,7 +59,7 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
               type="date"
               value={filters.dateTo}
               onChange={(e) => onFilterChange('dateTo', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
             />
           </div>
 
@@ -49,7 +70,7 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
             <select
               value={filters.period}
               onChange={(e) => onFilterChange('period', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
             >
               {filterOptions.periods.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -64,7 +85,7 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
             <select
               value={filters.voucherType}
               onChange={(e) => onFilterChange('voucherType', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
             >
               {filterOptions.voucherTypes.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -79,7 +100,7 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
             <select
               value={filters.status}
               onChange={(e) => onFilterChange('status', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
             >
               {filterOptions.statuses.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -98,7 +119,7 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
               value={filters.voucherSearch}
               onChange={(e) => onFilterChange('voucherSearch', e.target.value)}
               placeholder="Search..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
             />
           </div>
         </div>
@@ -106,7 +127,7 @@ const EmployeeESICFilter = ({ filters, filterOptions, onFilterChange }) => {
         <div className="flex gap-3 mt-6">
           <button
             onClick={handleApplyFilter}
-            className="px-4 py-2 bg-teal-700 text-white rounded-md hover:bg-teal-600"
+            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-600 shadow-md"
           >
             Apply Filter
           </button>
