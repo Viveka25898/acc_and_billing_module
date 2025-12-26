@@ -1,76 +1,137 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import SalaryLedgerService from '../../../utils/SalaryLedgerService'
 import LeaveProvisionHeader from '../Components/LeaveProvisionHeader'
-import AccountInfoLeaveProvision from '../Components/AccountInfoLeaveProvision'
-import ControlsPanelLeaveProvision from '../Components/ControlsPannelLeaveProvision'
-import SummaryCardsLeaveProvision from '../Components/SummeryCardsLeaveProvision'
-import LedgerTableLeaveProvision from '../Components/LedgerTableLeaveProvision'
+import LeaveProvisionFilter from '../Components/LeaveProvisionFilter'
+import LeaveProvisionTable from '../Components/LeaveProvisionTable'
 import LeaveProvisionFooter from '../Components/LeaveProisionFooter'
 
 const LeaveProvisionExpenseLedgerPage = () => {
   const [allTransactions, setAllTransactions] = useState([])
-  const [ledgerDetails, setLedgerDetails] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const [filters, setFilters] = useState({
-    period: 'fy-2024-25',
-    department: 'all',
-    fromDate: '2024-04-01',
-    toDate: '2024-09-30',
-    ledgerView: 'monthly',
-    showActuarialDetails: false,
+    fromDate: '',
+    toDate: '',
+    voucherType: 'All',
+    costCenter: 'All',
   })
 
   // Load real transactions from localStorage
   useEffect(() => {
     try {
-      console.log('🔄 Loading Leave Wages ledger data...')
+      console.log('🔄 Loading Leave Provision Expense ledger data...')
       const details = SalaryLedgerService.getLedgerDetails('X2001001005')
-      setLedgerDetails(details)
       const transactions = SalaryLedgerService.getLedgerTransactions('X2001001005')
       setAllTransactions(transactions)
-      console.log('✅ Loaded Leave Wages ledger:', {
+      console.log('✅ Loaded Leave Provision Expense ledger:', {
         details,
         transactionCount: transactions.length,
       })
       setLoading(false)
     } catch (error) {
-      console.error('❌ Error loading Leave Wages ledger:', error)
+      console.error('❌ Error loading Leave Provision Expense ledger:', error)
       setLoading(false)
     }
   }, [])
+
+  // Filter transactions based on filter criteria
+  const filteredTransactions = useMemo(() => {
+    let filtered = [...allTransactions]
+
+    // Filter by date range
+    if (filters.fromDate) {
+      filtered = filtered.filter((txn) => {
+        const txnDate = new Date(txn.date)
+        const fromDate = new Date(filters.fromDate)
+        return txnDate >= fromDate
+      })
+    }
+    if (filters.toDate) {
+      filtered = filtered.filter((txn) => {
+        const txnDate = new Date(txn.date)
+        const toDate = new Date(filters.toDate)
+        return txnDate <= toDate
+      })
+    }
+
+    // Filter by voucher type
+    if (filters.voucherType && filters.voucherType !== 'All') {
+      filtered = filtered.filter((txn) => txn.voucherType === filters.voucherType)
+    }
+
+    // Filter by cost center
+    if (filters.costCenter && filters.costCenter !== 'All') {
+      filtered = filtered.filter((txn) => txn.costCenter === filters.costCenter)
+    }
+
+    return filtered
+  }, [allTransactions, filters])
+
+  // Calculate summary data
+  const summaryData = useMemo(() => {
+    if (!filteredTransactions.length) {
+      return {
+        closingBalance: 0,
+        totalDebit: 0,
+        totalCredit: 0,
+        transactions: 0,
+      }
+    }
+
+    const totalDebit = filteredTransactions.reduce(
+      (sum, entry) => sum + (parseFloat(entry.debit) || 0),
+      0
+    )
+    const totalCredit = filteredTransactions.reduce(
+      (sum, entry) => sum + (parseFloat(entry.credit) || 0),
+      0
+    )
+    const lastEntry = filteredTransactions[filteredTransactions.length - 1]
+    const closingBalance = parseFloat(lastEntry?.balance) || 0
+
+    return {
+      closingBalance,
+      totalDebit,
+      totalCredit,
+      transactions: filteredTransactions.length,
+    }
+  }, [filteredTransactions])
 
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({ ...prev, [filterType]: value }))
   }
 
-  const handleExport = (format) => {
-    console.log(`Exporting data in ${format} format with filters:`, filters)
-    // Implement actual export logic
+  const handleResetFilters = () => {
+    setFilters({
+      fromDate: '',
+      toDate: '',
+      voucherType: 'All',
+      costCenter: 'All',
+    })
   }
 
-  const handlePrint = () => {
-    window.print()
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading Leave Provision Expense Ledger...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
-      <div className="max-w-screen-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-        <LeaveProvisionHeader />
-        <AccountInfoLeaveProvision accountInfo={accountInfo} />
-        <ControlsPanelLeaveProvision
+    <div className="min-h-screen bg-gray-50">
+      <LeaveProvisionHeader />
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <LeaveProvisionFilter
           filters={filters}
           onFilterChange={handleFilterChange}
-          onExport={handleExport}
-          onPrint={handlePrint}
+          onReset={handleResetFilters}
         />
-        {/* <SummaryCardsLeaveProvision summaryData={summaryData} filters={filters} /> */}
-        <LedgerTableLeaveProvision
-          ledgerData={ledgerData}
-          filters={filters}
-          actuarialAssumptions={actuarialAssumptions}
-        />
+        <LeaveProvisionTable ledgerData={filteredTransactions} />
+        <LeaveProvisionFooter summaryData={summaryData} />
       </div>
     </div>
   )

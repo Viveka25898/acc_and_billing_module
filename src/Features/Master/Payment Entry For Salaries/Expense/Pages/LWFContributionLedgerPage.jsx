@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import SalaryLedgerService from '../../../utils/SalaryLedgerService'
-import ESICLedgerHeader from '../Components/ESICLedgerHeader'
-import ESICFilterBar from '../Components/ESICFilterBar'
-import ESICLedgerTable from '../Components/ESICLedgerTable'
-import ESICFooter from '../Components/ESICFooter'
+import LWFLedgerHeader from '../Components/LWFHeaderLedger'
+import LWFFilterBar from '../Components/LWFFilterBar'
+import LWFLedgerTable from '../Components/LWFLedgerTable'
+import LWFFooter from '../Components/LWFFooter'
 
-const ESICContributionLedgerPage = () => {
+const LWFContributionLedgerPage = () => {
   const [allTransactions, setAllTransactions] = useState([])
   const [ledgerDetails, setLedgerDetails] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -16,22 +16,23 @@ const ESICContributionLedgerPage = () => {
     voucherType: 'All',
     costCenter: 'All',
   })
+  console.log('Correct Page is Loading')
 
   // Load real transactions from localStorage
   useEffect(() => {
     try {
-      console.log('🔄 Loading Employer ESIC Contribution ledger data...')
-      const details = SalaryLedgerService.getLedgerDetails('X2001001003')
+      console.log('🔄 Loading Employer LWF Contribution ledger data...')
+      const details = SalaryLedgerService.getLedgerDetails('X2001001004')
       setLedgerDetails(details)
-      const transactions = SalaryLedgerService.getLedgerTransactions('X2001001003')
+      const transactions = SalaryLedgerService.getLedgerTransactions('X2001001004')
       setAllTransactions(transactions)
-      console.log('✅ Loaded Employer ESIC Contribution ledger:', {
+      console.log('✅ Loaded Employer LWF Contribution ledger:', {
         details,
         transactionCount: transactions.length,
       })
       setLoading(false)
     } catch (error) {
-      console.error('❌ Error loading ESIC Contribution ledger:', error)
+      console.error('❌ Error loading LWF Contribution ledger:', error)
       setLoading(false)
     }
   }, [])
@@ -83,14 +84,15 @@ const ESICContributionLedgerPage = () => {
       transactionCount: filteredTransactions.length,
     }
   }, [filteredTransactions, ledgerDetails])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600 mb-4"></div>
-              <p className="text-gray-600 font-medium">Loading ESIC Contribution data...</p>
+              <p className="text-gray-600 font-medium">Loading LWF Contribution data...</p>
             </div>
           </div>
         </div>
@@ -100,20 +102,20 @@ const ESICContributionLedgerPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <ESICLedgerHeader accountInfo={ledgerDetails} />
+      <div className="max-w-7xl mx-auto space-y-6">
+        <LWFLedgerHeader accountInfo={ledgerDetails} />
 
-        <ESICFilterBar
+        <LWFFilterBar
           filters={filters}
           onFilterChange={handleFilterChange}
           onReset={handleResetFilters}
         />
 
         {filteredTransactions.length > 0 ? (
-          <ESICLedgerTable transactions={filteredTransactions} />
+          <LWFLedgerTable transactions={filteredTransactions} />
         ) : (
           <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-            <div className="w-16 h-16 mx-auto mb-4 text-green-400">
+            <div className="w-16 h-16 mx-auto mb-4 text-blue-400">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -123,15 +125,15 @@ const ESICContributionLedgerPage = () => {
                 />
               </svg>
             </div>
-            <p className="text-gray-500 text-lg">No ESIC transactions found.</p>
+            <p className="text-gray-500 text-lg">No LWF transactions found.</p>
             <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
           </div>
         )}
 
-        <ESICFooter {...calculateSummary} />
+        <LWFFooter {...calculateSummary} />
       </div>
     </div>
   )
 }
 
-export default ESICContributionLedgerPage
+export default LWFContributionLedgerPage

@@ -2,17 +2,16 @@ import React from 'react'
 
 const LedgerTable = ({ transactions }) => {
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-800">
+          <thead className="bg-gradient-to-r from-blue-600 to-blue-700">
             <tr>
               {[
                 'Sr No',
                 'Date',
                 'Voucher Type',
                 'Voucher No',
-
                 'Cost Center',
                 'Department',
                 'Counterparty Ledger',
@@ -25,7 +24,7 @@ const LedgerTable = ({ transactions }) => {
               ].map((header) => (
                 <th
                   key={header}
-                  className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                  className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider"
                 >
                   {header}
                 </th>
@@ -36,32 +35,37 @@ const LedgerTable = ({ transactions }) => {
             {transactions.map((transaction, index) => (
               <tr
                 key={transaction.id}
-                className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50 hover:bg-gray-100'}
+                className={`transition-colors ${index % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}`}
               >
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.id}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.date}</td>
+                <td className="px-4 py-3 text-sm text-gray-900 font-medium">{transaction.id}</td>
+                <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                  {transaction.date}
+                </td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.voucherType}</td>
-                <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                <td className="px-4 py-3 text-sm text-blue-600 font-medium">
                   {transaction.voucherNo}
                 </td>
-                {/* <td className="px-4 py-3 text-sm text-gray-900">{transaction.employeeId}</td>
-                <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                  {transaction.employeeName}
-                </td> */}
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.costCenter}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.department}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">
                   {transaction.counterpartyLedger}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.approvedBy}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.paymentMode}</td>
-                <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+                <td className="px-4 py-3 text-sm text-gray-900">{transaction.paymentMethod}</td>
+                <td
+                  className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate"
+                  title={transaction.narration}
+                >
                   {transaction.narration}
                 </td>
-                <td className="px-4 py-3 text-sm text-red-600 font-medium">{transaction.debit}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{transaction.credit}</td>
-                <td className="px-4 py-3 text-sm font-medium text-red-600">
-                  {transaction.balance}
+                <td className="px-4 py-3 text-sm text-red-600 font-semibold">
+                  {transaction.debit}
+                </td>
+                <td className="px-4 py-3 text-sm text-green-600 font-semibold">
+                  {transaction.credit}
+                </td>
+                <td className="px-4 py-3 text-sm font-semibold text-red-600 whitespace-nowrap">
+                  {transaction.balanceFormatted}
                 </td>
               </tr>
             ))}

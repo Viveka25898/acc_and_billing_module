@@ -174,7 +174,7 @@ import PFContributionLedgerPage from '../Features/Master/Payment Entry For Salar
 import PFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/PFPayableLedgerPage'
 import ESICContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/ESICContributionLedgerPage'
 import ESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ESICPayableLedgerPage'
-import LWFContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/LWFCintributionLedgerPage'
+import LWFContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/LWFContributionLedgerPage'
 import LWFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/LWFPayableLedgerPage'
 import LeaveProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/LeaveProvisionExpenseLedgerPage'
 import LeaveEncashmentProvisionLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/LeaveEncashmentProvisionLedger'

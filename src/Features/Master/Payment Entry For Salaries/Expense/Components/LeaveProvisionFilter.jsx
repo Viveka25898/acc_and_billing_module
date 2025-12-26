@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Filter, X } from 'lucide-react'
 
-const OtherDeductionsFilter = ({ filters, onFilterChange, onReset }) => {
+const LeaveProvisionFilter = ({ filters, onFilterChange, onReset }) => {
   const [isExpanded, setIsExpanded] = useState(true)
 
   return (
@@ -88,4 +88,4 @@ const OtherDeductionsFilter = ({ filters, onFilterChange, onReset }) => {
   )
 }
 
-export default OtherDeductionsFilter
+export default LeaveProvisionFilter

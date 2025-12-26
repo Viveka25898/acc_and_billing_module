@@ -40,10 +40,21 @@ const PFContributionLedgerPage = () => {
   }, [])
 
   const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }))
+    if (filterType === 'reset') {
+      setFilters({
+        month: 'All',
+        site: 'All',
+        paymentStatus: 'All',
+        paymentMode: 'All',
+        employeeSearch: '',
+        challanSearch: '',
+      })
+    } else {
+      setFilters((prev) => ({
+        ...prev,
+        [filterType]: value,
+      }))
+    }
   }
 
   // Filter transactions
@@ -173,10 +184,12 @@ const PFContributionLedgerPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading ledger data...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-700 font-medium">
+            Loading PF Contribution Ledger...
+          </p>
         </div>
       </div>
     )
@@ -193,8 +206,8 @@ const PFContributionLedgerPage = () => {
     : null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-4 md:p-8">
+      <div className="max-w-5xl mx-auto">
         {accountInfo && (
           <PFLedgerHeader accountInfo={accountInfo} pfRates={{ employer: 12, eps: 8.33 }} />
         )}
@@ -208,33 +221,23 @@ const PFContributionLedgerPage = () => {
           paymentModes={paymentModes}
         />
 
-        <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="mb-6 bg-white rounded-lg shadow-md p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h3 className="text-xl font-semibold text-gray-800">
-              PF Contribution Transactions ({filteredTransactions.length} records)
-            </h3>
+            <h3 className="text-xl font-bold text-gray-800">PF Contribution Transactions</h3>
             <p className="text-sm text-gray-600 mt-1">
-              Employer PF, EPS, Admin & EDLI contributions as per EPF Act
+              Showing {filteredTransactions.length} of {allTransactions.length} total records |
+              Employer PF, EPS, Admin & EDLI contributions
             </p>
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() =>
-                setFilters({
-                  month: 'All',
-                  site: 'All',
-                  paymentStatus: 'All',
-                  paymentMode: 'All',
-                  employeeSearch: '',
-                  challanSearch: '',
-                })
-              }
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              onClick={() => handleFilterChange('reset', null)}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
             >
-              Clear All Filters
+              🔄 Clear Filters
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-              Add PF Entry
+            <button className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-md font-medium">
+              ➕ Add PF Entry
             </button>
           </div>
         </div>
@@ -242,19 +245,30 @@ const PFContributionLedgerPage = () => {
         {filteredTransactions.length > 0 ? (
           <PFLedgerTable transactions={filteredTransactions} />
         ) : (
-          <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-            <div className="w-16 h-16 mx-auto mb-4 text-gray-400">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                />
-              </svg>
-            </div>
-            <p className="text-gray-500 text-lg">No PF transactions found matching the filters.</p>
+          <div className="text-center py-16 bg-white rounded-lg shadow-lg">
+            <svg
+              className="w-16 h-16 text-gray-400 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+              />
+            </svg>
+            <p className="text-gray-500 text-lg font-medium">
+              No PF transactions found matching the filters
+            </p>
             <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
+            <button
+              onClick={() => handleFilterChange('reset', null)}
+              className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              🔄 Clear All Filters
+            </button>
           </div>
         )}
 

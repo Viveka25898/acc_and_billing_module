@@ -29,6 +29,13 @@ export class SalaryLedgerService {
             subcategory: 'Statutory Benefits',
             normalBalance: 'DR',
         },
+        X2001001004: {
+            name: 'Employer LWF Contribution',
+            type: 'Expense',
+            category: 'Personnel Expenses',
+            subcategory: 'Statutory Benefits',
+            normalBalance: 'DR',
+        },
         X2001001005: {
             name: 'Leave Wages',
             type: 'Expense',
@@ -41,6 +48,13 @@ export class SalaryLedgerService {
             type: 'Expense',
             category: 'Personnel Expenses',
             subcategory: 'Employee Benefits',
+            normalBalance: 'DR',
+        },
+        X2001001006: {
+            name: 'Other Deductions Expense',
+            type: 'Expense',
+            category: 'Personnel Expenses',
+            subcategory: 'Other Deductions',
             normalBalance: 'DR',
         },
 

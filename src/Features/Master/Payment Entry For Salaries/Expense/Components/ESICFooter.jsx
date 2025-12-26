@@ -1,90 +1,60 @@
 /* eslint-disable no-unused-vars */
 import React from 'react'
 
-const ESICFooter = ({
-  closingBalance,
-  totalTransactions,
-  totalEmployerContribution,
-  totalPendingAmount,
-  totalEmployeesCovered,
-  totalPenalties,
-}) => {
+const ESICFooter = ({ closingBalance, totalDebit, totalCredit, transactionCount }) => {
   return (
-    <footer className="mt-8 bg-white rounded-xl shadow-lg p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="flex flex-col items-center justify-center p-4 bg-red-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-600">Closing Balance</span>
-          <span className="text-2xl font-bold text-red-600">{closingBalance}</span>
-          <span className="text-xs text-gray-500 mt-1">Employer ESIC Expense</span>
+    <div className="bg-white rounded-xl shadow-md border-t-4 border-green-600 p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-gray-600">Closing Balance</h4>
+            <span className="text-green-600">💰</span>
+          </div>
+          <p className="text-2xl font-bold text-green-700">{closingBalance}</p>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-600">Total Employer ESIC</span>
-          <span className="text-2xl font-bold text-green-700">
-            ₹ {totalEmployerContribution.toLocaleString('en-IN')}
-          </span>
-          <span className="text-xs text-gray-500 mt-1">Current Financial Year</span>
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-gray-600">Total Debit</h4>
+            <span className="text-emerald-600">📊</span>
+          </div>
+          <p className="text-2xl font-bold text-emerald-700">{totalDebit}</p>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-4 bg-amber-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-600">Pending ESIC</span>
-          <span className="text-2xl font-bold text-amber-600">
-            ₹ {totalPendingAmount.toLocaleString('en-IN')}
-          </span>
-          <span className="text-xs text-gray-500 mt-1">Unpaid Amount</span>
+        <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-4 rounded-lg border border-teal-200">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-gray-600">Total Credit</h4>
+            <span className="text-teal-600">⏳</span>
+          </div>
+          <p className="text-2xl font-bold text-teal-700">{totalCredit}</p>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-600">Covered Employees</span>
-          <span className="text-2xl font-bold text-blue-600">{totalEmployeesCovered}</span>
-          <span className="text-xs text-gray-500 mt-1">ESI Eligible Staff</span>
+        <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg border border-cyan-200">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-gray-600">Transactions</h4>
+            <span className="text-cyan-600">📝</span>
+          </div>
+          <p className="text-2xl font-bold text-cyan-700">{transactionCount}</p>
         </div>
       </div>
 
-      <div className="pt-6 border-t border-gray-200">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div>
-            <p className="text-sm text-gray-600">
-              <span className="font-semibold">ESIC Compliance Status:</span>
-              {totalPendingAmount > 0
-                ? ` ₹ ${totalPendingAmount.toLocaleString('en-IN')} pending payment. `
-                : ' All ESIC payments are up to date. '}
-              Next due date: 15th of following month.
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              ESI Act, 1948 Compliance | Employer: 3.25% | Employee: 0.75% | Wage Ceiling: ₹ 21,000
-            </p>
-            {totalPenalties > 0 && (
-              <p className="text-xs text-red-600 mt-1">
-                Penalties incurred: ₹ {totalPenalties.toLocaleString('en-IN')}
-              </p>
-            )}
-          </div>
-
-          <div className="mt-4 md:mt-0 flex gap-2">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              Generate ESIC Return
-            </button>
-            <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              Download ESIC Report
-            </button>
-            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-              View Medical Benefits
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            © {new Date().getFullYear()} XYZ Pvt. Ltd. | Employer ESIC Contribution Expense Ledger
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            This ledger tracks Employer's ESIC contributions as per ESI Act, 1948. Provides medical,
-            maternity & disability benefits.
-          </p>
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <span>Last Updated: {new Date().toLocaleString()}</span>
+          <button className="bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all">
+            Export Report
+          </button>
         </div>
       </div>
-    </footer>
+
+      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <p className="text-xs text-gray-600 leading-relaxed">
+          <span className="font-semibold text-green-700">Note:</span> ESIC must be deposited by 15th
+          of following month. Ensure timely payment to avoid penalties. Current employer
+          contribution rate is 3.25% of ESI wages (capped at ₹21,000/month).
+        </p>
+      </div>
+    </div>
   )
 }
 

@@ -1,6 +1,6 @@
 import React from 'react'
 
-const OtherDeductionsTable = ({ ledgerData }) => {
+const LeaveProvisionTable = ({ ledgerData }) => {
   // Format currency
   const formatCurrency = (amount) => {
     if (!amount && amount !== 0) return '-'
@@ -100,4 +100,4 @@ const OtherDeductionsTable = ({ ledgerData }) => {
   )
 }
 
-export default OtherDeductionsTable
+export default LeaveProvisionTable

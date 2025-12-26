@@ -45,10 +45,21 @@ function SalaryWagesLedgerPage() {
   }, [])
 
   const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }))
+    if (filterType === 'reset') {
+      setFilters({
+        department: 'All',
+        costCenter: 'All',
+        paymentMode: 'All',
+        employeeName: '',
+        startDate: '',
+        endDate: '',
+      })
+    } else {
+      setFilters((prev) => ({
+        ...prev,
+        [filterType]: value,
+      }))
+    }
   }
 
   const filteredTransactions = useMemo(() => {
@@ -130,10 +141,10 @@ function SalaryWagesLedgerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading ledger data...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-700 font-medium">Loading Salary & Wages Ledger...</p>
         </div>
       </div>
     )
@@ -150,7 +161,7 @@ function SalaryWagesLedgerPage() {
     : null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         {accountInfo && <LedgerHeader accountInfo={accountInfo} />}
 
@@ -162,34 +173,52 @@ function SalaryWagesLedgerPage() {
           paymentModes={paymentModes}
         />
 
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h3 className="text-xl font-semibold text-gray-800">
-            Transaction Details ({filteredTransactions.length} records)
-          </h3>
-          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm md:text-base whitespace-nowrap">
-            📥 Export to Excel
+        <div className="mb-6 bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">Transaction Details</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Showing {filteredTransactions.length} of {allTransactions.length} total records
+            </p>
+          </div>
+          <button className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md text-sm md:text-base whitespace-nowrap font-medium flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Export to Excel
           </button>
         </div>
 
         {filteredTransactions.length > 0 ? (
           <LedgerTable transactions={filteredTransactions} />
         ) : (
-          <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-            <p className="text-gray-500 text-lg">No transactions found matching the filters.</p>
-            <button
-              onClick={() =>
-                setFilters({
-                  department: 'All',
-                  costCenter: 'All',
-                  paymentMode: 'All',
-                  employeeName: '',
-                  startDate: '',
-                  endDate: '',
-                })
-              }
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          <div className="text-center py-16 bg-white rounded-lg shadow-lg">
+            <svg
+              className="w-16 h-16 text-gray-400 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              Clear All Filters
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p className="text-gray-500 text-lg font-medium">
+              No transactions found matching the filters
+            </p>
+            <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
+            <button
+              onClick={() => handleFilterChange('reset', null)}
+              className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              🔄 Clear All Filters
             </button>
           </div>
         )}
