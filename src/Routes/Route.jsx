@@ -96,6 +96,19 @@ import PHInvoiceApprovalPage from '../Features/Process For Prepaid Entry/Pages/P
 import BillingManagerHome from '../Roles/Billing Manager/Components/BillingManagerHome'
 import BillngManagerDashboard from '../Roles/Billing Manager/Pages/BillingManagerDashboard'
 import BillingManagerApprovalPage from '../Features/Process For Prepaid Entry/Pages/Billing Manager/BillingMnagerApprovalPage'
+
+// ============== BILLING MODULE IMPORTS ==============
+import BillingDashboard from '../Features/Billing/Pages/BillingDashboard'
+// Placeholder imports for pages we'll build next
+const AutoBillingWizard = () => <div className="p-6">Auto Billing Wizard - Coming Soon</div>
+const ManualBillingPage = () => <div className="p-6">Manual Billing - Coming Soon</div>
+const ArrearBillingPage = () => <div className="p-6">Arrear Billing - Coming Soon</div>
+const BonusBillingPage = () => <div className="p-6">Bonus Billing - Coming Soon</div>
+const ProformaInvoicesPage = () => <div className="p-6">Proforma Invoices - Coming Soon</div>
+const IRNInvoicesPage = () => <div className="p-6">IRN Invoices - Coming Soon</div>
+const InvoiceListPage = () => <div className="p-6">Invoice List - Coming Soon</div>
+// ===================================================
+
 import UploadStatementPage from '../Features/Process For Bank Reconcilation/Pages/UploadStatementPage'
 import ReconciliationHistoryPage from '../Features/Process For Bank Reconcilation/Pages/ReconcilationHistoryPage'
 import ViewReconciliationReportPage from '../Features/Process For Bank Reconcilation/Pages/ViewReconciliationReportPage'
@@ -775,6 +788,39 @@ export const router = createBrowserRouter([
       {
         path: 'bank-reconciliation-page',
         element: <ReconciliationStatementPage />,
+      },
+      // ============== BILLING MODULE ROUTES ==============
+      {
+        path: 'billing-dashboard',
+        element: <BillingDashboard />,
+      },
+      {
+        path: 'auto-billing',
+        element: <AutoBillingWizard />,
+      },
+      {
+        path: 'manual-billing',
+        element: <ManualBillingPage />,
+      },
+      {
+        path: 'arrear-billing',
+        element: <ArrearBillingPage />,
+      },
+      {
+        path: 'bonus-billing',
+        element: <BonusBillingPage />,
+      },
+      {
+        path: 'proforma-invoices',
+        element: <ProformaInvoicesPage />,
+      },
+      {
+        path: 'irn-invoices',
+        element: <IRNInvoicesPage />,
+      },
+      {
+        path: 'invoice-list',
+        element: <InvoiceListPage />,
       },
     ],
   },
