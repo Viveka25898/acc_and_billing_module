@@ -288,9 +288,47 @@ export default function UploadPayrollFile() {
   const processEmployeeDataToSummary = (employeeData) => {
     if (!employeeData || employeeData.length === 0) return null
 
-    const totalAmount = employeeData.reduce((sum, employee) => {
-      return sum + Number(employee['NETPAYABLE'] || employee['DEBIT AMT'] || 0)
+    // Calculate total amount from NETPAYABLE column
+    const totalAmount = employeeData.reduce((sum, employee, index) => {
+      // Try to find NETPAYABLE column (with or without trailing spaces)
+      let netPayableValue = null
+
+      // Search for the NETPAYABLE key (case-insensitive and trim spaces)
+      for (const key in employee) {
+        if (key.trim().toUpperCase() === 'NETPAYABLE') {
+          netPayableValue = employee[key]
+          break
+        }
+      }
+
+      // If still not found, try common variations
+      if (netPayableValue === null || netPayableValue === undefined || netPayableValue === '') {
+        netPayableValue =
+          employee['NETPAYABLE'] || employee['NETPAYABLE '] || employee['NetPayable'] || 0
+      }
+
+      // Convert to string and remove commas, spaces, rupee symbols, and other formatting
+      if (typeof netPayableValue === 'string') {
+        netPayableValue = netPayableValue
+          .replace(/₹/g, '')
+          .replace(/Rs\.?/gi, '')
+          .replace(/,/g, '')
+          .replace(/\s/g, '')
+          .trim()
+      }
+
+      // Parse to number
+      const netPayable = parseFloat(netPayableValue) || 0
+
+      // Debug: Log first few entries
+      if (index < 3) {
+        console.log(`Employee ${index + 1}: NETPAYABLE =`, netPayable)
+      }
+
+      return sum + netPayable
     }, 0)
+
+    console.log('Total NETPAYABLE Sum:', totalAmount)
 
     const currentDate = new Date()
     const monthNames = [

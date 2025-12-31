@@ -80,6 +80,13 @@ export class SalaryLedgerService {
             subcategory: 'ESIC Contributions',
             normalBalance: 'CR',
         },
+        L2002004: {
+            name: 'Employer LWF Payable',
+            type: 'Current Liability',
+            category: 'Statutory Liabilities',
+            subcategory: 'LWF Contributions',
+            normalBalance: 'CR'
+        },
         L2002006: {
             name: 'Employee PF Payable',
             type: 'Current Liability',

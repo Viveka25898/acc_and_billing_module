@@ -29,9 +29,9 @@ const LWFPayableLedgerPage = () => {
         setLoading(true)
         setError(null)
         console.log('🔄 Loading Employer LWF Payable ledger data...')
-        const details = SalaryLedgerService.getLedgerDetails('L2002011')
+        const details = SalaryLedgerService.getLedgerDetails('L2002004')
         setLedgerDetails(details)
-        const transactions = SalaryLedgerService.getLedgerTransactions('L2002011')
+        const transactions = SalaryLedgerService.getLedgerTransactions('L2002004')
         setAllTransactions(transactions)
         console.log('✅ Loaded Employer LWF Payable ledger:', {
           details,
@@ -71,7 +71,7 @@ const LWFPayableLedgerPage = () => {
 
   // Calculate summary
   const calculateSummary = useMemo(() => {
-    return SalaryLedgerService.getLedgerSummary(filteredTransactions, 'L2002011')
+    return SalaryLedgerService.getLedgerSummary(filteredTransactions, 'L2002004')
   }, [filteredTransactions])
 
   const closingBalance = useMemo(() => {
@@ -104,7 +104,7 @@ const LWFPayableLedgerPage = () => {
   }
 
   const handleExportToExcel = () => {
-    SalaryLedgerService.exportLedgerToExcel('L2002011', filteredTransactions)
+    SalaryLedgerService.exportLedgerToExcel('L2002004', filteredTransactions)
   }
 
   if (loading) {
@@ -144,7 +144,7 @@ const LWFPayableLedgerPage = () => {
         totalDebit={calculateSummary.totalDebit}
         totalCredit={calculateSummary.totalCredit}
       />
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-5xl mx-auto px-4 py-6">
         <LiabilityFilterBar
           filters={filters}
           onFilterChange={handleFilterChange}

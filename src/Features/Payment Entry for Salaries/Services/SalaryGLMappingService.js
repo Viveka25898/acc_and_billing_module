@@ -218,7 +218,7 @@ export class SalaryGLMappingService {
         },
         'LWF COMPANY': {
             debit: { account: 'Employer LWF Contribution', code: 'X2001001004' },
-            credit: { account: 'Employer LWF Payable', code: 'L2002004' },
+            credit: { account: 'LWF PAYABLE - EMPLOYER SHARE', code: 'L2002004' },
             category: 'Employer Contribution',
         },
     }
