@@ -99,8 +99,8 @@ import BillingManagerApprovalPage from '../Features/Process For Prepaid Entry/Pa
 
 // ============== BILLING MODULE IMPORTS ==============
 import BillingDashboard from '../Features/Billing/Pages/BillingDashboard'
+import AutoBillingWizard from '../Features/Billing/Pages/AutoBilling/AutoBillingWizard'
 // Placeholder imports for pages we'll build next
-const AutoBillingWizard = () => <div className="p-6">Auto Billing Wizard - Coming Soon</div>
 const ManualBillingPage = () => <div className="p-6">Manual Billing - Coming Soon</div>
 const ArrearBillingPage = () => <div className="p-6">Arrear Billing - Coming Soon</div>
 const BonusBillingPage = () => <div className="p-6">Bonus Billing - Coming Soon</div>
