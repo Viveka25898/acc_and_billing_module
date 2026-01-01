@@ -6,6 +6,7 @@ import Stepper from '../../Components/Stepper'
 import Step1ClientScope from './Step1ClientScope'
 import Step2BillingCycle from './Step2BillingCycle'
 import Step3InvoiceConfig from './Step3InvoiceConfig'
+import Step4BillingCalculation from './Step4BillingCalculation'
 import { WIZARD_STEPS } from '../../data/autoBillingData'
 
 const AutoBillingWizard = () => {
@@ -26,7 +27,11 @@ const AutoBillingWizard = () => {
     invoiceSeries: '',
     invoiceType: '',
     siteFilter: 'all',
-    // Step 4 data (to be added)
+    // Step 4 data
+    billingLines: [],
+    calculations: {},
+    poWoNumber: '',
+    adjustForLeave: false,
   })
 
   const handleNext = () => {
@@ -90,24 +95,12 @@ const AutoBillingWizard = () => {
         )
       case 4:
         return (
-          <div className="bg-white rounded-lg shadow-md p-6 text-center">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Step 4: Review & Generate</h2>
-            <p className="text-gray-600 mb-6">Coming Soon - Review & Generate Screen</p>
-            <div className="flex justify-between">
-              <button
-                onClick={handlePrevious}
-                className="px-6 py-2.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                ← Previous
-              </button>
-              <button
-                onClick={handleFinish}
-                className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Generate Invoice
-              </button>
-            </div>
-          </div>
+          <Step4BillingCalculation
+            formData={formData}
+            setFormData={setFormData}
+            onNext={handleFinish}
+            onPrevious={handlePrevious}
+          />
         )
       default:
         return null

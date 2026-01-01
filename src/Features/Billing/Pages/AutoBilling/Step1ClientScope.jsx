@@ -76,13 +76,16 @@ const Step1ClientScope = ({ formData, setFormData, onNext, onCancel }) => {
     setErrors((prev) => ({ ...prev, [field]: '' }))
   }
 
-  const handleSiteToggle = (siteId) => {
+  const handleSiteToggle = (site) => {
     const currentSites = formData.selectedSites || []
-    const isSelected = currentSites.includes(siteId)
+    const isSelected = currentSites.some((s) => s.id === site.id)
 
     const newSelectedSites = isSelected
-      ? currentSites.filter((id) => id !== siteId)
-      : [...currentSites, siteId]
+      ? currentSites.filter((s) => s.id !== site.id)
+      : [...currentSites, site]
+
+    console.log('✅ Site toggled:', site.name, 'Selected:', !isSelected)
+    console.log('📋 Updated selectedSites:', newSelectedSites)
 
     setFormData((prev) => ({ ...prev, selectedSites: newSelectedSites }))
     setErrors((prev) => ({ ...prev, selectedSites: '' }))
@@ -291,8 +294,8 @@ const Step1ClientScope = ({ formData, setFormData, onNext, onCancel }) => {
               >
                 <input
                   type="checkbox"
-                  checked={(formData.selectedSites || []).includes(site.id)}
-                  onChange={() => handleSiteToggle(site.id)}
+                  checked={(formData.selectedSites || []).some((s) => s.id === site.id)}
+                  onChange={() => handleSiteToggle(site)}
                   className="w-4 h-4 text-green-600 focus:ring-green-500 mt-0.5"
                 />
                 <div className="ml-3">

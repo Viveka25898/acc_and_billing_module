@@ -5,7 +5,7 @@ export const WIZARD_STEPS = [
     { id: 1, title: 'Client & Scope', shortTitle: 'Client & Scope' },
     { id: 2, title: 'Billing Cycle', shortTitle: 'Billing Cycle' },
     { id: 3, title: 'Invoice Config', shortTitle: 'Invoice Config' },
-    { id: 4, title: 'Review & Generate', shortTitle: 'Review & Generate' }
+    { id: 4, title: 'Calculation', shortTitle: 'Calculation' }
 ];
 
 // Branches with State and City mapping
@@ -172,23 +172,68 @@ export const CUSTOMERS = [
     },
     {
         id: 5,
-        name: 'Tech Park Bangalore',
+        name: 'TechCorp IT Park',
         branch: 'Bangalore Branch',
         state: 'Karnataka',
         city: 'Bangalore',
-        totalSites: 6,
-        activeRateCards: 15,
+        totalSites: 2,
+        activeRateCards: 7,
         lastInvoice: {
             month: 'August 2025',
-            amount: 520000
+            amount: 430000
         },
         sites: [
-            { id: 15, name: 'Building A', location: 'Tech Park - Building A', address: 'Whitefield, Bangalore' },
-            { id: 16, name: 'Building B', location: 'Tech Park - Building B', address: 'Whitefield, Bangalore' },
-            { id: 17, name: 'Building C', location: 'Tech Park - Building C', address: 'Whitefield, Bangalore' },
-            { id: 18, name: 'Food Court', location: 'Tech Park - Food Court', address: 'Whitefield, Bangalore' },
-            { id: 19, name: 'Gym Area', location: 'Tech Park - Gym', address: 'Whitefield, Bangalore' },
-            { id: 20, name: 'Parking Complex', location: 'Tech Park - Parking', address: 'Whitefield, Bangalore' }
+            { id: 15, name: 'Building A', location: 'TechCorp IT Park - Building A', address: 'Whitefield, Bangalore' },
+            { id: 16, name: 'Building B', location: 'TechCorp IT Park - Building B', address: 'Whitefield, Bangalore' }
+        ]
+    },
+    {
+        id: 6,
+        name: 'NeoSoft Pvt. Ltd.',
+        branch: 'Pune Branch',
+        state: 'Maharashtra',
+        city: 'Pune',
+        totalSites: 1,
+        activeRateCards: 2,
+        lastInvoice: {
+            month: 'August 2025',
+            amount: 45000
+        },
+        sites: [
+            { id: 17, name: 'Main Office', location: 'NeoSoft Pvt. Ltd. - Main Office', address: 'Business Arcade, Sayani Road, Lower Parel, Pune' }
+        ]
+    },
+    {
+        id: 7,
+        name: 'Global Industries',
+        branch: 'Delhi Branch',
+        state: 'Delhi',
+        city: 'New Delhi',
+        totalSites: 2,
+        activeRateCards: 6,
+        lastInvoice: {
+            month: 'August 2025',
+            amount: 320000
+        },
+        sites: [
+            { id: 18, name: 'Factory Unit 1', location: 'Global Industries - Factory Unit 1', address: 'Industrial Area, New Delhi' },
+            { id: 19, name: 'Factory Unit 2', location: 'Global Industries - Factory Unit 2', address: 'Industrial Area, New Delhi' }
+        ]
+    },
+    {
+        id: 8,
+        name: 'Retail Paradise',
+        branch: 'Hyderabad Branch',
+        state: 'Telangana',
+        city: 'Hyderabad',
+        totalSites: 1,
+        activeRateCards: 2,
+        lastInvoice: {
+            month: 'August 2025',
+            amount: 38000
+        },
+        sites: [
+            { id: 20, name: 'Store 1', location: 'Retail Paradise - Store 1', address: 'Banjara Hills, Hyderabad' }
         ]
     }
 ];
