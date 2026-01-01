@@ -19,6 +19,7 @@ const AutoBillingWizard = () => {
     billingScope: '',
     selectedSites: [],
     // Step 2 data
+    selectedMonth: '',
     selectedBillingCycle: null,
     // Step 3 data (to be added)
     // Step 4 data (to be added)
