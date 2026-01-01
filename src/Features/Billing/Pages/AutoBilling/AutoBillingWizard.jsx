@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import Stepper from '../../Components/Stepper'
 import Step1ClientScope from './Step1ClientScope'
 import Step2BillingCycle from './Step2BillingCycle'
+import Step3InvoiceConfig from './Step3InvoiceConfig'
 import { WIZARD_STEPS } from '../../data/autoBillingData'
 
 const AutoBillingWizard = () => {
@@ -21,7 +22,10 @@ const AutoBillingWizard = () => {
     // Step 2 data
     selectedMonth: '',
     selectedBillingCycle: null,
-    // Step 3 data (to be added)
+    // Step 3 data
+    invoiceSeries: '',
+    invoiceType: '',
+    siteFilter: 'all',
     // Step 4 data (to be added)
   })
 
@@ -77,24 +81,12 @@ const AutoBillingWizard = () => {
         )
       case 3:
         return (
-          <div className="bg-white rounded-lg shadow-md p-6 text-center">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Step 3: Billing Calculation</h2>
-            <p className="text-gray-600 mb-6">Coming Soon - Billing Calculation Screen</p>
-            <div className="flex justify-between">
-              <button
-                onClick={handlePrevious}
-                className="px-6 py-2.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                ← Previous
-              </button>
-              <button
-                onClick={handleNext}
-                className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Next Step →
-              </button>
-            </div>
-          </div>
+          <Step3InvoiceConfig
+            formData={formData}
+            setFormData={setFormData}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
         )
       case 4:
         return (
