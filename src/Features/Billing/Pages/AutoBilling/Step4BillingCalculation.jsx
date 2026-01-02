@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { AlertCircle, Loader, FileText, Calculator, TrendingUp, TrendingDown } from 'lucide-react'
 import { RATE_CARDS, PAYROLL_DATA, PREVIOUS_MONTH_BILLING } from '../../data/billingCalculationData'
+import { BRANCHES } from '../../data/autoBillingData'
 
 const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) => {
   const [loading, setLoading] = useState(true)
@@ -22,6 +23,39 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
     difference: 0,
     percentageChange: 0,
   })
+
+  // Generate PO/WO Number
+  useEffect(() => {
+    if (formData.branch && formData.invoiceSeries) {
+      const generatedNumber = generatePoWoNumber()
+      setPoWoNumber(generatedNumber)
+      console.log('📝 Auto-generated PO/WO Number:', generatedNumber)
+    }
+  }, [formData.branch, formData.invoiceSeries, formData.customer])
+
+  const generatePoWoNumber = () => {
+    try {
+      // Find branch code
+      const branch = BRANCHES.find((b) => b.name === formData.branch)
+      const branchCode = branch ? branch.code : 'XXX'
+
+      // Get invoice series prefix
+      const prefix = formData.invoiceSeries === 'proforma' ? 'PO' : 'INV'
+
+      // Generate sequential number (in production, this would come from backend)
+      // For now, using date-based sequential number
+      const date = new Date()
+      const year = date.getFullYear().toString().slice(-2)
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const random = Math.floor(Math.random() * 999) + 1
+      const sequentialNumber = `${year}${month}${random.toString().padStart(3, '0')}`
+
+      return `${prefix}-${branchCode}-${sequentialNumber}`
+    } catch (error) {
+      console.error('Error generating PO/WO number:', error)
+      return 'PO-XXX-001'
+    }
+  }
 
   useEffect(() => {
     generateBillingCalculation()
