@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
 import { AlertCircle, Loader, FileText, Calculator, TrendingUp, TrendingDown } from 'lucide-react'
 import { RATE_CARDS, PAYROLL_DATA, PREVIOUS_MONTH_BILLING } from '../../data/billingCalculationData'
@@ -143,11 +144,12 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
           if (payrollEntry) {
             const count = payrollEntry.numberOfWorkers || 0
             const dutyDays = payrollEntry.totalDays
-            // Amount = Monthly Rate × Count (not rate per day × duty days)
+            const ratePerDay = service.monthlyRate / totalDaysInCycle
+            // Amount = Monthly Rate × Count
             const amount = service.monthlyRate * count
 
             console.log(
-              `      ✅ Calculated - Count: ${count}, Monthly Rate: ₹${service.monthlyRate}, Duty Days: ${dutyDays}, Amount: ₹${amount.toFixed(2)}`
+              `      ✅ Calculated - Count: ${count}, Monthly Rate: ₹${service.monthlyRate}, Rate/Day: ₹${ratePerDay.toFixed(2)}, Duty Days: ${dutyDays}, Amount: ₹${amount.toFixed(2)}`
             )
 
             lineItems.push({
@@ -157,8 +159,8 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
               designation: service.designation,
               count: count,
               dutyDays: dutyDays,
-              rate: service.monthlyRate, // Store monthly rate
               monthlyRate: service.monthlyRate,
+              ratePerDay: ratePerDay,
               amount: amount,
               hsnCode: service.hsnCode,
               gstRate: service.gstRate,
@@ -449,10 +451,16 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
                 Designation
               </th>
               <th className="border border-gray-300 px-3 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">
+                Count
+              </th>
+              <th className="border border-gray-300 px-3 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">
                 Duty Days
               </th>
               <th className="border border-gray-300 px-3 py-3 text-right text-xs sm:text-sm font-semibold text-gray-700">
-                Rate (₹)
+                Rate/Month (₹)
+              </th>
+              <th className="border border-gray-300 px-3 py-3 text-right text-xs sm:text-sm font-semibold text-gray-700">
+                Rate/Day (₹)
               </th>
               <th className="border border-gray-300 px-3 py-3 text-right text-xs sm:text-sm font-semibold text-gray-700">
                 Amount (₹)
@@ -466,7 +474,7 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
             {billingLines.length === 0 ? (
               <tr>
                 <td
-                  colSpan="7"
+                  colSpan="9"
                   className="border border-gray-300 px-4 py-8 text-center text-gray-500"
                 >
                   No billing data available
@@ -484,13 +492,22 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
                   <td className="border border-gray-300 px-3 py-2 text-xs sm:text-sm font-medium text-blue-700">
                     {line.designation}
                   </td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-xs sm:text-sm font-semibold text-gray-900">
+                    {line.count}
+                  </td>
                   <td className="border border-gray-300 px-3 py-2 text-center text-xs sm:text-sm text-gray-700">
                     {line.dutyDays}
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-right text-xs sm:text-sm font-medium text-gray-900">
-                    {line.rate.toLocaleString('en-IN', {
+                    {line.monthlyRate.toLocaleString('en-IN', {
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0,
+                    })}
+                  </td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-xs sm:text-sm text-gray-700">
+                    {line.ratePerDay.toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     })}
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-right text-xs sm:text-sm font-bold text-gray-900">
