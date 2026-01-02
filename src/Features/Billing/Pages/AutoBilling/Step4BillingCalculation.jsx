@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { AlertCircle, Loader, FileText, Calculator, TrendingUp, TrendingDown } from 'lucide-react'
 import { RATE_CARDS, PAYROLL_DATA, PREVIOUS_MONTH_BILLING } from '../../data/billingCalculationData'
 import { BRANCHES } from '../../data/autoBillingData'
+import RateCardModal from '../../Components/RateCardModal'
 
 const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) => {
   const [loading, setLoading] = useState(true)
@@ -9,6 +10,7 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
   const [billingLines, setBillingLines] = useState([])
   const [adjustForLeave, setAdjustForLeave] = useState(false)
   const [poWoNumber, setPoWoNumber] = useState('')
+  const [isRateCardModalOpen, setIsRateCardModalOpen] = useState(false)
   const [calculations, setCalculations] = useState({
     subtotal: 0,
     machineryCharges: 0,
@@ -139,12 +141,13 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
           console.log(`      Payroll Entry:`, payrollEntry)
 
           if (payrollEntry) {
-            const ratePerDay = service.monthlyRate / totalDaysInCycle
+            const count = payrollEntry.numberOfWorkers || 0
             const dutyDays = payrollEntry.totalDays
-            const amount = ratePerDay * dutyDays
+            // Amount = Monthly Rate × Count (not rate per day × duty days)
+            const amount = service.monthlyRate * count
 
             console.log(
-              `      ✅ Calculated - Rate/Day: ₹${ratePerDay.toFixed(2)}, Days: ${dutyDays}, Amount: ₹${amount.toFixed(2)}`
+              `      ✅ Calculated - Count: ${count}, Monthly Rate: ₹${service.monthlyRate}, Duty Days: ${dutyDays}, Amount: ₹${amount.toFixed(2)}`
             )
 
             lineItems.push({
@@ -152,8 +155,9 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
               location: siteName,
               product: service.product,
               designation: service.designation,
+              count: count,
               dutyDays: dutyDays,
-              rate: ratePerDay,
+              rate: service.monthlyRate, // Store monthly rate
               monthlyRate: service.monthlyRate,
               amount: amount,
               hsnCode: service.hsnCode,
@@ -198,8 +202,39 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
       const sgst = (totalBeforeTax * 9) / 100
       const totalTax = cgst + sgst
 
-      // Grand total
+      // Grand total (Actual Bill)
       const grandTotal = totalBeforeTax + totalTax
+
+      // Calculate Expected Bill from Rate Card
+      const payrollData = PAYROLL_DATA[formData.customer]
+      const totalDaysInMonth = formData.selectedBillingCycle?.totalDays || 30
+      let expectedBillBeforeFees = 0
+
+      selectedSites.forEach((site) => {
+        const siteRateCard = rateCard.sites?.[site.name]
+        const sitePayroll = payrollData?.sites?.[site.name]
+
+        if (siteRateCard && sitePayroll) {
+          siteRateCard.services.forEach((service) => {
+            const payrollEntry = sitePayroll.find((p) => p.designation === service.designation)
+            if (payrollEntry) {
+              const count = payrollEntry.numberOfWorkers || 0
+              // Expected: count × rate × full month (no leave deduction)
+              expectedBillBeforeFees += service.monthlyRate * count
+            }
+          })
+        }
+      })
+
+      const expectedManagementFees = (expectedBillBeforeFees * managementFeesPercent) / 100
+      const expectedBeforeTax = expectedBillBeforeFees + expectedManagementFees
+      const expectedTax = (expectedBeforeTax * 18) / 100
+      const expectedBillTotal = expectedBeforeTax + expectedTax
+
+      // Calculate variance
+      const billVariance = grandTotal - expectedBillTotal
+      const variancePercentage =
+        expectedBillTotal > 0 ? (billVariance / expectedBillTotal) * 100 : 0
 
       // Previous month comparison
       let previousMonthTotal = 0
@@ -220,6 +255,9 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
         sgst,
         totalTax,
         grandTotal,
+        expectedBill: expectedBillTotal,
+        billVariance,
+        variancePercentage,
         previousMonth: previousMonthTotal,
         difference,
         percentageChange,
@@ -271,8 +309,7 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
   }
 
   const handleRateCardClick = () => {
-    alert('Rate Card modal will be implemented in next phase')
-    // TODO: Open rate card modal showing all rates for selected customer
+    setIsRateCardModalOpen(true)
   }
 
   const validateStep = () => {
@@ -447,18 +484,14 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
                   <td className="border border-gray-300 px-3 py-2 text-xs sm:text-sm font-medium text-blue-700">
                     {line.designation}
                   </td>
-                  <td className="border border-gray-300 px-3 py-2 text-center">
-                    <input
-                      type="number"
-                      value={line.dutyDays}
-                      onChange={(e) => handleDutyDaysChange(line.id, e.target.value)}
-                      className="w-16 sm:w-20 px-2 py-1 border border-gray-300 rounded text-center text-xs sm:text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      min="0"
-                      step="0.5"
-                    />
+                  <td className="border border-gray-300 px-3 py-2 text-center text-xs sm:text-sm text-gray-700">
+                    {line.dutyDays}
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-right text-xs sm:text-sm font-medium text-gray-900">
-                    {line.rate.toFixed(2)}
+                    {line.rate.toLocaleString('en-IN', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-right text-xs sm:text-sm font-bold text-gray-900">
                     {line.amount.toLocaleString('en-IN', {
@@ -483,7 +516,53 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
 
       {/* Summary Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Left: Comparison with Previous Month */}
+        {/* Left: Expected vs Actual Bill Comparison */}
+        <div className="bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-4">
+          <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center">
+            <Calculator className="w-4 h-4 mr-2" />
+            Expected vs Actual Bill
+          </h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Expected Bill (Commercial):</span>
+              <span className="font-semibold text-gray-900">
+                {formatCurrency(calculations.expectedBill || 0)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Actual Bill (Attendance):</span>
+              <span className="font-semibold text-gray-900">
+                {formatCurrency(calculations.grandTotal)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-orange-300">
+              <span className="text-gray-600 font-medium">Variance:</span>
+              <span
+                className={`font-bold flex items-center ${
+                  (calculations.billVariance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {(calculations.billVariance || 0) >= 0 ? (
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 mr-1" />
+                )}
+                {formatCurrency(Math.abs(calculations.billVariance || 0))}
+                <span className="ml-2 text-xs">
+                  ({(calculations.variancePercentage || 0).toFixed(2)}%)
+                </span>
+              </span>
+            </div>
+            <div className="mt-2 p-2 bg-white rounded border border-orange-200">
+              <p className="text-xs text-gray-600">
+                <strong>Note:</strong> Variance shows difference between expected and actual
+                attendance-based billing.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Middle: Previous Month Comparison */}
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
           <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center">
             <Calculator className="w-4 h-4 mr-2" />
@@ -521,39 +600,35 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Right: Amount Breakdown */}
-        <div className="bg-gradient-to-br from-green-50 to-teal-50 border border-green-200 rounded-lg p-4">
-          <h3 className="text-sm font-bold text-gray-800 mb-3">Amount Breakdown</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal (incl. Machinery & Consumables):</span>
-              <span className="font-semibold">{formatCurrency(calculations.subtotal)}</span>
-            </div>
-            {calculations.managementFees > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Management Fees:</span>
-                <span className="font-semibold">{formatCurrency(calculations.managementFees)}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-2 border-t border-green-300">
-              <span className="text-gray-700 font-semibold">Total Amount:</span>
-              <span className="font-bold text-gray-900">
-                {formatCurrency(calculations.totalBeforeTax)}
+      {/* Amount Breakdown - Full Width */}
+      <div className="bg-gradient-to-br from-green-50 to-teal-50 border border-green-200 rounded-lg p-4 mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">Amount Breakdown</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div className="flex flex-col">
+            <span className="text-gray-600 text-xs mb-1">Subtotal (incl. Machinery):</span>
+            <span className="font-semibold text-base">{formatCurrency(calculations.subtotal)}</span>
+          </div>
+          {calculations.managementFees > 0 && (
+            <div className="flex flex-col">
+              <span className="text-gray-600 text-xs mb-1">Management Fees:</span>
+              <span className="font-semibold text-base">
+                {formatCurrency(calculations.managementFees)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">+ 18% GST:</span>
-              <span className="font-semibold text-blue-700">
-                {formatCurrency(calculations.totalTax)}
-              </span>
-            </div>
-            <div className="flex justify-between pt-2 border-t-2 border-green-400">
-              <span className="text-lg font-bold text-gray-800">Grand Total:</span>
-              <span className="text-lg font-bold text-green-700">
-                {formatCurrency(calculations.grandTotal)}
-              </span>
-            </div>
+          )}
+          <div className="flex flex-col">
+            <span className="text-gray-600 text-xs mb-1">+ 18% GST:</span>
+            <span className="font-semibold text-base text-blue-700">
+              {formatCurrency(calculations.totalTax)}
+            </span>
+          </div>
+          <div className="flex flex-col border-l-2 border-green-400 pl-4">
+            <span className="text-gray-700 font-bold text-xs mb-1">Grand Total:</span>
+            <span className="text-xl font-bold text-green-700">
+              {formatCurrency(calculations.grandTotal)}
+            </span>
           </div>
         </div>
       </div>
@@ -627,6 +702,14 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
           </button>
         </div>
       </div>
+
+      {/* Rate Card Modal */}
+      <RateCardModal
+        isOpen={isRateCardModalOpen}
+        onClose={() => setIsRateCardModalOpen(false)}
+        formData={formData}
+        rateCardData={formData.customer ? RATE_CARDS[formData.customer] : null}
+      />
     </div>
   )
 }
