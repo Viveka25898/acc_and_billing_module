@@ -7,6 +7,7 @@ import Step1ClientScope from './Step1ClientScope'
 import Step2BillingCycle from './Step2BillingCycle'
 import Step3InvoiceConfig from './Step3InvoiceConfig'
 import Step4BillingCalculation from './Step4BillingCalculation'
+import Step5InvoicePreview from './Step5InvoicePreview'
 import { WIZARD_STEPS } from '../../data/autoBillingData'
 
 const AutoBillingWizard = () => {
@@ -57,6 +58,15 @@ const AutoBillingWizard = () => {
   }
 
   const handleFinish = () => {
+    // Move to Step 5 - Invoice Preview
+    if (currentStep === 4) {
+      setCurrentStep(5)
+      toast.success('Review your Proforma Invoice', { autoClose: 2000 })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const handleConvertToFinal = () => {
     // Final submission logic
     toast.success('Invoice generated successfully! 🎉')
     console.log('Final Form Data:', formData)
@@ -100,6 +110,16 @@ const AutoBillingWizard = () => {
             setFormData={setFormData}
             onNext={handleFinish}
             onPrevious={handlePrevious}
+          />
+        )
+      case 5:
+        return (
+          <Step5InvoicePreview
+            formData={formData}
+            billingLines={formData.billingLines}
+            calculations={formData.calculations}
+            onPrevious={handlePrevious}
+            onConvertToFinal={handleConvertToFinal}
           />
         )
       default:

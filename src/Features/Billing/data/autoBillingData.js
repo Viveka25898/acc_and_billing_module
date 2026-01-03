@@ -5,7 +5,8 @@ export const WIZARD_STEPS = [
     { id: 1, title: 'Client & Scope', shortTitle: 'Client & Scope' },
     { id: 2, title: 'Billing Cycle', shortTitle: 'Billing Cycle' },
     { id: 3, title: 'Invoice Config', shortTitle: 'Invoice Config' },
-    { id: 4, title: 'Calculation', shortTitle: 'Calculation' }
+    { id: 4, title: 'Calculation', shortTitle: 'Calculation' },
+    { id: 5, title: 'Review & Generate', shortTitle: 'Review & Generate' }
 ];
 
 // Branches with State and City mapping

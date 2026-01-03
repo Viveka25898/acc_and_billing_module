@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.0.1",
@@ -23,9 +24,10 @@
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
-    "jspdf": "^3.0.1",
+    "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.556.0",
     "pdfjs-dist": "^3.11.174",
