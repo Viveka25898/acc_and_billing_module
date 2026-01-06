@@ -100,11 +100,11 @@ import BillingManagerApprovalPage from '../Features/Process For Prepaid Entry/Pa
 // ============== BILLING MODULE IMPORTS ==============
 import BillingDashboard from '../Features/Billing/Pages/BillingDashboard'
 import AutoBillingWizard from '../Features/Billing/Pages/AutoBilling/AutoBillingWizard'
+import ProformaInvoices from '../Features/Billing/Pages/ProformaInvoices'
 // Placeholder imports for pages we'll build next
 const ManualBillingPage = () => <div className="p-6">Manual Billing - Coming Soon</div>
 const ArrearBillingPage = () => <div className="p-6">Arrear Billing - Coming Soon</div>
 const BonusBillingPage = () => <div className="p-6">Bonus Billing - Coming Soon</div>
-const ProformaInvoicesPage = () => <div className="p-6">Proforma Invoices - Coming Soon</div>
 const IRNInvoicesPage = () => <div className="p-6">IRN Invoices - Coming Soon</div>
 const InvoiceListPage = () => <div className="p-6">Invoice List - Coming Soon</div>
 // ===================================================
@@ -812,7 +812,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'proforma-invoices',
-        element: <ProformaInvoicesPage />,
+        element: <ProformaInvoices />,
       },
       {
         path: 'irn-invoices',

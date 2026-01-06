@@ -1,0 +1,308 @@
+import React from 'react'
+import { Eye, Download, FileText, CheckCircle2 } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+
+const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading }) => {
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+    }).format(amount)
+  }
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      draft: {
+        bg: 'bg-gray-100',
+        text: 'text-gray-700',
+        border: 'border-gray-300',
+        label: 'Draft',
+      },
+      sent: {
+        bg: 'bg-purple-100',
+        text: 'text-purple-700',
+        border: 'border-purple-300',
+        label: 'Sent',
+      },
+      received: {
+        bg: 'bg-amber-100',
+        text: 'text-amber-700',
+        border: 'border-amber-300',
+        label: 'Received',
+      },
+      converted: {
+        bg: 'bg-green-100',
+        text: 'text-green-700',
+        border: 'border-green-300',
+        label: 'Converted',
+      },
+    }
+
+    const config = statusConfig[status] || statusConfig.draft
+
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border}`}
+      >
+        {config.label}
+      </span>
+    )
+  }
+
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString)
+      return (
+        <>
+          <div className="font-medium text-gray-900">
+            {date.toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </div>
+          <div className="text-xs text-gray-500">
+            {formatDistanceToNow(date, { addSuffix: true })}
+          </div>
+        </>
+      )
+    } catch {
+      return 'Invalid date'
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
+        <div className="flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading invoices...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (invoices.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
+        <div className="flex flex-col items-center justify-center text-center">
+          <FileText className="w-16 h-16 text-gray-300 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Invoices Found</h3>
+          <p className="text-gray-600 mb-6 max-w-md">
+            No invoices match your current filters. Try adjusting your search criteria or create a
+            new invoice.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full">
+      {/* Desktop Table */}
+      <div className="hidden lg:block overflow-x-auto">
+        <table className="w-full min-w-full">
+          <thead className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white">
+            <tr>
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                Invoice No.
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                Customer
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                Branch
+              </th>
+              <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider">
+                Amount
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                Created By
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                Created Date
+              </th>
+              <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                Sent
+              </th>
+              <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                Views
+              </th>
+              <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {invoices.map((invoice, index) => (
+              <tr
+                key={invoice.id}
+                className={`hover:bg-emerald-50 transition-colors ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                }`}
+              >
+                <td className="px-3 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <FileText className="w-4 h-4 text-emerald-600 mr-2" />
+                    <span className="text-sm font-medium text-gray-900">
+                      {invoice.formData?.poWoNumber || 'N/A'}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-3 py-4">
+                  <div className="text-sm text-gray-900 font-medium">
+                    {invoice.formData?.customer || 'N/A'}
+                  </div>
+                </td>
+                <td className="px-3 py-4">
+                  <div className="text-sm text-gray-700">{invoice.formData?.branch || 'N/A'}</div>
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {formatCurrency(invoice.calculations?.grandTotal || 0)}
+                  </div>
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-700">
+                    {invoice.metadata?.createdBy || 'Unknown'}
+                  </div>
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap">
+                  <div className="text-sm">{formatDate(invoice.metadata?.createdAt)}</div>
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap text-center">
+                  {getStatusBadge(invoice.metadata?.status)}
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap text-center">
+                  {invoice.metadata?.sentToClient ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" />
+                  ) : (
+                    <span className="text-gray-400 text-xs">Not sent</span>
+                  )}
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap text-center">
+                  <span className="text-sm font-medium text-gray-700">
+                    {invoice.metadata?.viewCount || 0}
+                  </span>
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap">
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => onView(invoice)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors group relative"
+                      title="View Invoice"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        View
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => onDownload(invoice)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors group relative"
+                      title="Download PDF"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        Download
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => onConvertToIRN(invoice)}
+                      disabled={invoice.metadata?.status === 'converted'}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                        invoice.metadata?.status === 'converted'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                      }`}
+                      title={
+                        invoice.metadata?.status === 'converted'
+                          ? 'Already converted'
+                          : 'Convert to IRN'
+                      }
+                    >
+                      {invoice.metadata?.status === 'converted' ? 'Converted' : 'Convert to IRN'}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="lg:hidden divide-y divide-gray-200">
+        {invoices.map((invoice) => (
+          <div key={invoice.id} className="p-3 sm:p-4 hover:bg-emerald-50 transition-colors">
+            <div className="flex justify-between items-start mb-3">
+              <div className="min-w-0 flex-1 mr-2">
+                <div className="flex items-center mb-1">
+                  <FileText className="w-4 h-4 text-emerald-600 mr-2 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-gray-900 truncate">
+                    {invoice.formData?.poWoNumber || 'N/A'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 truncate">
+                  {invoice.formData?.customer || 'N/A'}
+                </p>
+              </div>
+              {getStatusBadge(invoice.metadata?.status)}
+            </div>
+
+            <div className="space-y-2 mb-3">
+              <div className="flex justify-between text-xs sm:text-sm">
+                <span className="text-gray-600">Amount:</span>
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(invoice.calculations?.grandTotal || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs sm:text-sm">
+                <span className="text-gray-600">Created:</span>
+                <span className="text-gray-700">{formatDate(invoice.metadata?.createdAt)}</span>
+              </div>
+              <div className="flex justify-between text-xs sm:text-sm">
+                <span className="text-gray-600">Views:</span>
+                <span className="text-gray-700">{invoice.metadata?.viewCount || 0}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-gray-200">
+              <button
+                onClick={() => onView(invoice)}
+                className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                View
+              </button>
+              <button
+                onClick={() => onDownload(invoice)}
+                className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download
+              </button>
+              <button
+                onClick={() => onConvertToIRN(invoice)}
+                disabled={invoice.metadata?.status === 'converted'}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                  invoice.metadata?.status === 'converted'
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                {invoice.metadata?.status === 'converted' ? 'Converted' : 'Convert'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default InvoiceTable

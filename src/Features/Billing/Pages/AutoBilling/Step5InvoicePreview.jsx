@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
-import { Download, Edit, Send, ArrowLeft, Check, CheckCircle, XCircle } from 'lucide-react'
+import { Download, Edit, Send, ArrowLeft, Check, CheckCircle, XCircle, Save } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import emailjs from '@emailjs/browser'
 import EmailModal from './EmailModal'
+import { saveInvoice } from '../../utils/invoiceStorage'
 
 const Step5InvoicePreview = ({
   formData,
@@ -9,10 +11,13 @@ const Step5InvoicePreview = ({
   calculations,
   onPrevious,
   onConvertToFinal,
+  isPreviewMode = false,
 }) => {
-  const [isEditing, setIsEditing] = useState(false)
+  const navigate = useNavigate()
+
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isEmailSending, setIsEmailSending] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [emailStatus, setEmailStatus] = useState(null) // { type: 'success' | 'error', message: '' }
 
   // EmailJS Configuration
@@ -115,7 +120,49 @@ const Step5InvoicePreview = ({
   }
 
   const handleDownloadPDF = () => window.print()
-  const handleEdit = () => setIsEditing(!isEditing)
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true)
+      setEmailStatus(null)
+
+      // Prepare invoice data
+      const invoiceData = {
+        formData,
+        billingLines,
+        calculations,
+        createdBy: 'Billing Manager', // You can get this from your auth context
+      }
+
+      // Determine invoice type
+      const invoiceType = formData.invoiceSeries === 'proforma' ? 'proforma' : 'tax'
+
+      // Save to localStorage
+      const result = saveInvoice(invoiceData, invoiceType)
+
+      if (result.success) {
+        setEmailStatus({
+          type: 'success',
+          message: `Invoice saved successfully! ID: ${result.invoiceId}`,
+        })
+
+        // Navigate to dashboard after 2 seconds
+        setTimeout(() => {
+          navigate('/billing/proforma-invoices')
+        }, 2000)
+      } else {
+        throw new Error(result.message)
+      }
+    } catch (error) {
+      console.error('Error saving invoice:', error)
+      setEmailStatus({
+        type: 'error',
+        message: 'Failed to save invoice: ' + error.message,
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleSendToClient = () => {
     setIsEmailModalOpen(true)
@@ -205,46 +252,58 @@ const Step5InvoicePreview = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4">
-      {/* Action Buttons */}
-      <div className="max-w-[210mm] mx-auto mb-4 flex flex-wrap gap-3 justify-between print:hidden">
-        <button
-          onClick={onPrevious}
-          className="px-4 py-2.5 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-lg hover:from-gray-800 hover:to-gray-900 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </button>
-        <div className="flex gap-3">
+      {/* Action Buttons - Hide in preview mode */}
+      {!isPreviewMode && (
+        <div className="max-w-[210mm] mx-auto mb-4 flex flex-wrap gap-3 justify-between print:hidden">
           <button
-            onClick={handleDownloadPDF}
-            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
+            onClick={onPrevious}
+            className="px-4 py-2.5 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-lg hover:from-gray-800 hover:to-gray-900 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Download PDF
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
           </button>
-          <button
-            onClick={handleEdit}
-            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </button>
-          <button
-            onClick={handleSendToClient}
-            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            Send Email
-          </button>
-          <button
-            onClick={onConvertToFinal}
-            className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
-          >
-            <Check className="w-4 h-4 mr-2" />
-            Convert to Final
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleDownloadPDF}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleSendToClient}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Email
+            </button>
+            <button
+              onClick={onConvertToFinal}
+              className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Convert to Final
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Invoice */}
       <div className="max-w-[210mm] mx-auto bg-white overflow-hidden" id="invoice-content">
