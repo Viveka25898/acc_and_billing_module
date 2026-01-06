@@ -108,11 +108,11 @@ const ProformaInvoices = () => {
 
   const handleCreateNew = () => {
     try {
-      navigate('/billing/auto-billing')
+      navigate('/dashboard/billing-manager/auto-billing')
     } catch (err) {
       console.error('Navigation error:', err)
       // Fallback navigation
-      window.location.href = '/billing/auto-billing'
+      window.location.href = '/dashboard/billing-manager/auto-billing'
     }
   }
 
