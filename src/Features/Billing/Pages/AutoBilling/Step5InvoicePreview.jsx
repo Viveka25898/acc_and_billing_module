@@ -204,382 +204,582 @@ const Step5InvoicePreview = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-4 px-2">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4">
       {/* Action Buttons */}
-      <div className="max-w-[210mm] mx-auto mb-3 flex flex-wrap gap-2 justify-between print:hidden">
+      <div className="max-w-[210mm] mx-auto mb-4 flex flex-wrap gap-3 justify-between print:hidden">
         <button
           onClick={onPrevious}
-          className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm flex items-center"
+          className="px-4 py-2.5 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-lg hover:from-gray-800 hover:to-gray-900 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" />
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </button>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             onClick={handleDownloadPDF}
-            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm flex items-center"
+            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
           >
-            <Download className="w-4 h-4 mr-1" />
-            PDF
+            <Download className="w-4 h-4 mr-2" />
+            Download PDF
           </button>
           <button
             onClick={handleEdit}
-            className="px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm flex items-center"
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
           >
-            <Edit className="w-4 h-4 mr-1" />
+            <Edit className="w-4 h-4 mr-2" />
             Edit
           </button>
           <button
             onClick={handleSendToClient}
-            className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm flex items-center"
+            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
           >
-            <Send className="w-4 h-4 mr-1" />
-            Send
+            <Send className="w-4 h-4 mr-2" />
+            Send Email
           </button>
           <button
             onClick={onConvertToFinal}
-            className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm flex items-center"
+            className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
           >
-            <Check className="w-4 h-4 mr-1" />
-            Convert
+            <Check className="w-4 h-4 mr-2" />
+            Convert to Final
           </button>
         </div>
       </div>
 
       {/* Invoice */}
-      <div className="max-w-[210mm] mx-auto bg-white shadow-lg" id="invoice-content">
-        <div className="border-2 border-black">
-          {/* Header */}
-          <div className="flex justify-between items-start p-4 border-b-2 border-black">
-            <div className="w-48">
-              <svg viewBox="0 0 200 80" className="w-full">
-                <style>{`.logo-green{fill:#1a5f3f}.logo-text{font-family:Arial,sans-serif;font-weight:bold}`}</style>
-                <circle cx="25" cy="35" r="22" className="logo-green" />
-                <circle cx="25" cy="35" r="15" fill="white" />
-                <g className="logo-green">
-                  {[0, 1, 2, 3].map((i) =>
-                    [0, 1, 2, 3].map((j) => (
-                      <rect key={`${i}${j}`} x={15 + i * 4} y={28 + j * 4} width="3" height="3" />
-                    ))
-                  )}
-                </g>
-                <text x="55" y="40" className="logo-text logo-green" fontSize="28">
-                  iSmart
-                </text>
-                <text x="55" y="55" className="logo-green" fontSize="10" fontStyle="italic">
-                  Efficiency that sustains
-                </text>
-                <text x="195" y="12" fontSize="8" textAnchor="end">
-                  TM
-                </text>
-              </svg>
-            </div>
-            <div className="text-right">
-              <h1 className="text-xl font-bold">
-                {formData.invoiceSeries === 'proforma' ? 'Proforma Invoice' : 'Tax Invoice'}
-              </h1>
-              <p className="text-xs">(ORIGINAL)</p>
+      <div className="max-w-[210mm] mx-auto bg-white overflow-hidden" id="invoice-content">
+        <div className="border-2 border-gray-300">
+          {/* Header - Modern Design */}
+          <div className="header-gradient p-6">
+            <div className="flex justify-between items-start">
+              <div className="w-56 bg-white rounded-lg p-3">
+                <img
+                  src="/iSmart Logo.jpg"
+                  alt="iSmart Facitech Logo"
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+              <div className="text-right text-white">
+                <h1 className="text-3xl font-bold tracking-wide mb-1 drop-shadow-md">
+                  {formData.invoiceSeries === 'proforma' ? 'PROFORMA INVOICE' : 'TAX INVOICE'}
+                </h1>
+                <div className="inline-block bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full">
+                  <p className="text-sm font-semibold">(ORIGINAL)</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Company Details */}
-          <div className="flex justify-between p-3 border-b border-black">
-            <div className="flex-1 text-center">
-              <h2 className="text-lg font-bold mb-1">I SMART FACITECH PRIVATE LIMITED</h2>
-              <p className="text-xs">
-                317,3rd Floor, A/2, Nilgiri, Wadala Truck Terminal, Near Wadala RTO, Mumbai-400037
-              </p>
-              <p className="text-xs">Tel No. : 9152729982 | Email : vinayak.b@ismartfacitech.com</p>
-              <p className="text-xs font-semibold">
-                GST No. : 27AAKCC4528J1ZE, GST State : Maharashtra (27)
-              </p>
-            </div>
-            <div className="w-24 h-24 border border-gray-400 flex items-center justify-center ml-3">
-              <svg viewBox="0 0 100 100" className="w-full h-full p-1">
-                <rect fill="white" width="100" height="100" />
-                {[...Array(10)].map((_, i) =>
-                  [...Array(10)].map((_, j) =>
-                    (i + j) % 2 === 0 ? (
-                      <rect
-                        key={`${i}-${j}`}
-                        x={i * 10}
-                        y={j * 10}
-                        width="10"
-                        height="10"
-                        fill="black"
+          {/* Company Details - Enhanced */}
+          <div className="bg-gradient-to-b from-gray-50 to-white p-6 border-b-2 border-emerald-600">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-emerald-800 mb-3 tracking-wide">
+                  I SMART FACITECH PRIVATE LIMITED
+                </h2>
+                <div className="space-y-1.5 text-gray-700">
+                  <div className="flex items-start">
+                    <svg
+                      className="w-4 h-4 mr-2 mt-0.5 text-emerald-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                        clipRule="evenodd"
                       />
-                    ) : null
-                  )
-                )}
-              </svg>
+                    </svg>
+                    <p className="text-sm leading-relaxed">
+                      317, 3rd Floor, A/2, Nilgiri, Wadala Truck Terminal,
+                      <br />
+                      Near Wadala RTO, Mumbai-400037
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <svg
+                      className="w-4 h-4 mr-2 text-emerald-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                    </svg>
+                    <p className="text-sm font-medium">9152729982</p>
+                    <span className="mx-3 text-gray-400">|</span>
+                    <svg
+                      className="w-4 h-4 mr-2 text-emerald-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                    </svg>
+                    <p className="text-sm">vinayak.b@ismartfacitech.com</p>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="inline-block bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                      <p className="text-xs font-semibold text-emerald-800">
+                        <span className="text-gray-600">GST No:</span> 27AAKCC4528J1ZE
+                      </p>
+                      <p className="text-xs text-emerald-700">
+                        <span className="text-gray-600">State:</span> Maharashtra (27)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="ml-6 flex flex-col items-center">
+                <div className="w-28 h-28 border-2 border-emerald-600 rounded-lg shadow-md bg-white p-1.5">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    <rect fill="white" width="100" height="100" />
+                    {[...Array(10)].map((_, i) =>
+                      [...Array(10)].map((_, j) =>
+                        (i + j) % 2 === 0 ? (
+                          <rect
+                            key={`${i}-${j}`}
+                            x={i * 10}
+                            y={j * 10}
+                            width="10"
+                            height="10"
+                            fill="#059669"
+                          />
+                        ) : null
+                      )
+                    )}
+                  </svg>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1">QR Code</p>
+              </div>
             </div>
           </div>
 
-          {/* Invoice Details */}
-          <div className="grid grid-cols-2 border-b border-black text-xs">
-            <div className="border-r border-black">
+          {/* Invoice Details - Modern Cards */}
+          <div className="grid grid-cols-2 gap-0 text-xs bg-gray-50">
+            <div className="border-r border-gray-300">
+              <div className="bg-emerald-600 text-white px-4 py-2 font-bold text-sm">
+                Invoice Information
+              </div>
               {[
-                ['Inv. No.:', formData.poWoNumber],
-                ['Inv. Date:', new Date().toLocaleDateString('en-GB')],
-                ['Ack. No:', ''],
-                ['IRN No:', ''],
-              ].map(([label, value], i) => (
+                ['Invoice No.', formData.poWoNumber, true],
+                ['Invoice Date', new Date().toLocaleDateString('en-GB'), false],
+                ['Acknowledgment No.', '—', false],
+                ['IRN No.', '—', false],
+              ].map(([label, value, highlight], i) => (
                 <div
                   key={i}
-                  className={`grid grid-cols-3 ${i < 3 ? 'border-b border-gray-400' : ''}`}
+                  className={`grid grid-cols-3 ${i < 3 ? 'border-b border-gray-200' : ''} hover:bg-gray-100 transition-colors`}
                 >
-                  <div className="p-1 bg-gray-100 font-semibold border-r border-gray-400">
+                  <div className="p-2.5 font-semibold text-gray-700 border-r border-gray-200 bg-white">
                     {label}
                   </div>
-                  <div className={`p-1 col-span-2 ${i === 0 ? 'font-bold' : ''}`}>{value}</div>
+                  <div
+                    className={`p-2.5 col-span-2 ${highlight ? 'font-bold text-emerald-700 text-sm' : 'text-gray-800'}`}
+                  >
+                    {value}
+                  </div>
                 </div>
               ))}
             </div>
             <div>
+              <div className="bg-emerald-600 text-white px-4 py-2 font-bold text-sm">
+                Billing Period
+              </div>
               {[
-                ['Bill For Month:', getBillingMonth()],
+                ['Bill For Month', getBillingMonth(), true],
                 [
-                  'Invoice Period:',
+                  'Invoice Period',
                   `${formatDate(formData.selectedBillingCycle?.cycleFrom)} to ${formatDate(formData.selectedBillingCycle?.cycleTo)}`,
+                  false,
                 ],
-              ].map(([label, value], i) => (
+              ].map(([label, value, highlight], i) => (
                 <div
                   key={i}
-                  className={`grid grid-cols-3 ${i === 0 ? 'border-b border-gray-400' : ''}`}
+                  className={`grid grid-cols-3 ${i === 0 ? 'border-b border-gray-200' : ''} hover:bg-gray-100 transition-colors`}
                 >
-                  <div className="p-1 bg-gray-100 font-semibold border-r border-gray-400">
+                  <div className="p-2.5 font-semibold text-gray-700 border-r border-gray-200 bg-white">
                     {label}
                   </div>
-                  <div className={`p-1 col-span-2 ${i === 0 ? 'font-bold' : ''}`}>{value}</div>
+                  <div
+                    className={`p-2.5 col-span-2 ${highlight ? 'font-bold text-emerald-700 text-sm' : 'text-gray-800'}`}
+                  >
+                    {value}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Bill To / Ship To */}
-          <div className="grid grid-cols-2 border-b border-black text-xs">
-            {['Bill To:', 'Ship/Service Provided To:'].map((title, idx) => (
-              <div key={idx} className={`p-2 ${idx === 0 ? 'border-r border-black' : ''}`}>
-                <p className="font-bold mb-1">{title}</p>
-                <p className="font-semibold">{formData.customer}</p>
-                <p>{formData.branch}</p>
-                {formData.selectedSites?.map((site, i) => (
-                  <p key={i}>
-                    {site.name}, {site.location}
-                  </p>
-                ))}
-                <p className="mt-1 font-semibold">GST No.: </p>
+          {/* Bill To / Ship To - Enhanced Cards */}
+          <div className="grid grid-cols-2 gap-0 text-xs border-t-2 border-emerald-600">
+            {[
+              {
+                title: 'Bill To',
+                icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+              },
+              {
+                title: 'Ship/Service Provided To',
+                icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+              },
+            ].map((section, idx) => (
+              <div key={idx} className={`${idx === 0 ? 'border-r border-gray-300' : ''} bg-white`}>
+                <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 px-4 py-3 border-b border-emerald-200 flex items-center">
+                  <svg
+                    className="w-5 h-5 mr-2 text-emerald-600"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path fillRule="evenodd" d={section.icon} clipRule="evenodd" />
+                  </svg>
+                  <p className="font-bold text-emerald-800">{section.title}</p>
+                </div>
+                <div className="p-4 space-y-1">
+                  <p className="font-bold text-gray-800 text-sm mb-2">{formData.customer}</p>
+                  <p className="text-gray-700">{formData.branch}</p>
+                  {formData.selectedSites?.map((site, i) => (
+                    <p key={i} className="text-gray-600 text-[11px] leading-relaxed">
+                      • {site.name}, {site.location}
+                    </p>
+                  ))}
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <p className="text-gray-600">
+                      <span className="font-semibold text-gray-700">GST No.:</span> —
+                    </p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Services Table */}
-          <table className="w-full text-[10px] border-collapse">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-400 p-1 text-center" style={{ width: '30px' }}>
-                  Sr. No.
-                </th>
-                <th className="border border-gray-400 p-1 text-left" style={{ width: '200px' }}>
-                  Particulars
-                </th>
-                <th className="border border-gray-400 p-1 text-center" style={{ width: '60px' }}>
-                  HSN/SAC
-                </th>
-                <th className="border border-gray-400 p-1 text-center" style={{ width: '40px' }}>
-                  Qty
-                </th>
-                <th className="border border-gray-400 p-1 text-right" style={{ width: '70px' }}>
-                  Rate
-                </th>
-                <th className="border border-gray-400 p-1 text-right" style={{ width: '50px' }}>
-                  Rate Day
-                </th>
-                <th className="border border-gray-400 p-1 text-right" style={{ width: '50px' }}>
-                  Duties
-                </th>
-                <th className="border border-gray-400 p-1 text-right" style={{ width: '80px' }}>
-                  Amount
-                </th>
-                <th className="border border-gray-400 p-1" colSpan="2">
-                  CGST
-                </th>
-                <th className="border border-gray-400 p-1" colSpan="2">
-                  SGST
-                </th>
-              </tr>
-              <tr className="bg-gray-50">
-                {[...Array(8)].map((_, i) => (
-                  <th key={i} className="border border-gray-400 p-1"></th>
-                ))}
-                <th className="border border-gray-400 p-1 text-center">Rate</th>
-                <th className="border border-gray-400 p-1 text-center">Amount</th>
-                <th className="border border-gray-400 p-1 text-center">Rate</th>
-                <th className="border border-gray-400 p-1 text-center">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {billingLines.map((line, i) => (
-                <tr key={i}>
-                  <td className="border border-gray-400 p-1 text-center">{i + 1}</td>
-                  <td className="border border-gray-400 p-1">{line.designation}</td>
-                  <td className="border border-gray-400 p-1 text-center">{line.hsnCode}</td>
-                  <td className="border border-gray-400 p-1 text-center">
-                    {line.count.toFixed(2)}
-                  </td>
-                  <td className="border border-gray-400 p-1 text-right">
-                    {formatCurrency(line.monthlyRate)}
-                  </td>
-                  <td className="border border-gray-400 p-1 text-right">
-                    {formatCurrency(line.ratePerDay)}
-                  </td>
-                  <td className="border border-gray-400 p-1 text-right">
-                    {line.dutyDays.toFixed(2)}
-                  </td>
-                  <td className="border border-gray-400 p-1 text-right">
-                    {formatCurrency(line.amount)}
-                  </td>
-                  <td className="border border-gray-400 p-1 text-right">9.00</td>
-                  <td className="border border-gray-400 p-1 text-right">
-                    {formatCurrency(line.amount * 0.09)}
-                  </td>
-                  <td className="border border-gray-400 p-1 text-right">9.00</td>
-                  <td className="border border-gray-400 p-1 text-right">
-                    {formatCurrency(line.amount * 0.09)}
-                  </td>
-                </tr>
-              ))}
-              {[...Array(Math.max(0, 7 - billingLines.length))].map((_, i) => (
-                <tr key={`e${i}`}>
-                  {[...Array(12)].map((_, j) => (
-                    <td key={j} className="border border-gray-400 p-1 h-6"></td>
-                  ))}
-                </tr>
-              ))}
-              <tr className="font-bold bg-gray-100">
-                <td colSpan="7" className="border border-gray-400 p-1 text-right">
-                  TOTAL AMOUNT
-                </td>
-                <td className="border border-gray-400 p-1 text-right">
-                  {formatCurrency(calculations.subtotal)}
-                </td>
-                <td className="border border-gray-400 p-1"></td>
-                <td className="border border-gray-400 p-1 text-right">
-                  {formatCurrency(calculations.cgst)}
-                </td>
-                <td className="border border-gray-400 p-1"></td>
-                <td className="border border-gray-400 p-1 text-right">
-                  {formatCurrency(calculations.sgst)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* Bank & Total */}
-          <div className="grid grid-cols-2 border-t border-black text-xs">
-            <div className="p-2 border-r border-black">
-              <p className="font-bold mb-1">Our Bank Details</p>
-              <p>Punjab National Bank</p>
-              <p>A/c. No. 1045108700000064</p>
-              <p>RTGS/NEFT IFSC : PUNB0104510</p>
-            </div>
-            <div className="p-2">
-              <div className="flex justify-between mb-1">
-                <span>Net Total</span>
-                <span className="font-semibold">{formatCurrency(calculations.totalBeforeTax)}</span>
-              </div>
-              <div className="flex justify-between mb-1">
-                <span>Round Off</span>
-                <span className="font-semibold">0.00</span>
-              </div>
-              <div className="flex justify-between font-bold text-base pt-1 border-t border-gray-400">
-                <span>Grand Total</span>
-                <span>{formatCurrency(calculations.grandTotal)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Amount in Words */}
-          <div className="p-2 border-t border-black text-xs">
-            <span className="font-bold">{numberToWords(Math.round(calculations.grandTotal))}</span>
-          </div>
-
-          {/* Narration */}
-          <div className="p-2 border-t border-black text-xs">
-            <p className="font-semibold">Narration:</p>
-            <p>
-              Towards bill for Housekeeping Services rendered at {formData.customer} Location For
-              the month of {formatDate(formData.selectedBillingCycle?.cycleFrom)} to{' '}
-              {formatDate(formData.selectedBillingCycle?.cycleTo)}.
-            </p>
-          </div>
-
-          {/* HSN Summary */}
-          <div className="p-2 border-t border-black">
+          {/* Services Table - Professional Design */}
+          <div className="overflow-x-auto mt-4">
             <table className="w-full text-[10px] border-collapse">
               <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-400 p-1">HSN/SAC Code</th>
-                  <th className="border border-gray-400 p-1">Taxable Value</th>
-                  <th className="border border-gray-400 p-1" colSpan="2">
-                    Central Tax
+                <tr className="bg-gradient-to-r from-emerald-700 to-emerald-600 text-white">
+                  <th
+                    className="border border-emerald-800 p-2 text-center font-bold"
+                    style={{ width: '30px' }}
+                  >
+                    Sr.
+                    <br />
+                    No.
                   </th>
-                  <th className="border border-gray-400 p-1" colSpan="2">
-                    State Tax
+                  <th
+                    className="border border-emerald-800 p-2 text-left font-bold"
+                    style={{ width: '200px' }}
+                  >
+                    Particulars
                   </th>
-                  <th className="border border-gray-400 p-1" colSpan="2">
-                    IntegratedTax
+                  <th
+                    className="border border-emerald-800 p-2 text-center font-bold"
+                    style={{ width: '60px' }}
+                  >
+                    HSN/SAC
                   </th>
-                  <th className="border border-gray-400 p-1">Total Tax Amt.</th>
+                  <th
+                    className="border border-emerald-800 p-2 text-center font-bold"
+                    style={{ width: '40px' }}
+                  >
+                    Qty
+                  </th>
+                  <th
+                    className="border border-emerald-800 p-2 text-right font-bold"
+                    style={{ width: '70px' }}
+                  >
+                    Rate
+                  </th>
+                  <th
+                    className="border border-emerald-800 p-2 text-right font-bold"
+                    style={{ width: '50px' }}
+                  >
+                    Rate
+                    <br />
+                    Day
+                  </th>
+                  <th
+                    className="border border-emerald-800 p-2 text-right font-bold"
+                    style={{ width: '50px' }}
+                  >
+                    Duty
+                    <br />
+                    Days
+                  </th>
+                  <th
+                    className="border border-emerald-800 p-2 text-right font-bold"
+                    style={{ width: '80px' }}
+                  >
+                    Amount
+                  </th>
+                  <th className="border border-emerald-800 p-2 font-bold" colSpan="2">
+                    CGST
+                  </th>
+                  <th className="border border-emerald-800 p-2 font-bold" colSpan="2">
+                    SGST
+                  </th>
                 </tr>
-                <tr className="bg-gray-50">
-                  <th className="border border-gray-400 p-1"></th>
-                  <th className="border border-gray-400 p-1"></th>
-                  <th className="border border-gray-400 p-1">Rate</th>
-                  <th className="border border-gray-400 p-1">Amount</th>
-                  <th className="border border-gray-400 p-1">Rate</th>
-                  <th className="border border-gray-400 p-1">Amount</th>
-                  <th className="border border-gray-400 p-1">Rate</th>
-                  <th className="border border-gray-400 p-1">Amount</th>
-                  <th className="border border-gray-400 p-1"></th>
+                <tr className="bg-emerald-100 text-gray-700">
+                  {[...Array(8)].map((_, i) => (
+                    <th key={i} className="border border-gray-300 p-1"></th>
+                  ))}
+                  <th className="border border-gray-300 p-1 text-center font-semibold">Rate</th>
+                  <th className="border border-gray-300 p-1 text-center font-semibold">Amount</th>
+                  <th className="border border-gray-300 p-1 text-center font-semibold">Rate</th>
+                  <th className="border border-gray-300 p-1 text-center font-semibold">Amount</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-gray-400 p-1">998539</td>
-                  <td className="border border-gray-400 p-1 text-right">
+              <tbody className="bg-white">
+                {billingLines.map((line, i) => (
+                  <tr
+                    key={i}
+                    className={`${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-emerald-50 transition-colors`}
+                  >
+                    <td className="border border-gray-300 p-2 text-center font-medium">{i + 1}</td>
+                    <td className="border border-gray-300 p-2 text-gray-800">{line.designation}</td>
+                    <td className="border border-gray-300 p-2 text-center text-gray-700">
+                      {line.hsnCode}
+                    </td>
+                    <td className="border border-gray-300 p-2 text-center font-medium">
+                      {line.count.toFixed(2)}
+                    </td>
+                    <td className="border border-gray-300 p-2 text-right font-medium">
+                      {formatCurrency(line.monthlyRate)}
+                    </td>
+                    <td className="border border-gray-300 p-2 text-right">
+                      {formatCurrency(line.ratePerDay)}
+                    </td>
+                    <td className="border border-gray-300 p-2 text-right">
+                      {line.dutyDays.toFixed(2)}
+                    </td>
+                    <td className="border border-gray-300 p-2 text-right font-semibold text-gray-800">
+                      {formatCurrency(line.amount)}
+                    </td>
+                    <td className="border border-gray-300 p-2 text-right text-blue-700">9.00</td>
+                    <td className="border border-gray-300 p-2 text-right text-blue-700">
+                      {formatCurrency(line.amount * 0.09)}
+                    </td>
+                    <td className="border border-gray-300 p-2 text-right text-purple-700">9.00</td>
+                    <td className="border border-gray-300 p-2 text-right text-purple-700">
+                      {formatCurrency(line.amount * 0.09)}
+                    </td>
+                  </tr>
+                ))}
+                {[...Array(Math.max(0, 7 - billingLines.length))].map((_, i) => (
+                  <tr
+                    key={`e${i}`}
+                    className={`${(billingLines.length + i) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                  >
+                    {[...Array(12)].map((_, j) => (
+                      <td key={j} className="border border-gray-300 p-1 h-6"></td>
+                    ))}
+                  </tr>
+                ))}
+                <tr className="font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 text-white">
+                  <td colSpan="7" className="border border-emerald-800 p-2 text-right text-sm">
+                    TOTAL AMOUNT
+                  </td>
+                  <td className="border border-emerald-800 p-2 text-right text-sm">
                     {formatCurrency(calculations.subtotal)}
                   </td>
-                  <td className="border border-gray-400 p-1 text-center">9.00</td>
-                  <td className="border border-gray-400 p-1 text-right">
+                  <td className="border border-emerald-800 p-2"></td>
+                  <td className="border border-emerald-800 p-2 text-right text-sm">
                     {formatCurrency(calculations.cgst)}
                   </td>
-                  <td className="border border-gray-400 p-1 text-center">9.00</td>
-                  <td className="border border-gray-400 p-1 text-right">
+                  <td className="border border-emerald-800 p-2"></td>
+                  <td className="border border-emerald-800 p-2 text-right text-sm">
                     {formatCurrency(calculations.sgst)}
                   </td>
-                  <td className="border border-gray-400 p-1 text-center">0.00</td>
-                  <td className="border border-gray-400 p-1 text-right">0.00</td>
-                  <td className="border border-gray-400 p-1 text-right">
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Bank & Total - Enhanced Layout */}
+          <div className="grid grid-cols-2 gap-0 mt-4 text-xs border-t-2 border-emerald-600">
+            <div className="p-6 border-r border-gray-300 bg-gradient-to-br from-blue-50 to-blue-100">
+              <div className="flex items-center mb-3">
+                <svg className="w-6 h-6 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                  <path
+                    fillRule="evenodd"
+                    d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="font-bold text-blue-800 text-sm">Our Bank Details</p>
+              </div>
+              <div className="space-y-2 bg-white rounded-lg p-4 shadow-sm border border-blue-200">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Bank Name:</span>
+                  <span className="font-semibold text-gray-800">Punjab National Bank</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">A/c. No.:</span>
+                  <span className="font-semibold text-gray-800">1045108700000064</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">IFSC Code:</span>
+                  <span className="font-semibold text-gray-800">PUNB0104510</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-gradient-to-br from-emerald-50 to-emerald-100">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm">
+                  <span className="text-gray-700">Net Total</span>
+                  <span className="font-bold text-gray-800 text-base">
+                    {formatCurrency(calculations.totalBeforeTax)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm">
+                  <span className="text-gray-700">Round Off</span>
+                  <span className="font-bold text-gray-800 text-base">0.00</span>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-md">
+                  <span className="font-bold text-white text-lg">Grand Total</span>
+                  <span className="font-bold text-white text-xl">
+                    {formatCurrency(calculations.grandTotal)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Amount in Words - Enhanced */}
+          <div className="p-4 bg-gradient-to-r from-amber-50 to-amber-100 border-t-2 border-amber-400 text-xs">
+            <div className="flex items-start">
+              <svg
+                className="w-5 h-5 mr-2 text-amber-600 flex-shrink-0 mt-0.5"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <div>
+                <p className="font-semibold text-amber-800 mb-1">Amount in Words:</p>
+                <p className="font-bold text-amber-900 text-sm leading-relaxed">
+                  {numberToWords(Math.round(calculations.grandTotal))}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Narration - Enhanced */}
+          <div className="p-4 bg-white border-t border-gray-300 text-xs">
+            <div className="flex items-start">
+              <svg
+                className="w-5 h-5 mr-2 text-emerald-600 flex-shrink-0 mt-0.5"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <div>
+                <p className="font-bold text-emerald-800 mb-1">Narration:</p>
+                <p className="text-gray-700 leading-relaxed">
+                  Towards bill for Housekeeping Services rendered at{' '}
+                  <span className="font-semibold">{formData.customer}</span> Location for the period
+                  from{' '}
+                  <span className="font-semibold">
+                    {formatDate(formData.selectedBillingCycle?.cycleFrom)}
+                  </span>{' '}
+                  to{' '}
+                  <span className="font-semibold">
+                    {formatDate(formData.selectedBillingCycle?.cycleTo)}
+                  </span>
+                  .
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* HSN Summary - Modern Table */}
+          <div className="p-4 bg-gray-50 border-t-2 border-emerald-600">
+            <div className="flex items-center mb-3">
+              <svg
+                className="w-5 h-5 mr-2 text-emerald-600"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                <path
+                  fillRule="evenodd"
+                  d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <p className="font-bold text-emerald-800 text-sm">HSN/SAC Summary</p>
+            </div>
+            <table className="w-full text-[10px] border-collapse shadow-sm">
+              <thead>
+                <tr className="bg-gradient-to-r from-emerald-700 to-emerald-600 text-white">
+                  <th className="border border-emerald-800 p-2 font-bold">HSN/SAC Code</th>
+                  <th className="border border-emerald-800 p-2 font-bold">Taxable Value</th>
+                  <th className="border border-emerald-800 p-2 font-bold" colSpan="2">
+                    Central Tax
+                  </th>
+                  <th className="border border-emerald-800 p-2 font-bold" colSpan="2">
+                    State Tax
+                  </th>
+                  <th className="border border-emerald-800 p-2 font-bold" colSpan="2">
+                    Integrated Tax
+                  </th>
+                  <th className="border border-emerald-800 p-2 font-bold">Total Tax Amt.</th>
+                </tr>
+                <tr className="bg-emerald-100 text-gray-700">
+                  <th className="border border-gray-300 p-1"></th>
+                  <th className="border border-gray-300 p-1"></th>
+                  <th className="border border-gray-300 p-1 font-semibold">Rate</th>
+                  <th className="border border-gray-300 p-1 font-semibold">Amount</th>
+                  <th className="border border-gray-300 p-1 font-semibold">Rate</th>
+                  <th className="border border-gray-300 p-1 font-semibold">Amount</th>
+                  <th className="border border-gray-300 p-1 font-semibold">Rate</th>
+                  <th className="border border-gray-300 p-1 font-semibold">Amount</th>
+                  <th className="border border-gray-300 p-1"></th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                <tr className="hover:bg-emerald-50 transition-colors">
+                  <td className="border border-gray-300 p-2 font-semibold text-gray-800">998539</td>
+                  <td className="border border-gray-300 p-2 text-right font-medium">
+                    {formatCurrency(calculations.subtotal)}
+                  </td>
+                  <td className="border border-gray-300 p-2 text-center text-blue-700">9.00</td>
+                  <td className="border border-gray-300 p-2 text-right text-blue-700">
+                    {formatCurrency(calculations.cgst)}
+                  </td>
+                  <td className="border border-gray-300 p-2 text-center text-purple-700">9.00</td>
+                  <td className="border border-gray-300 p-2 text-right text-purple-700">
+                    {formatCurrency(calculations.sgst)}
+                  </td>
+                  <td className="border border-gray-300 p-2 text-center text-gray-500">0.00</td>
+                  <td className="border border-gray-300 p-2 text-right text-gray-500">0.00</td>
+                  <td className="border border-gray-300 p-2 text-right font-bold text-emerald-700">
                     {formatCurrency(calculations.totalTax)}
                   </td>
                 </tr>
-                <tr className="font-bold bg-gray-100">
-                  <td className="border border-gray-400 p-1">TOTAL</td>
-                  <td className="border border-gray-400 p-1 text-right">
+                <tr className="font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 text-white">
+                  <td className="border border-emerald-800 p-2">TOTAL</td>
+                  <td className="border border-emerald-800 p-2 text-right">
                     {formatCurrency(calculations.subtotal)}
                   </td>
-                  <td className="border border-gray-400 p-1"></td>
-                  <td className="border border-gray-400 p-1 text-right">
+                  <td className="border border-emerald-800 p-2"></td>
+                  <td className="border border-emerald-800 p-2 text-right">
                     {formatCurrency(calculations.cgst)}
                   </td>
-                  <td className="border border-gray-400 p-1"></td>
-                  <td className="border border-gray-400 p-1 text-right">
+                  <td className="border border-emerald-800 p-2"></td>
+                  <td className="border border-emerald-800 p-2 text-right">
                     {formatCurrency(calculations.sgst)}
                   </td>
-                  <td className="border border-gray-400 p-1"></td>
-                  <td className="border border-gray-400 p-1 text-right">0.00</td>
-                  <td className="border border-gray-400 p-1 text-right">
+                  <td className="border border-emerald-800 p-2"></td>
+                  <td className="border border-emerald-800 p-2 text-right">0.00</td>
+                  <td className="border border-emerald-800 p-2 text-right">
                     {formatCurrency(calculations.totalTax)}
                   </td>
                 </tr>
@@ -587,65 +787,135 @@ const Step5InvoicePreview = ({
             </table>
           </div>
 
-          {/* GST Declaration */}
-          <div className="p-2 border-t border-black text-xs">
-            <p className="font-semibold">Issued Under Section 31(1) of GST ACT 2017</p>
+          {/* GST Declaration - Enhanced */}
+          <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200 text-xs">
+            <div className="flex items-center justify-center">
+              <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <p className="font-bold text-blue-800">Issued Under Section 31(1) of GST ACT 2017</p>
+            </div>
           </div>
 
-          {/* Footer */}
-          <div className="grid grid-cols-2 border-t-2 border-black text-xs">
-            <div className="p-3 border-r border-black">
-              <p className="font-bold mb-2">Invoice Terms</p>
-              <p className="mb-1">
-                <strong>1.</strong> All Payments are to be made in the Favour of 'I Smart Facitech
-                Private Limited'.
-              </p>
-              <p className="mb-1">
-                <strong>2.</strong> Payment to be done within 7 days of receipt of invoice.
-              </p>
-              <p className="mb-1">
-                <strong>3.</strong> Interest @24% p.a. shall be charged, if payment is not made
-                within 15 days from the date of receipt.
-              </p>
-              <p className="mb-1">
-                <strong>4.</strong> As per the provision of MSME and registered under MSME act,
-                delay in payment of 45 days can lead to Interest claim at a rate which is 3 times
-                the existing bank rate as notified by RBI along with filing litigation proceedings
-                as per the said act.
-              </p>
-              <p className="mb-1">
-                <strong>5.</strong> Any queries /Corrections will be entertained only within 3 days
-                from the date of submission of the bill, No Corrections will be entertained
-                thereafter.
-              </p>
-              <p className="mb-1">
-                <strong>6.</strong> All disputes are subject to Mumbai jurisdiction only.
-              </p>
+          {/* Footer - Modern Professional Design */}
+          <div className="grid grid-cols-2 gap-0 border-t-2 border-emerald-600 text-xs bg-gray-50">
+            <div className="p-6 border-r border-gray-300 bg-white">
+              <div className="flex items-center mb-4">
+                <svg
+                  className="w-6 h-6 mr-2 text-emerald-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="font-bold text-emerald-800 text-sm">Terms & Conditions</p>
+              </div>
+              <div className="space-y-2 text-[10px] leading-relaxed text-gray-700">
+                <div className="flex">
+                  <span className="font-bold text-emerald-600 mr-2 flex-shrink-0">1.</span>
+                  <p>
+                    All Payments are to be made in the Favour of{' '}
+                    <span className="font-semibold">'I Smart Facitech Private Limited'</span>.
+                  </p>
+                </div>
+                <div className="flex">
+                  <span className="font-bold text-emerald-600 mr-2 flex-shrink-0">2.</span>
+                  <p>
+                    Payment to be done within <span className="font-semibold">7 days</span> of
+                    receipt of invoice.
+                  </p>
+                </div>
+                <div className="flex">
+                  <span className="font-bold text-emerald-600 mr-2 flex-shrink-0">3.</span>
+                  <p>
+                    Interest <span className="font-semibold">@24% p.a.</span> shall be charged, if
+                    payment is not made within 15 days from the date of receipt.
+                  </p>
+                </div>
+                <div className="flex">
+                  <span className="font-bold text-emerald-600 mr-2 flex-shrink-0">4.</span>
+                  <p>
+                    As per the provision of MSME and registered under MSME act, delay in payment of
+                    45 days can lead to Interest claim at a rate which is 3 times the existing bank
+                    rate as notified by RBI along with filing litigation proceedings as per the said
+                    act.
+                  </p>
+                </div>
+                <div className="flex">
+                  <span className="font-bold text-emerald-600 mr-2 flex-shrink-0">5.</span>
+                  <p>
+                    Any queries/Corrections will be entertained only within{' '}
+                    <span className="font-semibold">3 days</span> from the date of submission of the
+                    bill, No Corrections will be entertained thereafter.
+                  </p>
+                </div>
+                <div className="flex">
+                  <span className="font-bold text-emerald-600 mr-2 flex-shrink-0">6.</span>
+                  <p>
+                    All disputes are subject to{' '}
+                    <span className="font-semibold">Mumbai jurisdiction</span> only.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="p-3">
-              <p className="text-center mb-8">
-                <span className="font-semibold">Created by: </span>TEJAS SUTHAR
+            <div className="p-6 bg-gradient-to-br from-gray-50 to-white">
+              <div className="mb-6 text-center pb-4 border-b border-gray-300">
+                <p className="text-gray-600">
+                  <span className="font-semibold text-gray-800">Created by:</span> TEJAS SUTHAR
+                </p>
+              </div>
+              <p className="text-center mb-6 font-bold text-emerald-800 text-sm">
+                For I SMART FACITECH PRIVATE LIMITED
               </p>
-              <p className="text-center mb-2 font-bold">For I SMART FACITECH PRIVATE LIMITED</p>
-              <div className="flex justify-between items-end px-8">
+              <div className="flex justify-between items-end">
                 <div className="text-center">
-                  <div className="border-t-2 border-dashed border-gray-400 pt-2 mb-16"></div>
-                  <p className="font-bold text-base">MANOJ KAMBLI</p>
-                  <p className="text-xs">Date: {new Date().toLocaleDateString('en-IN')}</p>
-                  <p className="text-xs">{new Date().toLocaleTimeString('en-IN')}</p>
+                  <div className="mb-20">
+                    <div className="border-b-2 border-gray-400 w-32 mx-auto"></div>
+                  </div>
+                  <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                    <p className="font-bold text-gray-800 text-sm mb-1">MANOJ KAMBLI</p>
+                    <p className="text-[10px] text-gray-600">
+                      <span className="font-semibold">Date:</span>{' '}
+                      {new Date().toLocaleDateString('en-IN')}
+                    </p>
+                    <p className="text-[10px] text-gray-600">
+                      <span className="font-semibold">Time:</span>{' '}
+                      {new Date().toLocaleTimeString('en-IN')}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-center">
-                  <div className="w-20 h-20 border-2 border-gray-400 mb-2 flex items-center justify-center">
-                    <span className="text-[8px] text-gray-400">Stamp</span>
+                  <div className="w-24 h-24 border-2 border-emerald-600 rounded-lg mb-2 flex items-center justify-center bg-white shadow-sm">
+                    <svg
+                      className="w-8 h-8 text-emerald-300"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </div>
-                  <p className="font-semibold">Authorised Signatory</p>
+                  <p className="font-bold text-gray-800 text-[11px]">Authorised Signatory</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Page Footer */}
-          <div className="p-1 text-center text-xs border-t border-gray-400">page # 1</div>
+          <div className="p-2 text-center text-xs bg-gradient-to-r from-gray-100 to-gray-200 border-t border-gray-300">
+            <p className="text-gray-600 font-medium">Page 1 of 1</p>
+          </div>
         </div>
       </div>
 
@@ -682,7 +952,24 @@ const Step5InvoicePreview = ({
       )}
 
       <style>{`
+        /* Force color printing */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        
+        /* Header gradient */
+        .header-gradient {
+          background: linear-gradient(to right, #047857, #059669, #047857);
+        }
+        
         @media print {
+          @page {
+            size: A4;
+            margin: 5mm;
+          }
+          
           body * {
             visibility: hidden;
           }
@@ -692,14 +979,62 @@ const Step5InvoicePreview = ({
           }
           #invoice-content {
             position: absolute;
-            left: 0;
+            left: 50%;
             top: 0;
-            width: 100%;
+            transform: translateX(-50%) scale(0.88);
+            transform-origin: top center;
+            width: 210mm;
+          }
+          
+          /* Remove all shadows in print */
+          * {
+            box-shadow: none !important;
           }
           .print\\:hidden {
             display: none !important;
           }
+          
+          /* Force all colors to print */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          
+          /* Keep header gradient in print */
+          .header-gradient {
+            background: #059669 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Keep table header colors */
+          .bg-gradient-to-r,
+          .bg-emerald-700,
+          .bg-emerald-600 {
+            background-color: #059669 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Keep other background colors */
+          .bg-emerald-50 {
+            background-color: #ecfdf5 !important;
+          }
+          .bg-emerald-100 {
+            background-color: #d1fae5 !important;
+          }
+          .bg-gray-50 {
+            background-color: #f9fafb !important;
+          }
+          .bg-blue-50 {
+            background-color: #eff6ff !important;
+          }
+          .bg-amber-50 {
+            background-color: #fffbeb !important;
+          }
         }
+        
         @keyframes slide-up {
           from {
             transform: translateY(100%);
@@ -712,6 +1047,10 @@ const Step5InvoicePreview = ({
         }
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;
+        }
+        /* Smooth hover transitions */
+        tr {
+          transition: background-color 0.2s ease;
         }
       `}</style>
     </div>
