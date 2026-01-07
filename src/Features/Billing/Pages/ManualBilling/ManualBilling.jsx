@@ -2,42 +2,29 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 import ManualBillingForm from '../../Components/ManualBilling/ManualBillingForm'
+import ManualInvoicePreview from '../../Components/ManualBilling/ManualInvoicePreview'
 
 const ManualBilling = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [notification, setNotification] = useState(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [invoiceData, setInvoiceData] = useState(null)
 
   // Handle form submission
-  const handleSubmit = async (invoiceData) => {
-    setIsLoading(true)
-    setNotification(null)
-
+  const handleSubmit = async (data) => {
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      setIsLoading(true)
+      setNotification(null)
 
-      // TODO: Replace with actual API call
-      // const response = await api.createManualInvoice(invoiceData)
+      // Simulate validation delay
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
-      console.log('Invoice Data:', invoiceData)
+      console.log('Invoice Data:', data)
 
-      // Show success notification
-      setNotification({
-        type: 'success',
-        title: 'Invoice Generated Successfully!',
-        message: `Invoice has been generated for ${invoiceData.client}. Total: ₹${invoiceData.calculations.grandTotal.toFixed(2)}`,
-      })
-
-      // Navigate to dashboard or invoice preview after 2 seconds
-      setTimeout(() => {
-        if (invoiceData.status === 'draft') {
-          navigate('/dashboard/billing-manager/billing-dashboard')
-        } else {
-          // Navigate to invoice preview or download
-          navigate('/dashboard/billing-manager/billing-dashboard')
-        }
-      }, 2000)
+      // Store invoice data and show preview
+      setInvoiceData(data)
+      setShowPreview(true)
     } catch (error) {
       console.error('Error generating invoice:', error)
       setNotification({
@@ -50,6 +37,12 @@ const ManualBilling = () => {
     }
   }
 
+  // Handle back from preview
+  const handleBackToForm = () => {
+    setShowPreview(false)
+    // Optionally keep the invoiceData to pre-fill the form
+  }
+
   // Handle cancel
   const handleCancel = () => {
     if (window.confirm('Are you sure you want to cancel? All unsaved data will be lost.')) {
@@ -57,6 +50,19 @@ const ManualBilling = () => {
     }
   }
 
+  // If showing preview, render the invoice preview
+  if (showPreview && invoiceData) {
+    return (
+      <ManualInvoicePreview
+        formData={invoiceData}
+        lineItems={invoiceData.lineItems}
+        calculations={invoiceData.calculations}
+        onBack={handleBackToForm}
+      />
+    )
+  }
+
+  // Otherwise, show the form
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-6 lg:py-8">
       <div className="max-w-full mx-auto px-2 sm:px-4 lg:px-6">
@@ -136,10 +142,11 @@ const ManualBilling = () => {
                   • Use this form for one-time services, exceptional billing scenarios, or PO-based
                   billing
                 </li>
+                <li>• Select invoice series: Proforma (preliminary) or Sales/Tax (final)</li>
                 <li>• All fields marked with * are mandatory</li>
                 <li>• Add multiple line items for different services in the same invoice</li>
                 <li>• Total amount is calculated automatically in real-time</li>
-                <li>• You can save as draft or generate the invoice immediately</li>
+                <li>• Click "Generate Invoice" to preview before saving</li>
               </ul>
             </div>
           </div>

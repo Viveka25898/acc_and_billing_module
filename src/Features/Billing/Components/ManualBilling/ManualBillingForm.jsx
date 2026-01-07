@@ -24,6 +24,8 @@ const ManualBillingForm = ({ onSubmit, onCancel, initialData = null, isLoading =
   const [formData, setFormData] = useState({
     client: '',
     invoiceType: 'one-time-service',
+    serviceCategory: '', // Added for narration
+    invoiceSeries: 'proforma', // New field for Proforma or Sales
     poWoNumber: '',
     invoiceDate: new Date().toISOString().split('T')[0],
     dueDate: '',
@@ -80,12 +82,32 @@ const ManualBillingForm = ({ onSubmit, onCancel, initialData = null, isLoading =
     { id: 5, name: 'Narayana Health', gstin: '36EEEEE0000E1Z5', state: 'Telangana' },
   ]
 
+  // Auto-generate PO Number based on invoice series and service category
+  useEffect(() => {
+    // Only generate PO number when both service category and invoice series are selected
+    if (formData.invoiceType && formData.invoiceSeries && !initialData && !formData.poWoNumber) {
+      const prefix = formData.invoiceSeries === 'proforma' ? 'PO-MH01-' : 'INV-'
+      const timestamp = Date.now().toString().slice(-8)
+      const randomNum = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, '0')
+      const generatedPO = `${prefix}${timestamp}${randomNum}`
+
+      setFormData((prev) => ({
+        ...prev,
+        poWoNumber: generatedPO,
+      }))
+    }
+  }, [formData.invoiceType, formData.invoiceSeries, initialData, formData.poWoNumber])
+
   // Initialize from initialData if editing
   useEffect(() => {
     if (initialData) {
       setFormData({
         client: initialData.client || '',
         invoiceType: initialData.invoiceType || 'one-time-service',
+        serviceCategory: initialData.serviceCategory || '',
+        invoiceSeries: initialData.invoiceSeries || 'proforma',
         poWoNumber: initialData.poWoNumber || '',
         invoiceDate: initialData.invoiceDate || new Date().toISOString().split('T')[0],
         dueDate: initialData.dueDate || '',
@@ -298,7 +320,7 @@ const ManualBillingForm = ({ onSubmit, onCancel, initialData = null, isLoading =
             {/* Invoice Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Invoice Type <span className="text-red-500">*</span>
+                Service Category <span className="text-red-500">*</span>
               </label>
               <select
                 value={formData.invoiceType}
@@ -320,6 +342,48 @@ const ManualBillingForm = ({ onSubmit, onCancel, initialData = null, isLoading =
                   {errors.invoiceType}
                 </p>
               )}
+            </div>
+
+            {/* Invoice Series - Proforma or Sales */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Invoice Series <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-6">
+                <label className="flex items-center cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="invoiceSeries"
+                    value="proforma"
+                    checked={formData.invoiceSeries === 'proforma'}
+                    onChange={(e) => handleFormChange('invoiceSeries', e.target.value)}
+                    className="w-4 h-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
+                    disabled={isLoading}
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-700 group-hover:text-emerald-600">
+                    Proforma Invoice
+                  </span>
+                </label>
+                <label className="flex items-center cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="invoiceSeries"
+                    value="tax"
+                    checked={formData.invoiceSeries === 'tax'}
+                    onChange={(e) => handleFormChange('invoiceSeries', e.target.value)}
+                    className="w-4 h-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
+                    disabled={isLoading}
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-700 group-hover:text-emerald-600">
+                    Sales/Tax Invoice
+                  </span>
+                </label>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                {formData.invoiceSeries === 'proforma'
+                  ? 'Proforma invoices are preliminary bills provided before goods/services delivery'
+                  : 'Sales/Tax invoices are final bills issued after goods/services delivery'}
+              </p>
             </div>
 
             {/* PO/WO Number */}

@@ -1,4 +1,3 @@
-/* eslint-disable no-const-assign */
 /**
  * Manual Billing Calculations Utility
  * Handles all calculation logic for manual billing invoices
@@ -279,7 +278,7 @@ export const convertAmountToWords = (amount) => {
             return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' ' + convertTwoDigit(num % 100) : '')
         }
 
-        const num = Math.floor(amount)
+        let num = Math.floor(amount)
         const paise = Math.round((amount - num) * 100)
 
         if (num === 0 && paise === 0) return 'Zero Rupees Only'

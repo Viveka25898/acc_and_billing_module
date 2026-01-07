@@ -1,9 +1,13 @@
 import React from 'react'
 import { X, Download, Calendar, User, Building2, MapPin } from 'lucide-react'
 import Step5InvoicePreview from '../Pages/AutoBilling/Step5InvoicePreview'
+import ManualInvoicePreview from './ManualBilling/ManualInvoicePreview'
 
 const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
   if (!isOpen || !invoice) return null
+
+  // Check if this is a manual invoice
+  const isManual = invoice.source === 'manual'
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -38,8 +42,13 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 mr-2">
               <h2 className="text-base sm:text-xl font-bold text-white">Invoice Preview</h2>
               <span className="px-2 sm:px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white font-medium truncate">
-                {invoice.formData?.poWoNumber || 'N/A'}
+                {invoice.invoiceNumber || invoice.formData?.poWoNumber || 'N/A'}
               </span>
+              {isManual && (
+                <span className="px-2 sm:px-3 py-1 bg-purple-500/90 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white font-medium">
+                  Manual
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <button
@@ -67,7 +76,7 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500">Created By</p>
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {invoice.metadata?.createdBy || 'Unknown'}
+                    {invoice.metadata?.createdBy || invoice.createdBy || 'Unknown'}
                   </p>
                 </div>
               </div>
@@ -76,7 +85,7 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500">Created Date</p>
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {formatDate(invoice.metadata?.createdAt)}
+                    {formatDate(invoice.metadata?.createdAt || invoice.createdAt)}
                   </p>
                 </div>
               </div>
@@ -85,7 +94,7 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500">Customer</p>
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {invoice.formData?.customer || 'N/A'}
+                    {invoice.formData?.customer || invoice.client || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -103,14 +112,35 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
 
           {/* Modal Body - Invoice Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-3 sm:p-6">
-            <Step5InvoicePreview
-              formData={invoice.formData}
-              billingLines={invoice.billingLines}
-              calculations={invoice.calculations}
-              onPrevious={() => {}}
-              onConvertToFinal={() => {}}
-              isPreviewMode={true}
-            />
+            {isManual ? (
+              <ManualInvoicePreview
+                formData={{
+                  client: invoice.formData?.customer || invoice.client,
+                  invoiceType: invoice.serviceCategory || 'one-time-service',
+                  invoiceSeries: invoice.invoiceType || 'proforma',
+                  poWoNumber: invoice.invoiceNumber || invoice.formData?.poWoNumber,
+                  invoiceDate: invoice.formData?.invoiceDate || invoice.invoiceDate,
+                  dueDate: invoice.formData?.dueDate || invoice.dueDate,
+                  notes: invoice.notes,
+                  gstRate: invoice.gstRate,
+                  discount: invoice.discount,
+                  otherCharges: invoice.otherCharges,
+                }}
+                lineItems={invoice.lineItems || []}
+                calculations={invoice.calculations || {}}
+                onBack={null}
+                isPreviewMode={true}
+              />
+            ) : (
+              <Step5InvoicePreview
+                formData={invoice.formData}
+                billingLines={invoice.billingLines}
+                calculations={invoice.calculations}
+                onPrevious={() => {}}
+                onConvertToFinal={() => {}}
+                isPreviewMode={true}
+              />
+            )}
           </div>
         </div>
       </div>
