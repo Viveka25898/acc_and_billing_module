@@ -10,6 +10,7 @@ import {
   getInvoiceStats,
   incrementViewCount,
   incrementDownloadCount,
+  markInvoiceAsSent,
 } from '../utils/invoiceStorage'
 
 const ProformaInvoices = () => {
@@ -106,6 +107,22 @@ const ProformaInvoices = () => {
     )
   }
 
+  const handleEmailSent = async (invoiceId) => {
+    try {
+      // Mark invoice as sent
+      const result = markInvoiceAsSent(invoiceId, 'proforma')
+
+      if (result.success) {
+        // Reload invoices to show updated status
+        loadInvoices()
+      } else {
+        console.error('Failed to update invoice status:', result.message)
+      }
+    } catch (err) {
+      console.error('Error marking invoice as sent:', err)
+    }
+  }
+
   const handleCreateNew = () => {
     try {
       navigate('/dashboard/billing-manager/auto-billing')
@@ -180,6 +197,7 @@ const ProformaInvoices = () => {
           onView={handleViewInvoice}
           onDownload={handleDownloadInvoice}
           onConvertToIRN={handleConvertToIRN}
+          onEmailSent={handleEmailSent}
           isLoading={isLoading}
         />
 

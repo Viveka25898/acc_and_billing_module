@@ -186,17 +186,34 @@ export const deleteInvoice = (invoiceId, type = 'proforma') => {
  * Mark invoice as sent to client
  */
 export const markInvoiceAsSent = (invoiceId, type = 'proforma') => {
-    return updateInvoice(
-        invoiceId,
-        {
-            metadata: {
-                sentToClient: true,
-                status: 'sent',
-                sentDate: new Date().toISOString(),
+    try {
+        const invoice = getInvoiceById(invoiceId, type)
+        if (!invoice) {
+            return {
+                success: false,
+                message: 'Invoice not found',
+            }
+        }
+
+        return updateInvoice(
+            invoiceId,
+            {
+                metadata: {
+                    ...invoice.metadata,
+                    sentToClient: true,
+                    status: 'sent',
+                    sentDate: new Date().toISOString(),
+                },
             },
-        },
-        type
-    )
+            type
+        )
+    } catch (error) {
+        console.error('Error marking invoice as sent:', error)
+        return {
+            success: false,
+            message: 'Failed to mark invoice as sent: ' + error.message,
+        }
+    }
 }
 
 /**

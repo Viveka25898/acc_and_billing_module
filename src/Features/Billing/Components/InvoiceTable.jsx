@@ -1,9 +1,21 @@
 /* eslint-disable no-unused-vars */
-import React from 'react'
-import { Eye, Download, FileText, CheckCircle2 } from 'lucide-react'
+import React, { useState } from 'react'
+import { Eye, Download, FileText, CheckCircle2, Send, Mail } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import emailjs from '@emailjs/browser'
+import EmailModal from '../Pages/AutoBilling/EmailModal'
 
-const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading }) => {
+const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading, onEmailSent }) => {
+  // Email functionality states
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
+  const [isEmailSending, setIsEmailSending] = useState(false)
+  const [emailStatus, setEmailStatus] = useState(null)
+  const [selectedInvoiceForEmail, setSelectedInvoiceForEmail] = useState(null)
+
+  // EmailJS Configuration
+  const EMAILJS_SERVICE_ID = 'service_4eqrbpn'
+  const EMAILJS_TEMPLATE_ID = 'template_o3siur5'
+  const EMAILJS_PUBLIC_KEY = '1_eh922Ifu06Mv7Cb'
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -76,6 +88,101 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading 
       )
     } catch {
       return 'Invalid date'
+    }
+  }
+
+  const handleResendClick = (invoice) => {
+    setSelectedInvoiceForEmail(invoice)
+    setIsEmailModalOpen(true)
+    setEmailStatus(null)
+  }
+
+  const handleEmailSend = async (emailData) => {
+    setIsEmailSending(true)
+    setEmailStatus(null)
+
+    try {
+      emailjs.init(EMAILJS_PUBLIC_KEY)
+
+      const invoice = selectedInvoiceForEmail
+      const isManual = invoice.source === 'manual'
+      const invoiceType =
+        (invoice.formData?.invoiceSeries || invoice.invoiceSeries) === 'proforma'
+          ? 'Proforma Invoice'
+          : 'Tax Invoice'
+      const invoiceNumber = invoice.invoiceNumber || invoice.formData?.poWoNumber || 'N/A'
+      const invoiceDate = invoice.metadata?.createdAt || invoice.createdAt
+      const invoiceAmount = new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 2,
+      }).format(invoice.calculations?.grandTotal || 0)
+
+      const invoiceDateObj = new Date(invoiceDate)
+      const monthNames = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ]
+      const billingMonth = `${monthNames[invoiceDateObj.getMonth()]} ${invoiceDateObj.getFullYear()}`
+
+      const customerName = isManual
+        ? invoice.formData?.customer || invoice.client
+        : invoice.formData?.customer
+      const branchName = isManual ? invoice.formData?.branch : invoice.formData?.branch
+
+      const templateParams = {
+        to_email: emailData.recipientEmail,
+        to_name: emailData.recipientName,
+        reply_to: 'vivekawari50@gmail.com',
+        from_name: 'iSmart Facitech Private Limited',
+        invoice_type: invoiceType,
+        invoice_number: invoiceNumber,
+        invoice_date: invoiceDateObj.toLocaleDateString('en-IN'),
+        invoice_amount: invoiceAmount,
+        billing_month: billingMonth,
+        customer_name: customerName || 'N/A',
+        branch_name: branchName || 'N/A',
+        message: emailData.message || 'Please review the invoice details below.',
+      }
+
+      const response = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+
+      if (response.status === 200) {
+        setEmailStatus({
+          type: 'success',
+          message: `Invoice sent successfully to ${emailData.recipientEmail}!`,
+        })
+
+        // Update invoice status to sent
+        if (onEmailSent) {
+          onEmailSent(invoice.id)
+        }
+
+        setTimeout(() => {
+          setIsEmailModalOpen(false)
+          setTimeout(() => setEmailStatus(null), 5000)
+        }, 2000)
+      } else {
+        throw new Error('Failed to send email')
+      }
+    } catch (error) {
+      console.error('Email sending error:', error)
+      setEmailStatus({
+        type: 'error',
+        message: error.text || error.message || 'Failed to send email. Please try again.',
+      })
+    } finally {
+      setIsEmailSending(false)
     }
   }
 
@@ -222,9 +329,23 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading 
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap border border-black text-center">
                     {sentToClient ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" />
+                      <button
+                        onClick={() => handleResendClick(invoice)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 text-xs font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                        title="Resend email"
+                      >
+                        <Send className="w-3 h-3" />
+                        Resend
+                      </button>
                     ) : (
-                      <span className="text-gray-400 text-xs">Not sent</span>
+                      <button
+                        onClick={() => handleResendClick(invoice)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 text-xs font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                        title="Send email"
+                      >
+                        <Mail className="w-3 h-3" />
+                        Send
+                      </button>
                     )}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap border border-black text-center">
@@ -359,6 +480,26 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading 
                   Download
                 </button>
                 <button
+                  onClick={() => handleResendClick(invoice)}
+                  className={`flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    sentToClient
+                      ? 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                  }`}
+                >
+                  {sentToClient ? (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Resend
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      Send
+                    </>
+                  )}
+                </button>
+                <button
                   onClick={() => onConvertToIRN(invoice)}
                   disabled={status === 'converted'}
                   className={`flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
@@ -374,6 +515,55 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading 
           )
         })}
       </div>
+
+      {/* Email Modal */}
+      <EmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        onSend={handleEmailSend}
+        isLoading={isEmailSending}
+      />
+
+      {/* Email Status Toast */}
+      {emailStatus && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
+            emailStatus.type === 'success'
+              ? 'bg-green-50 border border-green-200'
+              : 'bg-red-50 border border-red-200'
+          }`}
+        >
+          {emailStatus.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          )}
+          <p
+            className={`text-sm font-medium ${
+              emailStatus.type === 'success' ? 'text-green-800' : 'text-red-800'
+            }`}
+          >
+            {emailStatus.message}
+          </p>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slide-up {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+      `}</style>
     </div>
   )
 }

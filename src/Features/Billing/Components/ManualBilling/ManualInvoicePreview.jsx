@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
-import { Download, ArrowLeft, Save, Send, Check } from 'lucide-react'
+import { Download, ArrowLeft, Save, Send, Check, CheckCircle, XCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatCurrency, convertAmountToWords } from '../../utils/manualBillingCalculations'
 import iSmartLogo from '../../../../../public/iSmart Logo.jpg'
+import emailjs from '@emailjs/browser'
+import EmailModal from '../../Pages/AutoBilling/EmailModal'
 
 const ManualInvoicePreview = ({
   formData,
@@ -14,6 +16,16 @@ const ManualInvoicePreview = ({
   const navigate = useNavigate()
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
+
+  // Email functionality states
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
+  const [isEmailSending, setIsEmailSending] = useState(false)
+  const [emailStatus, setEmailStatus] = useState(null)
+
+  // EmailJS Configuration
+  const EMAILJS_SERVICE_ID = 'service_4eqrbpn'
+  const EMAILJS_TEMPLATE_ID = 'template_o3siur5'
+  const EMAILJS_PUBLIC_KEY = '1_eh922Ifu06Mv7Cb'
 
   const formatDate = (dateStr) => {
     if (!dateStr) return ''
@@ -184,7 +196,85 @@ const ManualInvoicePreview = ({
   }
 
   const handleSendEmail = () => {
-    alert('Email functionality will be implemented soon')
+    setIsEmailModalOpen(true)
+    setEmailStatus(null) // Reset status when opening modal
+  }
+
+  const handleEmailSend = async (emailData) => {
+    setIsEmailSending(true)
+    setEmailStatus(null)
+
+    try {
+      // Initialize EmailJS
+      emailjs.init(EMAILJS_PUBLIC_KEY)
+
+      // Prepare invoice data for email
+      const invoiceType = formData.invoiceSeries === 'proforma' ? 'Proforma Invoice' : 'Tax Invoice'
+      const invoiceNumber = formData.poWoNumber || 'N/A'
+      const invoiceDate = formatDate(formData.invoiceDate)
+      const invoiceAmount = formatCurrency(calculations.grandTotal)
+
+      // Calculate billing month from invoice date
+      const invoiceDateObj = new Date(formData.invoiceDate)
+      const monthNames = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ]
+      const billingMonth = `${monthNames[invoiceDateObj.getMonth()]} ${invoiceDateObj.getFullYear()}`
+
+      // Prepare template parameters - text only, no attachments
+      const templateParams = {
+        to_email: emailData.recipientEmail,
+        to_name: emailData.recipientName,
+        reply_to: 'vivekawari50@gmail.com',
+        from_name: 'iSmart Facitech Private Limited',
+        invoice_type: invoiceType,
+        invoice_number: invoiceNumber,
+        invoice_date: invoiceDate,
+        invoice_amount: invoiceAmount,
+        billing_month: billingMonth,
+        customer_name: formData.client || 'N/A',
+        branch_name: formData.branch || 'N/A',
+        message: emailData.message || 'Please review the invoice details below.',
+      }
+
+      // Send email using EmailJS
+      const response = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+
+      if (response.status === 200) {
+        setEmailStatus({
+          type: 'success',
+          message: `Invoice sent successfully to ${emailData.recipientEmail}!`,
+        })
+
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          setIsEmailModalOpen(false)
+          // Clear status after 5 seconds
+          setTimeout(() => setEmailStatus(null), 5000)
+        }, 2000)
+      } else {
+        throw new Error('Failed to send email')
+      }
+    } catch (error) {
+      console.error('Email sending error:', error)
+      setEmailStatus({
+        type: 'error',
+        message: error.text || error.message || 'Failed to send email. Please try again.',
+      })
+    } finally {
+      setIsEmailSending(false)
+    }
   }
 
   // Calculate HSN/SAC summary
@@ -788,6 +878,38 @@ const ManualInvoicePreview = ({
         </div>
       </div>
 
+      {/* Email Modal */}
+      <EmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        onSend={handleEmailSend}
+        isLoading={isEmailSending}
+      />
+
+      {/* Email Status Toast */}
+      {emailStatus && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
+            emailStatus.type === 'success'
+              ? 'bg-green-50 border border-green-200'
+              : 'bg-red-50 border border-red-200'
+          }`}
+        >
+          {emailStatus.type === 'success' ? (
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+          ) : (
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          )}
+          <p
+            className={`text-sm font-medium ${
+              emailStatus.type === 'success' ? 'text-green-800' : 'text-red-800'
+            }`}
+          >
+            {emailStatus.message}
+          </p>
+        </div>
+      )}
+
       {/* Print Styles */}
       <style jsx>{`
         @media print {
@@ -805,6 +927,21 @@ const ManualInvoicePreview = ({
           .print\\:shadow-none {
             box-shadow: none !important;
           }
+        }
+
+        @keyframes slide-up {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
         }
       `}</style>
     </div>
