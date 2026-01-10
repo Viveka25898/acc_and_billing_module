@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -9,15 +9,47 @@ import {
   FolderOpen,
   FileCheck,
   List,
+  CreditCard,
   ChevronDown,
   ChevronRight,
   ArrowLeft,
+  Bell,
 } from 'lucide-react'
 
 const BillingSidebar = ({ onBack }) => {
   const [billingExpanded, setBillingExpanded] = useState(true)
   const [managementExpanded, setManagementExpanded] = useState(true)
+  const [notificationCount, setNotificationCount] = useState(0)
   const navigate = useNavigate()
+
+  // Load notification count from localStorage
+  useEffect(() => {
+    const loadNotificationCount = () => {
+      try {
+        const saved = localStorage.getItem('rateChangeNotifications')
+        if (saved) {
+          const notifications = JSON.parse(saved)
+          const unreadCount = notifications.filter((n) => !n.read).length
+          setNotificationCount(unreadCount)
+        }
+      } catch (err) {
+        console.error('Error loading notifications:', err)
+      }
+    }
+
+    loadNotificationCount()
+
+    // Listen for storage changes to update count in real-time
+    window.addEventListener('storage', loadNotificationCount)
+
+    // Also check every second for changes (for same-tab updates)
+    const interval = setInterval(loadNotificationCount, 1000)
+
+    return () => {
+      window.removeEventListener('storage', loadNotificationCount)
+      clearInterval(interval)
+    }
+  }, [])
 
   const handleBackClick = () => {
     if (onBack) {
@@ -77,6 +109,12 @@ const BillingSidebar = ({ onBack }) => {
       expanded: managementExpanded,
       setExpanded: setManagementExpanded,
       children: [
+        {
+          id: 'rate-card',
+          title: 'Rate Card',
+          path: '/dashboard/billing-manager/rate-card',
+          icon: CreditCard,
+        },
         {
           id: 'proforma-invoices',
           title: 'Proforma Invoices',
@@ -143,7 +181,7 @@ const BillingSidebar = ({ onBack }) => {
                         key={child.id}
                         to={child.path}
                         className={({ isActive }) =>
-                          `flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
+                          `flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-all duration-200 relative ${
                             isActive
                               ? 'bg-green-600 text-white shadow-md'
                               : 'text-gray-600 hover:bg-green-50 hover:text-green-600'
@@ -152,6 +190,11 @@ const BillingSidebar = ({ onBack }) => {
                       >
                         <child.icon className="w-4 h-4" />
                         <span>{child.title}</span>
+                        {child.id === 'arrear-billing' && notificationCount > 0 && (
+                          <span className="absolute right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg animate-pulse">
+                            {notificationCount}
+                          </span>
+                        )}
                       </NavLink>
                     ))}
                   </div>

@@ -102,8 +102,9 @@ import BillingDashboard from '../Features/Billing/Pages/BillingDashboard'
 import AutoBillingWizard from '../Features/Billing/Pages/AutoBilling/AutoBillingWizard'
 import ProformaInvoices from '../Features/Billing/Pages/ProformaInvoices'
 import ManualBilling from '../Features/Billing/Pages/ManualBilling/ManualBilling'
+import RateCardPage from '../Features/Billing/Pages/RateCardPage'
+import ArrearBillingPage from '../Features/Billing/Pages/ArrearBillingPage'
 // Placeholder imports for pages we'll build next
-const ArrearBillingPage = () => <div className="p-6">Arrear Billing - Coming Soon</div>
 const BonusBillingPage = () => <div className="p-6">Bonus Billing - Coming Soon</div>
 const IRNInvoicesPage = () => <div className="p-6">IRN Invoices - Coming Soon</div>
 const InvoiceListPage = () => <div className="p-6">Invoice List - Coming Soon</div>
@@ -809,6 +810,10 @@ export const router = createBrowserRouter([
       {
         path: 'bonus-billing',
         element: <BonusBillingPage />,
+      },
+      {
+        path: 'rate-card',
+        element: <RateCardPage />,
       },
       {
         path: 'proforma-invoices',

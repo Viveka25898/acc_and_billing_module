@@ -18,6 +18,7 @@ const BillingManagerDashboardLayout = () => {
       '/dashboard/billing-manager/manual-billing',
       '/dashboard/billing-manager/arrear-billing',
       '/dashboard/billing-manager/bonus-billing',
+      '/dashboard/billing-manager/rate-card',
       '/dashboard/billing-manager/proforma-invoices',
       '/dashboard/billing-manager/irn-invoices',
       '/dashboard/billing-manager/invoice-list',
