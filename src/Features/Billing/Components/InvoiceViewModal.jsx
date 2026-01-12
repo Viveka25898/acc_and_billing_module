@@ -2,12 +2,14 @@ import React from 'react'
 import { X, Download, Calendar, User, Building2, MapPin } from 'lucide-react'
 import Step5InvoicePreview from '../Pages/AutoBilling/Step5InvoicePreview'
 import ManualInvoicePreview from './ManualBilling/ManualInvoicePreview'
+import ArrearBillingInvoicePreview from '../Pages/ArrearBillingInvoicePreview'
 
 const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
   if (!isOpen || !invoice) return null
 
-  // Check if this is a manual invoice
+  // Check invoice type
   const isManual = invoice.source === 'manual'
+  const isArrear = invoice.source === 'arrear'
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -47,6 +49,11 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
               {isManual && (
                 <span className="px-2 sm:px-3 py-1 bg-purple-500/90 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white font-medium">
                   Manual
+                </span>
+              )}
+              {isArrear && (
+                <span className="px-2 sm:px-3 py-1 bg-orange-500/90 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white font-medium">
+                  Arrear
                 </span>
               )}
             </div>
@@ -112,7 +119,15 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
 
           {/* Modal Body - Invoice Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-3 sm:p-6">
-            {isManual ? (
+            {isArrear ? (
+              <ArrearBillingInvoicePreview
+                formData={invoice.formData}
+                rateChanges={invoice.rateChanges || []}
+                manualLineItems={invoice.manualLineItems || []}
+                calculations={invoice.calculations}
+                isModalView={true}
+              />
+            ) : isManual ? (
               <ManualInvoicePreview
                 formData={{
                   client: invoice.formData?.customer || invoice.client,

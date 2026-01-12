@@ -282,6 +282,40 @@ const RateCardPage = () => {
       const updatedItem = updatedData.find((item) => item.id === rowId)
 
       if (updatedItem && updatedItem.oldRate !== newDailyRate) {
+        // Prompt for rate change date (when the rate was actually changed in the past)
+        const rateChangeDateInput = prompt(
+          'Enter the Rate Change Date (DD-MM-YYYY):\n\nExample: 01-11-2025 for November 1, 2025\n\nThis is the PAST date when the rate was actually changed.\nArrears will be calculated from this date to yesterday.',
+          '01-11-2025'
+        )
+
+        let rateChangeDate = new Date()
+        rateChangeDate.setMonth(rateChangeDate.getMonth() - 2) // Default 2 months ago
+
+        if (rateChangeDateInput) {
+          try {
+            const [day, month, year] = rateChangeDateInput.split('-')
+            const parsedDate = new Date(year, month - 1, day)
+            if (!isNaN(parsedDate.getTime())) {
+              rateChangeDate = parsedDate
+            }
+          } catch (e) {
+            console.error('Invalid date format, using default:', e)
+          }
+        }
+
+        // Prompt for total working days from payroll
+        const workingDaysInput = prompt(
+          'Enter Total Working Days from Payroll:\n\nHow many days did employees actually work from ' +
+            rateChangeDate.toLocaleDateString('en-GB') +
+            ' to yesterday?\n\nExample: 65 (for ~2 months of work)',
+          '65'
+        )
+
+        const totalWorkingDays = parseInt(workingDaysInput) || 65
+
+        // Effective date is today (when new rate becomes effective going forward)
+        const effectiveDate = new Date()
+
         // Create notification
         const notification = {
           id: `notif-${Date.now()}`,
@@ -292,7 +326,9 @@ const RateCardPage = () => {
           newDailyRate: newDailyRate,
           oldMonthlyRate: updatedItem.oldRate * 30,
           newMonthlyRate: newMonthlyRate,
-          rateChangeDate: new Date().toISOString(),
+          rateChangeDate: rateChangeDate.toISOString(),
+          effectiveDate: effectiveDate.toISOString(),
+          totalWorkingDays: totalWorkingDays,
           timestamp: Date.now(),
           read: false,
         }

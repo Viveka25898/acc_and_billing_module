@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Search,
   RefreshCw,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react'
 
 const ArrearBillingPage = () => {
+  const navigate = useNavigate()
   const [filters, setFilters] = useState({
     state: '',
     site: '',
@@ -185,13 +187,13 @@ const ArrearBillingPage = () => {
 
   const handleStartArrearBilling = (client, notifications) => {
     try {
-      // Process all notifications for this client
-      console.log('Starting arrear billing for client:', client, notifications)
-
-      const designations = notifications.map((n) => n.designation).join(', ')
-      alert(
-        `Starting Arrear Billing Process for:\nClient: ${client}\nDesignations: ${designations}\nTotal Rate Changes: ${notifications.length}`
-      )
+      // Navigate to arrear billing form with client data
+      navigate('/dashboard/billing-manager/arrear-billing/form', {
+        state: {
+          client,
+          notifications,
+        },
+      })
     } catch (err) {
       console.error('Error starting arrear billing:', err)
       setError('Failed to start arrear billing. Please try again.')

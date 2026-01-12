@@ -257,10 +257,15 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
           <tbody className=" border border-black">
             {invoices.map((invoice, index) => {
               const isManual = invoice.source === 'manual'
+              const isArrear = invoice.source === 'arrear'
               const customerName = isManual
                 ? invoice.formData?.customer || invoice.client
                 : invoice.formData?.customer
-              const branchOrNarration = isManual ? invoice.narration : invoice.formData?.branch
+              const branchOrNarration = isManual
+                ? invoice.narration
+                : isArrear
+                  ? invoice.formData?.branch || 'Arrear Billing'
+                  : invoice.formData?.branch
               const createdBy = isManual
                 ? invoice.metadata?.createdBy || invoice.createdBy
                 : invoice.metadata?.createdBy
@@ -297,12 +302,14 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
                   <td className="px-3 py-4 whitespace-nowrap border border-black">
                     <span
                       className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                        isManual
-                          ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                          : 'bg-blue-100 text-blue-700 border border-blue-300'
+                        isArrear
+                          ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                          : isManual
+                            ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                            : 'bg-blue-100 text-blue-700 border border-blue-300'
                       }`}
                     >
-                      {isManual ? 'Manual' : 'Auto'}
+                      {isArrear ? 'Arrear' : isManual ? 'Manual' : 'Auto'}
                     </span>
                   </td>
                   <td className="px-3 py-4 border border-black">
