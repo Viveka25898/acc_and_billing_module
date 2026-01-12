@@ -94,9 +94,9 @@ const BillingSidebar = ({ onBack }) => {
           icon: TrendingUp,
         },
         {
-          id: 'bonus-billing',
+          id: 'bonus-leave-encashment',
           title: 'Bonus/Leave Encashment Billing',
-          path: '/dashboard/billing-manager/bonus-billing',
+          path: '/dashboard/billing-manager/bonus-leave-encashment',
           icon: Gift,
         },
       ],

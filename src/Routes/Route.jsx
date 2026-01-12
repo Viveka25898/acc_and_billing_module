@@ -98,6 +98,7 @@ import BillngManagerDashboard from '../Roles/Billing Manager/Pages/BillingManage
 import BillingManagerApprovalPage from '../Features/Process For Prepaid Entry/Pages/Billing Manager/BillingMnagerApprovalPage'
 
 // ============== BILLING MODULE IMPORTS ==============
+import BillingLayout from '../Features/Billing/Components/BillingLayout'
 import BillingDashboard from '../Features/Billing/Pages/BillingDashboard'
 import AutoBillingWizard from '../Features/Billing/Pages/AutoBilling/AutoBillingWizard'
 import ProformaInvoices from '../Features/Billing/Pages/ProformaInvoices'
@@ -106,8 +107,11 @@ import RateCardPage from '../Features/Billing/Pages/RateCardPage'
 import ArrearBillingPage from '../Features/Billing/Pages/ArrearBillingPage'
 import ArrearBillingForm from '../Features/Billing/Pages/ArrearBillingForm'
 import ArrearBillingInvoicePreview from '../Features/Billing/Pages/ArrearBillingInvoicePreview'
+import BonusLeaveEncashmentList from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentList'
+import BonusLeaveEncashmentForm from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentForm'
+import BonusLeaveEncashmentCalculation from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentCalculation'
+import BonusLeaveEncashmentInvoicePreview from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentInvoicePreview'
 // Placeholder imports for pages we'll build next
-const BonusBillingPage = () => <div className="p-6">Bonus Billing - Coming Soon</div>
 const IRNInvoicesPage = () => <div className="p-6">IRN Invoices - Coming Soon</div>
 const InvoiceListPage = () => <div className="p-6">Invoice List - Coming Soon</div>
 // ===================================================
@@ -818,8 +822,20 @@ export const router = createBrowserRouter([
         element: <ArrearBillingInvoicePreview />,
       },
       {
-        path: 'bonus-billing',
-        element: <BonusBillingPage />,
+        path: 'bonus-leave-encashment',
+        element: <BonusLeaveEncashmentList />,
+      },
+      {
+        path: 'bonus-leave-encashment/form',
+        element: <BonusLeaveEncashmentForm />,
+      },
+      {
+        path: 'bonus-leave-encashment/calculation',
+        element: <BonusLeaveEncashmentCalculation />,
+      },
+      {
+        path: 'bonus-leave-encashment/invoice-preview',
+        element: <BonusLeaveEncashmentInvoicePreview />,
       },
       {
         path: 'rate-card',

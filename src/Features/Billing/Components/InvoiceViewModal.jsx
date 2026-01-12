@@ -3,6 +3,7 @@ import { X, Download, Calendar, User, Building2, MapPin } from 'lucide-react'
 import Step5InvoicePreview from '../Pages/AutoBilling/Step5InvoicePreview'
 import ManualInvoicePreview from './ManualBilling/ManualInvoicePreview'
 import ArrearBillingInvoicePreview from '../Pages/ArrearBillingInvoicePreview'
+import BonusLeaveEncashmentInvoicePreview from '../Bonus Leave Encashment/Pages/BonusLeaveEncashmentInvoicePreview'
 
 const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
   if (!isOpen || !invoice) return null
@@ -10,6 +11,7 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
   // Check invoice type
   const isManual = invoice.source === 'manual'
   const isArrear = invoice.source === 'arrear'
+  const isBonusLeave = invoice.source === 'bonus-leave'
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -54,6 +56,11 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
               {isArrear && (
                 <span className="px-2 sm:px-3 py-1 bg-orange-500/90 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white font-medium">
                   Arrear
+                </span>
+              )}
+              {isBonusLeave && (
+                <span className="px-2 sm:px-3 py-1 bg-green-500/90 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white font-medium">
+                  Bonus/Leave
                 </span>
               )}
             </div>
@@ -125,6 +132,14 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
                 rateChanges={invoice.rateChanges || []}
                 manualLineItems={invoice.manualLineItems || []}
                 calculations={invoice.calculations}
+                isModalView={true}
+              />
+            ) : isBonusLeave ? (
+              <BonusLeaveEncashmentInvoicePreview
+                formData={invoice.formData || {}}
+                bonusEmployees={invoice.bonusEmployees || []}
+                leaveEmployees={invoice.leaveEmployees || []}
+                calculations={invoice.calculations || {}}
                 isModalView={true}
               />
             ) : isManual ? (

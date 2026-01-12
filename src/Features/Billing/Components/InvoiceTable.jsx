@@ -258,14 +258,19 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
             {invoices.map((invoice, index) => {
               const isManual = invoice.source === 'manual'
               const isArrear = invoice.source === 'arrear'
+              const isBonusLeave = invoice.source === 'bonus-leave'
               const customerName = isManual
                 ? invoice.formData?.customer || invoice.client
-                : invoice.formData?.customer
+                : isBonusLeave
+                  ? invoice.formData?.client || invoice.formData?.customer
+                  : invoice.formData?.customer
               const branchOrNarration = isManual
                 ? invoice.narration
                 : isArrear
                   ? invoice.formData?.branch || 'Arrear Billing'
-                  : invoice.formData?.branch
+                  : isBonusLeave
+                    ? `Bonus/Leave Encashment - ${invoice.formData?.period || ''}`
+                    : invoice.formData?.branch
               const createdBy = isManual
                 ? invoice.metadata?.createdBy || invoice.createdBy
                 : invoice.metadata?.createdBy
@@ -304,12 +309,20 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
                       className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
                         isArrear
                           ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                          : isManual
-                            ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                            : 'bg-blue-100 text-blue-700 border border-blue-300'
+                          : isBonusLeave
+                            ? 'bg-green-100 text-green-700 border border-green-300'
+                            : isManual
+                              ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                              : 'bg-blue-100 text-blue-700 border border-blue-300'
                       }`}
                     >
-                      {isArrear ? 'Arrear' : isManual ? 'Manual' : 'Auto'}
+                      {isArrear
+                        ? 'Arrear'
+                        : isBonusLeave
+                          ? 'Bonus/Leave'
+                          : isManual
+                            ? 'Manual'
+                            : 'Auto'}
                     </span>
                   </td>
                   <td className="px-3 py-4 border border-black">
@@ -405,10 +418,18 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
       <div className="lg:hidden divide-y divide-gray-200">
         {invoices.map((invoice) => {
           const isManual = invoice.source === 'manual'
+          const isArrear = invoice.source === 'arrear'
+          const isBonusLeave = invoice.source === 'bonus-leave'
           const customerName = isManual
             ? invoice.formData?.customer || invoice.client
             : invoice.formData?.customer
-          const branchOrNarration = isManual ? invoice.narration : invoice.formData?.branch
+          const branchOrNarration = isManual
+            ? invoice.narration
+            : isArrear
+              ? invoice.formData?.branch || 'Arrear Billing'
+              : isBonusLeave
+                ? `Bonus/Leave Encashment - ${invoice.formData?.period || ''}`
+                : invoice.formData?.branch
           const createdBy = isManual
             ? invoice.metadata?.createdBy || invoice.createdBy
             : invoice.metadata?.createdBy
@@ -438,12 +459,22 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
                     </span>
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${
-                        isManual
-                          ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                          : 'bg-blue-100 text-blue-700 border border-blue-300'
+                        isArrear
+                          ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                          : isBonusLeave
+                            ? 'bg-green-100 text-green-700 border border-green-300'
+                            : isManual
+                              ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                              : 'bg-blue-100 text-blue-700 border border-blue-300'
                       }`}
                     >
-                      {isManual ? 'Manual' : 'Auto'}
+                      {isArrear
+                        ? 'Arrear'
+                        : isBonusLeave
+                          ? 'Bonus/Leave'
+                          : isManual
+                            ? 'Manual'
+                            : 'Auto'}
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 truncate">{customerName || 'N/A'}</p>

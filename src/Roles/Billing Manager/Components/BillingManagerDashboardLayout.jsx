@@ -17,7 +17,7 @@ const BillingManagerDashboardLayout = () => {
       '/dashboard/billing-manager/auto-billing',
       '/dashboard/billing-manager/manual-billing',
       '/dashboard/billing-manager/arrear-billing',
-      '/dashboard/billing-manager/bonus-billing',
+      '/dashboard/billing-manager/bonus-leave-encashment',
       '/dashboard/billing-manager/rate-card',
       '/dashboard/billing-manager/proforma-invoices',
       '/dashboard/billing-manager/irn-invoices',
