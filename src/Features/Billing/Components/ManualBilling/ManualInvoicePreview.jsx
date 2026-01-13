@@ -10,17 +10,28 @@ const ManualInvoicePreview = ({
   formData,
   lineItems,
   calculations,
+  irnDetails: propIrnDetails,
   onBack,
   isPreviewMode = false,
 }) => {
   const navigate = useNavigate()
   const [isSaving, setIsSaving] = useState(false)
+  const [isConverting, setIsConverting] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
+  const [irnDetails, setIrnDetails] = useState(
+    propIrnDetails || {
+      irnNumber: '',
+      acknowledgementNumber: '',
+    }
+  )
 
   // Email functionality states
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isEmailSending, setIsEmailSending] = useState(false)
   const [emailStatus, setEmailStatus] = useState(null)
+
+  // Check if it's a Sales/Tax Invoice (support both 'sales' and 'tax' values)
+  const isSalesInvoice = formData.invoiceSeries === 'sales' || formData.invoiceSeries === 'tax'
 
   // EmailJS Configuration
   const EMAILJS_SERVICE_ID = 'service_4eqrbpn'
@@ -129,6 +140,7 @@ const ManualInvoicePreview = ({
           poWoNumber: formData.poWoNumber,
           invoiceDate: formData.invoiceDate,
           dueDate: formData.dueDate,
+          invoiceSeries: formData.invoiceSeries,
         },
         clientInfo: clientInfo,
         billingPeriod: {
@@ -147,24 +159,25 @@ const ManualInvoicePreview = ({
         otherCharges: formData.otherCharges,
         source: 'manual',
         createdBy: 'Billing Manager',
+        irnDetails: isSalesInvoice ? irnDetails : null,
+        status: isSalesInvoice ? 'draft' : 'generated',
         metadata: {
           createdAt: new Date().toISOString(),
           createdBy: 'Billing Manager',
           lastModified: new Date().toISOString(),
-          status: 'generated',
+          status: isSalesInvoice ? 'draft' : 'generated',
           sentToClient: false,
           clientFeedback: null,
           viewCount: 0,
           downloadCount: 0,
         },
-        type: 'proforma',
+        type: isSalesInvoice ? 'tax' : 'proforma',
       }
 
       console.log('Saving manual invoice:', invoiceData)
 
       // Determine storage key based on invoice type
-      const storageKey =
-        formData.invoiceSeries === 'proforma' ? 'proforma_invoices' : 'tax_invoices'
+      const storageKey = isSalesInvoice ? 'tax_invoices' : 'proforma_invoices'
 
       // Get existing invoices from localStorage
       const existingInvoices = JSON.parse(localStorage.getItem(storageKey) || '[]')
@@ -180,9 +193,12 @@ const ManualInvoicePreview = ({
         message: 'Invoice saved successfully!',
       })
 
-      // Navigate to proforma invoices page after 2 seconds
+      // Navigate to appropriate page based on invoice type
       setTimeout(() => {
-        navigate('/dashboard/billing-manager/proforma-invoices')
+        const targetRoute = isSalesInvoice
+          ? '/dashboard/billing-manager/irn-invoices'
+          : '/dashboard/billing-manager/proforma-invoices'
+        navigate(targetRoute)
       }, 2000)
     } catch (error) {
       console.error('Error saving invoice:', error)
@@ -192,6 +208,149 @@ const ManualInvoicePreview = ({
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleConvertToFinalInvoice = async () => {
+    try {
+      setIsConverting(true)
+      setSaveStatus(null)
+
+      console.log('Converting manual invoice to final with IRN...')
+
+      // Simulate IRN generation process with loader (2 seconds)
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      // Generate dummy IRN and Acknowledgement numbers
+      const generatedIRN = `IRN${Date.now()}${Math.floor(Math.random() * 1000)}`
+      const generatedAck = `ACK${Date.now()}${Math.floor(Math.random() * 1000)}`
+
+      console.log('Generated IRN:', generatedIRN)
+      console.log('Generated Ack:', generatedAck)
+
+      setIrnDetails({
+        irnNumber: generatedIRN,
+        acknowledgementNumber: generatedAck,
+      })
+
+      // Generate invoice number
+      const timestamp = Date.now().toString().slice(-6)
+      const randomNum = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, '0')
+      const invoiceNumber = `INV-${timestamp}${randomNum}`
+
+      // Prepare complete invoice data
+      const currentDate = new Date()
+      const monthNames = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ]
+      const billingMonth = monthNames[currentDate.getMonth()]
+      const billingYear = currentDate.getFullYear()
+
+      const invoiceStartDate = new Date(formData.invoiceDate)
+      const invoiceEndDate = formData.dueDate
+        ? new Date(formData.dueDate)
+        : new Date(invoiceStartDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+      const startDay = String(invoiceStartDate.getDate()).padStart(2, '0')
+      const startMonth = String(invoiceStartDate.getMonth() + 1).padStart(2, '0')
+      const startYear = invoiceStartDate.getFullYear()
+      const endDay = String(invoiceEndDate.getDate()).padStart(2, '0')
+      const endMonth = String(invoiceEndDate.getMonth() + 1).padStart(2, '0')
+      const endYear = invoiceEndDate.getFullYear()
+
+      const invoicePeriod = `${startDay}/${startMonth}/${startYear} to ${endDay}/${endMonth}/${endYear}`
+
+      const serviceCategoryLabel =
+        invoiceTypes.find((type) => type.value === formData.invoiceType)?.label ||
+        formData.invoiceType
+
+      const invoiceData = {
+        id: invoiceNumber,
+        invoiceNumber: invoiceNumber,
+        invoiceType: 'sales',
+        formData: {
+          customer: formData.client,
+          branch: formData.client,
+          poWoNumber: formData.poWoNumber,
+          invoiceDate: formData.invoiceDate,
+          dueDate: formData.dueDate,
+          invoiceSeries: 'sales',
+        },
+        clientInfo: {
+          name: formData.client,
+          address: 'Client Address',
+          gstin: '',
+        },
+        billingPeriod: {
+          month: billingMonth,
+          year: billingYear,
+          period: invoicePeriod,
+        },
+        serviceCategory: serviceCategoryLabel,
+        narration: `Towards bill for ${serviceCategoryLabel} rendered at ${formData.client} for the period ${invoicePeriod}`,
+        lineItems: lineItems,
+        calculations: calculations,
+        amountInWords: convertAmountToWords(calculations.grandTotal),
+        notes: formData.notes,
+        gstRate: formData.gstRate,
+        discount: formData.discount,
+        otherCharges: formData.otherCharges,
+        source: 'manual',
+        createdBy: 'Billing Manager',
+        irnDetails: {
+          irnNumber: generatedIRN,
+          acknowledgementNumber: generatedAck,
+        },
+        status: 'final',
+        metadata: {
+          createdAt: new Date().toISOString(),
+          createdBy: 'Billing Manager',
+          lastModified: new Date().toISOString(),
+          status: 'final',
+          sentToClient: false,
+          clientFeedback: null,
+          viewCount: 0,
+          downloadCount: 0,
+        },
+        type: 'tax',
+      }
+
+      // Save to tax storage
+      const storageKey = 'tax_invoices'
+      const existingInvoices = JSON.parse(localStorage.getItem(storageKey) || '[]')
+      existingInvoices.push(invoiceData)
+      localStorage.setItem(storageKey, JSON.stringify(existingInvoices))
+
+      setSaveStatus({
+        type: 'success',
+        message: `Invoice converted to final with IRN successfully!`,
+      })
+
+      // Navigate to IRN invoices after 3 seconds to show the IRN on page
+      setTimeout(() => {
+        navigate('/dashboard/billing-manager/irn-invoices')
+      }, 3000)
+    } catch (error) {
+      console.error('Error converting to final invoice:', error)
+      setSaveStatus({
+        type: 'error',
+        message: 'Failed to convert invoice: ' + error.message,
+      })
+    } finally {
+      setIsConverting(false)
     }
   }
 
@@ -385,6 +544,27 @@ const ManualInvoicePreview = ({
                   </>
                 )}
               </button>
+
+              {isSalesInvoice && (
+                <button
+                  onClick={handleConvertToFinalInvoice}
+                  disabled={isConverting}
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 text-xs sm:text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isConverting ? (
+                    <>
+                      <div className="w-4 h-4 mr-1 sm:mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Generating IRN...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Convert to Final</span>
+                      <span className="sm:hidden">Convert</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -402,10 +582,18 @@ const ManualInvoicePreview = ({
           {/* Invoice Type Badge */}
           <div className="text-right">
             <h1 className="text-3xl font-bold text-white tracking-wide">
-              {formData.invoiceSeries === 'proforma' ? 'PROFORMA INVOICE' : 'TAX INVOICE'}
+              {irnDetails.irnNumber || propIrnDetails?.irnNumber
+                ? 'TAX INVOICE'
+                : formData.invoiceSeries === 'proforma'
+                  ? 'PROFORMA INVOICE'
+                  : 'TAX INVOICE'}
             </h1>
             <p className="text-white text-sm mt-1 font-medium">
-              {formData.invoiceSeries === 'proforma' ? '(ORIGINAL)' : '(TAX INVOICE)'}
+              {irnDetails.irnNumber || propIrnDetails?.irnNumber
+                ? '(TAX INVOICE)'
+                : formData.invoiceSeries === 'proforma'
+                  ? '(ORIGINAL)'
+                  : '(TAX INVOICE)'}
             </p>
           </div>
         </div>
@@ -460,11 +648,15 @@ const ManualInvoicePreview = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Acknowledgment No.:</span>
-                <span className="font-semibold">—</span>
+                <span className="font-semibold">
+                  {irnDetails.acknowledgementNumber || propIrnDetails?.acknowledgementNumber || '—'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">IRN No.:</span>
-                <span className="font-semibold">—</span>
+                <span className="font-semibold">
+                  {irnDetails.irnNumber || propIrnDetails?.irnNumber || '—'}
+                </span>
               </div>
             </div>
           </div>

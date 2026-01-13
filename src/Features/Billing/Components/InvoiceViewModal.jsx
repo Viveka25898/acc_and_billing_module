@@ -147,7 +147,8 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
                 formData={{
                   client: invoice.formData?.customer || invoice.client,
                   invoiceType: invoice.serviceCategory || 'one-time-service',
-                  invoiceSeries: invoice.invoiceType || 'proforma',
+                  invoiceSeries:
+                    invoice.invoiceType || invoice.formData?.invoiceSeries || 'proforma',
                   poWoNumber: invoice.invoiceNumber || invoice.formData?.poWoNumber,
                   invoiceDate: invoice.formData?.invoiceDate || invoice.invoiceDate,
                   dueDate: invoice.formData?.dueDate || invoice.dueDate,
@@ -158,6 +159,7 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
                 }}
                 lineItems={invoice.lineItems || []}
                 calculations={invoice.calculations || {}}
+                irnDetails={invoice.irnDetails}
                 onBack={null}
                 isPreviewMode={true}
               />

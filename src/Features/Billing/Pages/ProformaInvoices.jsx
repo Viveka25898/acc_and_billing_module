@@ -11,6 +11,8 @@ import {
   incrementViewCount,
   incrementDownloadCount,
   markInvoiceAsSent,
+  deleteInvoice,
+  saveInvoice,
 } from '../utils/invoiceStorage'
 
 const ProformaInvoices = () => {
@@ -19,7 +21,9 @@ const ProformaInvoices = () => {
   const [filteredInvoices, setFilteredInvoices] = useState([])
   const [stats, setStats] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isConverting, setIsConverting] = useState(null) // Track which invoice is being converted
   const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
@@ -100,11 +104,78 @@ const ProformaInvoices = () => {
     }
   }
 
-  const handleConvertToIRN = (invoice) => {
-    // Placeholder for future implementation
-    alert(
-      `Convert to IRN functionality will be implemented soon for Invoice: ${invoice.formData?.poWoNumber}`
-    )
+  const handleConvertToIRN = async (invoice) => {
+    try {
+      setIsConverting(invoice.id)
+      setError(null)
+      setSuccess(null)
+
+      console.log('Converting proforma invoice to IRN:', invoice.id)
+
+      // Simulate IRN generation process with loader (2 seconds)
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      // Generate dummy IRN and Acknowledgement numbers
+      const generatedIRN = `IRN${Date.now()}${Math.floor(Math.random() * 1000)}`
+      const generatedAck = `ACK${Date.now()}${Math.floor(Math.random() * 1000)}`
+
+      console.log('Generated IRN:', generatedIRN)
+      console.log('Generated Ack:', generatedAck)
+
+      // Create new invoice data for tax storage with IRN details
+      const taxInvoiceData = {
+        ...invoice,
+        irnDetails: {
+          irnNumber: generatedIRN,
+          acknowledgementNumber: generatedAck,
+        },
+        status: 'final', // Set status as final since it has IRN
+        metadata: {
+          ...invoice.metadata,
+          status: 'final',
+          convertedAt: new Date().toISOString(),
+          convertedFrom: 'proforma',
+        },
+      }
+
+      // Save to tax storage (IRN Invoices)
+      const saveResult = saveInvoice(taxInvoiceData, 'tax')
+
+      if (!saveResult.success) {
+        throw new Error(saveResult.message || 'Failed to save invoice to IRN storage')
+      }
+
+      console.log('Saved to tax storage:', saveResult.invoiceId)
+
+      // Delete from proforma storage
+      const deleteResult = deleteInvoice(invoice.id, 'proforma')
+
+      if (!deleteResult.success) {
+        throw new Error(deleteResult.message || 'Failed to remove invoice from proforma storage')
+      }
+
+      console.log('Deleted from proforma storage')
+
+      // Show success message
+      setSuccess(
+        `Invoice ${invoice.formData?.poWoNumber || invoice.invoiceNumber} successfully converted to IRN and moved to IRN Generated Invoices!`
+      )
+
+      // Reload invoices to update the list
+      await loadInvoices()
+
+      // Clear converting state
+      setIsConverting(null)
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess(null)
+      }, 3000)
+    } catch (err) {
+      console.error('Error converting invoice to IRN:', err)
+      setError(`Failed to convert invoice: ${err.message || 'Unknown error occurred'}`)
+      setIsConverting(null)
+    }
   }
 
   const handleEmailSent = async (invoiceId) => {
@@ -171,6 +242,23 @@ const ProformaInvoices = () => {
           </div>
         </div>
 
+        {/* Success Alert */}
+        {success && (
+          <div className="mb-4 sm:mb-6 bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xs sm:text-sm font-semibold text-green-900 mb-1">Success</h3>
+              <p className="text-xs sm:text-sm text-green-700 break-words">{success}</p>
+            </div>
+            <button
+              onClick={() => setSuccess(null)}
+              className="ml-auto text-green-600 hover:text-green-800 flex-shrink-0"
+            >
+              <span className="sr-only">Dismiss</span>×
+            </button>
+          </div>
+        )}
+
         {/* Error Alert */}
         {error && (
           <div className="mb-4 sm:mb-6 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
@@ -197,6 +285,7 @@ const ProformaInvoices = () => {
           onView={handleViewInvoice}
           onDownload={handleDownloadInvoice}
           onConvertToIRN={handleConvertToIRN}
+          isConverting={isConverting}
           onEmailSent={handleEmailSent}
           isLoading={isLoading}
         />

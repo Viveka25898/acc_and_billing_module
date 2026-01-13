@@ -5,7 +5,15 @@ import { formatDistanceToNow } from 'date-fns'
 import emailjs from '@emailjs/browser'
 import EmailModal from '../Pages/AutoBilling/EmailModal'
 
-const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading, onEmailSent }) => {
+const InvoiceTable = ({
+  invoices,
+  onView,
+  onDownload,
+  onConvertToIRN,
+  isConverting,
+  isLoading,
+  onEmailSent,
+}) => {
   // Email functionality states
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isEmailSending, setIsEmailSending] = useState(false)
@@ -395,15 +403,30 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
                       </button>
                       <button
                         onClick={() => onConvertToIRN(invoice)}
-                        disabled={status === 'converted'}
+                        disabled={status === 'converted' || isConverting === invoice.id}
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                          status === 'converted'
+                          status === 'converted' || isConverting === invoice.id
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                         }`}
-                        title={status === 'converted' ? 'Already converted' : 'Convert to IRN'}
+                        title={
+                          status === 'converted'
+                            ? 'Already converted'
+                            : isConverting === invoice.id
+                              ? 'Converting...'
+                              : 'Convert to IRN'
+                        }
                       >
-                        {status === 'converted' ? 'Converted' : 'Convert to IRN'}
+                        {isConverting === invoice.id ? (
+                          <div className="flex items-center gap-1">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-700"></div>
+                            <span>Converting...</span>
+                          </div>
+                        ) : status === 'converted' ? (
+                          'Converted'
+                        ) : (
+                          'Convert to IRN'
+                        )}
                       </button>
                     </div>
                   </td>
@@ -539,14 +562,23 @@ const InvoiceTable = ({ invoices, onView, onDownload, onConvertToIRN, isLoading,
                 </button>
                 <button
                   onClick={() => onConvertToIRN(invoice)}
-                  disabled={status === 'converted'}
+                  disabled={status === 'converted' || isConverting === invoice.id}
                   className={`flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                    status === 'converted'
+                    status === 'converted' || isConverting === invoice.id
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                   }`}
                 >
-                  {status === 'converted' ? 'Converted' : 'Convert'}
+                  {isConverting === invoice.id ? (
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-700"></div>
+                      <span>Converting...</span>
+                    </div>
+                  ) : status === 'converted' ? (
+                    'Converted'
+                  ) : (
+                    'Convert'
+                  )}
                 </button>
               </div>
             </div>

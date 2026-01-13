@@ -259,7 +259,14 @@ const Step5InvoicePreview = ({
       emailjs.init(EMAILJS_PUBLIC_KEY)
 
       // Prepare invoice data for email
-      const invoiceType = formData.invoiceSeries === 'proforma' ? 'Proforma Invoice' : 'Tax Invoice'
+      // Determine invoice type for email - check if converted to IRN/final
+      const hasIRN = irnDetails.irnNumber && irnDetails.acknowledgementNumber
+      const invoiceType =
+        hasIRN || propIrnDetails?.irnNumber
+          ? 'Tax Invoice'
+          : formData.invoiceSeries === 'proforma'
+            ? 'Proforma Invoice'
+            : 'Tax Invoice'
       const invoiceNumber = formData.poWoNumber || 'N/A'
       const invoiceDate = new Date().toLocaleDateString('en-IN')
       const invoiceAmount = formatCurrency(calculations.grandTotal)
@@ -411,7 +418,11 @@ const Step5InvoicePreview = ({
               </div>
               <div className="text-right text-white">
                 <h1 className="text-3xl font-bold tracking-wide mb-1 drop-shadow-md">
-                  {formData.invoiceSeries === 'proforma' ? 'PROFORMA INVOICE' : 'TAX INVOICE'}
+                  {irnDetails.irnNumber || propIrnDetails?.irnNumber
+                    ? 'TAX INVOICE'
+                    : formData.invoiceSeries === 'proforma'
+                      ? 'PROFORMA INVOICE'
+                      : 'TAX INVOICE'}
                 </h1>
                 <div className="inline-block bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full">
                   <p className="text-sm font-semibold">(ORIGINAL)</p>
