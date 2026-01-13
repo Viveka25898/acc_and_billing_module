@@ -111,8 +111,8 @@ import BonusLeaveEncashmentList from '../Features/Billing/Bonus Leave Encashment
 import BonusLeaveEncashmentForm from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentForm'
 import BonusLeaveEncashmentCalculation from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentCalculation'
 import BonusLeaveEncashmentInvoicePreview from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentInvoicePreview'
+import IRNInvoices from '../Features/Billing/Pages/IRNInvoices'
 // Placeholder imports for pages we'll build next
-const IRNInvoicesPage = () => <div className="p-6">IRN Invoices - Coming Soon</div>
 const InvoiceListPage = () => <div className="p-6">Invoice List - Coming Soon</div>
 // ===================================================
 
@@ -847,7 +847,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'irn-invoices',
-        element: <IRNInvoicesPage />,
+        element: <IRNInvoices />,
       },
       {
         path: 'invoice-list',

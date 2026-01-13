@@ -9,6 +9,7 @@ const Step5InvoicePreview = ({
   formData,
   billingLines,
   calculations,
+  irnDetails: propIrnDetails,
   onPrevious,
   onConvertToFinal,
   isPreviewMode = false,
@@ -18,12 +19,22 @@ const Step5InvoicePreview = ({
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [isEmailSending, setIsEmailSending] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isConverting, setIsConverting] = useState(false)
   const [emailStatus, setEmailStatus] = useState(null) // { type: 'success' | 'error', message: '' }
+  const [irnDetails, setIrnDetails] = useState(
+    propIrnDetails || {
+      irnNumber: '',
+      acknowledgementNumber: '',
+    }
+  )
 
   // EmailJS Configuration
   const EMAILJS_SERVICE_ID = 'service_4eqrbpn'
   const EMAILJS_TEMPLATE_ID = 'template_o3siur5'
   const EMAILJS_PUBLIC_KEY = '1_eh922Ifu06Mv7Cb'
+
+  // Check if it's a Sales Invoice
+  const isSalesInvoice = formData.invoiceSeries === 'sales'
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -132,10 +143,12 @@ const Step5InvoicePreview = ({
         billingLines,
         calculations,
         createdBy: 'Billing Manager', // You can get this from your auth context
+        irnDetails: isSalesInvoice ? irnDetails : null,
+        status: isSalesInvoice ? 'draft' : 'generated', // Draft for sales without conversion
       }
 
-      // Determine invoice type
-      const invoiceType = formData.invoiceSeries === 'proforma' ? 'proforma' : 'tax'
+      // Determine invoice type - sales invoices go to 'tax' storage
+      const invoiceType = isSalesInvoice ? 'tax' : 'proforma'
 
       // Save to localStorage
       const result = saveInvoice(invoiceData, invoiceType)
@@ -146,9 +159,12 @@ const Step5InvoicePreview = ({
           message: `Invoice saved successfully! ID: ${result.invoiceId}`,
         })
 
-        // Navigate to dashboard after 2 seconds
+        // Navigate to appropriate dashboard after 2 seconds
         setTimeout(() => {
-          navigate('/billing/proforma-invoices')
+          const targetRoute = isSalesInvoice
+            ? '/dashboard/billing-manager/irn-invoices'
+            : '/dashboard/billing-manager/proforma-invoices'
+          navigate(targetRoute)
         }, 2000)
       } else {
         throw new Error(result.message)
@@ -161,6 +177,71 @@ const Step5InvoicePreview = ({
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleConvertToFinalInvoice = async () => {
+    if (!isSalesInvoice) {
+      // For proforma, use the existing onConvertToFinal callback
+      if (onConvertToFinal) {
+        onConvertToFinal()
+      }
+      return
+    }
+
+    try {
+      setIsConverting(true)
+      setEmailStatus(null)
+
+      // Simulate IRN generation process with loader
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      // Generate dummy IRN and Acknowledgement numbers
+      const generatedIRN = `IRN${Date.now()}${Math.floor(Math.random() * 1000)}`
+      const generatedAck = `ACK${Date.now()}${Math.floor(Math.random() * 1000)}`
+
+      setIrnDetails({
+        irnNumber: generatedIRN,
+        acknowledgementNumber: generatedAck,
+      })
+
+      // Prepare invoice data with IRN details
+      const invoiceData = {
+        formData,
+        billingLines,
+        calculations,
+        createdBy: 'Billing Manager',
+        irnDetails: {
+          irnNumber: generatedIRN,
+          acknowledgementNumber: generatedAck,
+        },
+        status: 'final', // Final status with IRN
+      }
+
+      // Save to localStorage as tax invoice
+      const result = saveInvoice(invoiceData, 'tax')
+
+      if (result.success) {
+        setEmailStatus({
+          type: 'success',
+          message: `Invoice converted to final with IRN successfully! ID: ${result.invoiceId}`,
+        })
+
+        // Navigate to IRN invoices after 3 seconds to show the IRN on page
+        setTimeout(() => {
+          navigate('/dashboard/billing-manager/irn-invoices')
+        }, 3000)
+      } else {
+        throw new Error(result.message)
+      }
+    } catch (error) {
+      console.error('Error converting to final invoice:', error)
+      setEmailStatus({
+        type: 'error',
+        message: 'Failed to convert invoice: ' + error.message,
+      })
+    } finally {
+      setIsConverting(false)
     }
   }
 
@@ -295,11 +376,21 @@ const Step5InvoicePreview = ({
               Send Email
             </button>
             <button
-              onClick={onConvertToFinal}
-              className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg"
+              onClick={handleConvertToFinalInvoice}
+              disabled={isConverting}
+              className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 text-sm font-medium flex items-center shadow-md transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Check className="w-4 h-4 mr-2" />
-              Convert to Final
+              {isConverting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {isSalesInvoice ? 'Generating IRN...' : 'Converting...'}
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Convert to Final
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -421,8 +512,8 @@ const Step5InvoicePreview = ({
               {[
                 ['Invoice No.', formData.poWoNumber, true],
                 ['Invoice Date', new Date().toLocaleDateString('en-GB'), false],
-                ['Acknowledgment No.', '—', false],
-                ['IRN No.', '—', false],
+                ['Acknowledgment No.', irnDetails.acknowledgementNumber || '—', false],
+                ['IRN No.', irnDetails.irnNumber || '—', false],
               ].map(([label, value, highlight], i) => (
                 <div
                   key={i}

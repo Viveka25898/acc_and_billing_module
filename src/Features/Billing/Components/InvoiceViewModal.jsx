@@ -166,6 +166,7 @@ const InvoiceViewModal = ({ invoice, isOpen, onClose, onDownload }) => {
                 formData={invoice.formData}
                 billingLines={invoice.billingLines}
                 calculations={invoice.calculations}
+                irnDetails={invoice.irnDetails}
                 onPrevious={() => {}}
                 onConvertToFinal={() => {}}
                 isPreviewMode={true}

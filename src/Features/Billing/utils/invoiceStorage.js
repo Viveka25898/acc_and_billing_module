@@ -27,6 +27,9 @@ export const saveInvoice = (invoiceData, type = 'proforma') => {
         // Get existing invoices
         const existingInvoices = getInvoices(type)
 
+        // Determine status from invoiceData or default based on type
+        const invoiceStatus = invoiceData.status || (type === 'proforma' ? 'generated' : 'draft')
+
         // Create invoice with metadata
         const invoice = {
             id: generateInvoiceId(),
@@ -35,7 +38,7 @@ export const saveInvoice = (invoiceData, type = 'proforma') => {
                 createdAt: new Date().toISOString(),
                 createdBy: invoiceData.createdBy || 'System User',
                 lastModified: new Date().toISOString(),
-                status: 'draft', // draft, sent, received, converted
+                status: invoiceStatus, // draft, generated, sent, received, converted, final
                 sentToClient: false,
                 clientFeedback: null,
                 viewCount: 0,
@@ -127,6 +130,8 @@ export const updateInvoice = (invoiceId, updates, type = 'proforma') => {
             metadata: {
                 ...invoices[invoiceIndex].metadata,
                 lastModified: new Date().toISOString(),
+                // Update status in metadata if status is being updated
+                ...(updates.status && { status: updates.status }),
             },
         }
 

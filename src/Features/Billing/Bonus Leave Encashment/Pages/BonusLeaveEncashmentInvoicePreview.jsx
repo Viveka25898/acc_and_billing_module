@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { Download, Send, ArrowLeft, Check, CheckCircle, XCircle, Save } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import emailjs from '@emailjs/browser'
 import { saveInvoice } from '../../utils/invoiceStorage'
 
 const BonusLeaveEncashmentInvoicePreview = ({
@@ -26,8 +25,6 @@ const BonusLeaveEncashmentInvoicePreview = ({
   const bonusEmployees = isModalView ? propBonusEmployees : stateBonusEmployees
   const leaveEmployees = isModalView ? propLeaveEmployees : stateLeaveEmployees
   const calculations = isModalView ? propCalculations : stateCalculations
-
-  const [isEmailSending, setIsEmailSending] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [emailStatus, setEmailStatus] = useState(null)
 
@@ -214,7 +211,7 @@ const BonusLeaveEncashmentInvoicePreview = ({
         setTimeout(() => navigate('/dashboard/billing-manager/irn-invoices'), 2000)
       }
     } catch (error) {
-      setEmailStatus({ type: 'error', message: 'Failed to convert invoice' })
+      setEmailStatus(error,{ type: 'error', message: 'Failed to convert invoice' })
     }
   }
 
