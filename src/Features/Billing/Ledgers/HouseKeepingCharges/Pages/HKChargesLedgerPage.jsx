@@ -52,7 +52,7 @@ const HKChargesLedgerPage = () => {
 
   return (
     <div className="min-h-screen w-full bg-gray-50 p-4 sm:p-6">
-      <div className="max-w-full mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
         <HKChargesLedgerHeader ledgerInfo={ledgerData.headerInfo} />
         <HKChargesFilterSection />
         <HKChargesTransactionTable transactions={ledgerData.ledgerDetails.entries} />

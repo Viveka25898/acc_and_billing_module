@@ -162,6 +162,7 @@ import AMInvoiceReviewPage from '../Features/PurchaseBookingHKMaterial/Account M
 import AMInvoiceApproval from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage'
 import AMFixedAssetEntryPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage'
 import ChartOfAccountsDashboard from '../Features/Master/Pages/ChartOfAccountsDashboard'
+import ClientLedgerPage from '../Features/Master/Billing Masters/Client Ledgers/Pages/ClientLedgerPage'
 import EmployeeLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage'
 import ProcessOfPaymentVendorPage from '../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage'
 import TDSLedgerPage from '../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage'
@@ -205,6 +206,22 @@ import EmployeeLWFPayableLedgerPage from '../Features/Master/Payment Entry For S
 import ProfessionalTaxPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ProfessionalTaxPayableLedgerPage'
 import BonusProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
 import BonusExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
+
+// ============== BILLING LEDGERS IMPORTS (11 Ledgers) ==============
+import {
+  HKChargesLedgerPage,
+  ManpowerLedgerPage,
+  HKMaterialLedgerPage,
+  MachineryRentLedgerPage,
+  CGSTLedgerPage,
+  SGSTLedgerPage,
+  IGSTLedgerPage,
+  TDSPayableLedgerPage,
+  TDSReceivableLedgerPage,
+  ServiceTaxLedgerPage,
+  RoundOffLedgerPage,
+} from '../Features/Billing/Ledgers'
+// =================================================================
 
 export const router = createBrowserRouter([
   {
@@ -924,6 +941,11 @@ export const router = createBrowserRouter([
         element: <ChartOfAccountsDashboard />,
       },
       // ************************************Master Dummy********************************************
+      // Client Ledger Route
+      {
+        path: 'client-ledger/:clientCode',
+        element: <ClientLedgerPage />,
+      },
       // Add Employee Ledger Route
       {
         path: 'ledger/:accountCode',
@@ -1082,6 +1104,56 @@ export const router = createBrowserRouter([
         path: 'bonus-expense-ledger',
         element: <BonusExpenseLedgerPage />,
       },
+      // ============== BILLING LEDGERS ROUTES (11 Ledgers) ==============
+      // Primary Posting Ledgers (4)
+      {
+        path: 'billing-ledger/hk-charges',
+        element: <HKChargesLedgerPage />,
+      },
+      {
+        path: 'billing-ledger/manpower-services',
+        element: <ManpowerLedgerPage />,
+      },
+      {
+        path: 'billing-ledger/hk-material',
+        element: <HKMaterialLedgerPage />,
+      },
+      {
+        path: 'billing-ledger/machinery-rent',
+        element: <MachineryRentLedgerPage />,
+      },
+      // GST Statutory Ledgers (3)
+      {
+        path: 'billing-ledger/cgst-payable',
+        element: <CGSTLedgerPage />,
+      },
+      {
+        path: 'billing-ledger/sgst-payable',
+        element: <SGSTLedgerPage />,
+      },
+      {
+        path: 'billing-ledger/igst-payable',
+        element: <IGSTLedgerPage />,
+      },
+      // TDS Statutory Ledgers (2)
+      {
+        path: 'billing-ledger/tds-payable-194c',
+        element: <TDSPayableLedgerPage />,
+      },
+      {
+        path: 'billing-ledger/tds-receivable-194j',
+        element: <TDSReceivableLedgerPage />,
+      },
+      // Other Statutory Ledgers (2)
+      {
+        path: 'billing-ledger/service-tax-payable',
+        element: <ServiceTaxLedgerPage />,
+      },
+      {
+        path: 'billing-ledger/round-off',
+        element: <RoundOffLedgerPage />,
+      },
+      // =================================================================
     ],
   },
 ])

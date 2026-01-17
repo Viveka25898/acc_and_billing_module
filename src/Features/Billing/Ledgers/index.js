@@ -37,7 +37,7 @@ export { default as RoundOffLedgerPage } from './OtherStatutory/Pages/RoundOffLe
 // ========================================
 // SHARED SERVICES & COMPONENTS
 // ========================================
-export { default as ProductGLMappingService } from './Services/ProductGLMappingService';
+export { ProductGLMappingService } from '../Services/ProductGLMappingService';
 export { default as Badge } from './Components/Badge';
 
 // ========================================

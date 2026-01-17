@@ -51,7 +51,7 @@ const ServiceTaxLedgerPage = () => {
 
   return (
     <div className="min-h-screen w-full bg-gray-50 p-4 sm:p-6">
-      <div className="max-w-full mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
         <ServiceTaxLedgerHeader ledgerInfo={ledgerData.headerInfo} />
         <HKChargesFilterSection />
         <ServiceTaxTransactionTable transactions={ledgerData.ledgerDetails.entries} />

@@ -394,6 +394,84 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         (account.code.startsWith('X2002002003') &&
           account.name.toLowerCase().includes('other fees'))
 
+      //=============================================
+      // BILLING LEDGERS (11 Ledgers)
+      //=============================================
+
+      // Primary Posting Ledgers
+      const isHouseKeepingChargesAccount =
+        account.code === 'X5000' ||
+        (account.code.startsWith('X5000') && account.name.toLowerCase().includes('housekeeping'))
+
+      const isManpowerServicesAccount =
+        account.code === 'X5100' ||
+        (account.code.startsWith('X5100') && account.name.toLowerCase().includes('manpower'))
+
+      const isHKMaterialAccount =
+        account.code === 'X5200' ||
+        (account.code.startsWith('X5200') &&
+          (account.name.toLowerCase().includes('hk material') ||
+            account.name.toLowerCase().includes('cleaning consumable')))
+
+      const isRentOnMachineryAccount =
+        account.code === 'X5400' ||
+        (account.code.startsWith('X5400') && account.name.toLowerCase().includes('machinery'))
+
+      // GST Statutory Ledgers
+      const isCGSTPayableAccount =
+        account.code === 'L3001' ||
+        (account.code.startsWith('L3001') &&
+          account.name.toLowerCase().includes('cgst') &&
+          account.name.toLowerCase().includes('payable'))
+
+      const isSGSTPayableAccount =
+        account.code === 'L3002' ||
+        (account.code.startsWith('L3002') &&
+          account.name.toLowerCase().includes('sgst') &&
+          account.name.toLowerCase().includes('payable'))
+
+      const isIGSTPayableAccount =
+        account.code === 'L3003' ||
+        (account.code.startsWith('L3003') &&
+          account.name.toLowerCase().includes('igst') &&
+          account.name.toLowerCase().includes('payable'))
+
+      // TDS Statutory Ledgers
+      const isTDSPayable194CAccount =
+        account.code === 'L3101' ||
+        (account.code.startsWith('L3101') &&
+          account.name.toLowerCase().includes('tds') &&
+          account.name.toLowerCase().includes('payable') &&
+          account.name.toLowerCase().includes('194c'))
+
+      const isTDSReceivable194JAccount =
+        account.code === 'L3102' ||
+        (account.code.startsWith('L3102') &&
+          account.name.toLowerCase().includes('tds') &&
+          account.name.toLowerCase().includes('receivable') &&
+          account.name.toLowerCase().includes('194j'))
+
+      // Other Statutory Ledgers
+      const isServiceTaxPayableAccount =
+        account.code === 'L3004' ||
+        (account.code.startsWith('L3004') &&
+          account.name.toLowerCase().includes('service tax') &&
+          account.name.toLowerCase().includes('payable'))
+
+      const isRoundOffAccount =
+        account.code === 'X9999' ||
+        (account.code.startsWith('X9999') && account.name.toLowerCase().includes('round off'))
+
+      // ========================================
+      // CLIENT LEDGERS (Sundry Debtors - A3003001)
+      // ========================================
+
+      // Client accounts start with 'D' prefix (D001, D002, etc.)
+      const isClientAccount =
+        account.code.startsWith('D') ||
+        (account.parentCode === 'A3003001' && account.type === 'ACCOUNT') ||
+        (account.name.toLowerCase().includes('client') && account.code.startsWith('D'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -534,6 +612,50 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isOtherFeesAccount) {
         console.log('✅ Navigating to Other Fees Ledger')
         navigate(`/dashboard/account-manager/expense-ledger/X2002002003`)
+      }
+      // ========================================
+      // BILLING LEDGERS ROUTING (11 Ledgers)
+      // ========================================
+      else if (isHouseKeepingChargesAccount) {
+        console.log('✅ Navigating to House Keeping Charges Ledger (X5000)')
+        navigate(`/dashboard/account-manager/billing-ledger/hk-charges`)
+      } else if (isManpowerServicesAccount) {
+        console.log('✅ Navigating to Manpower Services Ledger (X5100)')
+        navigate(`/dashboard/account-manager/billing-ledger/manpower-services`)
+      } else if (isHKMaterialAccount) {
+        console.log('✅ Navigating to HK Material Ledger (X5200)')
+        navigate(`/dashboard/account-manager/billing-ledger/hk-material`)
+      } else if (isRentOnMachineryAccount) {
+        console.log('✅ Navigating to Rent on Machinery Ledger (X5400)')
+        navigate(`/dashboard/account-manager/billing-ledger/machinery-rent`)
+      } else if (isCGSTPayableAccount) {
+        console.log('✅ Navigating to CGST Payable Ledger (L3001)')
+        navigate(`/dashboard/account-manager/billing-ledger/cgst-payable`)
+      } else if (isSGSTPayableAccount) {
+        console.log('✅ Navigating to SGST Payable Ledger (L3002)')
+        navigate(`/dashboard/account-manager/billing-ledger/sgst-payable`)
+      } else if (isIGSTPayableAccount) {
+        console.log('✅ Navigating to IGST Payable Ledger (L3003)')
+        navigate(`/dashboard/account-manager/billing-ledger/igst-payable`)
+      } else if (isTDSPayable194CAccount) {
+        console.log('✅ Navigating to TDS Payable 194C Ledger (L3101)')
+        navigate(`/dashboard/account-manager/billing-ledger/tds-payable-194c`)
+      } else if (isTDSReceivable194JAccount) {
+        console.log('✅ Navigating to TDS Receivable 194J Ledger (L3102)')
+        navigate(`/dashboard/account-manager/billing-ledger/tds-receivable-194j`)
+      } else if (isServiceTaxPayableAccount) {
+        console.log('✅ Navigating to Service Tax Payable Ledger (L3004)')
+        navigate(`/dashboard/account-manager/billing-ledger/service-tax-payable`)
+      } else if (isRoundOffAccount) {
+        console.log('✅ Navigating to Round Off Ledger (X9999)')
+        navigate(`/dashboard/account-manager/billing-ledger/round-off`)
+      }
+      // ========================================
+      // CLIENT LEDGERS ROUTING
+      // ========================================
+      else if (isClientAccount) {
+        console.log('✅ Navigating to Client Ledger:', account.code)
+        navigate(`/dashboard/account-manager/client-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')
         navigate(`/dashboard/account-manager/ledger/${account.code}`)

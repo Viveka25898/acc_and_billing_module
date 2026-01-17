@@ -5,6 +5,8 @@ import { router } from './Routes/Route.jsx'
 import { useEffect } from 'react'
 import { INITIAL_CHART_OF_ACCOUNTS } from './data/ChartOfAccounts'
 import { INITIAL_TRANSACTIONS } from './data/Transactions.js'
+import { initializeClientAccounts } from './Features/Master/Billing Masters/Client Ledgers/data/clientAccountsInit'
+import { initializeABCMallLedger } from './Features/Master/Billing Masters/Client Ledgers/data/clientLedgerData'
 
 function App() {
   // Application Version for Migration Management
@@ -633,6 +635,17 @@ function App() {
         localStorage.setItem('bankOpeningBalances', JSON.stringify(bankOpeningBalances))
         console.log('✅ Bank opening balances initialized')
       }
+
+      // ========================================
+      // 5. INITIALIZE CLIENT ACCOUNTS & LEDGERS
+      // ========================================
+      // Initialize client accounts in Chart of Accounts
+      initializeClientAccounts()
+
+      // Initialize ABC Mall ledger data
+      initializeABCMallLedger()
+
+      console.log('✅ Client accounts and ledgers initialized')
 
       console.log('🎯 All accounting modules initialized successfully!')
     } catch (error) {
