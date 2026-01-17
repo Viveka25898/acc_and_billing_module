@@ -4,6 +4,14 @@ import React from 'react'
 import { TrendingUp, TrendingDown, BarChart3, DollarSign } from 'lucide-react'
 
 const RevenueLedgerFooter = ({ summary, ledgerDetails }) => {
+  // Provide default values for missing data
+  const monthlyStats = summary?.monthlyStats || {
+    november: '₹0.00',
+    december: '₹0.00',
+  }
+
+  const averageTransaction = summary?.averageTransaction || summary?.avgTransactionValue || '₹0.00'
+
   return (
     <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-t-2 border-gray-300 p-4 sm:p-6">
       {/* Summary Totals */}
@@ -50,7 +58,7 @@ const RevenueLedgerFooter = ({ summary, ledgerDetails }) => {
 
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <div className="text-xs text-gray-500 mb-1">Average Transaction</div>
-          <div className="text-xl font-bold text-blue-600">{summary.averageTransaction}</div>
+          <div className="text-xl font-bold text-blue-600">{averageTransaction}</div>
         </div>
 
         <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -68,11 +76,11 @@ const RevenueLedgerFooter = ({ summary, ledgerDetails }) => {
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="text-xs text-gray-600 mb-1">November 2025</div>
-            <div className="text-lg font-bold text-blue-700">{summary.monthlyStats.november}</div>
+            <div className="text-lg font-bold text-blue-700">{monthlyStats.november}</div>
           </div>
           <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
             <div className="text-xs text-gray-600 mb-1">December 2025</div>
-            <div className="text-lg font-bold text-green-700">{summary.monthlyStats.december}</div>
+            <div className="text-lg font-bold text-green-700">{monthlyStats.december}</div>
           </div>
         </div>
       </div>

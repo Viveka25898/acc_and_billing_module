@@ -1,4 +1,4 @@
-// House Keeping Charges Revenue Ledger Page - R1001001
+// House Keeping Charges (Exempt) Revenue Ledger Page - R1001002
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import RevenueLedgerHeader from '../Components/RevenueLedgerHeader'
@@ -6,12 +6,12 @@ import RevenueLedgerFilter from '../Components/RevenueLedgerFilter'
 import RevenueLedgerTable from '../Components/RevenueLedgerTable'
 import RevenueLedgerFooter from '../Components/RevenueLedgerFooter'
 import {
-  houseKeepingRevenueData,
+  houseKeepingExemptRevenueData,
   getRevenueLedgerData,
-  initializeHouseKeepingRevenueLedger,
-} from '../data/houseKeepingRevenueData'
+  initializeHouseKeepingExemptRevenueLedger,
+} from '../data/houseKeepingExemptRevenueData'
 
-const HouseKeepingRevenueLedgerPage = () => {
+const HouseKeepingExemptRevenueLedgerPage = () => {
   const { accountCode } = useParams()
   const [ledgerData, setLedgerData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -27,14 +27,14 @@ const HouseKeepingRevenueLedgerPage = () => {
       setLoading(true)
       setError(null)
 
-      // Initialize House Keeping Revenue ledger if not exists
-      initializeHouseKeepingRevenueLedger()
+      // Initialize House Keeping Exempt Revenue ledger if not exists
+      initializeHouseKeepingExemptRevenueLedger()
 
       // Simulate API call with timeout
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       // Load ledger data from localStorage
-      const data = getRevenueLedgerData(accountCode || 'R1001001') || houseKeepingRevenueData
+      const data = getRevenueLedgerData(accountCode || 'R1001002') || houseKeepingExemptRevenueData
 
       if (!data || !data.headerInfo || !data.ledgerDetails) {
         throw new Error('Invalid ledger data structure')
@@ -105,8 +105,8 @@ const HouseKeepingRevenueLedgerPage = () => {
   if (error) {
     return (
       <div className="min-h-screen w-full bg-gray-50 p-4 sm:p-6 flex items-center justify-center">
-        <div className="text-center bg-white rounded-lg shadow-lg p-8 max-w-md">
-          <div className="text-red-600 mb-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
+          <div className="text-red-500 mb-4">
             <svg
               className="w-16 h-16 mx-auto"
               fill="none"
@@ -116,18 +116,18 @@ const HouseKeepingRevenueLedgerPage = () => {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
+                strokeWidth="2"
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           </div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Ledger</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={loadLedgerData}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Retry
+            Try Again
           </button>
         </div>
       </div>
@@ -137,35 +137,35 @@ const HouseKeepingRevenueLedgerPage = () => {
   if (!ledgerData) {
     return (
       <div className="min-h-screen w-full bg-gray-50 p-4 sm:p-6 flex items-center justify-center">
-        <div className="text-center bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-xl font-bold text-red-600">Ledger Data Not Found</h2>
-          <p className="text-gray-600 mt-2">
-            Unable to load revenue ledger data for {accountCode}.
-          </p>
-          <button
-            onClick={loadLedgerData}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Refresh
-          </button>
+        <div className="text-center">
+          <p className="text-gray-600">No ledger data found for account: {accountCode}</p>
         </div>
       </div>
     )
   }
 
+  // Calculate summary for footer
+  const summary = {
+    totalCredit: ledgerData.ledgerDetails.totalCredit,
+    totalDebit: ledgerData.ledgerDetails.totalDebit,
+    netRevenue: ledgerData.ledgerDetails.netRevenue,
+    transactionCount: filteredTransactions.length,
+    avgTransactionValue: `₹${(
+      parseFloat(ledgerData.ledgerDetails.totalCredit.replace(/[₹,]/g, '')) /
+      ledgerData.ledgerDetails.entries.length
+    ).toFixed(2)}`,
+  }
+
   return (
     <div className="min-h-screen w-full bg-gray-50 p-4 sm:p-6">
-      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="max-w-5xl mx-auto space-y-4">
         <RevenueLedgerHeader ledgerInfo={ledgerData.headerInfo} />
         <RevenueLedgerFilter onFilterChange={handleFilterChange} />
         <RevenueLedgerTable transactions={filteredTransactions} />
-        <RevenueLedgerFooter
-          summary={ledgerData.summary}
-          ledgerDetails={ledgerData.ledgerDetails}
-        />
+        <RevenueLedgerFooter summary={summary} ledgerDetails={ledgerData.ledgerDetails} />
       </div>
     </div>
   )
 }
 
-export default HouseKeepingRevenueLedgerPage
+export default HouseKeepingExemptRevenueLedgerPage

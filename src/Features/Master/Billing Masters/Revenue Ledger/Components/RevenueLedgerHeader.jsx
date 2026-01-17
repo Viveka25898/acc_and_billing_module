@@ -3,8 +3,12 @@ import React from 'react'
 import { TrendingUp, Layers, FileText, Calendar } from 'lucide-react'
 
 const RevenueLedgerHeader = ({ ledgerInfo }) => {
+  if (!ledgerInfo) {
+    return null
+  }
+
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sm:p-6">
+    <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 sm:p-6">
       {/* Top Section - Account Name & Type */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>

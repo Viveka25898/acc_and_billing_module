@@ -164,6 +164,7 @@ import AMFixedAssetEntryPage from '../Features/PurchaseBookingHKMaterial/Account
 import ChartOfAccountsDashboard from '../Features/Master/Pages/ChartOfAccountsDashboard'
 import ClientLedgerPage from '../Features/Master/Billing Masters/Client Ledgers/Pages/ClientLedgerPage'
 import HouseKeepingRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingRevenueLedgerPage'
+import HouseKeepingExemptRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingExemptRevenueLedgerPage'
 import EmployeeLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage'
 import ProcessOfPaymentVendorPage from '../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage'
 import TDSLedgerPage from '../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage'
@@ -947,7 +948,15 @@ export const router = createBrowserRouter([
         path: 'client-ledger/:clientCode',
         element: <ClientLedgerPage />,
       },
-      // Revenue Ledger Route
+      // Revenue Ledger Routes
+      {
+        path: 'revenue-ledger/R1001001',
+        element: <HouseKeepingRevenueLedgerPage />,
+      },
+      {
+        path: 'revenue-ledger/R1001002',
+        element: <HouseKeepingExemptRevenueLedgerPage />,
+      },
       {
         path: 'revenue-ledger/:accountCode',
         element: <HouseKeepingRevenueLedgerPage />,
