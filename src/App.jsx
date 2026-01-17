@@ -7,6 +7,7 @@ import { INITIAL_CHART_OF_ACCOUNTS } from './data/ChartOfAccounts'
 import { INITIAL_TRANSACTIONS } from './data/Transactions.js'
 import { initializeClientAccounts } from './Features/Master/Billing Masters/Client Ledgers/data/clientAccountsInit'
 import { initializeABCMallLedger } from './Features/Master/Billing Masters/Client Ledgers/data/clientLedgerData'
+import { initializeHouseKeepingRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/houseKeepingRevenueData'
 
 function App() {
   // Application Version for Migration Management
@@ -646,6 +647,14 @@ function App() {
       initializeABCMallLedger()
 
       console.log('✅ Client accounts and ledgers initialized')
+
+      // ========================================
+      // 6. INITIALIZE REVENUE LEDGERS
+      // ========================================
+      // Initialize House Keeping Revenue ledger data
+      initializeHouseKeepingRevenueLedger()
+
+      console.log('✅ Revenue ledgers initialized')
 
       console.log('🎯 All accounting modules initialized successfully!')
     } catch (error) {

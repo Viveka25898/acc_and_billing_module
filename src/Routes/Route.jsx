@@ -163,6 +163,7 @@ import AMInvoiceApproval from '../Features/PurchaseBookingHKMaterial/Account Man
 import AMFixedAssetEntryPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage'
 import ChartOfAccountsDashboard from '../Features/Master/Pages/ChartOfAccountsDashboard'
 import ClientLedgerPage from '../Features/Master/Billing Masters/Client Ledgers/Pages/ClientLedgerPage'
+import HouseKeepingRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingRevenueLedgerPage'
 import EmployeeLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage'
 import ProcessOfPaymentVendorPage from '../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage'
 import TDSLedgerPage from '../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage'
@@ -945,6 +946,11 @@ export const router = createBrowserRouter([
       {
         path: 'client-ledger/:clientCode',
         element: <ClientLedgerPage />,
+      },
+      // Revenue Ledger Route
+      {
+        path: 'revenue-ledger/:accountCode',
+        element: <HouseKeepingRevenueLedgerPage />,
       },
       // Add Employee Ledger Route
       {

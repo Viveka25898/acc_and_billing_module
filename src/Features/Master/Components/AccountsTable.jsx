@@ -473,6 +473,16 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         (account.name.toLowerCase().includes('client') && account.code.startsWith('D'))
 
       // ========================================
+      // REVENUE LEDGERS (Income - R1001)
+      // ========================================
+
+      // House Keeping Charges Revenue
+      const isHouseKeepingRevenueAccount =
+        account.code === 'R1001001' ||
+        (account.code.startsWith('R1001001') &&
+          account.name.toLowerCase().includes('house keeping'))
+
+      // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
 
@@ -656,6 +666,13 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       else if (isClientAccount) {
         console.log('✅ Navigating to Client Ledger:', account.code)
         navigate(`/dashboard/account-manager/client-ledger/${account.code}`)
+      }
+      // ========================================
+      // REVENUE LEDGERS ROUTING
+      // ========================================
+      else if (isHouseKeepingRevenueAccount) {
+        console.log('✅ Navigating to House Keeping Charges Revenue Ledger (R1001001)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')
         navigate(`/dashboard/account-manager/ledger/${account.code}`)
