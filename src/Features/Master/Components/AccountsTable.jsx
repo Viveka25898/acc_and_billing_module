@@ -501,6 +501,24 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         (account.code.startsWith('R1001004') &&
           account.name.toLowerCase().includes('overseas consultancy'))
 
+      // HK Material Revenue
+      const isHKMaterialRevenueAccount =
+        account.code === 'R1001005001' ||
+        (account.code.startsWith('R1001005001') &&
+          account.name.toLowerCase().includes('hk material'))
+
+      // Cleaning Consumable Revenue
+      const isCleaningConsumableRevenueAccount =
+        account.code === 'R1001005002' ||
+        (account.code.startsWith('R1001005002') &&
+          account.name.toLowerCase().includes('cleaning consumable'))
+
+      // Deep Cleaning Charges Revenue
+      const isDeepCleaningRevenueAccount =
+        account.code === 'R1001007' ||
+        (account.code.startsWith('R1001007') &&
+          account.name.toLowerCase().includes('deep cleaning'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -700,6 +718,15 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else if (isOverseasConsultancyRevenueAccount) {
         console.log('✅ Navigating to Overseas Consultancy Revenue Ledger (R1001004)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isHKMaterialRevenueAccount) {
+        console.log('✅ Navigating to HK Material Revenue Ledger (R1001005001)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isCleaningConsumableRevenueAccount) {
+        console.log('✅ Navigating to Cleaning Consumable Revenue Ledger (R1001005002)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isDeepCleaningRevenueAccount) {
+        console.log('✅ Navigating to Deep Cleaning Revenue Ledger (R1001007)')
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')
