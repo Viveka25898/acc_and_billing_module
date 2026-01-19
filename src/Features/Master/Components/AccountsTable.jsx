@@ -495,6 +495,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         (account.code.startsWith('R1001003') &&
           account.name.toLowerCase().includes('service charges'))
 
+      // Overseas Consultancy Service Fees (Export) Revenue
+      const isOverseasConsultancyRevenueAccount =
+        account.code === 'R1001004' ||
+        (account.code.startsWith('R1001004') &&
+          account.name.toLowerCase().includes('overseas consultancy'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -691,6 +697,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else if (isServiceChargesRevenueAccount) {
         console.log('✅ Navigating to Service Charges Revenue Ledger (R1001003)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isOverseasConsultancyRevenueAccount) {
+        console.log('✅ Navigating to Overseas Consultancy Revenue Ledger (R1001004)')
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')
