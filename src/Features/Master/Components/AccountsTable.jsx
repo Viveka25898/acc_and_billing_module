@@ -530,6 +530,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         account.code === 'R1001009' ||
         (account.code.startsWith('R1001009') && account.name.toLowerCase().includes('manpower'))
 
+      // Pest Control Charges Revenue
+      const isPestControlRevenueAccount =
+        account.code === 'R1001010' ||
+        (account.code.startsWith('R1001010') && account.name.toLowerCase().includes('pest control'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -744,6 +749,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else if (isManpowerServicesRevenueAccount) {
         console.log('✅ Navigating to Manpower Services Revenue Ledger (R1001009)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isPestControlRevenueAccount) {
+        console.log('✅ Navigating to Pest Control Revenue Ledger (R1001010)')
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')

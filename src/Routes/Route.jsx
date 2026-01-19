@@ -172,6 +172,7 @@ import CleaningConsumableRevenueLedgerPage from '../Features/Master/Billing Mast
 import DeepCleaningRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/DeepCleaningRevenueLedgerPage'
 import RentOnMachineryRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/RentOnMachineryRevenueLedgerPage'
 import ManpowerServicesRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/ManpowerServicesRevenueLedgerPage'
+import PestControlRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/PestControlRevenueLedgerPage'
 import EmployeeLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage'
 import ProcessOfPaymentVendorPage from '../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage'
 import TDSLedgerPage from '../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage'
@@ -991,6 +992,10 @@ export const router = createBrowserRouter([
       {
         path: 'revenue-ledger/R1001009',
         element: <ManpowerServicesRevenueLedgerPage />,
+      },
+      {
+        path: 'revenue-ledger/R1001010',
+        element: <PestControlRevenueLedgerPage />,
       },
       {
         path: 'revenue-ledger/:accountCode',
