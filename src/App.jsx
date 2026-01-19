@@ -9,6 +9,7 @@ import { initializeClientAccounts } from './Features/Master/Billing Masters/Clie
 import { initializeABCMallLedger } from './Features/Master/Billing Masters/Client Ledgers/data/clientLedgerData'
 import { initializeHouseKeepingRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/houseKeepingRevenueData'
 import { initializeHouseKeepingExemptRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/houseKeepingExemptRevenueData'
+import { initializeServiceChargesRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/serviceChargesRevenueData'
 
 function App() {
   // Application Version for Migration Management
@@ -656,6 +657,8 @@ function App() {
       initializeHouseKeepingRevenueLedger()
       // Initialize House Keeping Exempt Revenue ledger data
       initializeHouseKeepingExemptRevenueLedger()
+      // Initialize Service Charges Revenue ledger data
+      initializeServiceChargesRevenueLedger()
 
       console.log('✅ Revenue ledgers initialized')
 

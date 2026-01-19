@@ -165,6 +165,7 @@ import ChartOfAccountsDashboard from '../Features/Master/Pages/ChartOfAccountsDa
 import ClientLedgerPage from '../Features/Master/Billing Masters/Client Ledgers/Pages/ClientLedgerPage'
 import HouseKeepingRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingRevenueLedgerPage'
 import HouseKeepingExemptRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingExemptRevenueLedgerPage'
+import ServiceChargesRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/ServiceChargesRevenueLedgerPage'
 import EmployeeLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage'
 import ProcessOfPaymentVendorPage from '../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage'
 import TDSLedgerPage from '../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage'
@@ -956,6 +957,10 @@ export const router = createBrowserRouter([
       {
         path: 'revenue-ledger/R1001002',
         element: <HouseKeepingExemptRevenueLedgerPage />,
+      },
+      {
+        path: 'revenue-ledger/R1001003',
+        element: <ServiceChargesRevenueLedgerPage />,
       },
       {
         path: 'revenue-ledger/:accountCode',

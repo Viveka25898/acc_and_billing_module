@@ -489,6 +489,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           account.name.toLowerCase().includes('house keeping') &&
           account.name.toLowerCase().includes('exempt'))
 
+      // Service Charges Revenue
+      const isServiceChargesRevenueAccount =
+        account.code === 'R1001003' ||
+        (account.code.startsWith('R1001003') &&
+          account.name.toLowerCase().includes('service charges'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -682,6 +688,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else if (isHouseKeepingExemptRevenueAccount) {
         console.log('✅ Navigating to House Keeping Charges (Exempt) Revenue Ledger (R1001002)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isServiceChargesRevenueAccount) {
+        console.log('✅ Navigating to Service Charges Revenue Ledger (R1001003)')
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')
