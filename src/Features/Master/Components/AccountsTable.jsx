@@ -1,10 +1,197 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiChevronRight, FiChevronDown } from 'react-icons/fi'
 
 const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick }) => {
   const navigate = useNavigate()
   const [expandedAccounts, setExpandedAccounts] = useState(new Set())
+  const [balances, setBalances] = useState({})
+  const [balancesLoading, setBalancesLoading] = useState(true)
+
+  // Function to get balance for a specific account from localStorage
+  const getAccountBalance = (accountCode) => {
+    try {
+      // Check Client Ledgers (D-prefix accounts)
+      if (accountCode.startsWith('D')) {
+        const clientLedgers = JSON.parse(localStorage.getItem('clientLedgers') || '{}')
+        const ledger = clientLedgers[accountCode]
+        if (ledger && ledger.ledgerDetails) {
+          // Try different balance field names
+          const balance =
+            ledger.ledgerDetails.currentOutstanding || ledger.ledgerDetails.closingBalance || '₹0'
+          return parseFloat(balance.replace(/[₹,]/g, ''))
+        }
+      }
+
+      // Check Revenue Ledgers (R-prefix accounts)
+      if (accountCode.startsWith('R')) {
+        const revenueLedgers = JSON.parse(localStorage.getItem('revenueLedgers') || '{}')
+        const ledger = revenueLedgers[accountCode]
+        if (ledger && ledger.ledgerDetails) {
+          const netRevenue = ledger.ledgerDetails.netRevenue?.replace(/[₹,]/g, '') || '0'
+          return parseFloat(netRevenue)
+        }
+      }
+
+      // Check Expense Ledgers (X-prefix accounts)
+      if (accountCode.startsWith('X')) {
+        const expenseLedgers = JSON.parse(localStorage.getItem('expenseLedgers') || '{}')
+        const ledger = expenseLedgers[accountCode]
+        if (ledger && ledger.ledgerDetails) {
+          const balance =
+            ledger.ledgerDetails.totalExpense || ledger.ledgerDetails.closingBalance || '₹0'
+          return parseFloat(balance.replace(/[₹,]/g, ''))
+        }
+      }
+
+      // Check Vendor Ledgers (L2005-prefix accounts)
+      if (accountCode.startsWith('L2005')) {
+        const vendorLedgers = JSON.parse(localStorage.getItem('vendorLedgers') || '{}')
+        const ledger = vendorLedgers[accountCode]
+        if (ledger && ledger.ledgerDetails) {
+          const balance = ledger.ledgerDetails.closingBalance || '₹0'
+          return parseFloat(balance.replace(/[₹,]/g, ''))
+        }
+      }
+
+      // Check Liability Ledgers (L-prefix accounts - GST, TDS, etc.)
+      if (accountCode.startsWith('L')) {
+        // CGST Payable
+        if (accountCode === 'L3001' || accountCode.startsWith('L3001')) {
+          const cgstData = JSON.parse(localStorage.getItem('cgst_payable_ledger') || '{}')
+          if (cgstData.closingBalance) {
+            return parseFloat(cgstData.closingBalance.replace(/[₹,]/g, ''))
+          }
+        }
+        // SGST Payable
+        if (accountCode === 'L3002' || accountCode.startsWith('L3002')) {
+          const sgstData = JSON.parse(localStorage.getItem('sgst_payable_ledger') || '{}')
+          if (sgstData.closingBalance) {
+            return parseFloat(sgstData.closingBalance.replace(/[₹,]/g, ''))
+          }
+        }
+        // IGST Payable
+        if (accountCode === 'L3003' || accountCode.startsWith('L3003')) {
+          const igstData = JSON.parse(localStorage.getItem('igst_payable_ledger') || '{}')
+          if (igstData.closingBalance) {
+            return parseFloat(igstData.closingBalance.replace(/[₹,]/g, ''))
+          }
+        }
+        // TDS Payable 194C
+        if (accountCode === 'L3101' || accountCode.startsWith('L3101')) {
+          const tdsData = JSON.parse(localStorage.getItem('tds_payable_194c_ledger') || '{}')
+          if (tdsData.closingBalance) {
+            return parseFloat(tdsData.closingBalance.replace(/[₹,]/g, ''))
+          }
+        }
+        // TDS Receivable 194J
+        if (accountCode === 'L3102' || accountCode.startsWith('L3102')) {
+          const tdsData = JSON.parse(localStorage.getItem('tds_receivable_194j_ledger') || '{}')
+          if (tdsData.closingBalance) {
+            return parseFloat(tdsData.closingBalance.replace(/[₹,]/g, ''))
+          }
+        }
+      }
+
+      // Check Employee Ledgers (A3002-prefix accounts)
+      if (accountCode.startsWith('A3002')) {
+        const users = JSON.parse(localStorage.getItem('users') || '[]')
+        const employee = users.find((u) => u.glCode === accountCode)
+        if (employee && employee.osBalance !== undefined) {
+          return parseFloat(employee.osBalance || 0)
+        }
+      }
+
+      // Check Bank Ledgers (A3004-prefix accounts)
+      if (accountCode.startsWith('A3004')) {
+        const bankAccounts = JSON.parse(localStorage.getItem('bankAccounts') || '{}')
+        const bankLedger = bankAccounts[accountCode]
+        if (bankLedger && bankLedger.closingBalance !== undefined) {
+          return parseFloat(bankLedger.closingBalance?.replace(/[₹,]/g, '') || 0)
+        }
+      }
+
+      // Check Fixed Asset Ledgers (A1-prefix accounts)
+      if (accountCode.startsWith('A1')) {
+        const fixedAssets = JSON.parse(localStorage.getItem('fixedAssets') || '{}')
+        const assetLedger = fixedAssets[accountCode]
+        if (assetLedger && assetLedger.closingBalance !== undefined) {
+          return parseFloat(assetLedger.closingBalance?.replace(/[₹,]/g, '') || 0)
+        }
+      }
+
+      return 0
+    } catch (error) {
+      console.error(`Error fetching balance for ${accountCode}:`, error)
+      return 0
+    }
+  }
+
+  // Recursive function to calculate total balance for a folder (sum of all child ledgers)
+  const calculateFolderBalance = (parentCode) => {
+    try {
+      let total = 0
+
+      // Find all children of this parent
+      const children = accounts.filter((acc) => acc.parentCode === parentCode)
+
+      for (const child of children) {
+        if (child.type === 'ACCOUNT') {
+          // If it's a ledger account, get its balance
+          total += getAccountBalance(child.code)
+        } else {
+          // If it's a folder, recursively get balances of its children
+          total += calculateFolderBalance(child.code)
+        }
+      }
+
+      return total
+    } catch (error) {
+      console.error(`Error calculating folder balance for ${parentCode}:`, error)
+      return 0
+    }
+  }
+
+  // Calculate balances for all accounts
+  useEffect(() => {
+    const calculateBalances = async () => {
+      try {
+        setBalancesLoading(true)
+        const balanceMap = {}
+
+        for (const account of accounts) {
+          if (account.type === 'ACCOUNT') {
+            // For ledger accounts, get direct balance
+            balanceMap[account.code] = getAccountBalance(account.code)
+          } else {
+            // For folders/roots, calculate sum of children
+            balanceMap[account.code] = calculateFolderBalance(account.code)
+          }
+        }
+
+        setBalances(balanceMap)
+      } catch (error) {
+        console.error('Error calculating balances:', error)
+      } finally {
+        setBalancesLoading(false)
+      }
+    }
+
+    calculateBalances()
+  }, [accounts])
+
+  // Format balance as currency
+  const formatBalance = (balance) => {
+    try {
+      if (balance === 0 || balance === null || balance === undefined) {
+        return '₹0.00'
+      }
+      return `₹${balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    } catch (error) {
+      console.error('Error formatting balance:', error)
+      return '₹0.00'
+    }
+  }
 
   // Toggle expansion for an account
   const toggleExpand = (accountCode, e) => {
@@ -786,6 +973,7 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
               </th>
               <th className="text-left py-3 px-6 text-sm font-medium text-gray-700">Type</th>
               <th className="text-left py-3 px-6 text-sm font-medium text-gray-700">Parent</th>
+              <th className="text-right py-3 px-6 text-sm font-medium text-gray-700">Balance</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -867,11 +1055,31 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                   <td className="py-3 px-6 text-sm">
                     <span className="text-gray-600 text-xs">{account.parentAccount || 'None'}</span>
                   </td>
+                  <td className="py-3 px-6 text-sm text-right">
+                    {balancesLoading ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                        <span className="text-gray-400 text-xs">Loading...</span>
+                      </div>
+                    ) : (
+                      <span
+                        className={`font-mono font-medium ${
+                          balances[account.code] > 0
+                            ? 'text-green-700'
+                            : balances[account.code] < 0
+                              ? 'text-red-700'
+                              : 'text-gray-600'
+                        }`}
+                      >
+                        {formatBalance(balances[account.code])}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="py-8 px-6 text-center text-gray-500">
+                <td colSpan="5" className="py-8 px-6 text-center text-gray-500">
                   No accounts found matching your criteria
                 </td>
               </tr>
