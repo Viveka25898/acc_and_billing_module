@@ -119,12 +119,9 @@ const ChartOfAccountsDashboard = () => {
   }
 
   const handleAccountClick = (account) => {
-    // Only handle non-ACCOUNT types here (ROOT, FOLDER, etc.)
-    // ACCOUNT type will be handled by AccountsTable navigation
-    if (account.type !== 'ACCOUNT') {
-      setSelectedAccount(account)
-      setIsDetailsModalOpen(true)
-    }
+    // Open details modal for all account types (including ACCOUNT)
+    setSelectedAccount(account)
+    setIsDetailsModalOpen(true)
   }
   const handleEditFromDetails = (account) => {
     setEditingAccount(account)

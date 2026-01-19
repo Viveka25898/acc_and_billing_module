@@ -142,17 +142,18 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
     return accounts.some((acc) => acc.parentCode === accountCode)
   }
 
-  // Handle row click - opens modal for non-ACCOUNT types, navigates for ACCOUNT types
+  // Handle row click - opens modal for ALL types (including ACCOUNT)
   const handleRowClick = (account) => {
-    if (account.type === 'ACCOUNT') {
-      // For ACCOUNT type, navigate to ledger
-      handleAccountClick(account)
-    } else {
-      // For all other types (ROOT, FOLDER, etc.), open details modal
-      if (onAccountClick) {
-        onAccountClick(account)
-      }
+    // Open details/edit modal for all account types
+    if (onAccountClick) {
+      onAccountClick(account)
     }
+  }
+
+  // Handle "View Ledger" link click - navigates to ledger (ACCOUNT types only)
+  const handleViewLedgerClick = (account, e) => {
+    e.stopPropagation() // Prevent row click from triggering
+    handleAccountClick(account)
   }
 
   // Updated handleAccountClick function with unified vendor detection
@@ -844,7 +845,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                           {account.name}
                         </span>
                         {account.type === 'ACCOUNT' && (
-                          <span className="text-xs text-indigo-600 ml-2">→ View Ledger</span>
+                          <button
+                            onClick={(e) => handleViewLedgerClick(account, e)}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline ml-2 transition-colors"
+                          >
+                            → View Ledger
+                          </button>
                         )}
                       </span>
                     </div>
