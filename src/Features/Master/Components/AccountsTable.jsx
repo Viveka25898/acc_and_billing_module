@@ -519,6 +519,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         (account.code.startsWith('R1001007') &&
           account.name.toLowerCase().includes('deep cleaning'))
 
+      // Rent on Machinery Revenue
+      const isRentOnMachineryRevenueAccount =
+        account.code === 'R1001008' ||
+        (account.code.startsWith('R1001008') &&
+          account.name.toLowerCase().includes('rent on machinery'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -727,6 +733,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else if (isDeepCleaningRevenueAccount) {
         console.log('✅ Navigating to Deep Cleaning Revenue Ledger (R1001007)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isRentOnMachineryRevenueAccount) {
+        console.log('✅ Navigating to Rent on Machinery Revenue Ledger (R1001008)')
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')

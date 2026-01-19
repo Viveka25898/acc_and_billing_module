@@ -6,3 +6,4 @@ export { default as OverseasConsultancyRevenueLedgerPage } from './OverseasConsu
 export { default as HKMaterialRevenueLedgerPage } from './HKMaterialRevenueLedgerPage'
 export { default as CleaningConsumableRevenueLedgerPage } from './CleaningConsumableRevenueLedgerPage'
 export { default as DeepCleaningRevenueLedgerPage } from './DeepCleaningRevenueLedgerPage'
+export { default as RentOnMachineryRevenueLedgerPage } from './RentOnMachineryRevenueLedgerPage'
