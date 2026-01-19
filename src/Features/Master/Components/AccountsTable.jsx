@@ -525,6 +525,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         (account.code.startsWith('R1001008') &&
           account.name.toLowerCase().includes('rent on machinery'))
 
+      // Manpower Services Revenue
+      const isManpowerServicesRevenueAccount =
+        account.code === 'R1001009' ||
+        (account.code.startsWith('R1001009') && account.name.toLowerCase().includes('manpower'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -736,6 +741,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else if (isRentOnMachineryRevenueAccount) {
         console.log('✅ Navigating to Rent on Machinery Revenue Ledger (R1001008)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isManpowerServicesRevenueAccount) {
+        console.log('✅ Navigating to Manpower Services Revenue Ledger (R1001009)')
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')

@@ -15,6 +15,7 @@ import { initializeHKMaterialRevenueLedger } from './Features/Master/Billing Mas
 import { initializeCleaningConsumableRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/cleaningConsumableRevenueData'
 import { initializeDeepCleaningRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/deepCleaningRevenueData'
 import { initializeRentOnMachineryRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/rentOnMachineryRevenueData'
+import { initializeManpowerServicesRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/manpowerServicesRevenueData'
 
 function App() {
   // Application Version for Migration Management
@@ -674,6 +675,8 @@ function App() {
       initializeDeepCleaningRevenueLedger()
       // Initialize Rent on Machinery Revenue ledger data
       initializeRentOnMachineryRevenueLedger()
+      // Initialize Manpower Services Revenue ledger data
+      initializeManpowerServicesRevenueLedger()
 
       console.log('✅ Revenue ledgers initialized')
 
