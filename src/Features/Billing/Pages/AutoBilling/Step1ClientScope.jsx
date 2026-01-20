@@ -106,6 +106,12 @@ const Step1ClientScope = ({ formData, setFormData, onNext, onCancel }) => {
       }
     }
 
+    if (formData.billingScope === BILLING_SCOPE_OPTIONS.ENTIRE_STATE) {
+      if (!formData.selectedSites || formData.selectedSites.length === 0) {
+        newErrors.selectedSites = 'No sites available for this customer'
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -251,7 +257,12 @@ const Step1ClientScope = ({ formData, setFormData, onNext, onCancel }) => {
               checked={formData.billingScope === BILLING_SCOPE_OPTIONS.ENTIRE_STATE}
               onChange={(e) => {
                 handleInputChange('billingScope', e.target.value)
-                handleInputChange('selectedSites', [])
+                // Auto-select all sites when "Bill entire State" is chosen
+                if (e.target.value === BILLING_SCOPE_OPTIONS.ENTIRE_STATE && selectedCustomer) {
+                  handleInputChange('selectedSites', selectedCustomer.sites)
+                } else {
+                  handleInputChange('selectedSites', [])
+                }
               }}
               className="w-4 h-4 text-green-600 focus:ring-green-500"
             />
@@ -311,6 +322,48 @@ const Step1ClientScope = ({ formData, setFormData, onNext, onCancel }) => {
               {errors.selectedSites}
             </p>
           )}
+        </div>
+      )}
+
+      {/* All Sites Selected (when entire state is chosen) */}
+      {formData.billingScope === BILLING_SCOPE_OPTIONS.ENTIRE_STATE && selectedCustomer && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center mb-3">
+            <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <label className="text-sm font-semibold text-gray-700">
+              All Sites Included ({selectedCustomer.sites.length} sites)
+            </label>
+          </div>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {selectedCustomer.sites.map((site) => (
+              <div
+                key={site.id}
+                className="flex items-start p-3 bg-white border border-green-300 rounded-lg"
+              >
+                <svg
+                  className="w-4 h-4 text-green-600 mt-0.5 mr-3"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div>
+                  <span className="text-sm font-medium text-gray-800">{site.name}</span>
+                  <p className="text-xs text-gray-500">{site.location}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
