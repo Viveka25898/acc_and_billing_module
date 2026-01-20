@@ -72,8 +72,11 @@ const ClientLedgerTable = ({ transactions }) => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {transactions.map((transaction) => (
-              <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+            {transactions.map((transaction, idx) => (
+              <tr
+                key={transaction.id || transaction.voucherNo || idx}
+                className="hover:bg-gray-50 transition-colors"
+              >
                 <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                   {transaction.date}
                 </td>
@@ -142,9 +145,9 @@ const ClientLedgerTable = ({ transactions }) => {
 
       {/* Mobile/Tablet View */}
       <div className="lg:hidden space-y-4 p-4">
-        {transactions.map((transaction) => (
+        {transactions.map((transaction, idx) => (
           <div
-            key={transaction.id}
+            key={transaction.id || transaction.voucherNo || idx}
             className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
           >
             <div className="flex justify-between items-start mb-3">
