@@ -5,11 +5,7 @@ import ClientLedgerHeader from '../Components/ClientLedgerHeader'
 import ClientLedgerFilter from '../Components/ClientLedgerFilter'
 import ClientLedgerTable from '../Components/ClientLedgerTable'
 import ClientLedgerFooter from '../Components/ClientLedgerFooter'
-import {
-  abcMallLedgerData,
-  getClientLedgerData,
-  initializeABCMallLedger,
-} from '../data/clientLedgerData'
+import { ClientLedgerService } from '../../../../Billing/Services/ClientLedgerService'
 
 const ClientLedgerPage = () => {
   const { clientCode } = useParams()
@@ -25,18 +21,92 @@ const ClientLedgerPage = () => {
     try {
       setLoading(true)
 
-      // Initialize ABC Mall ledger if not exists
-      initializeABCMallLedger()
-
-      // Load ledger data from localStorage
+      // Load real ledger data using ClientLedgerService
       setTimeout(() => {
-        const data = getClientLedgerData(clientCode || 'D001') || abcMallLedgerData
-        setLedgerData(data)
-        setFilteredTransactions(data.ledgerDetails.entries)
+        const glCode = clientCode || 'D001'
+        console.log('🔍 Loading client ledger for:', glCode)
+        const data = ClientLedgerService.getClientLedgerWithTransactions(glCode)
+
+        console.log('📊 Client Ledger Data:', data)
+
+        if (!data || data.error) {
+          console.error('❌ Error loading client ledger:', data?.error)
+          setLedgerData(null)
+          setFilteredTransactions([])
+          setLoading(false)
+          return
+        }
+
+        if (!data.entries || data.entries.length === 0) {
+          console.warn('⚠️ No transactions found for client:', glCode)
+        }
+
+        // Helper function to format currency
+        const formatCurrency = (amount) => {
+          return `₹${Number(amount || 0).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`
+        }
+
+        // Transform data to match expected format
+        const transformedData = {
+          headerInfo: {
+            clientName: data.ledgerName,
+            glAccountCode: data.glCode,
+            accountName: data.accountName,
+            branch: data.clientDetails?.branch || 'N/A',
+            financialYear: data.financialYear,
+            period: data.period,
+            ledgerType: data.ledgerType,
+            category: data.category,
+          },
+          ledgerDetails: {
+            openingBalance: data.openingBalance,
+            currentBalance: data.currentBalance,
+            balanceType: data.balanceType,
+            totalDebit: data.totalDebit,
+            totalCredit: data.totalCredit,
+            totalInvoices: data.entries.filter((e) => e.debit > 0).length,
+            totalPayments: data.entries.filter((e) => e.credit > 0).length,
+            currentOutstanding: formatCurrency(Math.abs(data.currentBalance)),
+            entries: data.entries.map((entry) => ({
+              date: new Date(entry.date).toLocaleDateString('en-GB'),
+              voucherNo: entry.voucherNo,
+              narration: entry.description,
+              entryType: entry.voucherType,
+              refNo: entry.invoiceNumber || entry.transactionId,
+              debit: entry.debit,
+              credit: entry.credit,
+              balance: entry.balance,
+            })),
+          },
+          summary: {
+            totalDebit: formatCurrency(data.totalDebit),
+            totalCredit: formatCurrency(data.totalCredit),
+            closingBalance: formatCurrency(Math.abs(data.currentBalance)),
+            netBalance: formatCurrency(Math.abs(data.currentBalance)),
+            balanceType: data.balanceType,
+            transactionCount: data.entries.length,
+            avgTransactionValue: formatCurrency(
+              data.entries.length > 0 ? data.totalDebit / data.entries.length : 0
+            ),
+            agingAnalysis: {
+              current: formatCurrency(0),
+              days_30: formatCurrency(0),
+              days_60: formatCurrency(0),
+              above_60: formatCurrency(0),
+            },
+          },
+        }
+
+        setLedgerData(transformedData)
+        setFilteredTransactions(transformedData.ledgerDetails.entries)
         setLoading(false)
       }, 500)
     } catch (error) {
       console.error('❌ Error loading client ledger:', error)
+      setLedgerData(null)
       setLoading(false)
     }
   }

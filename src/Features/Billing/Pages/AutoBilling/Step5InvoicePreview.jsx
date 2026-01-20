@@ -1,9 +1,11 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react'
 import { Download, Edit, Send, ArrowLeft, Check, CheckCircle, XCircle, Save } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import emailjs from '@emailjs/browser'
 import EmailModal from './EmailModal'
 import { saveInvoice } from '../../utils/invoiceStorage'
+import { processInvoiceAccounting, validateInvoiceData } from '../../utils/billingAccountingHelpers'
 
 const Step5InvoicePreview = ({
   formData,
@@ -181,14 +183,6 @@ const Step5InvoicePreview = ({
   }
 
   const handleConvertToFinalInvoice = async () => {
-    if (!isSalesInvoice) {
-      // For proforma, use the existing onConvertToFinal callback
-      if (onConvertToFinal) {
-        onConvertToFinal()
-      }
-      return
-    }
-
     try {
       setIsConverting(true)
       setEmailStatus(null)
@@ -205,9 +199,12 @@ const Step5InvoicePreview = ({
         acknowledgementNumber: generatedAck,
       })
 
-      // Prepare invoice data with IRN details
+      // Prepare invoice data with IRN details (convert to sales invoice)
       const invoiceData = {
-        formData,
+        formData: {
+          ...formData,
+          invoiceSeries: 'sales', // Convert to sales invoice with IRN
+        },
         billingLines,
         calculations,
         createdBy: 'Billing Manager',
@@ -218,13 +215,43 @@ const Step5InvoicePreview = ({
         status: 'final', // Final status with IRN
       }
 
+      const irnDetailsForAccounting = {
+        irnNumber: generatedIRN,
+        acknowledgementNumber: generatedAck,
+      }
+
+      // Validate invoice data
+      console.log('🔍 Validating invoice data...')
+      const validation = validateInvoiceData(invoiceData, irnDetailsForAccounting)
+      if (!validation.valid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`)
+      }
+
+      // Process accounting transaction
+      console.log('💰 Processing invoice accounting...')
+      const accountingResult = processInvoiceAccounting(invoiceData, irnDetailsForAccounting)
+
+      if (!accountingResult.success) {
+        throw new Error(`Accounting failed: ${accountingResult.error}`)
+      }
+
+      console.log('✅ Accounting posted:', accountingResult)
+
+      // Add accounting details to invoice data
+      invoiceData.accounting = {
+        transactionId: accountingResult.transactionId,
+        voucherNo: accountingResult.voucherNo,
+        clientGLCode: accountingResult.clientGLCode,
+        postedAt: new Date().toISOString(),
+      }
+
       // Save to localStorage as tax invoice
       const result = saveInvoice(invoiceData, 'tax')
 
       if (result.success) {
         setEmailStatus({
           type: 'success',
-          message: `Invoice converted to final with IRN successfully! ID: ${result.invoiceId}`,
+          message: `Invoice converted to final with IRN and posted to accounts successfully! Voucher: ${accountingResult.voucherNo}`,
         })
 
         // Navigate to IRN invoices after 3 seconds to show the IRN on page

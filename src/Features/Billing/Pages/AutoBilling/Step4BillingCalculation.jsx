@@ -1,7 +1,12 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
 import { AlertCircle, Loader, FileText, Calculator, TrendingUp, TrendingDown } from 'lucide-react'
-import { RATE_CARDS, PAYROLL_DATA, PREVIOUS_MONTH_BILLING } from '../../data/billingCalculationData'
+import {
+  RATE_CARDS,
+  PAYROLL_DATA,
+  PREVIOUS_MONTH_BILLING,
+  REVENUE_LEDGER_MAPPING,
+} from '../../data/billingCalculationData'
 import { BRANCHES } from '../../data/autoBillingData'
 import RateCardModal from '../../Components/RateCardModal'
 
@@ -164,6 +169,7 @@ const Step4BillingCalculation = ({ formData, setFormData, onNext, onPrevious }) 
               amount: amount,
               hsnCode: service.hsnCode,
               gstRate: service.gstRate,
+              revenueLedger: service.revenueLedger, // Revenue ledger mapping
               editable: true,
             })
           } else {

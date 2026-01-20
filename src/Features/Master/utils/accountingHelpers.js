@@ -29,7 +29,7 @@ export const generateEmployeeGLCode = (employeeId) => {
   return `A3001001001-EMP-${normalizedId.padStart(3, '0')}`;
 };
 
-const safeGetItem = (key, defaultValue = null) => {
+export const safeGetItem = (key, defaultValue = null) => {
   try {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
@@ -39,7 +39,7 @@ const safeGetItem = (key, defaultValue = null) => {
   }
 };
 
-const safeSetItem = (key, value) => {
+export const safeSetItem = (key, value) => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
@@ -1964,6 +1964,116 @@ const generateVendorGLCode = (vendorName) => {
   const nextNumber = lastNumber + 1;
 
   return `L2005_${String(nextNumber).padStart(3, '0')}`;
+};
+
+/**
+ * Create client ledger directly under A3003001 (SUNDRY DEBTORS)
+ */
+export const createClientLedger = (clientName, clientDetails = {}) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+
+    // Generate client GL code under A3003001 (SUNDRY DEBTORS)
+    const glCode = generateClientGLCode();
+
+    const newLedger = {
+      id: `CLIENT_${Date.now()}_${clientName.replace(/\s+/g, '_')}`,
+      code: glCode,
+      name: clientName,
+      type: "ACCOUNT",
+      parentAccount: "SUNDRY DEBTORS",
+      parentCode: "A3003001",
+      accountCategory: "ASSETS",
+      debitCreditNature: "DEBIT",
+      openingBalance: 0,
+      currentBalance: 0,
+      isActive: true,
+      ...clientDetails
+    };
+
+    console.log(`✅ Creating client ledger:`, newLedger);
+
+    chartOfAccounts.push(newLedger);
+
+    if (!safeSetItem('chartOfAccounts', chartOfAccounts)) {
+      throw new Error('Failed to save chart of accounts');
+    }
+
+    console.log(`✅ Created client ledger: ${glCode} for ${clientName}`);
+    return glCode;
+  } catch (error) {
+    console.error('❌ Error creating client ledger:', error);
+    throw new Error(`Failed to create client ledger: ${error.message}`);
+  }
+};
+
+/**
+ * Check if client ledger exists under A3003001
+ */
+export const checkClientLedgerExists = (clientName) => {
+  try {
+    const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+    const clientNameNormalized = clientName.trim().toLowerCase().replace(/\s+/g, ' ');
+
+    // Check if a ledger exists for this client by name under A3003001
+    const existingLedger = chartOfAccounts.find(acc => {
+      if (acc.parentCode !== 'A3003001') return false;
+
+      const accountName = (acc.name || '').toLowerCase().trim();
+      if (accountName === clientNameNormalized) {
+        return true;
+      }
+
+      return false;
+    });
+
+    return existingLedger ? existingLedger.code : null;
+  } catch (error) {
+    console.error('Error checking client ledger:', error);
+    return null;
+  }
+};
+
+/**
+ * Get or create client ledger - returns GL code
+ */
+export const getOrCreateClientLedger = (clientName, clientDetails = {}) => {
+  try {
+    // Check if client ledger already exists
+    const existingGLCode = checkClientLedgerExists(clientName);
+
+    if (existingGLCode) {
+      console.log(`✅ Client ledger already exists: ${existingGLCode} for ${clientName}`);
+      return existingGLCode;
+    }
+
+    // Create new client ledger
+    console.log(`📝 Creating new client ledger for: ${clientName}`);
+    return createClientLedger(clientName, clientDetails);
+  } catch (error) {
+    console.error('❌ Error in getOrCreateClientLedger:', error);
+    throw error;
+  }
+};
+
+const generateClientGLCode = () => {
+  const chartOfAccounts = safeGetItem('chartOfAccounts', []);
+
+  // Find all existing client GL codes under A3003001 (SUNDRY DEBTORS)
+  // They should follow pattern: D001, D002, D003, etc.
+  const clientGLs = chartOfAccounts
+    .filter(acc => acc.parentCode === 'A3003001' && acc.code.startsWith('D'))
+    .map(acc => {
+      // Extract the number part after D
+      const numberPart = acc.code.replace('D', '');
+      return parseInt(numberPart) || 0;
+    })
+    .filter(num => !isNaN(num));
+
+  const lastNumber = clientGLs.length > 0 ? Math.max(...clientGLs) : 0;
+  const nextNumber = lastNumber + 1;
+
+  return `D${String(nextNumber).padStart(3, '0')}`;
 };
 
 // Rent transaction creator - following your advance pattern

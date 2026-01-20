@@ -5,11 +5,7 @@ import RevenueLedgerHeader from '../Components/RevenueLedgerHeader'
 import RevenueLedgerFilter from '../Components/RevenueLedgerFilter'
 import RevenueLedgerTable from '../Components/RevenueLedgerTable'
 import RevenueLedgerFooter from '../Components/RevenueLedgerFooter'
-import {
-  houseKeepingRevenueData,
-  getRevenueLedgerData,
-  initializeHouseKeepingRevenueLedger,
-} from '../data/houseKeepingRevenueData'
+import { RevenueLedgerService } from '../../../../Billing/Services/RevenueLedgerService'
 
 const HouseKeepingRevenueLedgerPage = () => {
   const { accountCode } = useParams()
@@ -27,25 +23,74 @@ const HouseKeepingRevenueLedgerPage = () => {
       setLoading(true)
       setError(null)
 
-      // Initialize House Keeping Revenue ledger if not exists
-      initializeHouseKeepingRevenueLedger()
-
       // Simulate API call with timeout
       await new Promise((resolve) => setTimeout(resolve, 500))
 
-      // Load ledger data from localStorage
-      const data = getRevenueLedgerData(accountCode || 'R1001001') || houseKeepingRevenueData
+      // Load real ledger data using RevenueLedgerService
+      const glCode = accountCode || 'R1001001'
+      const data = RevenueLedgerService.getRevenueLedgerWithTransactions(glCode)
 
-      if (!data || !data.headerInfo || !data.ledgerDetails) {
-        throw new Error('Invalid ledger data structure')
+      if (!data || data.error) {
+        throw new Error(data?.error || 'Failed to load revenue ledger data')
       }
 
-      setLedgerData(data)
-      setFilteredTransactions(data.ledgerDetails.entries || [])
+      // Helper function to format currency
+      const formatCurrency = (amount) => {
+        return `₹${Number(amount || 0).toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      }
+
+      // Transform data to match expected format
+      const transformedData = {
+        headerInfo: {
+          ledgerName: data.ledgerName,
+          glAccountCode: data.glCode,
+          accountName: data.accountName,
+          financialYear: data.financialYear,
+          period: data.period,
+          ledgerType: data.ledgerType,
+          category: data.category,
+          gstApplicable: data.gstApplicable,
+        },
+        ledgerDetails: {
+          openingBalance: data.openingBalance,
+          currentBalance: data.currentBalance,
+          balanceType: data.balanceType,
+          totalDebit: data.totalDebit,
+          totalCredit: data.totalCredit,
+          netRevenue: data.netRevenue,
+          entries: data.entries.map((entry) => ({
+            date: new Date(entry.date).toLocaleDateString('en-GB'),
+            voucher: entry.voucherNo,
+            narration: entry.description,
+            entryType: entry.voucherType,
+            counterparty: entry.customer,
+            refNo: entry.invoiceNumber,
+            debit: entry.debit,
+            credit: entry.credit,
+            balance: entry.balance,
+          })),
+        },
+        summary: {
+          totalCredit: formatCurrency(data.totalCredit),
+          totalDebit: formatCurrency(data.totalDebit),
+          netRevenue: formatCurrency(data.netRevenue),
+          transactionCount: data.entries.length,
+          avgTransactionValue: formatCurrency(
+            data.entries.length > 0 ? data.totalCredit / data.entries.length : 0
+          ),
+        },
+      }
+
+      setLedgerData(transformedData)
+      setFilteredTransactions(transformedData.ledgerDetails.entries || [])
       setLoading(false)
     } catch (err) {
       console.error('❌ Error loading revenue ledger:', err)
       setError('Failed to load revenue ledger data. Please try again.')
+      setLedgerData(null)
       setLoading(false)
     }
   }

@@ -4,25 +4,97 @@ import IGSTLedgerHeader from '../Components/IGSTLedgerHeader'
 import HKChargesFilterSection from '../../../HouseKeepingCharges/Components/HKChargesFilterSection'
 import CGSTTransactionTable from '../../CGST/Components/CGSTTransactionTable'
 import CGSTSummaryFooter from '../../CGST/Components/CGSTSummaryFooter'
-import { igstLedgerData } from '../data/igstLedgerData'
+import { GSTLedgerService } from '../../../../Services/GSTLedgerService'
 
 const IGSTLedgerPage = () => {
   const [ledgerData, setLedgerData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     loadLedgerData()
   }, [])
 
-  const loadLedgerData = () => {
+  const loadLedgerData = async () => {
     try {
       setLoading(true)
-      setTimeout(() => {
-        setLedgerData(igstLedgerData)
-        setLoading(false)
-      }, 500)
-    } catch (error) {
-      console.error('❌ Error loading IGST ledger:', error)
+      setError(null)
+
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      const glCode = 'L3003' // IGST PAYABLE
+      const data = GSTLedgerService.getGSTLedgerWithTransactions(glCode)
+
+      if (!data || data.error) {
+        throw new Error(data?.error || 'Failed to load IGST ledger data')
+      }
+
+      // Helper function to format currency
+      const formatCurrency = (amount) => {
+        return `₹${Number(amount || 0).toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      }
+
+      const transformedData = {
+        headerInfo: {
+          ledgerName: data.ledgerName,
+          glAccountCode: data.glCode,
+          accountName: data.accountName,
+          financialYear: data.financialYear,
+          period: data.period,
+          ledgerType: data.ledgerType,
+          category: data.category,
+          gstType: data.gstType,
+          rate: data.rate,
+          openingBalance: formatCurrency(data.openingBalance),
+          currentBalance: formatCurrency(data.currentBalance),
+          balanceType: data.balanceType,
+        },
+        ledgerDetails: {
+          openingBalance: data.openingBalance,
+          currentBalance: data.currentBalance,
+          balanceType: data.balanceType,
+          totalDebit: data.totalDebit,
+          totalCredit: data.totalCredit,
+          outstandingLiability: data.outstandingLiability,
+          entries: data.entries.map((entry) => ({
+            date: new Date(entry.date).toLocaleDateString('en-GB'),
+            voucher: entry.voucherNo,
+            voucherNo: entry.voucherNo,
+            narration: entry.description,
+            entryType: entry.voucherType || 'Journal',
+            counterparty: entry.customer || '-',
+            refNo: entry.invoiceNumber,
+            invoiceNo: entry.invoiceNumber || '-',
+            debit: entry.debit,
+            credit: entry.credit,
+            balance: entry.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+            gstRate: '18%',
+            taxableAmount: '-',
+            siteLocation: entry.costCenter || 'HEAD OFFICE',
+            status: entry.status || 'Posted',
+            attachments: 0,
+          })),
+        },
+        summary: {
+          totalCredit: formatCurrency(data.totalCredit),
+          totalDebit: formatCurrency(data.totalDebit),
+          outstandingLiability: formatCurrency(data.outstandingLiability),
+          transactionCount: data.entries.length,
+          avgTransactionValue: formatCurrency(
+            data.entries.length > 0 ? data.totalCredit / data.entries.length : 0
+          ),
+        },
+      }
+
+      setLedgerData(transformedData)
+      setLoading(false)
+    } catch (err) {
+      console.error('❌ Error loading IGST ledger:', err)
+      setError('Failed to load IGST ledger data. Please try again.')
+      setLedgerData(null)
       setLoading(false)
     }
   }
@@ -43,7 +115,7 @@ const IGSTLedgerPage = () => {
       <div className="min-h-screen w-full bg-gray-50 p-4 sm:p-6 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-bold text-red-600">Ledger Data Not Found</h2>
-          <p className="text-gray-600">Unable to load IGST ledger data.</p>
+          <p className="text-gray-600">{error || 'Unable to load IGST ledger data.'}</p>
         </div>
       </div>
     )
