@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { Download, ArrowLeft, Save, Send, Check, CheckCircle, XCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatCurrency, convertAmountToWords } from '../../utils/manualBillingCalculations'
-import iSmartLogo from '../../../../../public/iSmart Logo.jpg'
+// Use public folder path for logo to avoid bundling/import path issues
+const iSmartLogo = '/iSmart Logo.jpg'
 import emailjs from '@emailjs/browser'
 import EmailModal from '../../Pages/AutoBilling/EmailModal'
 
@@ -33,10 +34,10 @@ const ManualInvoicePreview = ({
   // Check if it's a Sales/Tax Invoice (support both 'sales' and 'tax' values)
   const isSalesInvoice = formData.invoiceSeries === 'sales' || formData.invoiceSeries === 'tax'
 
-  // EmailJS Configuration
-  const EMAILJS_SERVICE_ID = 'service_4eqrbpn'
-  const EMAILJS_TEMPLATE_ID = 'template_o3siur5'
-  const EMAILJS_PUBLIC_KEY = '1_eh922Ifu06Mv7Cb'
+  // EmailJS Configuration (read from environment - set VITE_... vars in .env)
+  const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || ''
+  const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || ''
+  const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || ''
 
   const formatDate = (dateStr) => {
     if (!dateStr) return ''
@@ -174,8 +175,6 @@ const ManualInvoicePreview = ({
         type: isSalesInvoice ? 'tax' : 'proforma',
       }
 
-      console.log('Saving manual invoice:', invoiceData)
-
       // Determine storage key based on invoice type
       const storageKey = isSalesInvoice ? 'tax_invoices' : 'proforma_invoices'
 
@@ -216,8 +215,6 @@ const ManualInvoicePreview = ({
       setIsConverting(true)
       setSaveStatus(null)
 
-      console.log('Converting manual invoice to final with IRN...')
-
       // Simulate IRN generation process with loader (2 seconds)
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
@@ -225,8 +222,7 @@ const ManualInvoicePreview = ({
       const generatedIRN = `IRN${Date.now()}${Math.floor(Math.random() * 1000)}`
       const generatedAck = `ACK${Date.now()}${Math.floor(Math.random() * 1000)}`
 
-      console.log('Generated IRN:', generatedIRN)
-      console.log('Generated Ack:', generatedAck)
+      // IRN and Acknowledgement generated (not logged for production)
 
       setIrnDetails({
         irnNumber: generatedIRN,

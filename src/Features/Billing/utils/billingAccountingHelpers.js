@@ -93,7 +93,7 @@ export const processInvoiceAccounting = (invoiceData, irnDetails) => {
             // calculations.subtotal is the sum of all line.amount values
             const gstRate = line.gstRate || 18;
 
-            entries.push({
+            const revenueEntry = {
                 lineNo: lineNo++,
                 glCode: revenueLedger.code,
                 glName: revenueLedger.name,
@@ -104,11 +104,38 @@ export const processInvoiceAccounting = (invoiceData, irnDetails) => {
                 invoiceNumber: formData.poWoNumber,
                 irnNumber: irnDetails.irnNumber,
                 hsnCode: line.hsnCode,
-                gstRate: gstRate
-            });
+                gstRate: gstRate,
+                _isRevenue: true,
+            };
+
+            entries.push(revenueEntry);
 
             console.log(`  ✅ Line ${index + 1}: ${revenueLedger.name} - ₹${line.amount.toFixed(2)} (taxable)`);
         });
+
+        // Ensure all billing lines amounts are credited to revenue. If mapping skipped some lines,
+        // add a fallback credit to a default revenue ledger so transaction balances.
+        const subtotalFromLines = billingLines.reduce((sum, l) => sum + (l.amount || 0), 0);
+        const revenueCredits = entries.filter(e => e._isRevenue).reduce((sum, e) => sum + (e.credit || 0), 0);
+        const missingRevenue = parseFloat((subtotalFromLines - revenueCredits).toFixed(2));
+        if (missingRevenue > 0.005) {
+            // choose a default revenue ledger code if available
+            const defaultKey = Object.keys(REVENUE_LEDGER_MAPPING)[0] || 'SERVICE_CHARGES';
+            const defaultLedger = REVENUE_LEDGER_MAPPING[defaultKey] || { code: 'R1001001', name: 'GENERAL REVENUE' };
+            entries.push({
+                lineNo: lineNo++,
+                glCode: defaultLedger.code,
+                glName: defaultLedger.name + ' (Auto-balanced)',
+                debit: 0,
+                credit: missingRevenue,
+                narration: `Auto-balance for unmapped revenue lines for Invoice ${formData.poWoNumber}`,
+                costCenter: formData.branch || 'HEAD OFFICE',
+                invoiceNumber: formData.poWoNumber,
+                irnNumber: irnDetails.irnNumber,
+                _isRevenue: true,
+            });
+            console.warn(`⚠️ Added auto-balance revenue entry of ₹${missingRevenue} to ${defaultLedger.code}`);
+        }
 
         // Entry for Management Fees (if applicable)
         if (calculations.managementFees && calculations.managementFees > 0) {

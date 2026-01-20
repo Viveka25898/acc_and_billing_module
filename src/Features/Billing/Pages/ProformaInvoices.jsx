@@ -15,6 +15,8 @@ import {
   saveInvoice,
 } from '../utils/invoiceStorage'
 
+import { processInvoiceAccounting, validateInvoiceData } from '../utils/billingAccountingHelpers'
+
 const ProformaInvoices = () => {
   const navigate = useNavigate()
   const [invoices, setInvoices] = useState([])
@@ -138,18 +140,39 @@ const ProformaInvoices = () => {
         },
       }
 
+      // Validate invoice data before posting accounting entries
+      const irnDetails = { irnNumber: generatedIRN, acknowledgementNumber: generatedAck }
+      const validation = validateInvoiceData(invoice, irnDetails)
+      if (!validation.valid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`)
+      }
+
+      // Process accounting transaction for this invoice
+      console.log('💰 Posting accounting transaction for IRN conversion...')
+      const accountingResult = processInvoiceAccounting(invoice, irnDetails)
+
+      if (!accountingResult.success) {
+        throw new Error(`Accounting failed: ${accountingResult.error || 'Unknown error'}`)
+      }
+
+      // Attach accounting metadata to the tax invoice data
+      taxInvoiceData.accounting = {
+        transactionId: accountingResult.transactionId,
+        voucherNo: accountingResult.voucherNo,
+        clientGLCode: accountingResult.clientGLCode,
+        postedAt: new Date().toISOString(),
+      }
+
       // Save to tax storage (IRN Invoices)
       const saveResult = saveInvoice(taxInvoiceData, 'tax')
-
       if (!saveResult.success) {
         throw new Error(saveResult.message || 'Failed to save invoice to IRN storage')
       }
 
       console.log('Saved to tax storage:', saveResult.invoiceId)
 
-      // Delete from proforma storage
+      // Delete from proforma storage only after successful accounting + save
       const deleteResult = deleteInvoice(invoice.id, 'proforma')
-
       if (!deleteResult.success) {
         throw new Error(deleteResult.message || 'Failed to remove invoice from proforma storage')
       }
