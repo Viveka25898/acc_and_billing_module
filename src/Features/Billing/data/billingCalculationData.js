@@ -12,6 +12,8 @@ export const REVENUE_LEDGER_MAPPING = {
     'RENT_ON_MACHINERY': { code: 'R1001008', name: 'RENT ON MACHINERY', gstApplicable: true },
     'MANPOWER_SERVICES': { code: 'R1001009', name: 'MANPOWER SERVICES', gstApplicable: true },
     'PEST_CONTROL': { code: 'R1001010', name: 'PEST CONTROL CHARGES', gstApplicable: true }
+    ,
+    'ROUND_OFF': { code: 'R2001001', name: 'ROUND OFF', gstApplicable: false }
 };
 
 // Rate Cards by Customer and Site

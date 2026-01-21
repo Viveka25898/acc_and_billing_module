@@ -348,6 +348,19 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
     if (account.type === 'ACCOUNT') {
       console.log('🔍 Clicked Account:', account.code, account.name)
 
+      // QUICK ROUTE: Ensure Round Off revenue ledger opens correctly
+      if (
+        account.code === 'R2001001' ||
+        (account.code && account.code.startsWith && account.code.startsWith('R2001001')) ||
+        (account.name &&
+          account.name.toLowerCase &&
+          account.name.toLowerCase().includes('round off'))
+      ) {
+        console.log('🔎 Directly routing Round Off revenue ledger')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+        return
+      }
+
       // ========================================
       // NON-VENDOR ACCOUNT CHECKS
       // ========================================
@@ -723,6 +736,11 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         account.code === 'R1001010' ||
         (account.code.startsWith('R1001010') && account.name.toLowerCase().includes('pest control'))
 
+      // Round Off Revenue (master-level round off ledger)
+      const isRoundOffRevenueAccount =
+        account.code === 'R2001001' ||
+        (account.code.startsWith('R2001001') && account.name.toLowerCase().includes('round off'))
+
       // ========================================
       // ✅ UNIFIED VENDOR ACCOUNT CHECK
       // ========================================
@@ -940,6 +958,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else if (isPestControlRevenueAccount) {
         console.log('✅ Navigating to Pest Control Revenue Ledger (R1001010)')
+        navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
+      } else if (isRoundOffRevenueAccount) {
+        console.log('✅ Navigating to Round Off Revenue Ledger (R2001001)')
         navigate(`/dashboard/account-manager/revenue-ledger/${account.code}`)
       } else {
         console.log('✅ Navigating to Generic Ledger')

@@ -17,6 +17,7 @@ import { initializeDeepCleaningRevenueLedger } from './Features/Master/Billing M
 import { initializeRentOnMachineryRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/rentOnMachineryRevenueData'
 import { initializeManpowerServicesRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/manpowerServicesRevenueData'
 import { initializePestControlRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/pestControlRevenueData'
+import { initializeRoundOffRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/roundOffRevenueData'
 
 function App() {
   // Application Version for Migration Management
@@ -680,6 +681,9 @@ function App() {
       initializeManpowerServicesRevenueLedger()
       // Initialize Pest Control Revenue ledger data
       initializePestControlRevenueLedger()
+
+      // Initialize Round Off Revenue ledger data
+      initializeRoundOffRevenueLedger()
 
       console.log('✅ Revenue ledgers initialized')
 

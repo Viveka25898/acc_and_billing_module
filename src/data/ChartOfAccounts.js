@@ -95,3 +95,10 @@ export const INITIAL_CHART_OF_ACCOUNTS = [
     { code: "X2002002", name: "CORPORATE OTHER COST", type: "SUB_SUB_FOLDER", parentAccount: "CORPORATE EXPENSES", parentCode: "X2002" },
     { code: "X2002002001", name: "RELIEVER PAYMENTS", type: "ACCOUNT", parentAccount: "CORPORATE OTHER COST", parentCode: "X2002002" },
 ]
+
+// Revenue / Income - add Round Off under Indirect Income
+INITIAL_CHART_OF_ACCOUNTS.push(
+    { code: "R2", name: "INDIRECT INCOME", type: "FOLDER", parentAccount: "INCOME", parentCode: "R" },
+    { code: "R2001", name: "OTHER INCOME", type: "SUB_FOLDER", parentAccount: "INDIRECT INCOME", parentCode: "R2" },
+    { code: "R2001001", name: "ROUND OFF", type: "ACCOUNT", parentAccount: "OTHER INCOME", parentCode: "R2001" }
+)

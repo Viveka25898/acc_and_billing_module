@@ -9,3 +9,4 @@ export { default as DeepCleaningRevenueLedgerPage } from './DeepCleaningRevenueL
 export { default as RentOnMachineryRevenueLedgerPage } from './RentOnMachineryRevenueLedgerPage'
 export { default as ManpowerServicesRevenueLedgerPage } from './ManpowerServicesRevenueLedgerPage'
 export { default as PestControlRevenueLedgerPage } from './PestControlRevenueLedgerPage'
+export { default as RoundOffRevenueLedgerPage } from './RoundOffRevenueLedgerPage'

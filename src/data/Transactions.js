@@ -11,6 +11,31 @@ export const INITIAL_TRANSACTIONS = [
         date: "2025-01-15",
         // ... other transaction fields
     },
+    // Sample Round Off transactions so the Round Off ledger (R2001001) shows entries
+    {
+        id: 'TXN_RO_2026_1',
+        voucherNo: 'INV/2026/1001',
+        voucherType: 'Sales Invoice',
+        date: '2026-01-21',
+        invoiceNumber: 'INV-2026-1001',
+        customer: 'C010-CLIENT-DEMOS',
+        entries: [
+            { glCode: 'R2001001', glName: 'ROUND OFF', debit: 0, credit: 0.18, narration: 'Round off on invoice INV-2026-1001', invoiceNumber: 'INV-2026-1001', costCenter: 'HEAD OFFICE' },
+            { glCode: 'D010', glName: 'C010-CLIENT-DEMOS', debit: 0.18, credit: 0, narration: 'Customer due for INV-2026-1001', invoiceNumber: 'INV-2026-1001', costCenter: 'HEAD OFFICE' }
+        ],
+    },
+    {
+        id: 'TXN_RO_2026_2',
+        voucherNo: 'INV/2026/1002',
+        voucherType: 'Sales Invoice',
+        date: '2026-01-22',
+        invoiceNumber: 'INV-2026-1002',
+        customer: 'C011-CLIENT-SAMPLE',
+        entries: [
+            { glCode: 'R2001001', glName: 'ROUND OFF', debit: 0, credit: 0.40, narration: 'Round off on invoice INV-2026-1002', invoiceNumber: 'INV-2026-1002', costCenter: 'HEAD OFFICE' },
+            { glCode: 'D011', glName: 'C011-CLIENT-SAMPLE', debit: 0.40, credit: 0, narration: 'Customer due for INV-2026-1002', invoiceNumber: 'INV-2026-1002', costCenter: 'HEAD OFFICE' }
+        ],
+    },
     // Add all your other transactions here...
 ]
 
