@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 
@@ -368,7 +369,7 @@ class PLReportExcelService {
       if (aCell.value) {
         aCell.alignment = { horizontal: 'center', vertical: 'middle' }
       }
-      
+
       // Right align numeric columns
       const dCell = sheet.getCell(`D${i}`)
       const fCell = sheet.getCell(`F${i}`)
@@ -390,14 +391,14 @@ class PLReportExcelService {
       const columns = ['A', 'B', 'C', 'D', 'E', 'F']
       columns.forEach((col) => {
         const cell = sheet.getCell(`${col}${row}`)
-        
+
         // Get existing border if any (preserve special borders like double, medium)
         const existingBorder = cell.border || {}
-        
+
         // Preserve existing top/bottom styles, but add left/right borders
         const topStyle = existingBorder.top?.style || 'thin'
         const bottomStyle = existingBorder.bottom?.style || 'thin'
-        
+
         // Set all borders, preserving special styles
         cell.border = {
           top: { style: topStyle },
@@ -413,7 +414,7 @@ class PLReportExcelService {
     sheet.getRow(8).outlineLevel = 1
     sheet.getRow(9).outlineLevel = 1
     sheet.getRow(10).outlineLevel = 0 // Total Revenue - summary level
-    
+
     // Group Expenses section (rows 12-22)
     for (let i = 12; i <= 22; i++) {
       if (i === 22) {
@@ -422,7 +423,7 @@ class PLReportExcelService {
         sheet.getRow(i).outlineLevel = 1
       }
     }
-    
+
     // Group Tax section (rows 24-28)
     for (let i = 24; i <= 28; i++) {
       if (i === 28) {
@@ -761,7 +762,7 @@ class PLReportExcelService {
       if (aCell.value) {
         aCell.alignment = { horizontal: 'center', vertical: 'middle' }
       }
-      
+
       // Right align numeric columns
       const cCell = sheet.getCell(`C${i}`)
       const dCell = sheet.getCell(`D${i}`)
@@ -782,14 +783,14 @@ class PLReportExcelService {
       const columns = ['A', 'B', 'C', 'D']
       columns.forEach((col) => {
         const cell = sheet.getCell(`${col}${row}`)
-        
+
         // Get existing border if any (preserve special borders like medium for totals)
         const existingBorder = cell.border || {}
-        
+
         // Preserve existing top/bottom styles, but add left/right borders
         const topStyle = existingBorder.top?.style || 'thin'
         const bottomStyle = existingBorder.bottom?.style || 'thin'
-        
+
         // Set all borders, preserving special styles
         cell.border = {
           top: { style: topStyle },

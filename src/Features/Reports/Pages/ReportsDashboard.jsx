@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import SearchBar from '../Components/SearchBar'
 import ReportTabs from '../Components/ReportTabs'
+import SystemDataAnalyzer from '../utils/SystemDataAnalyzer'
 
 const ReportsDashboard = () => {
   const [loading, setLoading] = useState(true)
@@ -13,6 +14,10 @@ const ReportsDashboard = () => {
     const load = async () => {
       try {
         setLoading(true)
+        
+        // Analyze system data (vendors, clients, states)
+        SystemDataAnalyzer.printSystemSummary()
+        
         // Simulate async load (e.g., available reports, user permissions)
         await new Promise((r) => setTimeout(r, 300))
         if (!mounted) return
