@@ -64,26 +64,26 @@ const getLedgerBalance = (glCode) => {
             return 0
         }
 
-        // Employee Ledgers (A3-prefix), Client Ledgers (D-prefix), and Liability Ledgers (L-prefix)
-        if (glCode.startsWith('A3') || glCode.startsWith('D') || glCode.startsWith('L')) {
-            // Check ledgerBalances first (for all A3, D, and L codes)
+        // Employee Ledgers (A3-prefix), Client Ledgers (D-prefix), Liability Ledgers (L-prefix), and Expense Ledgers (X-prefix)
+        if (glCode.startsWith('A3') || glCode.startsWith('D') || glCode.startsWith('L') || glCode.startsWith('X')) {
+            // Check ledgerBalances first (for all A3, D, L, and X codes)
             try {
                 const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances') || '{}')
                 const lb = ledgerBalances[glCode]
                 if (lb && (lb.balance !== undefined || lb.closingBalance !== undefined)) {
                     const val = lb.balance ?? lb.closingBalance ?? lb.amount ?? 0
-                    console.info(`[A3/D/L] Found in ledgerBalances:`, glCode, val)
+                    console.info(`[A3/D/L/X] Found in ledgerBalances:`, glCode, val)
                     return parseNumber(val)
                 } else {
-                    console.warn(`[A3/D/L] Not found in ledgerBalances:`, glCode, lb)
+                    console.warn(`[A3/D/L/X] Not found in ledgerBalances:`, glCode, lb)
                 }
             } catch (err) {
-                console.error(`[A3/D/L] Error reading ledgerBalances for`, glCode, err)
+                console.error(`[A3/D/L/X] Error reading ledgerBalances for`, glCode, err)
             }
 
-            // If D-prefix or L-prefix, return 0 (no further fallbacks needed)
-            if (glCode.startsWith('D') || glCode.startsWith('L')) {
-                console.warn(`[D/L] No balance found for`, glCode)
+            // If D-prefix, L-prefix, or X-prefix, return 0 (no further fallbacks needed)
+            if (glCode.startsWith('D') || glCode.startsWith('L') || glCode.startsWith('X')) {
+                console.warn(`[D/L/X] No balance found for`, glCode)
                 return 0
             }
 

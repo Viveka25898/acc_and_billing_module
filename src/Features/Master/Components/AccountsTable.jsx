@@ -42,8 +42,17 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         if (val !== null && val !== undefined) return val
       }
 
-      // Check Expense Ledgers (X-prefix accounts)
+      // Check Expense Ledgers (X-prefix accounts) via LedgerBalanceService
       if (accountCode.startsWith('X')) {
+        // First check via LedgerBalanceService (uses ledgerBalances from ExpenseBalanceSync)
+        try {
+          const val = LedgerBalanceService.getLedgerBalance(accountCode)
+          if (val !== null && val !== undefined) return val
+        } catch (error) {
+          console.error(`Error extracting X ledger balance for ${accountCode}:`, error)
+        }
+
+        // Fallback: Check expenseLedgers store
         const expenseLedgers = JSON.parse(localStorage.getItem('expenseLedgers') || '{}')
         const ledger = expenseLedgers[accountCode]
         if (ledger && ledger.ledgerDetails) {

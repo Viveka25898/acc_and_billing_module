@@ -16,14 +16,21 @@ import {
   autoSyncLiabilityOnTransactionChange,
   updateLiabilityClosingBalance,
 } from '../Services/LiabilityBalanceSync'
+// Add: Import Expense balance sync utility
+import {
+  autoSyncExpenseOnTransactionChange,
+  updateExpenseClosingBalance,
+} from '../Services/ExpenseBalanceSync'
 
 const ChartOfAccountsDashboard = () => {
-  // Auto-sync A3001 and Liability closing balances on transaction changes
+  // Auto-sync A3, Liability, and Expense closing balances on transaction changes
   useEffect(() => {
     autoSyncA3001OnTransactionChange()
     updateA3001ClosingBalance()
     autoSyncLiabilityOnTransactionChange()
     updateLiabilityClosingBalance()
+    autoSyncExpenseOnTransactionChange()
+    updateExpenseClosingBalance()
   }, [])
   const [accounts, setAccounts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
