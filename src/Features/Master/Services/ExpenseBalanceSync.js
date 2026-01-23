@@ -1,3 +1,4 @@
+import { saveAllReportsLedgersBalances } from './ReportsLedgerBalancesService';
 // Utility to update closing balance for ALL X (Expense) ledgers and keep them in sync
 
 export function updateExpenseClosingBalance() {
@@ -38,6 +39,8 @@ export function updateExpenseClosingBalance() {
 
         // Save updated balances to localStorage
         localStorage.setItem('ledgerBalances', JSON.stringify(ledgerBalances));
+        // Also update reportsLedgersBalances
+        saveAllReportsLedgersBalances();
         console.info('[X Sync] All X (Expense) ledger balances updated successfully');
 
     } catch (err) {

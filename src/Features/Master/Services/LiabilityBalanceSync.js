@@ -1,3 +1,4 @@
+import { saveAllReportsLedgersBalances } from './ReportsLedgerBalancesService';
 // Utility to update closing balance for ALL L (Liability) ledgers and keep them in sync
 
 export function updateLiabilityClosingBalance() {
@@ -38,6 +39,8 @@ export function updateLiabilityClosingBalance() {
 
         // Save updated balances to localStorage
         localStorage.setItem('ledgerBalances', JSON.stringify(ledgerBalances));
+        // Also update reportsLedgersBalances
+        saveAllReportsLedgersBalances();
         console.info('[L Sync] All L (Liability) ledger balances updated successfully');
 
     } catch (err) {

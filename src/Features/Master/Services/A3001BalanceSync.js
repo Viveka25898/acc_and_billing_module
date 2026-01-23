@@ -1,5 +1,8 @@
+/* eslint-disable no-unused-vars */
+
 // Utility to update closing balance for ALL A3 ledgers and keep them in sync
 // This does NOT change existing logic, just adds a sync step
+import { saveAllReportsLedgersBalances } from './ReportsLedgerBalancesService';
 
 export function updateA3001ClosingBalance() {
     try {
@@ -68,6 +71,8 @@ export function updateA3001ClosingBalance() {
 
         // Save updated balances to localStorage
         localStorage.setItem('ledgerBalances', JSON.stringify(ledgerBalances));
+        // Also update reportsLedgersBalances
+        saveAllReportsLedgersBalances();
         console.info('[A3 Sync] All A3 ledger balances updated successfully');
 
     } catch (err) {

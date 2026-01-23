@@ -5,6 +5,8 @@ import LedgerBalanceService from '../Services/LedgerBalanceService'
 
 // Add: Import syncAllLedgerBalances utility
 import { syncAllLedgerBalances } from '../Services/LedgerBalancesLocalStorageService'
+// Add: Import reports ledger balances saver so reportsLedgersBalances is always updated
+import { saveAllReportsLedgersBalances } from '../Services/ReportsLedgerBalancesService'
 
 const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick }) => {
   const navigate = useNavigate()
@@ -219,6 +221,16 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           }
         }
         syncAllLedgerBalances(ledgerBalancesToSync)
+
+        // After syncing raw ledgerBalances, also refresh the aggregated reportsLedgersBalances
+        try {
+          saveAllReportsLedgersBalances()
+        } catch (err) {
+          console.error(
+            '[Reports] Error while saving reportsLedgersBalances from AccountsTable:',
+            err
+          )
+        }
       } catch (error) {
         console.error('Error calculating balances:', error)
       } finally {
