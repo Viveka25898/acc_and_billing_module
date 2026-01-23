@@ -9,6 +9,13 @@ const ReportTabs = ({ initial = 'pnl' }) => {
   const [monthModalOpen, setMonthModalOpen] = useState(false)
   const [quarterModalOpen, setQuarterModalOpen] = useState(false)
   const [yearModalOpen, setYearModalOpen] = useState(false)
+  
+  // Track selected periods for each report type
+  const [selectedPeriods, setSelectedPeriods] = useState({
+    monthly: null,
+    quarterly: null,
+    yearly: null,
+  })
 
   const openReport = (key) => {
     try {
@@ -31,8 +38,10 @@ const ReportTabs = ({ initial = 'pnl' }) => {
   const handleMonthSelect = (monthData) => {
     try {
       console.log('Selected month data:', monthData)
-      // TODO: Generate P&L report for selected month
-      // This will be implemented in next step
+      setSelectedPeriods((prev) => ({
+        ...prev,
+        monthly: monthData,
+      }))
     } catch (err) {
       console.error('handleMonthSelect error', err)
     }
@@ -41,8 +50,10 @@ const ReportTabs = ({ initial = 'pnl' }) => {
   const handleQuarterSelect = (quarterData) => {
     try {
       console.log('Selected quarter data:', quarterData)
-      // TODO: Generate P&L report for selected quarter
-      // This will be implemented in next step
+      setSelectedPeriods((prev) => ({
+        ...prev,
+        quarterly: quarterData,
+      }))
     } catch (err) {
       console.error('handleQuarterSelect error', err)
     }
@@ -51,8 +62,10 @@ const ReportTabs = ({ initial = 'pnl' }) => {
   const handleYearSelect = (yearData) => {
     try {
       console.log('Selected year data:', yearData)
-      // TODO: Generate P&L report for selected year
-      // This will be implemented in next step
+      setSelectedPeriods((prev) => ({
+        ...prev,
+        yearly: yearData,
+      }))
     } catch (err) {
       console.error('handleYearSelect error', err)
     }
@@ -100,16 +113,22 @@ const ReportTabs = ({ initial = 'pnl' }) => {
               title="Monthly P&L"
               description="Summary of monthly profit & loss"
               onOpen={() => openReport('monthly-pnl')}
+              selectedPeriod={selectedPeriods.monthly}
+              reportType="monthly"
             />
             <ReportCard
               title="Quarterly P&L"
               description="Quarterly profit & loss"
               onOpen={() => openReport('quarterly-pnl')}
+              selectedPeriod={selectedPeriods.quarterly}
+              reportType="quarterly"
             />
             <ReportCard
               title="Yearly P&L"
               description="Yearly consolidated P&L"
               onOpen={() => openReport('yearly-pnl')}
+              selectedPeriod={selectedPeriods.yearly}
+              reportType="yearly"
             />
           </div>
         )}

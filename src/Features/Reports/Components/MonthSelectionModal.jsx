@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { FiX, FiCalendar } from 'react-icons/fi'
+import { FiX, FiCalendar, FiBriefcase, FiMapPin } from 'react-icons/fi'
 
 const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
   const [selectedMonth, setSelectedMonth] = useState('')
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedClient, setSelectedClient] = useState('all')
+  const [selectedState, setSelectedState] = useState('all')
+  const [clients, setClients] = useState([])
+  const [states, setStates] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -26,12 +30,64 @@ const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
     { value: '12', label: 'December' },
   ]
 
+  // Load clients and states from localStorage
+  useEffect(() => {
+    try {
+      // Load clients from clientLedgers
+      const clientLedgers = JSON.parse(localStorage.getItem('clientLedgers') || '{}')
+      const clientList = Object.keys(clientLedgers)
+        .map((code) => {
+          const ledger = clientLedgers[code]
+          return {
+            code,
+            name: ledger?.ledgerDetails?.clientName || ledger?.name || code,
+          }
+        })
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      setClients(clientList)
+
+      // Load states - try from sites or use common Indian states
+      const sites = JSON.parse(localStorage.getItem('sites') || '[]')
+      const stateSet = new Set()
+      
+      sites.forEach((site) => {
+        if (site.state) stateSet.add(site.state)
+      })
+
+      // Fallback to common states if no sites found
+      if (stateSet.size === 0) {
+        const commonStates = [
+          'Maharashtra',
+          'Karnataka',
+          'Delhi',
+          'Telangana',
+          'Tamil Nadu',
+          'Gujarat',
+          'West Bengal',
+          'Rajasthan',
+          'Uttar Pradesh',
+          'Punjab',
+        ]
+        commonStates.forEach((state) => stateSet.add(state))
+      }
+
+      setStates(Array.from(stateSet).sort())
+    } catch (err) {
+      console.error('Error loading clients/states:', err)
+      setClients([])
+      setStates([])
+    }
+  }, [])
+
   // Set default to current month
   useEffect(() => {
     if (isOpen) {
       const now = new Date()
       setSelectedMonth(String(now.getMonth() + 1).padStart(2, '0'))
       setSelectedYear(now.getFullYear())
+      setSelectedClient('all')
+      setSelectedState('all')
       setError(null)
     }
   }, [isOpen])
@@ -53,6 +109,10 @@ const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
         year: selectedYear,
         monthName: months.find(m => m.value === selectedMonth)?.label || '',
         periodType: 'monthly',
+        client: selectedClient === 'all' ? null : selectedClient,
+        state: selectedState === 'all' ? null : selectedState,
+        clientName: selectedClient === 'all' ? 'All' : clients.find(c => c.code === selectedClient)?.name || selectedClient,
+        stateName: selectedState === 'all' ? 'All' : selectedState,
       }
 
       // Simulate async operation
@@ -151,6 +211,54 @@ const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
                 {months.map((month) => (
                   <option key={month.value} value={month.value}>
                     {month.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Client Selection */}
+            <div>
+              <label htmlFor="client" className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center gap-2">
+                  <FiBriefcase className="w-4 h-4" />
+                  <span>Client</span>
+                </div>
+              </label>
+              <select
+                id="client"
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+                disabled={loading}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="all">All</option>
+                {clients.map((client) => (
+                  <option key={client.code} value={client.code}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* State Selection */}
+            <div>
+              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center gap-2">
+                  <FiMapPin className="w-4 h-4" />
+                  <span>State</span>
+                </div>
+              </label>
+              <select
+                id="state"
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
+                disabled={loading}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="all">All</option>
+                {states.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
                   </option>
                 ))}
               </select>
