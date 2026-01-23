@@ -1,36 +1,93 @@
 import { useState } from 'react'
 import ReportCard from './ReportCard'
+import MonthSelectionModal from './MonthSelectionModal'
+import QuarterSelectionModal from './QuarterSelectionModal'
+import YearSelectionModal from './YearSelectionModal'
 
 const ReportTabs = ({ initial = 'pnl' }) => {
   const [active, setActive] = useState(initial)
+  const [monthModalOpen, setMonthModalOpen] = useState(false)
+  const [quarterModalOpen, setQuarterModalOpen] = useState(false)
+  const [yearModalOpen, setYearModalOpen] = useState(false)
 
   const openReport = (key) => {
     try {
-      // Placeholder - in production open modal or navigate to detailed report
-      alert(`Open report: ${key}`)
+      // Handle P&L report types
+      if (key === 'monthly-pnl') {
+        setMonthModalOpen(true)
+      } else if (key === 'quarterly-pnl') {
+        setQuarterModalOpen(true)
+      } else if (key === 'yearly-pnl') {
+        setYearModalOpen(true)
+      } else {
+        // Placeholder for other report types
+        console.log('Opening report:', key)
+      }
     } catch (err) {
       console.error('openReport error', err)
     }
   }
 
+  const handleMonthSelect = (monthData) => {
+    try {
+      console.log('Selected month data:', monthData)
+      // TODO: Generate P&L report for selected month
+      // This will be implemented in next step
+    } catch (err) {
+      console.error('handleMonthSelect error', err)
+    }
+  }
+
+  const handleQuarterSelect = (quarterData) => {
+    try {
+      console.log('Selected quarter data:', quarterData)
+      // TODO: Generate P&L report for selected quarter
+      // This will be implemented in next step
+    } catch (err) {
+      console.error('handleQuarterSelect error', err)
+    }
+  }
+
+  const handleYearSelect = (yearData) => {
+    try {
+      console.log('Selected year data:', yearData)
+      // TODO: Generate P&L report for selected year
+      // This will be implemented in next step
+    } catch (err) {
+      console.error('handleYearSelect error', err)
+    }
+  }
+
   return (
     <div>
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => setActive('pnl')}
-          className={`px-4 py-2 rounded-md ${active === 'pnl' ? 'bg-green-600 text-white' : 'bg-white border'}`}
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${
+            active === 'pnl'
+              ? 'bg-green-600 text-white shadow-md'
+              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
         >
           Profit & Loss
         </button>
         <button
           onClick={() => setActive('bs')}
-          className={`px-4 py-2 rounded-md ${active === 'bs' ? 'bg-green-600 text-white' : 'bg-white border'}`}
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${
+            active === 'bs'
+              ? 'bg-green-600 text-white shadow-md'
+              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
         >
           Balance Sheet
         </button>
         <button
           onClick={() => setActive('cash')}
-          className={`px-4 py-2 rounded-md ${active === 'cash' ? 'bg-green-600 text-white' : 'bg-white border'}`}
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${
+            active === 'cash'
+              ? 'bg-green-600 text-white shadow-md'
+              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
         >
           Cashflow
         </button>
@@ -97,6 +154,23 @@ const ReportTabs = ({ initial = 'pnl' }) => {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <MonthSelectionModal
+        isOpen={monthModalOpen}
+        onClose={() => setMonthModalOpen(false)}
+        onSelect={handleMonthSelect}
+      />
+      <QuarterSelectionModal
+        isOpen={quarterModalOpen}
+        onClose={() => setQuarterModalOpen(false)}
+        onSelect={handleQuarterSelect}
+      />
+      <YearSelectionModal
+        isOpen={yearModalOpen}
+        onClose={() => setYearModalOpen(false)}
+        onSelect={handleYearSelect}
+      />
     </div>
   )
 }
