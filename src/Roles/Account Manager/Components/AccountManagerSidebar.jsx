@@ -1,11 +1,10 @@
 /* eslint-disable no-unused-vars */
-import { useState } from "react";
-import { FaBars, FaChevronDown, FaChevronUp, FaTimes } from "react-icons/fa";
-import { NavLink } from "react-router-dom";
-
+import { useState } from 'react'
+import { FaBars, FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
+import { NavLink } from 'react-router-dom'
 
 const AccountManagerSidebar = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
     <>
@@ -20,45 +19,37 @@ const AccountManagerSidebar = () => {
       {/* Sidebar Container */}
       <div
         className={`fixed top-0 left-0 h-full w-48 bg-green-700 text-white shadow-lg transform ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         } transition-transform lg:translate-x-0 lg:w-48 lg:block`}
       >
         {/* Sidebar Header */}
-        <div className="p-4 text-xl font-semibold bg-green-800 text-center">
-         
-        Account-Manager
-        </div>
+        <div className="p-4 text-xl font-semibold bg-green-800 text-center">Account-Manager</div>
 
         {/* Sidebar Menu */}
         <ul className="mt-6">
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/account-manager">
-                Dashboard
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
+          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+            <NavLink to="/dashboard/account-manager">Dashboard</NavLink>
+          </li>
+          <hr className="border-white mx-4" />
 
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/account-manager/invoice-review">
-                Invoice Approval
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
+          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+            <NavLink to="/dashboard/account-manager/invoice-review">Invoice Approval</NavLink>
+          </li>
+          <hr className="border-white mx-4" />
 
-         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/account-manager/gl-master">
-                Masters
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
+          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+            <NavLink to="/dashboard/account-manager/gl-master">Masters</NavLink>
+          </li>
+          <hr className="border-white mx-4" />
 
-       
-        
-         
+          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+            <NavLink to="/dashboard/account-manager/reports">Reports</NavLink>
+          </li>
+          <hr className="border-white mx-4" />
         </ul>
       </div>
     </>
-  );
-};
+  )
+}
 
-export default AccountManagerSidebar;
+export default AccountManagerSidebar

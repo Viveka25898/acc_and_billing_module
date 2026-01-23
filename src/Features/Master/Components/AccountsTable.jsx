@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiChevronRight, FiChevronDown } from 'react-icons/fi'
+import LedgerBalanceService from '../Services/LedgerBalanceService'
+
+// Add: Import syncAllLedgerBalances utility
+import { syncAllLedgerBalances } from '../Services/LedgerBalancesLocalStorageService'
 
 const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick }) => {
   const navigate = useNavigate()
@@ -13,6 +17,15 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
     try {
       // Check Client Ledgers (D-prefix accounts)
       if (accountCode.startsWith('D')) {
+        // First check via LedgerBalanceService (uses ledgerBalances from A3001BalanceSync)
+        try {
+          const val = LedgerBalanceService.getLedgerBalance(accountCode)
+          if (val !== null && val !== undefined) return val
+        } catch (error) {
+          console.error(`Error extracting D ledger balance for ${accountCode}:`, error)
+        }
+
+        // Fallback: Check clientLedgers directly
         const clientLedgers = JSON.parse(localStorage.getItem('clientLedgers') || '{}')
         const ledger = clientLedgers[accountCode]
         if (ledger && ledger.ledgerDetails) {
@@ -23,14 +36,10 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         }
       }
 
-      // Check Revenue Ledgers (R-prefix accounts)
+      // Check Revenue Ledgers (R-prefix accounts) via LedgerBalanceService
       if (accountCode.startsWith('R')) {
-        const revenueLedgers = JSON.parse(localStorage.getItem('revenueLedgers') || '{}')
-        const ledger = revenueLedgers[accountCode]
-        if (ledger && ledger.ledgerDetails) {
-          const netRevenue = ledger.ledgerDetails.netRevenue?.replace(/[₹,]/g, '') || '0'
-          return parseFloat(netRevenue)
-        }
+        const val = LedgerBalanceService.getLedgerBalance(accountCode)
+        if (val !== null && val !== undefined) return val
       }
 
       // Check Expense Ledgers (X-prefix accounts)
@@ -54,8 +63,17 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         }
       }
 
-      // Check Liability Ledgers (L-prefix accounts - GST, TDS, etc.)
+      // Check Liability Ledgers (L-prefix accounts) via LedgerBalanceService
       if (accountCode.startsWith('L')) {
+        // First check via LedgerBalanceService (uses ledgerBalances from LiabilityBalanceSync)
+        try {
+          const val = LedgerBalanceService.getLedgerBalance(accountCode)
+          if (val !== null && val !== undefined) return val
+        } catch (error) {
+          console.error(`Error extracting L ledger balance for ${accountCode}:`, error)
+        }
+
+        // Fallback: Check specific liability ledger stores
         // CGST Payable
         if (accountCode === 'L3001' || accountCode.startsWith('L3001')) {
           const cgstData = JSON.parse(localStorage.getItem('cgst_payable_ledger') || '{}')
@@ -111,12 +129,23 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         }
       }
 
-      // Check Fixed Asset Ledgers (A1-prefix accounts)
+      // Check Fixed Asset Ledgers (A1-prefix accounts) via LedgerBalanceService
       if (accountCode.startsWith('A1')) {
-        const fixedAssets = JSON.parse(localStorage.getItem('fixedAssets') || '{}')
-        const assetLedger = fixedAssets[accountCode]
-        if (assetLedger && assetLedger.closingBalance !== undefined) {
-          return parseFloat(assetLedger.closingBalance?.replace(/[₹,]/g, '') || 0)
+        try {
+          const val = LedgerBalanceService.getLedgerBalance(accountCode)
+          if (val !== null && val !== undefined) return val
+        } catch (error) {
+          console.error(`Error extracting A1 ledger balance for ${accountCode}:`, error)
+        }
+      }
+
+      // Check Employee Ledgers (A3-prefix accounts) via LedgerBalanceService
+      if (accountCode.startsWith('A3')) {
+        try {
+          const val = LedgerBalanceService.getLedgerBalance(accountCode)
+          if (val !== null && val !== undefined) return val
+        } catch (error) {
+          console.error(`Error extracting A3 ledger balance for ${accountCode}:`, error)
         }
       }
 
@@ -170,13 +199,23 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         }
 
         setBalances(balanceMap)
+        // Patch: Sync all present ledger balances to localStorage (ledgerBalances)
+        // Only for ledgers (type === 'ACCOUNT')
+        const ledgerBalancesToSync = {}
+        for (const account of accounts) {
+          if (account.type === 'ACCOUNT') {
+            ledgerBalancesToSync[account.code] = {
+              balance: balanceMap[account.code],
+            }
+          }
+        }
+        syncAllLedgerBalances(ledgerBalancesToSync)
       } catch (error) {
         console.error('Error calculating balances:', error)
       } finally {
         setBalancesLoading(false)
       }
     }
-
     calculateBalances()
   }, [accounts])
 
@@ -815,9 +854,7 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isUniformPrepaidExpenseAccount) {
         console.log('✅ Navigating to Uniform Prepaid Expense Ledger')
         navigate(`/dashboard/account-manager/fa-uniform-expense`)
-      }
-
-      if (isSalaryExpenseAccount) {
+      } else if (isSalaryExpenseAccount) {
         console.log('✅ Navigating to Salary Expense Ledger')
         navigate(`/dashboard/account-manager/salary-expense-ledger`)
       } else if (isSalaryPayableAccount) {
@@ -865,10 +902,8 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isBonusExpenseLedger) {
         console.log('✅ Navigating to Professional Tax Payable Ledger')
         navigate(`/dashboard/account-manager/bonus-expense-ledger`)
-      }
-
-      // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here
-      else if (isVendorAccount) {
+      } else if (isVendorAccount) {
+        // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here
         console.log('✅ Navigating to UNIFIED Vendor Ledger:', account.code)
         console.log('   - This ledger will show ALL transactions (HK, FA, Uniform, Rent, etc.)')
         navigate(`/dashboard/account-manager/vendor-ledger/${account.code}`)

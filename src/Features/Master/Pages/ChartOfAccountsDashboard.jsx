@@ -6,8 +6,25 @@ import AccountsTable from '../Components/AccountsTable'
 import AddAccountModal from '../Components/AddAccountModal'
 import EditAccountModal from '../Components/EditAccountModal'
 import AccountDetailsModal from '../Components/AccountDetailsModal'
+// Add: Import A3001 auto-sync utility
+import {
+  autoSyncA3001OnTransactionChange,
+  updateA3001ClosingBalance,
+} from '../Services/A3001BalanceSync'
+// Add: Import Liability balance sync utility
+import {
+  autoSyncLiabilityOnTransactionChange,
+  updateLiabilityClosingBalance,
+} from '../Services/LiabilityBalanceSync'
 
 const ChartOfAccountsDashboard = () => {
+  // Auto-sync A3001 and Liability closing balances on transaction changes
+  useEffect(() => {
+    autoSyncA3001OnTransactionChange()
+    updateA3001ClosingBalance()
+    autoSyncLiabilityOnTransactionChange()
+    updateLiabilityClosingBalance()
+  }, [])
   const [accounts, setAccounts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')

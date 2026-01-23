@@ -158,6 +158,8 @@ import OperationExecutiveMyRequests from '../Features/Advance Request/Pages/Oper
 import OperationExecutiveMyAdvanceRequests from '../Features/Advance Request/Pages/OperationExecutiveMyRequests'
 import AccountManagerDashboard from '../Roles/Account Manager/Pages/AccountManagerDashboard'
 import AccountManagerHome from '../Roles/Account Manager/Components/AccountManagerHome'
+
+import ReportsDashboard from '../Features/Reports/Pages/ReportsDashboard'
 import AMInvoiceReviewPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerInvoiceReviewPage'
 import AMInvoiceApproval from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage'
 import AMFixedAssetEntryPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage'
@@ -924,7 +926,7 @@ export const router = createBrowserRouter([
   },
   // *************************Account Manager***************************************
   {
-    path: 'dashboard/account-manager',
+    path: '/dashboard/account-manager',
     element: (
       <ProtectedRoute allowedRoles={['account-manager']}>
         <AccountManagerDashboard />
@@ -950,6 +952,10 @@ export const router = createBrowserRouter([
       {
         path: 'gl-master',
         element: <ChartOfAccountsDashboard />,
+      },
+      {
+        path: 'reports',
+        element: <ReportsDashboard />,
       },
       // ************************************Master Dummy********************************************
       // Client Ledger Route
