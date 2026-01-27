@@ -39,6 +39,9 @@ const VendorLedgerTable = ({ ledgerInfo, entries }) => {
             <th className="border px-3 py-2 text-left">Approved By</th>
             <th className="border px-3 py-2 text-center">Attachments</th>
             <th className="border px-3 py-2 text-left">Cost Center</th>
+            <th className="border px-3 py-2 text-left">Customer</th>
+            <th className="border px-3 py-2 text-left">Site</th>
+            <th className="border px-3 py-2 text-left">State</th>
             <th className="border px-3 py-2 text-center">Status</th>
           </tr>
         </thead>
@@ -47,7 +50,7 @@ const VendorLedgerTable = ({ ledgerInfo, entries }) => {
           {/* Transactions */}
           {entries.length === 0 ? (
             <tr>
-              <td colSpan="14" className="p-8 text-center text-gray-500">No entries for selected period</td>
+              <td colSpan="17" className="p-8 text-center text-gray-500">No entries for selected period</td>
             </tr>
           ) : (
             entries.map((entry, i) => <VendorLedgerRow key={i} entry={entry} />)
@@ -58,7 +61,7 @@ const VendorLedgerTable = ({ ledgerInfo, entries }) => {
             <td colSpan={3} className="border px-3 py-2">TOTAL</td>
             <td className="border px-3 py-2 text-right">₹{totalDebit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
             <td className="border px-3 py-2 text-right">₹{totalCredit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            <td colSpan={9} className="border px-3 py-2"></td>
+            <td colSpan={12} className="border px-3 py-2"></td>
           </tr>
 
           {/* Closing */}
@@ -70,7 +73,7 @@ const VendorLedgerTable = ({ ledgerInfo, entries }) => {
                 ? `₹${Math.abs(closingBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })} Cr`
                 : `₹${Math.abs(closingBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })} Dr`}
             </td>
-            <td colSpan={8} className="border px-3 py-2 text-gray-500 italic">Balance carried forward</td>
+            <td colSpan={11} className="border px-3 py-2 text-gray-500 italic">Balance carried forward</td>
           </tr>
         </tbody>
       </table>

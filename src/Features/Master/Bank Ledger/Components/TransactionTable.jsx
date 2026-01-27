@@ -33,6 +33,9 @@ const TransactionTable = ({ transactions = [] }) => {
             <th className="px-2 py-3 text-left text-xs font-semibold text-slate-600 uppercase border-b-2 border-slate-200 w-32">TDS Details</th>
             <th className="px-2 py-3 text-left text-xs font-semibold text-slate-600 uppercase border-b-2 border-slate-200 w-24">Status</th>
             <th className="px-2 py-3 text-left text-xs font-semibold text-slate-600 uppercase border-b-2 border-slate-200 w-32">Cost Center</th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-slate-600 uppercase border-b-2 border-slate-200 w-36">Customer</th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-slate-600 uppercase border-b-2 border-slate-200 w-32">Site</th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-slate-600 uppercase border-b-2 border-slate-200 w-28">State</th>
           </tr>
         </thead>
         <tbody>
@@ -87,6 +90,9 @@ const TransactionTable = ({ transactions = [] }) => {
                 </Badge>
               </td>
               <td className="px-2 py-3 text-sm">{transaction.costCenter}</td>
+              <td className="px-2 py-3 text-sm">{transaction.customer || '-'}</td>
+              <td className="px-2 py-3 text-sm">{transaction.site || '-'}</td>
+              <td className="px-2 py-3 text-sm">{transaction.state || '-'}</td>
             </tr>
           ))}
         </tbody>

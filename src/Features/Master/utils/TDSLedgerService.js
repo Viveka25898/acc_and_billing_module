@@ -96,6 +96,12 @@ export class TDSRealDataService {
                     challanNo: `CHL${txn.voucherNo?.replace(/\D/g, '').slice(-6) || '000000'}`,
                     challanDate: isDeduction ? '' : this.formatDate(txn.date), // Only for payments
                     paymentStatus: this.getPaymentStatus(txn, isDeduction),
+                    costCenter: tdsEntry.costCenter || expenseEntry?.costCenter || txn.costCenter || 'General',
+                    customer: txn.customer || txn.clientName || '-',
+                    site: tdsEntry.site || expenseEntry?.site || txn.site || '-',
+                    state: txn.state || '-',
+                    city: txn.city || '-',
+                    branch: txn.branch || '-',
                     remarks: txn.remarks || relatedInvoice?.remarks || ''
                 };
 

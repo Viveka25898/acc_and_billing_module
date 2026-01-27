@@ -17,6 +17,10 @@ const UniformExpenseLedgerTable = ({ data }) => {
               "Debit (₹)",
               "Credit (₹)",
               "Purchase (₹)",
+              "Customer",
+              "Site",
+              "State",
+              "Cost Center",
               "Attachments",
             ].map((heading) => (
               <th
@@ -56,10 +60,10 @@ const UniformExpenseLedgerTable = ({ data }) => {
                 <td className="px-4 py-2 text-right font-mono text-gray-900">
                   {entry.purchaseAmount}
                 </td>
-                
-
-               
-
+                <td className="px-4 py-2">{entry.customer || '-'}</td>
+                <td className="px-4 py-2">{entry.site || '-'}</td>
+                <td className="px-4 py-2">{entry.state || '-'}</td>
+                <td className="px-4 py-2">{entry.costCenter || '-'}</td>
                 <td className="px-4 py-2 flex items-center gap-2">
                   <a
                     href={`/${entry.attachments}`}
@@ -75,7 +79,7 @@ const UniformExpenseLedgerTable = ({ data }) => {
           ) : (
             <tr>
               <td
-                colSpan="11"
+                colSpan="15"
                 className="text-center text-gray-500 py-6 italic"
               >
                 No records found

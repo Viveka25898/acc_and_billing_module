@@ -170,6 +170,11 @@ export class FixedAssetLedgerService {
           entry.glCode.startsWith('L2005002_')
         );
 
+        // Debug: Log transaction data to verify enrichment
+        if (assetEntry && (!txn.customer && !txn.clientName)) {
+          console.log(`⚠️ Fixed Asset transaction ${txn.voucherNo} missing customer/site/state data. Will be enriched on next app load.`)
+        }
+
         if (assetEntry) {
           const purchaseValue = assetEntry.debit || 0;
           runningPurchaseValue += purchaseValue;
@@ -241,8 +246,13 @@ export class FixedAssetLedgerService {
             accumulatedDepreciation: '0',
             salvageValue: '0',
             lastDepreciationDate: '-',
+            costCenter: assetEntry.costCenter || txn.costCenter || location,
+            customer: txn.customer || txn.clientName || '-',
+            site: assetEntry.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             department: location.includes('Office') ? 'Administration' : location.includes('Factory') ? 'Production' : 'General',
-            costCenter: assetEntry.costCenter || location,
             custodian: '-',
             insurance: '-',
             amcStatus: warranty !== '-' ? 'Under Warranty' : '-',

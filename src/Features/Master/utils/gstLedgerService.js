@@ -33,7 +33,12 @@ export class GSTLedgerService {
           balance: running,
           counterparty: txn.siteDetails?.siteName || txn.counterparty || '',
           refNo: txn.id,
-          costCenter: line.costCenter || 'General',
+          costCenter: line.costCenter || txn.costCenter || 'General',
+          customer: txn.customer || txn.clientName || '-',
+          site: line.site || txn.siteDetails?.siteName || txn.site || '-',
+          state: txn.state || '-',
+          city: txn.city || '-',
+          branch: txn.branch || '-',
           approvedBy: txn.approvedBy,
           attachments: line.attachments || 0,
           status: 'Posted'

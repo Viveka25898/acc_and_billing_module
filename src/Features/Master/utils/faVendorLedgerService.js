@@ -59,7 +59,12 @@ export class FAVendorLedgerService {
             type: txn.vendorType || (entryType === 'Invoice' ? 'Fixed Asset Invoice' : entryType === 'Payment' ? 'Fixed Asset Payment' : 'Journal'),
             approvedBy: txn.approvedBy || 'System',
             attachments: vendorEntry.attachments || 0,
-            costCenter: vendorEntry.costCenter || assetEntry?.costCenter || 'Operations',
+            costCenter: vendorEntry.costCenter || assetEntry?.costCenter || txn.costCenter || 'Operations',
+            customer: txn.customer || txn.clientName || '-',
+            site: vendorEntry.site || assetEntry?.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             status: txn.status || 'Posted',
             invoiceNumber: txn.invoiceNumber || '-'
           });

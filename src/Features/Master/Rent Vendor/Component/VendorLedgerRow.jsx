@@ -28,6 +28,9 @@ const VendorLedgerRow = ({ entry }) => {
         <a href="#" className="text-blue-600 underline text-sm">📎 View ({entry.attachments})</a>
       </td>
       <td className="border px-3 py-2 text-sm">{entry.costCenter}</td>
+      <td className="border px-3 py-2 text-sm">{entry.customer || '-'}</td>
+      <td className="border px-3 py-2 text-sm">{entry.site || '-'}</td>
+      <td className="border px-3 py-2 text-sm">{entry.state || '-'}</td>
       <td className="border px-3 py-2 text-center">
         <span className={`px-2 py-1 rounded text-xs font-semibold ${statusClasses[entry.status] || "bg-gray-100 text-gray-800"}`}>
           {entry.status}

@@ -67,6 +67,10 @@ const TransactionTable = ({ transactions }) => {
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-40">Counterparty</th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-36">Approved By</th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-20">Attach</th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-32">Cost Center</th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-36">Customer</th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-32">Site</th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-28">State</th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b-2 border-gray-200 w-28">Status</th>
             </tr>
           </thead>
@@ -112,6 +116,10 @@ const TransactionTable = ({ transactions }) => {
                     </button>
                   )}
                 </td>
+                <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">{transaction.costCenter || '-'}</td>
+                <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">{transaction.customer || '-'}</td>
+                <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">{transaction.site || '-'}</td>
+                <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">{transaction.state || '-'}</td>
                 <td className="px-3 py-3 text-sm whitespace-nowrap">
                   <Badge type={transaction.status} />
                 </td>

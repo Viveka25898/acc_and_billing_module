@@ -24,6 +24,9 @@ const RentLedgerTable = ({ ledger }) => {
             <th className="border p-2">Approved By</th>
             <th className="border p-2 text-center">Attachments</th>
             <th className="border p-2">Cost Center</th>
+            <th className="border p-2">Customer</th>
+            <th className="border p-2">Site</th>
+            <th className="border p-2">State</th>
             <th className="border p-2 text-center">Status</th>
           </tr>
         </thead>
@@ -47,7 +50,7 @@ const RentLedgerTable = ({ ledger }) => {
                 minimumFractionDigits: 2,
               })}
             </td>
-            <td colSpan="9" className="border p-2"></td>
+            <td colSpan="12" className="border p-2"></td>
           </tr>
 
           {/* Closing Row */}
@@ -56,7 +59,7 @@ const RentLedgerTable = ({ ledger }) => {
               CLOSING BALANCE (As on 31-Oct-2024)
             </td>
             <td className="border p-2 text-right">{closingBalance}</td>
-            <td colSpan="8" className="border p-2"></td>
+            <td colSpan="11" className="border p-2"></td>
           </tr>
         </tbody>
       </table>

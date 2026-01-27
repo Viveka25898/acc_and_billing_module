@@ -13,6 +13,9 @@ export default function LedgerTable({ rows }) {
               'TDS Amt (Cr)',
               'Net Payable',
               'Vendor',
+              'Customer',
+              'Site',
+              'State',
               'Status',
             ].map((col, i) => (
               <th key={i} className="px-2 py-2 whitespace-nowrap">
@@ -33,6 +36,9 @@ export default function LedgerTable({ rows }) {
               <td className="px-2 py-2 text-right font-semibold text-green-700">₹{row.tds}</td>
               <td className="px-2 py-2 text-right font-semibold">₹{row.net}</td>
               <td className="px-2 py-2">{row.vendor}</td>
+              <td className="px-2 py-2">{row.customer || '-'}</td>
+              <td className="px-2 py-2">{row.site || '-'}</td>
+              <td className="px-2 py-2">{row.state || '-'}</td>
               <td className="px-2 py-2">
                 <span
                   className={`px-2 py-1 rounded text-[10px] font-semibold ${

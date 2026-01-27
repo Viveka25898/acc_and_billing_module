@@ -1,68 +1,125 @@
 /* eslint-disable no-unused-vars */
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+import { getPLData, PL_KEYS } from './PLReportDataService'
 
 /**
  * P&L Report Excel Generation Service
  * Generates Excel file with two sheets: PL and P&L Sch
- * Uses dummy data for now
+ * Uses real ledger data from transactions (monthly, All/State/Client filters).
  */
+
+/**
+ * Safe numeric value for Excel: number or '-' for non-numeric.
+ * @param {*} v
+ * @returns {number|string}
+ */
+function excelNum(v) {
+  if (v == null || v === '') return '-'
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[₹,\s]/g, ''))
+  return Number.isFinite(n) ? n : '-'
+}
 
 class PLReportExcelService {
   /**
    * Generate and download P&L Excel report
-   * @param {Object} periodData - { periodType, month, quarter, year, monthName, quarterLabel }
+   * @param {Object} periodData - { periodType, month, year, monthName, client?, state?, clientName?, stateName? }
    */
   static async generateAndDownloadPLReport(periodData) {
     try {
+      if (!periodData || typeof periodData !== 'object') {
+        throw new Error('Invalid period data. Please select a period again.')
+      }
+      // Accept monthly, quarterly, yearly
+      let valid = false
+      if (periodData.periodType === 'monthly') {
+        const month = parseInt(periodData.month, 10)
+        const year = parseInt(periodData.year, 10)
+        valid = month && month >= 1 && month <= 12 && year && year >= 2000
+      } else if (periodData.periodType === 'quarterly') {
+        let quarter = periodData.quarter
+        if (typeof quarter === 'string' && quarter.startsWith('Q')) {
+          quarter = parseInt(quarter.replace('Q', ''), 10)
+        } else {
+          quarter = parseInt(quarter, 10)
+        }
+        const year = parseInt(periodData.year, 10)
+        valid = quarter && quarter >= 1 && quarter <= 4 && year && year >= 2000
+      } else if (periodData.periodType === 'yearly') {
+        const year = parseInt(periodData.year, 10)
+        valid = year && year >= 2000
+      }
+      if (!valid) {
+        throw new Error('Invalid period selection. Please select a valid period.')
+      }
+
+      // getPLData must support all period types
+      const plResult = getPLData(periodData)
+      if (!plResult.success) {
+        throw new Error(plResult.error || 'Failed to load P&L data from ledger.')
+      }
+
       const workbook = new ExcelJS.Workbook()
 
-      // Create PL Sheet
-      this.createPLSheet(workbook, periodData)
+      try {
+        this.createPLSheet(workbook, periodData, plResult)
+      } catch (err) {
+        console.error('PLReportExcelService: createPLSheet error', err)
+        throw new Error('Failed to create P&L sheet. ' + (err.message || ''))
+      }
 
-      // Create P&L Sch Sheet
-      this.createPLScheduleSheet(workbook, periodData)
+      try {
+        this.createPLScheduleSheet(workbook, periodData, plResult)
+      } catch (err) {
+        console.error('PLReportExcelService: createPLScheduleSheet error', err)
+        throw new Error('Failed to create P&L Schedule sheet. ' + (err.message || ''))
+      }
 
-      // Generate Excel file buffer
-      const buffer = await workbook.xlsx.writeBuffer()
+      let buffer
+      try {
+        buffer = await workbook.xlsx.writeBuffer()
+      } catch (err) {
+        console.error('PLReportExcelService: writeBuffer error', err)
+        throw new Error('Failed to generate Excel file.')
+      }
 
-      // Generate filename
       const filename = this.generateFilename(periodData)
+      try {
+        const blob = new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        saveAs(blob, filename)
+      } catch (err) {
+        console.error('PLReportExcelService: saveAs error', err)
+        throw new Error('Failed to download file.')
+      }
 
-      // Download file
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      })
-      saveAs(blob, filename)
-
-      return { success: true, filename }
+      return { success: true, filename, meta: plResult.meta }
     } catch (error) {
       console.error('PLReportExcelService: generateAndDownloadPLReport error', error)
-      throw new Error('Failed to generate P&L report. Please try again.')
+      throw error instanceof Error ? error : new Error('Failed to generate P&L report. Please try again.')
     }
   }
 
   /**
    * Create PL (Profit & Loss) Sheet
+   * @param {object} workbook
+   * @param {object} periodData
+   * @param {object} plResult - { current, previous, meta } from getPLData
    */
-  static createPLSheet(workbook, periodData) {
+  static createPLSheet(workbook, periodData, plResult) {
     const sheet = workbook.addWorksheet('PL')
+    const cur = plResult.current || {}
+    const prev = plResult.previous || {}
 
     // Set column widths
-    sheet.getColumn('A').width = 8 // Sr No column
-    sheet.getColumn('B').width = 50 // Particulars
-    sheet.getColumn('C').width = 10 // Note No
-    sheet.getColumn('D').width = 18 // Current Period
-    sheet.getColumn('E').width = 5 // Empty column
-    sheet.getColumn('F').width = 18 // Previous Period
+    sheet.getColumn('A').width = 8
+    sheet.getColumn('B').width = 50
+    sheet.getColumn('C').width = 10
+    sheet.getColumn('D').width = 18
+    sheet.getColumn('E').width = 5
+    sheet.getColumn('F').width = 18
 
-    // Helper function to format numbers
-    const formatNumber = (num) => {
-      if (num === null || num === undefined || num === '-') return '-'
-      return typeof num === 'number' ? num.toLocaleString('en-IN') : num
-    }
-
-    // Helper function to get period label
     const getPeriodLabel = () => {
       if (periodData.periodType === 'monthly') {
         return `${periodData.monthName} ${periodData.year}`
@@ -74,7 +131,7 @@ class PLReportExcelService {
     }
 
     const currentPeriod = getPeriodLabel()
-    const previousYear = periodData.year - 1
+    const previousYear = parseInt(periodData.year, 10) - 1
     const previousPeriod =
       periodData.periodType === 'monthly'
         ? `${periodData.monthName} ${previousYear}`
@@ -140,26 +197,34 @@ class PLReportExcelService {
 
     // I. Revenue from operations
     let rowNum = 8
+    const revOpsCur = excelNum(cur[PL_KEYS.REVENUE_FROM_OPS])
+    const revOpsPrev = excelNum(prev[PL_KEYS.REVENUE_FROM_OPS])
     sheet.getCell(`A${rowNum}`).value = 'I'
     sheet.getCell(`B${rowNum}`).value = 'Revenue from operations'
     sheet.getCell(`C${rowNum}`).value = 15
-    sheet.getCell(`D${rowNum}`).value = 707124186 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = revOpsCur
     sheet.getCell(`E${rowNum}`).value = ''
-    sheet.getCell(`F${rowNum}`).value = 189592750 // Dummy data
+    sheet.getCell(`F${rowNum}`).value = revOpsPrev
     sheet.getRow(rowNum).font = { bold: true }
     sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
 
     rowNum++
+    const otherIncCur = excelNum(cur[PL_KEYS.OTHER_INCOME])
+    const otherIncPrev = excelNum(prev[PL_KEYS.OTHER_INCOME])
     sheet.getCell(`B${rowNum}`).value = 'Other Income'
     sheet.getCell(`C${rowNum}`).value = 16
-    sheet.getCell(`D${rowNum}`).value = 1261494 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = otherIncCur
     sheet.getCell(`E${rowNum}`).value = ''
-    sheet.getCell(`F${rowNum}`).value = 6125719 // Dummy data
+    sheet.getCell(`F${rowNum}`).value = otherIncPrev
 
     // III. Total Revenue
     rowNum++
-    const totalRevenue = 707124186 + 1261494
-    const prevTotalRevenue = 189592750 + 6125719
+    const totalRevenue = typeof revOpsCur === 'number' && typeof otherIncCur === 'number'
+      ? revOpsCur + otherIncCur
+      : (cur[PL_KEYS.TOTAL_REVENUE] ?? 0)
+    const prevTotalRevenue = typeof revOpsPrev === 'number' && typeof otherIncPrev === 'number'
+      ? revOpsPrev + otherIncPrev
+      : (prev[PL_KEYS.TOTAL_REVENUE] ?? 0)
     sheet.getCell(`A${rowNum}`).value = 'III'
     sheet.getCell(`B${rowNum}`).value = 'Total Revenue'
     sheet.getCell(`D${rowNum}`).value = totalRevenue
@@ -187,10 +252,12 @@ class PLReportExcelService {
     sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
 
     rowNum++
+    const costMatCur = excelNum(cur[PL_KEYS.COST_OF_MATERIALS])
+    const costMatPrev = excelNum(prev[PL_KEYS.COST_OF_MATERIALS])
     sheet.getCell(`B${rowNum}`).value = 'Cost of Materials Consumed'
     sheet.getCell(`C${rowNum}`).value = 17
-    sheet.getCell(`D${rowNum}`).value = 24143804 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 4957530 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = costMatCur
+    sheet.getCell(`F${rowNum}`).value = costMatPrev
     sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
     sheet.getCell(`F${rowNum}`).numFmt = '#,##0'
 
@@ -200,41 +267,49 @@ class PLReportExcelService {
     sheet.getCell(`F${rowNum}`).value = '-'
 
     rowNum++
+    const empBenCur = excelNum(cur[PL_KEYS.EMPLOYEE_BENEFITS])
+    const empBenPrev = excelNum(prev[PL_KEYS.EMPLOYEE_BENEFITS])
     sheet.getCell(`B${rowNum}`).value = 'Employee benefit expenses'
     sheet.getCell(`C${rowNum}`).value = 18
-    sheet.getCell(`D${rowNum}`).value = 612819960 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 163077243 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = empBenCur
+    sheet.getCell(`F${rowNum}`).value = empBenPrev
     sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
     sheet.getCell(`F${rowNum}`).numFmt = '#,##0'
 
     rowNum++
+    const finCostCur = excelNum(cur[PL_KEYS.FINANCE_COSTS])
+    const finCostPrev = excelNum(prev[PL_KEYS.FINANCE_COSTS])
     sheet.getCell(`B${rowNum}`).value = 'Finance Costs'
     sheet.getCell(`C${rowNum}`).value = 19
-    sheet.getCell(`D${rowNum}`).value = 5320245 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 2205245 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = finCostCur
+    sheet.getCell(`F${rowNum}`).value = finCostPrev
     sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
     sheet.getCell(`F${rowNum}`).numFmt = '#,##0'
 
     rowNum++
+    const depCur = excelNum(cur[PL_KEYS.DEPRECIATION_AMORT])
+    const depPrev = excelNum(prev[PL_KEYS.DEPRECIATION_AMORT])
     sheet.getCell(`B${rowNum}`).value = 'Depreciation and Amortization Expense'
     sheet.getCell(`C${rowNum}`).value = 9
-    sheet.getCell(`D${rowNum}`).value = 3627887 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 1434460 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = depCur
+    sheet.getCell(`F${rowNum}`).value = depPrev
     sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
     sheet.getCell(`F${rowNum}`).numFmt = '#,##0'
 
     rowNum++
+    const otherExpCur = excelNum(cur[PL_KEYS.OTHER_EXPENSES])
+    const otherExpPrev = excelNum(prev[PL_KEYS.OTHER_EXPENSES])
     sheet.getCell(`B${rowNum}`).value = 'Other expenses'
     sheet.getCell(`C${rowNum}`).value = 20
-    sheet.getCell(`D${rowNum}`).value = 49903030 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 22202914 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = otherExpCur
+    sheet.getCell(`F${rowNum}`).value = otherExpPrev
     sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
     sheet.getCell(`F${rowNum}`).numFmt = '#,##0'
 
     // V. Total Expenses
     rowNum++
-    const totalExpenses = 24143804 + 612819960 + 5320245 + 3627887 + 49903030
-    const prevTotalExpenses = 4957530 + 163077243 + 2205245 + 1434460 + 22202914
+    const totalExpenses = typeof cur[PL_KEYS.TOTAL_EXPENSES] === 'number' ? cur[PL_KEYS.TOTAL_EXPENSES] : 0
+    const prevTotalExpenses = typeof prev[PL_KEYS.TOTAL_EXPENSES] === 'number' ? prev[PL_KEYS.TOTAL_EXPENSES] : 0
     sheet.getCell(`A${rowNum}`).value = 'V'
     sheet.getCell(`B${rowNum}`).value = 'Total Expenses'
     sheet.getCell(`D${rowNum}`).value = totalExpenses
@@ -256,8 +331,12 @@ class PLReportExcelService {
 
     // VI. Profit before tax
     rowNum += 2
-    const profitBeforeTax = totalRevenue - totalExpenses
-    const prevProfitBeforeTax = prevTotalRevenue - prevTotalExpenses
+    const profitBeforeTax = typeof cur[PL_KEYS.PROFIT_BEFORE_TAX] === 'number'
+      ? cur[PL_KEYS.PROFIT_BEFORE_TAX]
+      : totalRevenue - totalExpenses
+    const prevProfitBeforeTax = typeof prev[PL_KEYS.PROFIT_BEFORE_TAX] === 'number'
+      ? prev[PL_KEYS.PROFIT_BEFORE_TAX]
+      : prevTotalRevenue - prevTotalExpenses
     sheet.getCell(`A${rowNum}`).value = 'VI'
     sheet.getCell(`B${rowNum}`).value = 'Profit before tax for the year'
     sheet.getCell(`D${rowNum}`).value = profitBeforeTax
@@ -285,16 +364,20 @@ class PLReportExcelService {
     sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
 
     rowNum++
+    const currTaxCur = excelNum(cur[PL_KEYS.CURRENT_TAX])
+    const currTaxPrev = excelNum(prev[PL_KEYS.CURRENT_TAX])
     sheet.getCell(`B${rowNum}`).value = 'Current tax'
-    sheet.getCell(`D${rowNum}`).value = 5553903 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 1437198 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = currTaxCur
+    sheet.getCell(`F${rowNum}`).value = currTaxPrev
     sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
     sheet.getCell(`F${rowNum}`).numFmt = '#,##0'
 
     rowNum++
+    const defTaxCur = excelNum(cur[PL_KEYS.DEFERRED_TAX])
+    const defTaxPrev = excelNum(prev[PL_KEYS.DEFERRED_TAX])
     sheet.getCell(`B${rowNum}`).value = 'Deferred tax'
-    sheet.getCell(`D${rowNum}`).value = -463527 // Dummy data (negative)
-    sheet.getCell(`F${rowNum}`).value = 15227 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = defTaxCur
+    sheet.getCell(`F${rowNum}`).value = defTaxPrev
     sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
     sheet.getCell(`F${rowNum}`).numFmt = '#,##0'
 
@@ -304,8 +387,8 @@ class PLReportExcelService {
     sheet.getCell(`F${rowNum}`).value = '-'
 
     rowNum++
-    const totalTax = 5553903 - 463527
-    const prevTotalTax = 1437198 + 15227
+    const totalTax = typeof cur[PL_KEYS.TAX_SUBTOTAL] === 'number' ? cur[PL_KEYS.TAX_SUBTOTAL] : 0
+    const prevTotalTax = typeof prev[PL_KEYS.TAX_SUBTOTAL] === 'number' ? prev[PL_KEYS.TAX_SUBTOTAL] : 0
     sheet.getCell(`B${rowNum}`).value = 'Subtotal for tax expense'
     sheet.getCell(`D${rowNum}`).value = totalTax
     sheet.getCell(`F${rowNum}`).value = prevTotalTax
@@ -319,8 +402,12 @@ class PLReportExcelService {
 
     // VIII. Profit after tax
     rowNum++
-    const profitAfterTax = profitBeforeTax - totalTax
-    const prevProfitAfterTax = prevProfitBeforeTax - prevTotalTax
+    const profitAfterTax = typeof cur[PL_KEYS.PROFIT_AFTER_TAX] === 'number'
+      ? cur[PL_KEYS.PROFIT_AFTER_TAX]
+      : profitBeforeTax - totalTax
+    const prevProfitAfterTax = typeof prev[PL_KEYS.PROFIT_AFTER_TAX] === 'number'
+      ? prev[PL_KEYS.PROFIT_AFTER_TAX]
+      : prevProfitBeforeTax - prevTotalTax
     sheet.getCell(`A${rowNum}`).value = 'VIII'
     sheet.getCell(`B${rowNum}`).value = 'Profit after tax for the year'
     sheet.getCell(`D${rowNum}`).value = profitAfterTax
@@ -349,16 +436,16 @@ class PLReportExcelService {
 
     rowNum++
     sheet.getCell(`B${rowNum}`).value = 'Basic'
-    sheet.getCell(`D${rowNum}`).value = 4.53 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 0.24 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = 0
+    sheet.getCell(`F${rowNum}`).value = 0
     sheet.getCell(`D${rowNum}`).numFmt = '0.00'
     sheet.getCell(`F${rowNum}`).numFmt = '0.00'
 
     rowNum++
-    const dilutedRowNum = rowNum // Track the Diluted row number
+    const dilutedRowNum = rowNum
     sheet.getCell(`B${rowNum}`).value = 'Diluted'
-    sheet.getCell(`D${rowNum}`).value = 4.53 // Dummy data
-    sheet.getCell(`F${rowNum}`).value = 0.24 // Dummy data
+    sheet.getCell(`D${rowNum}`).value = 0
+    sheet.getCell(`F${rowNum}`).value = 0
     sheet.getCell(`D${rowNum}`).numFmt = '0.00'
     sheet.getCell(`F${rowNum}`).numFmt = '0.00'
 
@@ -469,18 +556,25 @@ class PLReportExcelService {
   }
 
   /**
-   * Create P&L Schedule Sheet
+   * Create P&L Schedule Sheet (Dynamic based on data)
+   * @param {object} workbook
+   * @param {object} periodData
+   * @param {object} plResult - { current, previous, schedule, meta } from getPLData
    */
-  static createPLScheduleSheet(workbook, periodData) {
+  static createPLScheduleSheet(workbook, periodData, plResult) {
     const sheet = workbook.addWorksheet('P&L Sch')
+    const cur = plResult.current || {}
+    const prev = plResult.previous || {}
+    const schedCur = (plResult.schedule && plResult.schedule.current && plResult.schedule.current.schedule) || {}
+    const schedPrev = (plResult.schedule && plResult.schedule.previous && plResult.schedule.previous.schedule) || {}
 
-    // Set column widths
-    sheet.getColumn('A').width = 8 // Sr No column
-    sheet.getColumn('B').width = 50 // Particulars
-    sheet.getColumn('C').width = 18 // Current Period
-    sheet.getColumn('D').width = 18 // Previous Period
+    // Column Widths
+    sheet.getColumn('A').width = 8
+    sheet.getColumn('B').width = 50
+    sheet.getColumn('C').width = 18
+    sheet.getColumn('D').width = 18
 
-    // Helper function to get period label
+    // Helper to get formatted period label
     const getPeriodLabel = () => {
       if (periodData.periodType === 'monthly') {
         return `${periodData.monthName} ${periodData.year}`
@@ -492,7 +586,7 @@ class PLReportExcelService {
     }
 
     const currentPeriod = getPeriodLabel()
-    const previousYear = periodData.year - 1
+    const previousYear = parseInt(periodData.year, 10) - 1
     const previousPeriod =
       periodData.periodType === 'monthly'
         ? `${periodData.monthName} ${previousYear}`
@@ -506,6 +600,7 @@ class PLReportExcelService {
     sheet.getCell('C1').value = currentPeriod
     sheet.getCell('D1').value = previousPeriod
 
+    // Header Style
     const headerRow = sheet.getRow(1)
     headerRow.font = { bold: true, size: 11 }
     headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
@@ -522,333 +617,148 @@ class PLReportExcelService {
       right: { style: 'thin' },
     }
 
-    // Miscellaneous Income
     let rowNum = 2
-    let srNo = 1
-    sheet.getCell(`A${rowNum}`).value = srNo
-    sheet.getCell(`B${rowNum}`).value = 'Miscellaneous Income'
-    sheet.getRow(rowNum).font = { bold: true, underline: true }
-    sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
 
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Miscellaneous Income'
-    sheet.getCell(`C${rowNum}`).value = 1261494 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 6125719 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'TOTAL'
-    sheet.getCell(`C${rowNum}`).value = 1261494
-    sheet.getCell(`D${rowNum}`).value = 6125719
-    const miscTotalRow = sheet.getRow(rowNum)
-    miscTotalRow.font = { bold: true }
-    miscTotalRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFC6E0C6' }, // Light green
-    }
-    miscTotalRow.border = {
-      top: { style: 'medium' },
-      bottom: { style: 'medium' },
-    }
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    // Note 17: Cost of materials consumed
-    rowNum += 2
-    srNo++
-    sheet.getCell(`A${rowNum}`).value = srNo
-    sheet.getCell(`B${rowNum}`).value = 'Note 17: Cost of materials consumed'
-    sheet.getRow(rowNum).font = { bold: true, underline: true }
-    sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Material consumed'
-    sheet.getCell(`C${rowNum}`).value = 17670195 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 3989920 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Uniform consumed'
-    sheet.getCell(`C${rowNum}`).value = 6473609 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 967610 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'TOTAL'
-    sheet.getCell(`C${rowNum}`).value = 24143804
-    sheet.getCell(`D${rowNum}`).value = 4957530
-    const costTotalRow = sheet.getRow(rowNum)
-    costTotalRow.font = { bold: true }
-    costTotalRow.border = {
-      top: { style: 'medium' },
-      bottom: { style: 'medium' },
-    }
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    // Note 18: Employee benefits expense
-    rowNum += 2
-    srNo++
-    sheet.getCell(`A${rowNum}`).value = srNo
-    sheet.getCell(`B${rowNum}`).value = 'Note 18: Employee benefits expense'
-    sheet.getRow(rowNum).font = { bold: true, underline: true }
-    sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Salaries and wages'
-    sheet.getCell(`C${rowNum}`).value = 544905102 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 144445313 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Contributions to provident and other funds'
-    sheet.getCell(`C${rowNum}`).value = 66927303 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 17969817 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Gratuity paid'
-    sheet.getCell(`C${rowNum}`).value = '-'
-    sheet.getCell(`D${rowNum}`).value = '-'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Leave Encashment'
-    sheet.getCell(`C${rowNum}`).value = '-'
-    sheet.getCell(`D${rowNum}`).value = '-'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Bonus Paid'
-    sheet.getCell(`C${rowNum}`).value = '-'
-    sheet.getCell(`D${rowNum}`).value = '-'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Staff Welfare'
-    sheet.getCell(`C${rowNum}`).value = 987555 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 662113 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'TOTAL'
-    sheet.getCell(`C${rowNum}`).value = 612819960
-    sheet.getCell(`D${rowNum}`).value = 163077243
-    const empTotalRow = sheet.getRow(rowNum)
-    empTotalRow.font = { bold: true }
-    empTotalRow.border = {
-      top: { style: 'medium' },
-      bottom: { style: 'medium' },
-    }
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    // Note 19: Finance Cost
-    rowNum += 2
-    srNo++
-    sheet.getCell(`A${rowNum}`).value = srNo
-    sheet.getCell(`B${rowNum}`).value = 'Note 19: Finance Cost'
-    sheet.getRow(rowNum).font = { bold: true, underline: true }
-    sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Interest expense on :-'
-    sheet.getRow(rowNum).font = { italic: true }
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Borrowings'
-    sheet.getCell(`C${rowNum}`).value = 4254465 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 780004 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'Other borrowing Cost'
-    sheet.getCell(`C${rowNum}`).value = 1065780 // Dummy data
-    sheet.getCell(`D${rowNum}`).value = 1425241 // Dummy data
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    rowNum++
-    sheet.getCell(`B${rowNum}`).value = 'TOTAL...'
-    sheet.getCell(`C${rowNum}`).value = 5320245
-    sheet.getCell(`D${rowNum}`).value = 2205245
-    const financeTotalRow = sheet.getRow(rowNum)
-    financeTotalRow.font = { bold: true }
-    financeTotalRow.border = {
-      top: { style: 'medium' },
-      bottom: { style: 'medium' },
-    }
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-
-    // Note 20: Other Expenses
-    rowNum += 2
-    srNo++
-    sheet.getCell(`A${rowNum}`).value = srNo
-    sheet.getCell(`B${rowNum}`).value = 'Note 20: Other Expenses'
-    sheet.getRow(rowNum).font = { bold: true, underline: true }
-    sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
-
-    const otherExpenses = [
-      { name: 'Telephone & Internet Expenses', current: 123456, previous: 98765 },
-      { name: 'Bad Debts', current: 0, previous: 0 },
-      { name: 'Donation', current: 50000, previous: 25000 },
-      { name: 'Professional Fees', current: 2500000, previous: 1200000 },
-      { name: 'Audit Fees', current: 150000, previous: 0 },
-      { name: 'ROC Filling Fees', current: 50000, previous: 30000 },
-      { name: 'Conference & Seminar Expenses', current: 75000, previous: 50000 },
-      { name: 'Loss by Business Fraud', current: 0, previous: 0 },
-      { name: 'Advertisement', current: 200000, previous: 150000 },
-      { name: 'Insurance', current: 500000, previous: 400000 },
-      { name: 'Sub Contract Charges', current: 5000000, previous: 3000000 },
-      { name: 'Electricity Charges', current: 800000, previous: 600000 },
-      { name: 'Rent Expenses', current: 3000000, previous: 2500000 },
-      { name: 'Office Expenses', current: 1500000, previous: 1000000 },
-      { name: 'Printing & Stationery', current: 200000, previous: 150000 },
-      { name: 'Repairs & Maintenance', current: 500000, previous: 400000 },
-      { name: 'Travelling Expenses', current: 2000000, previous: 1500000 },
-      { name: 'Commission & Brokerage', current: 1000000, previous: 800000 },
-      { name: 'Business Promotion Expenses', current: 500000, previous: 300000 },
-      { name: 'Penalty, Interest and late Filing fees', current: 50000, previous: 30000 },
-      { name: 'Site Expenses', current: 10000000, previous: 8000000 },
-      { name: 'Postage & Courier', current: 50000, previous: 40000 },
-      { name: 'Registration & Renewal Fees', current: 100000, previous: 80000 },
-      { name: 'Misc Expenses', current: 2000000, previous: 1500000 },
-      { name: 'Computer Expenses', current: 500000, previous: 400000 },
-      { name: 'Consultancy Charges - Overseas', current: 0, previous: 500000 },
+    // Define Sections to Print in Order
+    const sections = [
+      { key: PL_KEYS.REVENUE_FROM_OPS, label: 'Note 15: Revenue from Operations' },
+      { key: PL_KEYS.OTHER_INCOME, label: 'Note 16: Other Income' },
+      { key: PL_KEYS.COST_OF_MATERIALS, label: 'Note 17: Cost of Materials Consumed' },
+      { key: PL_KEYS.EMPLOYEE_BENEFITS, label: 'Note 18: Employee Benefits Expense' },
+      { key: PL_KEYS.FINANCE_COSTS, label: 'Note 19: Finance Costs' },
+      { key: PL_KEYS.DEPRECIATION_AMORT, label: 'Note 9: Depreciation and Amortization' },
+      { key: PL_KEYS.OTHER_EXPENSES, label: 'Note 20: Other Expenses' },
     ]
 
-    otherExpenses.forEach((expense) => {
+    let noteIndex = 1
+
+    sections.forEach(section => {
+      const { key, label } = section
+      const sectionDataCur = schedCur[key] || {}
+      const sectionDataPrev = schedPrev[key] || {}
+
+      // Get all unique ledgers (union of current & previous)
+      const allLedgers = new Set([
+        ...Object.keys(sectionDataCur),
+        ...Object.keys(sectionDataPrev)
+      ])
+      const sortedLedgers = Array.from(allLedgers).sort()
+
+      // Section Header
+      sheet.getCell(`A${rowNum}`).value = noteIndex++
+      sheet.getCell(`B${rowNum}`).value = label
+      sheet.getRow(rowNum).font = { bold: true, underline: true, size: 11 }
+      sheet.getRow(rowNum).height = 20
+      sheet.getCell(`A${rowNum}`).alignment = { horizontal: 'center', vertical: 'middle' }
       rowNum++
-      sheet.getCell(`B${rowNum}`).value = expense.name
-      if (expense.current > 0) {
-        sheet.getCell(`C${rowNum}`).value = expense.current
-        sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-      } else {
+
+      if (sortedLedgers.length === 0) {
+        // Empty state
+        sheet.getCell(`B${rowNum}`).value = '(No entries)'
         sheet.getCell(`C${rowNum}`).value = '-'
-      }
-      if (expense.previous > 0) {
-        sheet.getCell(`D${rowNum}`).value = expense.previous
-        sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
-      } else {
         sheet.getCell(`D${rowNum}`).value = '-'
+        sheet.getCell(`C${rowNum}`).alignment = { horizontal: 'right' }
+        sheet.getCell(`D${rowNum}`).alignment = { horizontal: 'right' }
+        rowNum++
+      } else {
+        // Rows for each ledger
+        sortedLedgers.forEach(ledgerName => {
+          sheet.getCell(`B${rowNum}`).value = ledgerName
+          const valCur = sectionDataCur[ledgerName] || 0
+          const valPrev = sectionDataPrev[ledgerName] || 0
+
+          sheet.getCell(`C${rowNum}`).value = valCur === 0 ? '-' : valCur
+          sheet.getCell(`D${rowNum}`).value = valPrev === 0 ? '-' : valPrev
+
+          sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
+          sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
+          sheet.getCell(`C${rowNum}`).alignment = { horizontal: 'right' }
+          sheet.getCell(`D${rowNum}`).alignment = { horizontal: 'right' }
+
+          rowNum++
+        })
       }
+
+      // Total Row for Section
+      const totalCur = cur[key] || 0
+      const totalPrev = prev[key] || 0
+
+      sheet.getCell(`B${rowNum}`).value = 'TOTAL'
+      sheet.getCell(`C${rowNum}`).value = totalCur
+      sheet.getCell(`D${rowNum}`).value = totalPrev
+
+      const totalRow = sheet.getRow(rowNum)
+      totalRow.font = { bold: true }
+      totalRow.border = { top: { style: 'thin' }, bottom: { style: 'double' } }
+      totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } } // Very light gray
+
+      sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
+      sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
+      sheet.getCell(`C${rowNum}`).alignment = { horizontal: 'right' }
+      sheet.getCell(`D${rowNum}`).alignment = { horizontal: 'right' }
+
+      rowNum++
+      rowNum++ // Blank row after section
     })
 
-    rowNum++
-    const otherExpTotal = otherExpenses.reduce((sum, e) => sum + e.current, 0)
-    const prevOtherExpTotal = otherExpenses.reduce((sum, e) => sum + e.previous, 0)
-    sheet.getCell(`B${rowNum}`).value = 'TOTAL...'
-    sheet.getCell(`C${rowNum}`).value = otherExpTotal
-    sheet.getCell(`D${rowNum}`).value = prevOtherExpTotal
-    const otherExpTotalRow = sheet.getRow(rowNum)
-    otherExpTotalRow.font = { bold: true }
-    otherExpTotalRow.border = {
-      top: { style: 'medium' },
-      bottom: { style: 'medium' },
-    }
-    sheet.getCell(`C${rowNum}`).numFmt = '#,##0'
-    sheet.getCell(`D${rowNum}`).numFmt = '#,##0'
+    // Apply borders to the whole table
+    const lastRow = rowNum - 2
+    for (let r = 2; r <= lastRow; r++) {
+      // Skip blank rows if any (though we control rowNum)
+      const cellVal = sheet.getCell(`B${r}`).value
+      if (!cellVal && !sheet.getCell(`A${r}`).value) continue
 
-    // Right align numeric columns and center Sr No column
-    for (let i = 2; i <= rowNum; i++) {
-      // Center align Sr No column
-      const aCell = sheet.getCell(`A${i}`)
-      if (aCell.value) {
-        aCell.alignment = { horizontal: 'center', vertical: 'middle' }
-      }
-
-      // Right align numeric columns
-      const cCell = sheet.getCell(`C${i}`)
-      const dCell = sheet.getCell(`D${i}`)
-      if (cCell.value && typeof cCell.value === 'number') {
-        cCell.alignment = { horizontal: 'right', vertical: 'middle' }
-      }
-      if (dCell.value && typeof dCell.value === 'number') {
-        dCell.alignment = { horizontal: 'right', vertical: 'middle' }
-      }
+      sheet.getCell(`A${r}`).border = { ...sheet.getCell(`A${r}`).border, left: { style: 'thin' }, right: { style: 'thin' } }
+      sheet.getCell(`B${r}`).border = { ...sheet.getCell(`B${r}`).border, left: { style: 'thin' }, right: { style: 'thin' } }
+      sheet.getCell(`C${r}`).border = { ...sheet.getCell(`C${r}`).border, left: { style: 'thin' }, right: { style: 'thin' } }
+      sheet.getCell(`D${r}`).border = { ...sheet.getCell(`D${r}`).border, left: { style: 'thin' }, right: { style: 'thin' } }
     }
 
-    // Add table borders for P&L Sch sheet (from header row 1 to last data row)
-    const tableStartRow = 1
-    const tableEndRow = rowNum
+    // Freeze panes
+    sheet.views = [{ state: 'frozen', ySplit: 1, xSplit: 0, topLeftCell: 'A2', activeCell: 'A2' }]
 
-    // Apply borders to all cells in the table (columns A, B, C, D)
-    for (let row = tableStartRow; row <= tableEndRow; row++) {
-      const columns = ['A', 'B', 'C', 'D']
-      columns.forEach((col) => {
-        const cell = sheet.getCell(`${col}${row}`)
-
-        // Get existing border if any (preserve special borders like medium for totals)
-        const existingBorder = cell.border || {}
-
-        // Preserve existing top/bottom styles, but add left/right borders
-        const topStyle = existingBorder.top?.style || 'thin'
-        const bottomStyle = existingBorder.bottom?.style || 'thin'
-
-        // Set all borders, preserving special styles
-        cell.border = {
-          top: { style: topStyle },
-          bottom: { style: bottomStyle },
-          left: { style: 'thin' },
-          right: { style: 'thin' },
-        }
-      })
-    }
-
-    // Freeze header row and first column
-    sheet.views = [
-      {
-        state: 'frozen',
-        ySplit: 1, // Freeze row 1
-        xSplit: 1, // Freeze column A
-        topLeftCell: 'B2',
-        activeCell: 'B2',
-      },
-    ]
-
-    // Set print area and page setup
+    // Page Setup
     sheet.pageSetup = {
-      printArea: `A1:D${rowNum}`,
+      orientation: 'landscape',
       fitToPage: true,
       fitToWidth: 1,
-      fitToHeight: 0,
-      orientation: 'landscape',
       margins: {
-        left: 0.5,
-        right: 0.5,
-        top: 0.75,
-        bottom: 0.75,
-        header: 0.3,
-        footer: 0.3,
-      },
+        left: 0.5, right: 0.5, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3
+      }
     }
-
-    // Add header and footer for printing
     sheet.headerFooter = {
-      oddHeader: `&C&B&14${currentPeriod} - P&L Schedule`,
+      oddHeader: `&C&B&14${currentPeriod} - P&L Schedule Details`,
       oddFooter: '&C&P of &N',
     }
   }
 
   /**
-   * Generate filename based on period data
+   * Generate filename based on period data. Includes Client/State when filtered.
    */
   static generateFilename(periodData) {
-    let periodStr = ''
-    if (periodData.periodType === 'monthly') {
-      periodStr = `${periodData.monthName}_${periodData.year}`
-    } else if (periodData.periodType === 'quarterly') {
-      periodStr = `${periodData.quarter}_${periodData.year}`
-    } else {
-      periodStr = `FY_${periodData.year}_${periodData.year + 1}`
+    try {
+      let periodStr = ''
+      if (periodData.periodType === 'monthly') {
+        periodStr = `${(periodData.monthName || periodData.month || '').replace(/\s+/g, '_')}_${periodData.year}`
+      } else if (periodData.periodType === 'quarterly') {
+        periodStr = `Q${periodData.quarter || ''}_${periodData.year}`
+      } else {
+        periodStr = `FY_${periodData.year}_${(parseInt(periodData.year, 10) + 1) || ''}`
+      }
+      const parts = [`P&L_Report_${periodStr}`]
+      const client = periodData.clientName ?? periodData.client
+      const state = periodData.stateName ?? periodData.state
+      if (client && String(client).toLowerCase() !== 'all') {
+        parts.push(`Client_${String(client).replace(/\s+/g, '_').slice(0, 30)}`)
+      }
+      if (state && String(state).toLowerCase() !== 'all') {
+        parts.push(`State_${String(state).replace(/\s+/g, '_').slice(0, 20)}`)
+      }
+      return `${parts.join('_')}.xlsx`
+    } catch (e) {
+      console.error('PLReportExcelService: generateFilename error', e)
+      return `P&L_Report_${new Date().toISOString().slice(0, 10)}.xlsx`
     }
-    return `P&L_Report_${periodStr}.xlsx`
   }
 }
 

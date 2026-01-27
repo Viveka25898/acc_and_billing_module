@@ -388,6 +388,18 @@ const HKMaterialsExpenseLedgerPage = () => {
                   <th className="px-3 py-3 text-right text-xs font-semibold text-gray-700 uppercase">
                     Balance
                   </th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                    Cost Center
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                    Customer
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                    Site
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                    State
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -425,11 +437,23 @@ const HKMaterialsExpenseLedgerPage = () => {
                       <td className="px-3 py-3 text-sm text-right font-bold text-blue-700">
                         ₹{entry.balance}
                       </td>
+                      <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                        {entry.costCenter || '-'}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                        {entry.customer || '-'}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                        {entry.site || '-'}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                        {entry.state || '-'}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="px-3 py-8 text-center text-gray-500">
+                    <td colSpan="13" className="px-3 py-8 text-center text-gray-500">
                       No transactions found matching your criteria
                     </td>
                   </tr>
@@ -453,6 +477,7 @@ const HKMaterialsExpenseLedgerPage = () => {
                     <td className="px-3 py-4 text-right text-sm text-blue-800">
                       ₹{totals.closingBalance}
                     </td>
+                    <td colSpan="4" className="px-3 py-4"></td>
                   </tr>
                 </tfoot>
               )}

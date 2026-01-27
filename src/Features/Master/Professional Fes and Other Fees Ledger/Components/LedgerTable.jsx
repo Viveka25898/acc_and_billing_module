@@ -37,6 +37,15 @@ export const LedgerTable = ({ data, ledgerName }) => {
               <th className="px-2 py-3 text-left font-semibold uppercase tracking-wide">
                 Cost Center / Department
               </th>
+              <th className="px-2 py-3 text-left font-semibold uppercase tracking-wide">
+                Customer
+              </th>
+              <th className="px-2 py-3 text-left font-semibold uppercase tracking-wide">
+                Site
+              </th>
+              <th className="px-2 py-3 text-left font-semibold uppercase tracking-wide">
+                State
+              </th>
               <th className="px-2 py-3 text-right font-semibold uppercase tracking-wide">
                 Expense Amount (Dr)
               </th>
@@ -70,6 +79,9 @@ export const LedgerTable = ({ data, ledgerName }) => {
                         {item.costCenter}
                       </span>
                     </td>
+                    <td className="px-2 py-2 whitespace-nowrap">{item.customer || '-'}</td>
+                    <td className="px-2 py-2 whitespace-nowrap">{item.site || '-'}</td>
+                    <td className="px-2 py-2 whitespace-nowrap">{item.state || '-'}</td>
                     <td className="px-2 py-2 text-right font-semibold whitespace-nowrap">
                       ₹
                       {item.expenseAmount.toLocaleString('en-IN', {
@@ -91,7 +103,7 @@ export const LedgerTable = ({ data, ledgerName }) => {
 
                 {/* Total Row */}
                 <tr className="bg-gray-300 font-bold">
-                  <td colSpan="10" className="px-2 py-2 text-right pr-4">
+                  <td colSpan="13" className="px-2 py-2 text-right pr-4">
                     Total:
                   </td>
                   <td className="px-2 py-2 text-right">
@@ -114,7 +126,7 @@ export const LedgerTable = ({ data, ledgerName }) => {
               </>
             ) : (
               <tr>
-                <td colSpan="13" className="px-4 py-8 text-center text-gray-500">
+                <td colSpan="16" className="px-4 py-8 text-center text-gray-500">
                   No transactions found for this ledger
                 </td>
               </tr>

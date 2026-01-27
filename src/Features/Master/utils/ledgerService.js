@@ -61,7 +61,12 @@ export class LedgerService {
                         type: 'Transaction',
                         approvedBy: txn.approvedBy,
                         attachments: 0,
-                        costCenter: accountEntry.costCenter || 'General'
+                        costCenter: accountEntry.costCenter || txn.costCenter || 'General',
+                        customer: txn.customer || txn.clientName || '-',
+                        site: accountEntry.site || txn.site || '-',
+                        state: txn.state || '-',
+                        city: txn.city || '-',
+                        branch: txn.branch || '-'
                     });
                 }
             });

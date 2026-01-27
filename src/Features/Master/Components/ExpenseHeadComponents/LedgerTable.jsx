@@ -42,6 +42,9 @@ const LedgerTable = ({ transactions }) => {
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">GL Account</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cost Center</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Site</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">State</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Approved By</th>
             <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Attachments</th>
             <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
@@ -99,6 +102,15 @@ const LedgerTable = ({ transactions }) => {
               </td>
               <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
                 {transaction.costCenter}
+              </td>
+              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                {transaction.customer || '-'}
+              </td>
+              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                {transaction.site || '-'}
+              </td>
+              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                {transaction.state || '-'}
               </td>
               <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
                 {transaction.approvedBy}

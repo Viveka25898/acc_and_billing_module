@@ -64,6 +64,12 @@ const ClientLedgerTable = ({ transactions }) => {
                 Cost Center
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Site
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                State
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Approved By
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -110,6 +116,12 @@ const ClientLedgerTable = ({ transactions }) => {
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                   {transaction.costCenter}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                  {transaction.site || '-'}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                  {transaction.state || '-'}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                   <div className="flex items-center gap-1">

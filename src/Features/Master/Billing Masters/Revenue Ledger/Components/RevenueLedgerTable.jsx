@@ -72,6 +72,15 @@ const RevenueLedgerTable = ({ transactions }) => {
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Cost Center
               </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Customer
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Site
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                State
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -140,6 +149,15 @@ const RevenueLedgerTable = ({ transactions }) => {
                 <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                   {transaction.costCenter}
                 </td>
+                <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                  {transaction.customer || '-'}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                  {transaction.site || '-'}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                  {transaction.state || '-'}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -202,6 +220,18 @@ const RevenueLedgerTable = ({ transactions }) => {
               <div>
                 <span className="text-gray-500">Cost Center: </span>
                 <span className="text-gray-700">{transaction.costCenter}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Customer: </span>
+                <span className="text-gray-700">{transaction.customer || '-'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Site: </span>
+                <span className="text-gray-700">{transaction.site || '-'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">State: </span>
+                <span className="text-gray-700">{transaction.state || '-'}</span>
               </div>
               <div>
                 <span className="text-gray-500">Approved: </span>

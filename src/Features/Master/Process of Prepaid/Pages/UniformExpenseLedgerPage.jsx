@@ -90,7 +90,11 @@ const UniformExpenseLedgerPage = () => {
     balance: entry.balance,
     counterparty: entry.counterparty,
     approvedBy: entry.approvedBy,
-    status: entry.status
+    status: entry.status,
+    costCenter: entry.costCenter || '-',
+    customer: entry.customer || '-',
+    site: entry.site || '-',
+    state: entry.state || '-'
   }));
 
   return (

@@ -14,6 +14,9 @@ const ESICLedgerTable = ({ transactions }) => {
                 'Voucher No',
                 'Cost Center',
                 'Department',
+                'Customer',
+                'Site',
+                'State',
                 'Counterparty Ledger',
                 'Approved By',
                 'Payment Method',
@@ -47,6 +50,9 @@ const ESICLedgerTable = ({ transactions }) => {
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.costCenter}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.department}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{transaction.customer || '-'}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{transaction.site || '-'}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{transaction.state || '-'}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">
                   {transaction.counterpartyLedger}
                 </td>

@@ -1,10 +1,14 @@
-import React, { useState } from 'react'
-import { FiDownload, FiCalendar } from 'react-icons/fi'
+import React, { useState, useEffect } from 'react'
+import { FiDownload, FiCalendar, FiFileText } from 'react-icons/fi'
 import PLReportExcelService from '../Services/PLReportExcelService'
 
-const ReportCard = ({ title, description, onOpen, selectedPeriod, reportType }) => {
+const ReportCard = ({ title, description, onOpen, onView, selectedPeriod, reportType }) => {
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState(null)
+
+  useEffect(() => {
+    if (selectedPeriod) setDownloadError(null)
+  }, [selectedPeriod])
 
   const handleOpen = () => {
     try {
@@ -96,23 +100,33 @@ const ReportCard = ({ title, description, onOpen, selectedPeriod, reportType }) 
               </div>
             )}
 
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {downloading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  <span>Generating Excel...</span>
-                </>
-              ) : (
-                <>
-                  <FiDownload className="w-4 h-4" />
-                  <span>Download Excel Report</span>
-                </>
-              )}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => onView(selectedPeriod)}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center gap-2"
+              >
+                <FiFileText className="w-4 h-4" />
+                <span>View Report</span>
+              </button>
+
+              <button
+                onClick={handleDownload}
+                disabled={downloading}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {downloading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiDownload className="w-4 h-4" />
+                    <span>Download Excel</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>

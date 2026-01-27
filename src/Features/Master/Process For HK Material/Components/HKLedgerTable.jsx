@@ -56,7 +56,15 @@ const HKLedgerTable = ({ entries = [] }) => {
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[130px]">
               Cost Center
             </th>
-            
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[140px]">
+              Customer
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[130px]">
+              Site
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
+              State
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -134,12 +142,20 @@ const HKLedgerTable = ({ entries = [] }) => {
                 <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
                   {e.costCenter}
                 </td>
-               
+                <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
+                  {e.customer || '-'}
+                </td>
+                <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
+                  {e.site || '-'}
+                </td>
+                <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
+                  {e.state || '-'}
+                </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="14" className="px-3 py-8 text-center text-gray-500">
+              <td colSpan="17" className="px-3 py-8 text-center text-gray-500">
                 No entries found
               </td>
             </tr>

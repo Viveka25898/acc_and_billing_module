@@ -72,7 +72,12 @@ export class HKMaterialLedgerService {
             type: txn.vendorType || (entryType === 'Invoice' ? 'HK Material Invoice' : entryType === 'Payment' ? 'HK Material Payment' : 'Journal'),
             approvedBy: txn.approvedBy || 'System',
             attachments: vendorEntry.attachments || 0,
-            costCenter: vendorEntry.costCenter || expenseEntry?.costCenter || 'Operations',
+            costCenter: vendorEntry.costCenter || expenseEntry?.costCenter || txn.costCenter || 'Operations',
+            customer: txn.customer || txn.clientName || '-',
+            site: vendorEntry.site || expenseEntry?.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             status: txn.status || 'Posted',
             invoiceNumber: txn.invoiceNumber || '-'
           });

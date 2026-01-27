@@ -161,6 +161,12 @@ export class RealLedgerService {
                     certificateNo: `TDS${txn.voucherNo?.replace(/\D/g, '').slice(-6) || '000000'}`,
                     expenseCategory: expenseEntry?.glName || 'Expense',
                     expenseGLCode: expenseEntry?.glCode || '-',
+                    costCenter: tdsEntry.costCenter || expenseEntry?.costCenter || txn.costCenter || 'General',
+                    customer: txn.customer || txn.clientName || '-',
+                    site: tdsEntry.site || expenseEntry?.site || txn.site || '-',
+                    state: txn.state || '-',
+                    city: txn.city || '-',
+                    branch: txn.branch || '-',
                     approvedBy: txn.approvedBy || 'System',
                     narration: tdsEntry.narration || txn.narration || ''
                 });
@@ -579,7 +585,12 @@ export class RealLedgerService {
                     counterparty: counterpartyEntry?.glName || 'Unknown',
                     counterpartyGL: counterpartyEntry?.glCode || '-',
                     approvedBy: txn.approvedBy || 'System',
-                    costCenter: accountEntry.costCenter || 'General',
+                    costCenter: accountEntry.costCenter || txn.costCenter || 'General',
+                    customer: txn.customer || txn.clientName || '-',
+                    site: accountEntry.site || txn.site || '-',
+                    state: txn.state || '-',
+                    city: txn.city || '-',
+                    branch: txn.branch || '-',
                     status: txn.status || 'Posted',
                     section: txn.meta?.tdsSection || '-',
                     tdsRate: txn.meta?.tdsRate ? `${txn.meta.tdsRate}%` : '-',
@@ -668,7 +679,18 @@ export class RealLedgerService {
                     dueStatus: 'pending',
                     attachments: 0,
                     section: txn.meta?.tdsSection || '194C',
-                    invoiceNumber: txn.invoiceNumber || '-'
+                    invoiceNumber: txn.invoiceNumber || '-',
+                    costCenter: tdsEntry.costCenter || expenseEntry?.costCenter || txn.costCenter || 'General',
+                    customer: txn.customer || txn.clientName || '-',
+                    site: tdsEntry.site || expenseEntry?.site || txn.site || '-',
+                    state: txn.state || '-',
+                    city: txn.city || '-',
+                    branch: txn.branch || '-',
+                    customer: txn.customer || txn.clientName || '-',
+                    site: tdsEntry.site || expenseEntry?.site || txn.site || '-',
+                    state: txn.state || '-',
+                    city: txn.city || '-',
+                    branch: txn.branch || '-'
                 });
             });
 

@@ -81,6 +81,18 @@ const TDSLedgerTable = ({ entries }) => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Due Date
               </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Cost Center
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Customer
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Site
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                State
+              </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Attachments
               </th>
@@ -152,6 +164,18 @@ const TDSLedgerTable = ({ entries }) => {
                   <div className={`text-xs font-semibold ${getDueDateClass(entry.dueStatus)}`}>
                     {entry.dueDate} {entry.dueStatus === 'overdue' && '(Overdue)'}
                   </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  {entry.costCenter || '-'}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  {entry.customer || '-'}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  {entry.site || '-'}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  {entry.state || '-'}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
                   {entry.attachments > 0 ? (

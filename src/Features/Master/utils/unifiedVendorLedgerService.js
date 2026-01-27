@@ -93,13 +93,17 @@ export class UnifiedVendorLedgerService {
                     counterpartyGL: expenseEntry?.glCode || '-',
                     expenseCategory: this.categorizeExpense(expenseEntry?.glCode),
                     approvedBy: txn.approvedBy || 'System',
-                    costCenter: vendorEntry.costCenter || expenseEntry?.costCenter || 'General',
+                    costCenter: vendorEntry.costCenter || expenseEntry?.costCenter || txn.costCenter || 'General',
+                    customer: txn.customer || txn.clientName || '-',
+                    site: relatedInvoice?.site || txn.siteDetails?.siteName || vendorEntry.site || expenseEntry?.site || txn.site || '-',
+                    state: txn.state || '-',
+                    city: txn.city || '-',
+                    branch: txn.branch || '-',
                     status: txn.status || 'Posted',
                     attachments: relatedInvoice?.poDocuments?.length || 0,
                     remarks: txn.remarks || relatedInvoice?.amRemarks || relatedInvoice?.bmRemarks || '',
                     // Additional details from invoice
                     gstRate: relatedInvoice?.gstRate || '-',
-                    site: relatedInvoice?.site || txn.siteDetails?.siteName || '-',
                     assetTag: relatedInvoice?.assetDetails?.assetTag || '-',
                     month: relatedInvoice?.month || this.extractMonth(txn)
                 });

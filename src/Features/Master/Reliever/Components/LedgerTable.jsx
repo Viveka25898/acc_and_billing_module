@@ -67,6 +67,12 @@ const LedgerTable = ({ transactions }) => {
               <th className="px-3 py-3 md:px-4 md:py-4 text-left font-semibold uppercase tracking-wider text-xs">
                 Site
               </th>
+              <th className="px-3 py-3 md:px-4 md:py-4 text-left font-semibold uppercase tracking-wider text-xs">
+                Customer
+              </th>
+              <th className="px-3 py-3 md:px-4 md:py-4 text-left font-semibold uppercase tracking-wider text-xs">
+                State
+              </th>
               <th className="px-3 py-3 md:px-4 md:py-4 text-center font-semibold uppercase tracking-wider text-xs">
                 Days
               </th>
@@ -151,6 +157,12 @@ const LedgerTable = ({ transactions }) => {
                   ) : (
                     '-'
                   )}
+                </td>
+                <td className="px-3 py-3 md:px-4 md:py-4 text-sm text-gray-700">
+                  {transaction.customer || '-'}
+                </td>
+                <td className="px-3 py-3 md:px-4 md:py-4 text-sm text-gray-700">
+                  {transaction.state || '-'}
                 </td>
                 <td className="px-3 py-3 md:px-4 md:py-4 text-center whitespace-nowrap">
                   {transaction.days}

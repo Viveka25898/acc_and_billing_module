@@ -1,23 +1,40 @@
 /* eslint-disable no-unsafe-finally */
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import SearchBar from '../Components/SearchBar'
 import ReportTabs from '../Components/ReportTabs'
 import SystemDataAnalyzer from '../utils/SystemDataAnalyzer'
+import { analyzeTransactionData } from '../Services/PLReportDataService'
 
 const ReportsDashboard = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
 
+  const navigate = useNavigate()
+
+  const handleViewReport = (periodData) => {
+    if (periodData) {
+      navigate('/reports/pnl-view', { state: { periodData } })
+    }
+  }
+
+  // Effect to load data
   useEffect(() => {
     let mounted = true
     const load = async () => {
       try {
         setLoading(true)
-        
+
         // Analyze system data (vendors, clients, states)
         SystemDataAnalyzer.printSystemSummary()
-        
+
+        // Analyze transaction data completeness and filtering
+        // To analyze with a specific period and filters, pass an object like:
+        // analyzeTransactionData({ month: 1, year: 2025, clientName: 'All', stateName: 'All' })
+        console.log('\n\n')
+        analyzeTransactionData() // Analyzes all transactions without filtering
+
         // Simulate async load (e.g., available reports, user permissions)
         await new Promise((r) => setTimeout(r, 300))
         if (!mounted) return
@@ -68,7 +85,7 @@ const ReportsDashboard = () => {
           ) : error ? (
             <div className="py-8 text-center text-red-600">{error}</div>
           ) : (
-            <ReportTabs initial={searchTerm ? 'pnl' : 'pnl'} />
+            <ReportTabs initial={searchTerm ? 'pnl' : 'pnl'} onView={handleViewReport} />
           )}
         </div>
       </div>

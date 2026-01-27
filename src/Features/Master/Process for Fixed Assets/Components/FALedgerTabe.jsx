@@ -44,6 +44,10 @@ export const FALedgerTable = ({ entries = [] }) => {
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[130px]">Voucher No</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[120px]">Asset Tag</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[200px]">Description</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[160px]">Customer</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[140px]">Site</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[120px]">State</th>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[140px]">Cost Center</th>
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[120px]">Entry Type</th>
             <th className="px-3 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[130px]">Purchase (₹)</th>
             <th className="px-3 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap min-w-[130px]">Depreciation (₹)</th>
@@ -76,6 +80,10 @@ export const FALedgerTable = ({ entries = [] }) => {
                   <td className="px-3 py-3 text-sm text-gray-700 max-w-[220px]">
                     <div className="break-words font-medium">{e.assetDescription}</div>
                   </td>
+                  <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">{e.customer || '-'}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">{e.site || '-'}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">{e.state || '-'}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">{e.costCenter || '-'}</td>
                   <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getEntryTypeClass(e.entryType)}`}>{e.entryType}</span>
                   </td>
@@ -102,7 +110,7 @@ export const FALedgerTable = ({ entries = [] }) => {
                 
                 {expandedRows.has(i) && (
                   <tr className="bg-gray-50">
-                    <td colSpan="11" className="px-6 py-4">
+                    <td colSpan="15" className="px-6 py-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                         <div className="space-y-2">
                           <h4 className="font-semibold text-gray-700 border-b pb-1">Asset Details</h4>
@@ -112,6 +120,10 @@ export const FALedgerTable = ({ entries = [] }) => {
                             <p><span className="font-medium">Serial Number:</span> <span className="font-mono text-xs">{e.serialNumber}</span></p>
                             <p><span className="font-medium">Location:</span> {e.location}</p>
                             <p><span className="font-medium">Warranty:</span> {e.warranty}</p>
+                            <p><span className="font-medium">Customer:</span> {e.customer || '-'}</p>
+                            <p><span className="font-medium">Site:</span> {e.site || '-'}</p>
+                            <p><span className="font-medium">State:</span> {e.state || '-'}</p>
+                            <p><span className="font-medium">Cost Center:</span> {e.costCenter || '-'}</p>
                           </div>
                         </div>
                         
@@ -133,7 +145,6 @@ export const FALedgerTable = ({ entries = [] }) => {
                             <p><span className="font-medium">Vendor:</span> {e.vendor}</p>
                             <p><span className="font-medium">Invoice No:</span> {e.invoiceNo}</p>
                             <p><span className="font-medium">Department:</span> {e.department}</p>
-                            <p><span className="font-medium">Cost Center:</span> {e.costCenter}</p>
                             <p><span className="font-medium">Custodian:</span> {e.custodian}</p>
                             <p><span className="font-medium">Insurance:</span> {e.insurance}</p>
                             <p><span className="font-medium">AMC Status:</span> {e.amcStatus}</p>
@@ -160,7 +171,7 @@ export const FALedgerTable = ({ entries = [] }) => {
             ))
           ) : (
             <tr>
-              <td colSpan="11" className="px-3 py-8 text-center text-gray-500">No fixed asset entries found</td>
+              <td colSpan="15" className="px-3 py-8 text-center text-gray-500">No fixed asset entries found</td>
             </tr>
           )}
         </tbody>

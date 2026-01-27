@@ -81,7 +81,12 @@ export class HKMaterialsExpenseLedgerService {
                         narration: expenseEntry.narration || txn.narration || '',
                         vendorName: vendorName,
                         invoiceNumber: txn.invoiceNumber || '-',
-                        costCenter: expenseEntry.costCenter || 'Operations',
+                        costCenter: expenseEntry.costCenter || txn.costCenter || 'Operations',
+                        customer: txn.customer || txn.clientName || '-',
+                        site: expenseEntry.site || txn.site || '-',
+                        state: txn.state || '-',
+                        city: txn.city || '-',
+                        branch: txn.branch || '-',
                         status: txn.status || 'Posted',
                         approvedBy: txn.approvedBy || 'System'
                     });

@@ -20,6 +20,10 @@ const UniformLedgerTable = ({ data }) => {
               "Months",
               "Monthly Amort. (₹)",
               "Counterparty",
+              "Customer",
+              "Site",
+              "State",
+              "Cost Center",
               "Approved By",
             ].map((heading) => (
               <th
@@ -64,13 +68,17 @@ const UniformLedgerTable = ({ data }) => {
                   {entry.monthlyAmort}
                 </td>
                 <td className="px-4 py-2">{entry.counterparty || "—"}</td>
-                <td className="px-4 py-2">{entry.approvedBy}</td>
+                <td className="px-4 py-2">{entry.customer || '-'}</td>
+                <td className="px-4 py-2">{entry.site || '-'}</td>
+                <td className="px-4 py-2">{entry.state || '-'}</td>
+                <td className="px-4 py-2">{entry.costCenter || '-'}</td>
+                <td className="px-4 py-2">{entry.approvedBy || '-'}</td>
               </tr>
             ))
           ) : (
             <tr>
               <td
-                colSpan="14"
+                colSpan="18"
                 className="text-center text-gray-500 py-6 italic"
               >
                 No records found

@@ -63,7 +63,12 @@ export class RentLedgerService {
             type: txn.vendorType || (credit > 0 ? 'Rent Invoice' : 'Rent Payment'),
             approvedBy: txn.approvedBy,
             attachments: vendorEntry.attachments || 0,
-            costCenter: vendorEntry.costCenter || 'General',
+            costCenter: vendorEntry.costCenter || txn.costCenter || 'General',
+            customer: txn.customer || txn.clientName || '-',
+            site: vendorEntry.site || txn.siteDetails?.siteName || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             siteName: txn.siteDetails?.siteName,
             month: txn.rentVoucherId ? this.extractMonthFromVoucher(txn.rentVoucherId) : ''
           });
@@ -128,8 +133,13 @@ export class RentLedgerService {
             type: 'Rent Expense',
             approvedBy: txn.approvedBy,
             attachments: 0,
-            costCenter: rentEntry.costCenter || 'General',
-            siteName: txn.siteDetails?.siteName,
+            costCenter: rentEntry.costCenter || txn.costCenter || 'General',
+            customer: txn.customer || txn.clientName || '-',
+            site: rentEntry.site || txn.siteDetails?.siteName || txn.site || '-',
+            siteName: txn.siteDetails?.siteName || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             month: txn.rentVoucherId ? this.extractMonthFromVoucher(txn.rentVoucherId) : '',
             vendorGL: vendorEntry?.glCode
           });

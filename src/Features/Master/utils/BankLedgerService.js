@@ -126,7 +126,12 @@ export class BankLedgerService {
             valueDate: this.formatDate(txn.date),
             tdsDetails: this.getTDSDetails(otherEntry),
             status: 'posted',
-            costCenter: bankEntry.costCenter || 'Head Office',
+            costCenter: bankEntry.costCenter || txn.costCenter || 'Head Office',
+            customer: txn.customer || txn.clientName || '-',
+            site: bankEntry.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             rowClass: entryType === 'payment' ? 'bg-red-50' : 'bg-green-50'
           });
         }

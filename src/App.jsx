@@ -18,6 +18,7 @@ import { initializeRentOnMachineryRevenueLedger } from './Features/Master/Billin
 import { initializeManpowerServicesRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/manpowerServicesRevenueData'
 import { initializePestControlRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/pestControlRevenueData'
 import { initializeRoundOffRevenueLedger } from './Features/Master/Billing Masters/Revenue Ledger/data/roundOffRevenueData'
+import { TransactionEnrichmentService } from './Features/Reports/utils/TransactionEnrichmentService'
 
 function App() {
   // Application Version for Migration Management
@@ -157,6 +158,16 @@ function App() {
 
   // Local Storage Initialization - Enhanced with Accounting Modules
   useEffect(() => {
+    // Enrich transactions with billing data (client, site, state, costCenter)
+    try {
+      const { TransactionEnrichmentService } = require('./Features/Reports/utils/TransactionEnrichmentService')
+      const enrichmentResult = TransactionEnrichmentService.enrichAllTransactions()
+      if (enrichmentResult.success) {
+        console.log(`✅ Transactions enriched: ${enrichmentResult.enriched}/${enrichmentResult.total}`)
+      }
+    } catch (error) {
+      console.warn('⚠️ Transaction enrichment skipped:', error.message)
+    }
     try {
       // Check version and handle migrations
       const storedVersion = localStorage.getItem('appVersion')
@@ -178,6 +189,18 @@ function App() {
           position: 'top-center',
           autoClose: 2000,
         })
+      }
+
+      // ========================================
+      // 0.5. ENRICH TRANSACTIONS WITH BILLING DATA
+      // ========================================
+      try {
+        const enrichmentResult = TransactionEnrichmentService.enrichAllTransactions()
+        if (enrichmentResult.success && enrichmentResult.enriched > 0) {
+          console.log(`✅ Transactions enriched: ${enrichmentResult.enriched}/${enrichmentResult.total} transactions`)
+        }
+      } catch (error) {
+        console.warn('⚠️ Transaction enrichment skipped:', error.message)
       }
 
       // ========================================

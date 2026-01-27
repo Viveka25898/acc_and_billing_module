@@ -22,6 +22,9 @@ const GSTLedgerTable = ({ ledger }) => {
             <th className="border px-3 py-2 text-center">Counterparty</th>
             <th className="border px-3 py-2 text-center">Ref No</th>
             <th className="border px-3 py-2 text-center">Cost Center</th>
+            <th className="border px-3 py-2 text-center">Customer</th>
+            <th className="border px-3 py-2 text-center">Site</th>
+            <th className="border px-3 py-2 text-center">State</th>
             <th className="border px-3 py-2 text-center">Approved By</th>
             <th className="border px-3 py-2 text-center">Attachments</th>
             <th className="border px-3 py-2 text-center">Status</th>
@@ -42,7 +45,7 @@ const GSTLedgerTable = ({ ledger }) => {
             <td className="border px-3 py-2 text-right text-gray-800">
               {ledger.openingBalance || "₹0.00"}
             </td>
-            <td colSpan="6" className="border px-3 py-2 text-center text-gray-500 italic">
+            <td colSpan="9" className="border px-3 py-2 text-center text-gray-500 italic">
               Balance carried forward
             </td>
           </tr>
@@ -65,6 +68,9 @@ const GSTLedgerTable = ({ ledger }) => {
               <td className="border px-3 py-2 text-center text-gray-600">{entry.counterparty}</td>
               <td className="border px-3 py-2 text-center text-gray-600">{entry.refNo}</td>
               <td className="border px-3 py-2 text-center text-gray-600">{entry.costCenter}</td>
+              <td className="border px-3 py-2 text-center text-gray-600">{entry.customer || '-'}</td>
+              <td className="border px-3 py-2 text-center text-gray-600">{entry.site || '-'}</td>
+              <td className="border px-3 py-2 text-center text-gray-600">{entry.state || '-'}</td>
               <td className="border px-3 py-2 text-center text-gray-600">{entry.approvedBy}</td>
               <td className="border px-3 py-2 text-center text-blue-500 cursor-pointer hover:underline">
                 📎 ({entry.attachments})

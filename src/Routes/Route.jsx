@@ -160,6 +160,7 @@ import AccountManagerDashboard from '../Roles/Account Manager/Pages/AccountManag
 import AccountManagerHome from '../Roles/Account Manager/Components/AccountManagerHome'
 
 import ReportsDashboard from '../Features/Reports/Pages/ReportsDashboard'
+import PLReportPage from '../Features/Reports/ProfitAndLossReports/Pages/PLReportPage'
 import AMInvoiceReviewPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerInvoiceReviewPage'
 import AMInvoiceApproval from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage'
 import AMFixedAssetEntryPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage'
@@ -1221,5 +1222,14 @@ export const router = createBrowserRouter([
       },
       // =================================================================
     ],
+  },
+  // Reports View Route
+  {
+    path: '/reports/pnl-view',
+    element: (
+      <ProtectedRoute allowedRoles={['account-manager', 'admin', 'vp-operations', 'line-manager', 'biiling-manager']}>
+        <PLReportPage />
+      </ProtectedRoute>
+    ),
   },
 ])

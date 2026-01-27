@@ -115,7 +115,12 @@ export class UnifiedFeesService {
                     tdsRate: txn.meta?.tdsRate ? `${txn.meta.tdsRate}%` : '-',
                     tdsSection: txn.meta?.tdsSection || '-',
                     approvedBy: txn.approvedBy || 'System',
-                    costCenter: feeEntry.costCenter || 'General',
+                    costCenter: feeEntry.costCenter || txn.costCenter || 'General',
+                    customer: txn.customer || txn.clientName || '-',
+                    site: feeEntry.site || txn.site || '-',
+                    state: txn.state || '-',
+                    city: txn.city || '-',
+                    branch: txn.branch || '-',
                     status: txn.status || 'Posted',
                     remarks: txn.remarks || ''
                 });

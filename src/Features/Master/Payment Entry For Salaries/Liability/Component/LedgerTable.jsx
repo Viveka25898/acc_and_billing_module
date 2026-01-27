@@ -31,6 +31,9 @@ const LiabilityLedgerTable = ({ transactions }) => {
                 'Voucher No',
                 'Cost Center',
                 'Department',
+                'Customer',
+                'Site',
+                'State',
                 'Reference Doc',
                 'Narration',
                 'Batch',
@@ -83,6 +86,15 @@ const LiabilityLedgerTable = ({ transactions }) => {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                     {transaction.department || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.customer || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.site || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {transaction.state || '-'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 font-mono whitespace-nowrap">
                     {transaction.referenceDocNo || '-'}

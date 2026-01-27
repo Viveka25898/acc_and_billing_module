@@ -31,6 +31,9 @@ const RentLedgerRow = ({ entry }) => {
         </a>
       </td>
       <td className="border p-2">{entry.costCenter}</td>
+      <td className="border p-2">{entry.customer || '-'}</td>
+      <td className="border p-2">{entry.site || entry.siteName || '-'}</td>
+      <td className="border p-2">{entry.state || '-'}</td>
       <td className="border p-2 text-center">
         <span
           className={`px-2 py-0.5 rounded text-[11px] font-semibold ${badgeStyles[entry.status]}`}

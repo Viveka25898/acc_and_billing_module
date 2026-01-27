@@ -72,7 +72,12 @@ export class PrepaidUniformLedgerService {
             type: txn.vendorType || (entryType === 'Invoice' ? 'Prepaid Uniform Invoice' : entryType === 'Payment' ? 'Prepaid Uniform Payment' : 'Journal'),
             approvedBy: txn.approvedBy || 'System',
             attachments: vendorEntry.attachments || 0,
-            costCenter: vendorEntry.costCenter || prepaidEntry?.costCenter || 'Operations',
+            costCenter: vendorEntry.costCenter || prepaidEntry?.costCenter || txn.costCenter || 'Operations',
+            customer: txn.customer || txn.clientName || '-',
+            site: vendorEntry.site || prepaidEntry?.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             status: txn.status || 'Posted',
             invoiceNumber: txn.invoiceNumber || '-',
             prepaidPeriod: txn.prepaidDetails?.prepaidPeriod || prepaidEntry?.prepaidPeriod || '-',
@@ -260,6 +265,12 @@ export class PrepaidUniformLedgerService {
             expenseAccount: expenseEntry?.glName || 'X2-UNIFORM EXPENSE',
             assetCode: `AST-UNIF-${txn.id?.slice(-6) || 'N/A'}`,
             paymentMethod: '-',
+            costCenter: prepaidEntry.costCenter || txn.costCenter || '-',
+            customer: txn.customer || txn.clientName || '-',
+            site: prepaidEntry.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
             approvedBy: txn.approvedBy || invoice?.processedByBM || 'System',
             status: txn.status || invoice?.billingManagerStatus || 'Approved',
             remarks: prepaidEntry.narration || txn.narration || '',
@@ -313,6 +324,22 @@ export class PrepaidUniformLedgerService {
       expenseTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       console.log(`📋 Found ${expenseTransactions.length} Uniform Expense transactions`);
+      
+      if (expenseTransactions.length === 0) {
+        console.warn(`⚠️ No transactions found for Uniform Expense (${accountCode}). Checking all transactions...`);
+        const allTransactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        const transactionsWithX2001004 = allTransactions.filter(txn =>
+          txn.entries?.some(entry => entry.glCode === accountCode)
+        );
+        console.log(`📊 Total transactions with ${accountCode}: ${transactionsWithX2001004.length}`);
+        if (transactionsWithX2001004.length > 0) {
+          console.log(`⚠️ Found ${transactionsWithX2001004.length} transactions with ${accountCode}, but none have debit > 0`);
+          transactionsWithX2001004.slice(0, 3).forEach(txn => {
+            const entry = txn.entries.find(e => e.glCode === accountCode);
+            console.log(`  - ${txn.voucherNo}: debit=${entry?.debit || 0}, credit=${entry?.credit || 0}`);
+          });
+        }
+      }
 
       // Convert to ledger entries
       const ledgerEntries = [];
@@ -354,7 +381,12 @@ export class PrepaidUniformLedgerService {
             status: txn.status || 'Posted',
             refNo: txn.invoiceNumber || txn.id,
             narration: expenseEntry.narration || txn.narration || '',
-            costCenter: expenseEntry.costCenter || 'Operations'
+            costCenter: expenseEntry.costCenter || prepaidEntry?.costCenter || txn.costCenter || 'Operations',
+            customer: txn.customer || txn.clientName || '-',
+            site: expenseEntry.site || prepaidEntry?.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-'
           });
         }
       });

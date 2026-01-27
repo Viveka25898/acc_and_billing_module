@@ -136,6 +136,12 @@ const ConveyancePayblePage = () => {
               !!conveyanceRequest?.reports?.length || !!conveyanceRequest?.receipts?.length,
             status: txn.status || 'posted',
             rowClass: credit > 0 ? 'expense-row' : 'payment-row',
+            costCenter: payableEntry.costCenter || expenseEntry?.costCenter || txn.costCenter || '-',
+            customer: txn.customer || txn.clientName || '-',
+            site: payableEntry.site || expenseEntry?.site || txn.site || '-',
+            state: txn.state || '-',
+            city: txn.city || '-',
+            branch: txn.branch || '-',
           })
         }
       })

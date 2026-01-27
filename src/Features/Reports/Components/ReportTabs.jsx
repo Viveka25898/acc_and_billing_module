@@ -4,12 +4,12 @@ import MonthSelectionModal from './MonthSelectionModal'
 import QuarterSelectionModal from './QuarterSelectionModal'
 import YearSelectionModal from './YearSelectionModal'
 
-const ReportTabs = ({ initial = 'pnl' }) => {
+const ReportTabs = ({ initial = 'pnl', onView }) => {
   const [active, setActive] = useState(initial)
   const [monthModalOpen, setMonthModalOpen] = useState(false)
   const [quarterModalOpen, setQuarterModalOpen] = useState(false)
   const [yearModalOpen, setYearModalOpen] = useState(false)
-  
+
   // Track selected periods for each report type
   const [selectedPeriods, setSelectedPeriods] = useState({
     monthly: null,
@@ -76,31 +76,28 @@ const ReportTabs = ({ initial = 'pnl' }) => {
       <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => setActive('pnl')}
-          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${
-            active === 'pnl'
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'pnl'
               ? 'bg-green-600 text-white shadow-md'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
+            }`}
         >
           Profit & Loss
         </button>
         <button
           onClick={() => setActive('bs')}
-          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${
-            active === 'bs'
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'bs'
               ? 'bg-green-600 text-white shadow-md'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
+            }`}
         >
           Balance Sheet
         </button>
         <button
           onClick={() => setActive('cash')}
-          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${
-            active === 'cash'
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'cash'
               ? 'bg-green-600 text-white shadow-md'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
+            }`}
         >
           Cashflow
         </button>
@@ -115,6 +112,7 @@ const ReportTabs = ({ initial = 'pnl' }) => {
               onOpen={() => openReport('monthly-pnl')}
               selectedPeriod={selectedPeriods.monthly}
               reportType="monthly"
+              onView={onView}
             />
             <ReportCard
               title="Quarterly P&L"
@@ -122,6 +120,7 @@ const ReportTabs = ({ initial = 'pnl' }) => {
               onOpen={() => openReport('quarterly-pnl')}
               selectedPeriod={selectedPeriods.quarterly}
               reportType="quarterly"
+              onView={onView}
             />
             <ReportCard
               title="Yearly P&L"
@@ -129,6 +128,7 @@ const ReportTabs = ({ initial = 'pnl' }) => {
               onOpen={() => openReport('yearly-pnl')}
               selectedPeriod={selectedPeriods.yearly}
               reportType="yearly"
+              onView={onView}
             />
           </div>
         )}

@@ -30,49 +30,59 @@ const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
     { value: '12', label: 'December' },
   ]
 
-  // Load clients and states from localStorage
+  // Load clients and states from localStorage (merged from billing and transactions)
   useEffect(() => {
     try {
-      // Load clients from clientLedgers
-      const clientLedgers = JSON.parse(localStorage.getItem('clientLedgers') || '{}')
-      const clientList = Object.keys(clientLedgers)
-        .map((code) => {
-          const ledger = clientLedgers[code]
-          return {
-            code,
-            name: ledger?.ledgerDetails?.clientName || ledger?.name || code,
-          }
-        })
-        .sort((a, b) => a.name.localeCompare(b.name))
-
-      setClients(clientList)
-
-      // Load states - try from sites or use common Indian states
-      const sites = JSON.parse(localStorage.getItem('sites') || '[]')
-      const stateSet = new Set()
-      
-      sites.forEach((site) => {
-        if (site.state) stateSet.add(site.state)
+      // --- Clients ---
+      // From billing (chartOfAccounts, D-prefix)
+      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts') || '[]')
+      const billingClients = chartOfAccounts
+        .filter((acc) => acc.code && acc.code.startsWith('D') && acc.type === 'ACCOUNT')
+        .map((acc) => ({ code: acc.code, name: acc.name }))
+      // From transactions
+      const transactions = JSON.parse(localStorage.getItem('transactions') || '[]')
+      const txnClientSet = new Set()
+      transactions.forEach((txn) => {
+        if (txn.clientCode) txnClientSet.add(txn.clientCode)
+        if (txn.client) txnClientSet.add(txn.client)
+        if (txn.customer) txnClientSet.add(txn.customer)
       })
+      const txnClients = Array.from(txnClientSet)
+        .filter(Boolean)
+        .map((code) => {
+          // Try to get name from chartOfAccounts
+          const acc = chartOfAccounts.find((a) => a.code === code)
+          return { code, name: acc ? acc.name : code }
+        })
+      // Merge and dedupe
+      const allClientsMap = new Map()
+      billingClients.forEach((c) => allClientsMap.set(c.code, c))
+      txnClients.forEach((c) => allClientsMap.set(c.code, c))
+      const mergedClients = Array.from(allClientsMap.values()).sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )
+      setClients(mergedClients)
 
-      // Fallback to common states if no sites found
-      if (stateSet.size === 0) {
-        const commonStates = [
-          'Maharashtra',
-          'Karnataka',
-          'Delhi',
-          'Telangana',
-          'Tamil Nadu',
-          'Gujarat',
-          'West Bengal',
-          'Rajasthan',
-          'Uttar Pradesh',
-          'Punjab',
-        ]
-        commonStates.forEach((state) => stateSet.add(state))
-      }
-
-      setStates(Array.from(stateSet).sort())
+      // --- States ---
+      // From billing (sites or chartOfAccounts)
+      const sites = JSON.parse(localStorage.getItem('sites') || '[]')
+      const billingStates = new Set()
+      sites.forEach((site) => {
+        if (site.state) billingStates.add(site.state)
+      })
+      chartOfAccounts.forEach((acc) => {
+        if (acc.state) billingStates.add(acc.state)
+      })
+      // From transactions
+      const txnStateSet = new Set()
+      transactions.forEach((txn) => {
+        if (txn.state) txnStateSet.add(txn.state)
+      })
+      // Merge and dedupe
+      const allStates = Array.from(new Set([...billingStates, ...txnStateSet]))
+        .filter(Boolean)
+        .sort()
+      setStates(allStates)
     } catch (err) {
       console.error('Error loading clients/states:', err)
       setClients([])
@@ -94,7 +104,7 @@ const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!selectedMonth) {
       setError('Please select a month')
       return
@@ -107,11 +117,14 @@ const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
       const monthData = {
         month: selectedMonth,
         year: selectedYear,
-        monthName: months.find(m => m.value === selectedMonth)?.label || '',
+        monthName: months.find((m) => m.value === selectedMonth)?.label || '',
         periodType: 'monthly',
         client: selectedClient === 'all' ? null : selectedClient,
         state: selectedState === 'all' ? null : selectedState,
-        clientName: selectedClient === 'all' ? 'All' : clients.find(c => c.code === selectedClient)?.name || selectedClient,
+        clientName:
+          selectedClient === 'all'
+            ? 'All'
+            : clients.find((c) => c.code === selectedClient)?.name || selectedClient,
         stateName: selectedState === 'all' ? 'All' : selectedState,
       }
 
@@ -121,7 +134,7 @@ const MonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
       if (onSelect) {
         onSelect(monthData)
       }
-      
+
       onClose()
     } catch (err) {
       console.error('MonthSelectionModal: handleSubmit error', err)

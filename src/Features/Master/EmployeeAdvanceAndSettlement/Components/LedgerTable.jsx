@@ -53,6 +53,15 @@ const LedgerTable = ({ entries }) => {
             <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase whitespace-nowrap border-b-2 border-gray-200">
               Cost Center
             </th>
+            <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase whitespace-nowrap border-b-2 border-gray-200">
+              Customer
+            </th>
+            <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase whitespace-nowrap border-b-2 border-gray-200">
+              Site
+            </th>
+            <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase whitespace-nowrap border-b-2 border-gray-200">
+              State
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
@@ -120,6 +129,15 @@ const LedgerTable = ({ entries }) => {
               </td>
               <td className="px-3 py-3 text-[13px] text-gray-700 whitespace-nowrap align-top">
                 {entry.costCenter}
+              </td>
+              <td className="px-3 py-3 text-[13px] text-gray-700 whitespace-nowrap align-top">
+                {entry.customer || '-'}
+              </td>
+              <td className="px-3 py-3 text-[13px] text-gray-700 whitespace-nowrap align-top">
+                {entry.site || '-'}
+              </td>
+              <td className="px-3 py-3 text-[13px] text-gray-700 whitespace-nowrap align-top">
+                {entry.state || '-'}
               </td>
             </tr>
           ))}

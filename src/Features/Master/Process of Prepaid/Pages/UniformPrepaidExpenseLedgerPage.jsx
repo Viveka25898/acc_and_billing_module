@@ -108,7 +108,11 @@ const UniformPrepaidExpenseLedger = () => {
       totalMonths: entry.totalMonths || entry.period || '-',
       monthlyAmort: entry.monthlyAmort || '-',
       counterparty: entry.counterparty || entry.vendor,
-      approvedBy: entry.approvedBy,
+      customer: entry.customer || '-',
+      site: entry.site || '-',
+      state: entry.state || '-',
+      costCenter: entry.costCenter || '-',
+      approvedBy: entry.approvedBy || '-',
       cumulativeAmort: entry.cumulativeAmort || '-',
       remainingBalance: entry.remainingBalance
     };
