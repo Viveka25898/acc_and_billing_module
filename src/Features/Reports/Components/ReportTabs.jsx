@@ -3,6 +3,7 @@ import ReportCard from './ReportCard'
 import MonthSelectionModal from './MonthSelectionModal'
 import QuarterSelectionModal from './QuarterSelectionModal'
 import YearSelectionModal from './YearSelectionModal'
+import MISReportPage from '../MISReports/Pages/MISReportPage'
 
 const ReportTabs = ({ initial = 'pnl', onView }) => {
   const [active, setActive] = useState(initial)
@@ -77,17 +78,26 @@ const ReportTabs = ({ initial = 'pnl', onView }) => {
         <button
           onClick={() => setActive('pnl')}
           className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'pnl'
-              ? 'bg-green-600 text-white shadow-md'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            ? 'bg-green-600 text-white shadow-md'
+            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
         >
           Profit & Loss
         </button>
         <button
+          onClick={() => setActive('mis')}
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'mis'
+            ? 'bg-green-600 text-white shadow-md'
+            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+        >
+          MIS Reports
+        </button>
+        <button
           onClick={() => setActive('bs')}
           className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'bs'
-              ? 'bg-green-600 text-white shadow-md'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            ? 'bg-green-600 text-white shadow-md'
+            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
         >
           Balance Sheet
@@ -95,8 +105,8 @@ const ReportTabs = ({ initial = 'pnl', onView }) => {
         <button
           onClick={() => setActive('cash')}
           className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'cash'
-              ? 'bg-green-600 text-white shadow-md'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            ? 'bg-green-600 text-white shadow-md'
+            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
         >
           Cashflow
@@ -131,6 +141,10 @@ const ReportTabs = ({ initial = 'pnl', onView }) => {
               onView={onView}
             />
           </div>
+        )}
+
+        {active === 'mis' && (
+          <MISReportPage />
         )}
 
         {active === 'bs' && (
