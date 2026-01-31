@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MISReportCard from '../Components/MISReportCard'
 import MISMonthSelectionModal from '../Components/MISMonthSelectionModal'
+import { generateCompleteMISExcel } from '../Services/MISSummaryActualExcelService'
 
 /**
  * MIS Reports Page
@@ -99,15 +100,14 @@ const MISReportPage = () => {
         try {
             console.log('Downloading MIS report:', reportKey, periodData)
 
-            // Simulate download delay
-            await new Promise(resolve => setTimeout(resolve, 1500))
-
-            // TODO: Implement actual download logic with MISReportExcelService
-            const filename = `${reportKey}_${periodData.monthName}_${periodData.year}.xlsx`
-            console.log('Download would generate:', filename)
-
-            // Placeholder for actual implementation
-            throw new Error('Download functionality will be implemented in next phase')
+            // Route to appropriate Excel generation service based on report key
+            if (reportKey === 'mis_summary_actual') {
+                await generateCompleteMISExcel(periodData)
+            } else {
+                // Other reports not yet implemented
+                await new Promise(resolve => setTimeout(resolve, 1500))
+                throw new Error(`Download functionality for ${reportKey} will be implemented in next phase`)
+            }
         } catch (err) {
             console.error('MISReportPage: handleDownloadReport error', err)
             throw err
