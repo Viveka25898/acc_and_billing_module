@@ -197,7 +197,7 @@ const MISMonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
                         </div>
 
                         {/* State Selection */}
-                        <div>
+                        {/* <div>
                             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                                 <FiMapPin className="w-4 h-4 text-green-600" />
                                 State
@@ -217,7 +217,7 @@ const MISMonthSelectionModal = ({ isOpen, onClose, onSelect }) => {
                             <p className="mt-1 text-xs text-gray-500">
                                 Select a specific state or choose "All States" for consolidated report
                             </p>
-                        </div>
+                        </div> */}
                     </div>
 
                     {/* Summary Box */}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import MISReportCard from '../Components/MISReportCard'
 import MISMonthSelectionModal from '../Components/MISMonthSelectionModal'
 import { generateCompleteMISExcel } from '../Services/MISSummaryActualExcelService'
+import { generateBOCostReportExcel } from '../Services/BOCostReportExcelService'
 
 /**
  * MIS Reports Page
@@ -103,6 +104,8 @@ const MISReportPage = () => {
             // Route to appropriate Excel generation service based on report key
             if (reportKey === 'mis_summary_actual') {
                 await generateCompleteMISExcel(periodData)
+            } else if (reportKey === 'bo_cost') {
+                await generateBOCostReportExcel(periodData)
             } else {
                 // Other reports not yet implemented
                 await new Promise(resolve => setTimeout(resolve, 1500))
