@@ -5,6 +5,7 @@ import MISMonthSelectionModal from '../Components/MISMonthSelectionModal'
 import { generateCompleteMISExcel } from '../Services/MISSummaryActualExcelService'
 import { generateBOCostReportExcel } from '../Services/BOCostReportExcelService'
 import { generateTBReportExcel } from '../Services/TBReportExcelService'
+import { generateTBDetailedReportExcel } from '../Services/TBDetailedReportExcelService'
 
 /**
  * MIS Reports Page
@@ -127,12 +128,8 @@ const MISReportPage = () => {
         // Generate basic TB Report - No loading state needed (instant client-side generation)
         await generateTBReportExcel()
       } else if (reportType === 'TB Detailed') {
-        // Show loading for future server-side operations
-        setLoading(true)
-        // TODO: Implement TB Detailed in next step
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        alert('TB Detailed will be implemented in the next step')
-        setLoading(false)
+        // Generate TB Detailed Report - Instant client-side generation
+        await generateTBDetailedReportExcel()
       } else if (reportType === 'TB Detailed in Date Range') {
         // Show loading for future server-side operations
         setLoading(true)
