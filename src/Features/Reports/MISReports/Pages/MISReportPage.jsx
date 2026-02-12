@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MISReportCard from '../Components/MISReportCard'
 import MISMonthSelectionModal from '../Components/MISMonthSelectionModal'
+import DateRangeSelectionModal from '../Components/DateRangeSelectionModal'
 import { generateCompleteMISExcel } from '../Services/MISSummaryActualExcelService'
 import { generateBOCostReportExcel } from '../Services/BOCostReportExcelService'
 import { generateTBReportExcel } from '../Services/TBReportExcelService'
 import { generateTBDetailedReportExcel } from '../Services/TBDetailedReportExcelService'
+import { generateTBDetailedDateRangeReportExcel } from '../Services/TBDetailedDateRangeReportExcelService'
 
 /**
  * MIS Reports Page
@@ -14,6 +16,7 @@ import { generateTBDetailedReportExcel } from '../Services/TBDetailedReportExcel
 const MISReportPage = () => {
   const navigate = useNavigate()
   const [monthModalOpen, setMonthModalOpen] = useState(false)
+  const [dateRangeModalOpen, setDateRangeModalOpen] = useState(false)
   const [currentReportKey, setCurrentReportKey] = useState(null)
   const [selectedPeriods, setSelectedPeriods] = useState({})
   const [loading, setLoading] = useState(false)
@@ -131,12 +134,8 @@ const MISReportPage = () => {
         // Generate TB Detailed Report - Instant client-side generation
         await generateTBDetailedReportExcel()
       } else if (reportType === 'TB Detailed in Date Range') {
-        // Show loading for future server-side operations
-        setLoading(true)
-        // TODO: Implement TB Detailed with Date Range in next step
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        alert('TB Detailed in Date Range will be implemented in the next step')
-        setLoading(false)
+        // Open date range selection modal
+        setDateRangeModalOpen(true)
       }
     } catch (err) {
       console.error('MISReportPage: handleTBReportGenerate error', err)
@@ -151,6 +150,34 @@ const MISReportPage = () => {
       setCurrentReportKey(null)
     } catch (err) {
       console.error('MISReportPage: handleCloseModal error', err)
+    }
+  }
+
+  const handleDateRangeDownload = async (dateRange) => {
+    try {
+      console.log('Downloading TB Detailed Date Range Report:', dateRange)
+      setLoading(true)
+
+      // Generate TB Detailed Date Range Report
+      await generateTBDetailedDateRangeReportExcel(dateRange)
+
+      console.log('TB Detailed Date Range Report generated successfully')
+      setLoading(false)
+
+      return { success: true }
+    } catch (err) {
+      console.error('MISReportPage: handleDateRangeDownload error', err)
+      setLoading(false)
+      alert(`Error generating report: ${err.message}`)
+      throw err
+    }
+  }
+
+  const handleCloseDateRangeModal = () => {
+    try {
+      setDateRangeModalOpen(false)
+    } catch (err) {
+      console.error('MISReportPage: handleCloseDateRangeModal error', err)
     }
   }
 
@@ -222,6 +249,14 @@ const MISReportPage = () => {
         isOpen={monthModalOpen}
         onClose={handleCloseModal}
         onSelect={handleMonthSelect}
+      />
+
+      {/* Date Range Selection Modal */}
+      <DateRangeSelectionModal
+        isOpen={dateRangeModalOpen}
+        onClose={handleCloseDateRangeModal}
+        onDownload={handleDateRangeDownload}
+        loading={loading}
       />
     </div>
   )
