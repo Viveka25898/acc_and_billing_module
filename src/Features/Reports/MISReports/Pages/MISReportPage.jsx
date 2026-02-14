@@ -8,6 +8,7 @@ import { generateBOCostReportExcel } from '../Services/BOCostReportExcelService'
 import { generateTBReportExcel } from '../Services/TBReportExcelService'
 import { generateTBDetailedReportExcel } from '../Services/TBDetailedReportExcelService'
 import { generateTBDetailedDateRangeReportExcel } from '../Services/TBDetailedDateRangeReportExcelService'
+import { generateRevSumReportExcel } from '../Services/RevSumReportExcelService'
 
 /**
  * MIS Reports Page
@@ -181,6 +182,24 @@ const MISReportPage = () => {
     }
   }
 
+  const handleRevSumDownload = async (reportKey) => {
+    try {
+      console.log('Downloading Revenue Summary Report')
+
+      // Generate Rev Sum Report - Direct download without month selection
+      // Note: Button has its own loading state, no need for page-level loading overlay
+      const result = await generateRevSumReportExcel()
+
+      console.log('Revenue Summary Report generated successfully:', result)
+
+      return { success: true }
+    } catch (err) {
+      console.error('MISReportPage: handleRevSumDownload error', err)
+      alert(`Error generating Rev Sum Report: ${err.message}`)
+      throw err
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
@@ -221,6 +240,8 @@ const MISReportPage = () => {
               tbReportExpanded={tbReportExpanded}
               onTBGenerateReport={() => setTbReportExpanded(!tbReportExpanded)}
               onTBReportTypeClick={handleTBReportGenerate}
+              isDirectDownload={report.key === 'rev_sum'}
+              onDirectDownload={handleRevSumDownload}
             />
           ))}
         </div>
@@ -238,6 +259,7 @@ const MISReportPage = () => {
                 <li>• Use "View Report" to see the detailed report on screen</li>
                 <li>• Click "Download" to export the report as Excel</li>
                 <li>• For TB Report, click "Generate Report" to see report options</li>
+                <li>• For Rev Sum, click "Download Report" for instant Excel download</li>
               </ul>
             </div>
           </div>

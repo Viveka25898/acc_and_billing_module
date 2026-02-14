@@ -17,6 +17,8 @@ const MISReportCard = ({
   tbReportExpanded = false,
   onTBGenerateReport,
   onTBReportTypeClick,
+  isDirectDownload = false,
+  onDirectDownload,
 }) => {
   const [isHovered, setIsHovered] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -90,6 +92,22 @@ const MISReportCard = ({
     }
   }
 
+  const handleDirectDownload = async () => {
+    try {
+      setDownloading(true)
+      setError(null)
+
+      if (onDirectDownload) {
+        await onDirectDownload(reportKey)
+      }
+    } catch (err) {
+      console.error('MISReportCard: handleDirectDownload error', err)
+      setError(err.message || 'Failed to download report')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const getPeriodDisplayText = () => {
     if (!selectedPeriod) return null
 
@@ -118,7 +136,7 @@ const MISReportCard = ({
             <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
           </div>
 
-          {/* Conditional Button: TB Report vs Regular Report */}
+          {/* Conditional Button: TB Report vs Direct Download vs Regular Report */}
           <div className="flex-shrink-0">
             {isTBReport ? (
               <button
@@ -130,6 +148,28 @@ const MISReportCard = ({
                 <div className="flex items-center justify-center gap-2">
                   <FiFileText className="w-4 h-4" />
                   <span>Generate Report</span>
+                </div>
+              </button>
+            ) : isDirectDownload ? (
+              <button
+                onClick={handleDirectDownload}
+                disabled={downloading}
+                className={`w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isHovered && !downloading ? 'scale-105' : ''
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  {downloading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Downloading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiDownload className="w-4 h-4" />
+                      <span>Download Report</span>
+                    </>
+                  )}
                 </div>
               </button>
             ) : (
@@ -175,6 +215,15 @@ const MISReportCard = ({
                 <FiCalendar className="w-4 h-4" />
                 <span>TB Detailed in Date Range</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Error Display for Direct Download Reports */}
+        {isDirectDownload && error && (
+          <div className="pt-3 border-t border-gray-200">
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-xs text-red-600 font-medium">{error}</p>
             </div>
           </div>
         )}
