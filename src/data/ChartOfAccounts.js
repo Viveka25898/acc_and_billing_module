@@ -54,6 +54,13 @@ export const INITIAL_CHART_OF_ACCOUNTS = [
     // Sundry Creditors
     { code: "L2005", name: "SUNDRY CREDITORS", type: "FOLDER", parentAccount: "SOURCES OF FUNDS", parentCode: "L" },
 
+    // Statutory Liabilities - GST
+    { code: "L3", name: "STATUTORY LIABILITIES", type: "FOLDER", parentAccount: "SOURCES OF FUNDS", parentCode: "L" },
+    { code: "L3001", name: "CGST PAYABLE", type: "ACCOUNT", parentAccount: "STATUTORY LIABILITIES", parentCode: "L3" },
+    { code: "L3002", name: "SGST PAYABLE", type: "ACCOUNT", parentAccount: "STATUTORY LIABILITIES", parentCode: "L3" },
+    { code: "L3003", name: "IGST PAYABLE", type: "ACCOUNT", parentAccount: "STATUTORY LIABILITIES", parentCode: "L3" },
+    { code: "L3004", name: "SERVICE TAX PAYABLE", type: "ACCOUNT", parentAccount: "STATUTORY LIABILITIES", parentCode: "L3" },
+
     // EXPENSES - Direct
     { code: "X1", name: "EXPENSE DIRECT", type: "FOLDER", parentAccount: "EXPENSES", parentCode: "X" },
     { code: "X1001", name: "DIRECT PRODUCTION COST", type: "SUB_FOLDER", parentAccount: "EXPENSE DIRECT", parentCode: "X1" },
@@ -98,6 +105,23 @@ export const INITIAL_CHART_OF_ACCOUNTS = [
 
 // Revenue / Income - add Round Off under Indirect Income
 INITIAL_CHART_OF_ACCOUNTS.push(
+    // Direct Income - Revenue from Operations
+    { code: "R1", name: "DIRECT INCOME", type: "FOLDER", parentAccount: "INCOME", parentCode: "R" },
+    { code: "R1001", name: "REVENUE FROM OPERATIONS", type: "SUB_FOLDER", parentAccount: "DIRECT INCOME", parentCode: "R1" },
+
+    // Revenue Ledgers
+    { code: "R1001001", name: "HOUSE KEEPING CHARGES", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001002", name: "HOUSE KEEPING CHARGES (EXEMPT)", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001003", name: "SERVICE CHARGES", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001004", name: "OVERSEAS CONSULTANCY SERVICE FEES (EXPORT)", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001005001", name: "HK MATERIAL", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001005002", name: "CLEANING CONSUMABLE", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001007", name: "DEEP CLEANING CHARGES", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001008", name: "RENT ON MACHINERY", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001009", name: "MANPOWER SERVICES", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+    { code: "R1001010", name: "PEST CONTROL CHARGES", type: "ACCOUNT", parentAccount: "REVENUE FROM OPERATIONS", parentCode: "R1001" },
+
+    // Indirect Income
     { code: "R2", name: "INDIRECT INCOME", type: "FOLDER", parentAccount: "INCOME", parentCode: "R" },
     { code: "R2001", name: "OTHER INCOME", type: "SUB_FOLDER", parentAccount: "INDIRECT INCOME", parentCode: "R2" },
     { code: "R2001001", name: "ROUND OFF", type: "ACCOUNT", parentAccount: "OTHER INCOME", parentCode: "R2001" }
