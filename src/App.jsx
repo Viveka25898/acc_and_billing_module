@@ -158,16 +158,6 @@ function App() {
 
   // Local Storage Initialization - Enhanced with Accounting Modules
   useEffect(() => {
-    // Enrich transactions with billing data (client, site, state, costCenter)
-    try {
-      const { TransactionEnrichmentService } = require('./Features/Reports/utils/TransactionEnrichmentService')
-      const enrichmentResult = TransactionEnrichmentService.enrichAllTransactions()
-      if (enrichmentResult.success) {
-        console.log(`✅ Transactions enriched: ${enrichmentResult.enriched}/${enrichmentResult.total}`)
-      }
-    } catch (error) {
-      console.warn('⚠️ Transaction enrichment skipped:', error.message)
-    }
     try {
       // Check version and handle migrations
       const storedVersion = localStorage.getItem('appVersion')
