@@ -443,10 +443,18 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       const isEmployeeAccount =
         account.code.startsWith('A3002') || account.name.toLowerCase().includes('employee advance')
 
+      // TDS Receivable Ledger (Current Asset — A3006001)
+      const isTDSReceivableAccount =
+        account.code === 'A3006001' ||
+        (account.code.startsWith('A3006001') &&
+          account.name.toLowerCase().includes('tds') &&
+          account.name.toLowerCase().includes('receivable'))
+
       const isTDSAccount =
-        account.code.startsWith('L2003') ||
-        account.code.includes('TDS') ||
-        account.name.toLowerCase().includes('tds')
+        (account.code.startsWith('L2003') ||
+          account.code.includes('TDS') ||
+          account.name.toLowerCase().includes('tds')) &&
+        !isTDSReceivableAccount
 
       const isBankAccount =
         account.code.startsWith('A3004') ||
@@ -923,6 +931,9 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       } else if (isBonusExpenseLedger) {
         console.log('✅ Navigating to Professional Tax Payable Ledger')
         navigate(`/dashboard/account-manager/bonus-expense-ledger`)
+      } else if (isTDSReceivableAccount) {
+        console.log('✅ Navigating to TDS Receivable Ledger (A3006001)')
+        navigate(`/dashboard/account-manager/tds-receivable-ledger`)
       } else if (isVendorAccount) {
         // ✅ UNIFIED VENDOR ROUTING - ALL L2005* vendors go here
         console.log('✅ Navigating to UNIFIED Vendor Ledger:', account.code)

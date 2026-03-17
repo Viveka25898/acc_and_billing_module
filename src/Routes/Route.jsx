@@ -221,6 +221,7 @@ import EmployeeLWFPayableLedgerPage from '../Features/Master/Payment Entry For S
 import ProfessionalTaxPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ProfessionalTaxPayableLedgerPage'
 import BonusProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
 import BonusExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
+import TDSReceivableAssetLedgerPage from '../Features/Master/TDS Receivable/Pages/TDSReceivableLedgerPage'
 
 // ============== BILLING LEDGERS IMPORTS (11 Ledgers) ==============
 import {
@@ -1175,6 +1176,11 @@ export const router = createBrowserRouter([
       {
         path: 'bonus-expense-ledger',
         element: <BonusExpenseLedgerPage />,
+      },
+      // ============== TDS RECEIVABLE LEDGER (A3006001) ==============
+      {
+        path: 'tds-receivable-ledger',
+        element: <TDSReceivableAssetLedgerPage />,
       },
       // ============== BILLING LEDGERS ROUTES (11 Ledgers) ==============
       // Primary Posting Ledgers (4)
