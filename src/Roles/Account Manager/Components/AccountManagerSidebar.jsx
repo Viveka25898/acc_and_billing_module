@@ -46,6 +46,11 @@ const AccountManagerSidebar = () => {
             <NavLink to="/dashboard/account-manager/reports">Reports</NavLink>
           </li>
           <hr className="border-white mx-4" />
+
+          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+            <NavLink to="/dashboard/account-manager/tds-26as-reco">TDS 26 AS Reco</NavLink>
+          </li>
+          <hr className="border-white mx-4" />
         </ul>
       </div>
     </>
