@@ -4,6 +4,7 @@ import MonthSelectionModal from './MonthSelectionModal'
 import QuarterSelectionModal from './QuarterSelectionModal'
 import YearSelectionModal from './YearSelectionModal'
 import MISReportPage from '../MISReports/Pages/MISReportPage'
+import BalanceSheetCard from '../BalanceSheet/Components/BalanceSheetCard'
 
 const ReportTabs = ({ initial = 'pnl', onView }) => {
   const [active, setActive] = useState(initial)
@@ -149,21 +150,7 @@ const ReportTabs = ({ initial = 'pnl', onView }) => {
 
         {active === 'bs' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <ReportCard
-              title="Current Assets"
-              description="Assets snapshot"
-              onOpen={() => openReport('assets')}
-            />
-            <ReportCard
-              title="Liabilities"
-              description="Liabilities snapshot"
-              onOpen={() => openReport('liabilities')}
-            />
-            <ReportCard
-              title="Equity"
-              description="Equity summary"
-              onOpen={() => openReport('equity')}
-            />
+            <BalanceSheetCard />
           </div>
         )}
 
