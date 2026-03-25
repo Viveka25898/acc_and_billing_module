@@ -2,9 +2,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
-import RequestFilter from './RequestFilter'
+import RequestFilter from '../RequestFilter'
 
-// Status badge helper
+// ── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
   const base = 'inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold'
   if (status?.includes('Rejected')) return <span className={`${base} bg-red-100 text-red-700`}>{status}</span>
@@ -15,10 +15,15 @@ const StatusBadge = ({ status }) => {
 
 const formatReasons = (reason) => {
   if (Array.isArray(reason)) return reason.join(', ')
-  return reason || '-'
+  return reason || '—'
 }
 
-const MyRequests = () => {
+// ── Component ─────────────────────────────────────────────────────────────────
+/**
+ * SharedMyRequests — works for ALL roles (Employee, LM, VP, Manager, etc.)
+ * @param {string} title - Page title shown in header
+ */
+const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
   const [requests, setRequests] = useState([])
   const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -27,24 +32,20 @@ const MyRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState(null)
 
   const itemsPerPage = 5
-
-  // Get logged-in user from Redux
   const authUser = useSelector((state) => state.auth.user)
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem('advanceRequests')) || []
-    const allUsers = JSON.parse(localStorage.getItem('users')) || []
-
-    // Find the current user's username / employeeId
     const currentUser = JSON.parse(localStorage.getItem('user'))
+    const allUsers = JSON.parse(localStorage.getItem('users')) || []
     const fullUser = allUsers.find((u) => u.username === currentUser?.username)
+    const empId = fullUser?.employeeId || fullUser?.empId || fullUser?.username
+    const username = currentUser?.username?.toLowerCase()
 
-    // Match by submittedBy (most reliable) OR employeeId OR username
+    // Match by submittedBy OR employeeId — covers all roles
     const userRequests = stored
       .filter((r) => {
         const submittedBy = r.submittedBy?.toLowerCase()
-        const username = currentUser?.username?.toLowerCase()
-        const empId = fullUser?.employeeId || fullUser?.empId || fullUser?.username
         return (
           submittedBy === username ||
           r.employeeId === empId ||
@@ -74,7 +75,6 @@ const MyRequests = () => {
       toast.error('Clarification cannot be empty.')
       return
     }
-
     const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
     const updated = allRequests.map((r) =>
       r.submittedAt === selectedRequest.submittedAt
@@ -82,8 +82,6 @@ const MyRequests = () => {
         : r
     )
     localStorage.setItem('advanceRequests', JSON.stringify(updated))
-
-    // Refresh local state
     setRequests((prev) =>
       prev.map((r) =>
         r.submittedAt === selectedRequest.submittedAt
@@ -91,7 +89,6 @@ const MyRequests = () => {
           : r
       )
     )
-
     setShowClarifyModal(false)
     toast.success('Clarification submitted successfully.')
   }
@@ -101,8 +98,8 @@ const MyRequests = () => {
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">📋 My Advance Requests</h1>
+        <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-5 shadow">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">📋 {title}</h1>
           <p className="text-green-100 text-sm mt-0.5">Track the status of your submitted advance requests</p>
         </div>
 
@@ -136,12 +133,8 @@ const MyRequests = () => {
                 <tbody className="divide-y divide-green-50">
                   {paginatedRequests.map((req, index) => (
                     <tr key={index} className="hover:bg-green-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                        {req.requestId || '—'}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-green-700">
-                        ₹{Number(req.amount).toLocaleString('en-IN')}
-                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-gray-600">{req.requestId || '—'}</td>
+                      <td className="px-4 py-3 font-semibold text-green-700">₹{Number(req.amount).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 text-gray-600">{req.requestDate}</td>
                       <td className="px-4 py-3 text-gray-600 max-w-[160px] truncate" title={formatReasons(req.reason)}>
                         {formatReasons(req.reason)}
@@ -161,9 +154,7 @@ const MyRequests = () => {
                             Add Clarification
                           </button>
                         ) : req.clarification ? (
-                          <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
-                            ✓ Clarified
-                          </span>
+                          <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">✓ Clarified</span>
                         ) : (
                           <span className="text-gray-300 text-xs">—</span>
                         )}
@@ -195,7 +186,7 @@ const MyRequests = () => {
           </div>
         )}
 
-        {/* Stats summary */}
+        {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
           {[
             { label: 'Total', count: requests.length, color: 'bg-gray-100 text-gray-700' },
@@ -216,9 +207,7 @@ const MyRequests = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-1">Add Clarification</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Explain why your request should be reconsidered.
-            </p>
+            <p className="text-sm text-gray-500 mb-4">Explain why your request should be reconsidered.</p>
             <textarea
               rows="4"
               className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none mb-4"
@@ -247,4 +236,4 @@ const MyRequests = () => {
   )
 }
 
-export default MyRequests
+export default SharedMyRequests

@@ -433,31 +433,41 @@ export default function AEAdvanceApprovalPage() {
   }
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-green-600">AE Dashboard - Advance Requests</h1>
-        <div
-          className={`text-sm px-3 py-1 rounded ${
-            getCurrentTimeStatus() ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}
-        >
+    <div className="px-4 py-6">
+
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-5 shadow flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">💳 AE Dashboard – Advance Requests</h1>
+          <p className="text-green-100 text-sm mt-0.5">Approve or reject advance requests from all roles</p>
+        </div>
+        <div className={`text-sm px-4 py-1.5 rounded-full font-semibold border ${
+          getCurrentTimeStatus() ? 'bg-white text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'
+        }`}>
           {getCurrentTimeStatus()
-            ? '🟢 Before 15:59 - Same day processing'
-            : '🔴 After 15:59 - Next day processing only'}
+            ? '🟢 Before 15:59 – Same day processing'
+            : '🔴 After 15:59 – Next day processing only'}
         </div>
       </div>
 
-      <AEFilter filter={filter} setFilter={setFilter} />
-      <AERequestTable
-        data={filteredRequests}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        onDownloadComplete={handleDownloadComplete}
-        onApproveMultiple={handleApproveMultiple}
-        getEmployeeOSBalance={getEmployeeOSBalance}
-      />
+      {/* Filter */}
+      <div className="bg-white rounded-xl border border-green-100 shadow-sm px-4 py-3 mb-5">
+        <AEFilter filter={filter} setFilter={setFilter} />
+      </div>
 
-      {/* Bank Selection Modal - Opens FIRST */}
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+        <AERequestTable
+          data={filteredRequests}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onDownloadComplete={handleDownloadComplete}
+          onApproveMultiple={handleApproveMultiple}
+          getEmployeeOSBalance={getEmployeeOSBalance}
+        />
+      </div>
+
+      {/* Bank Selection Modal */}
       <AEBankSelectionModal
         isOpen={isBankModalOpen}
         onClose={closeBankModal}
@@ -469,7 +479,7 @@ export default function AEAdvanceApprovalPage() {
         }
       />
 
-      {/* Payment Entry Modal - Opens AFTER bank selection and accounting processing */}
+      {/* Payment Entry Modal */}
       <AdvanceRequestPaymentEntryModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
@@ -481,10 +491,10 @@ export default function AEAdvanceApprovalPage() {
       {/* Processing Overlay */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+          <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 shadow-xl">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-            <p className="text-gray-700 font-medium">Processing approval...</p>
-            <p className="text-sm text-gray-500">Please wait, posting accounting entries</p>
+            <p className="text-gray-700 font-semibold">Processing approval...</p>
+            <p className="text-sm text-gray-400">Please wait, posting accounting entries</p>
           </div>
         </div>
       )}

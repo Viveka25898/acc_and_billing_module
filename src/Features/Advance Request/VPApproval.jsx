@@ -265,208 +265,189 @@ const VPApproval = () => {
   }
 
   return (
-    <div className="min-h-screen px-2 py-6 bg-white rounded shadow-md overflow-x-hidden">
-      <div className="max-w-full mx-2">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-green-800">
-            Advance Requests – VP Operations Approval
-          </h2>
-          <div
-            className={`text-sm px-3 py-1 rounded ${
-              isCurrentlyBeforeDeadline()
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}
-          >
+    <div className="px-4 py-6">
+      <div className="max-w-full mx-auto">
+
+        {/* Header with deadline badge */}
+        <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-5 shadow flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">✅ Advance Requests – VP Operations Approval</h1>
+            <p className="text-green-100 text-sm mt-0.5">Review and approve/reject advance requests from employees and managers</p>
+          </div>
+          <div className={`text-sm px-4 py-1.5 rounded-full font-semibold border ${
+            isCurrentlyBeforeDeadline()
+              ? 'bg-white text-green-700 border-green-200'
+              : 'bg-red-100 text-red-700 border-red-200'
+          }`}>
             {isCurrentlyBeforeDeadline()
-              ? '🟢 Before 15:59 - Same day processing available'
-              : '🔴 After 15:59 - Next day processing only'}
+              ? '🟢 Before 15:59 – Same day processing'
+              : '🔴 After 15:59 – Next day processing only'}
           </div>
         </div>
 
-        <ManagerFilter filters={filters} setFilters={setFilters} />
-
-        <div className="overflow-x-auto">
-          <table className="w-full table-auto border border-green-200 text-xs">
-            <thead className="bg-green-100">
-              <tr>
-                <th className="border px-2 py-1 whitespace-nowrap">Request ID</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Name</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Emp ID</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Amount</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Date</th>
-                <th className="border px-2 py-1 whitespace-nowrap">O/s Bal</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Reason</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Submitted By</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Req Type</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Status</th>
-                <th className="border px-2 py-1 whitespace-nowrap">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedRequests.map((req) => (
-                <tr key={req.submittedAt} className="text-center">
-                  <td className="border px-2 py-1 whitespace-nowrap font-mono text-xs">
-                    {req.requestId || 'N/A'}
-                  </td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{req.employeeName}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{req.employeeId}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">₹{req.amount}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{req.requestDate}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">
-                    ₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}
-                  </td>
-                  <td className="border px-2 py-1 whitespace-nowrap">
-                    <button
-                      onClick={() =>
-                        setModalData({
-                          reason: req.reason,
-                          customReason: req.customReason,
-                          formattedReason: formatReasons(req.reason, req.customReason),
-                        })
-                      }
-                      className="text-green-600 hover:text-green-800"
-                    >
-                      <FaEye />
-                    </button>
-                  </td>
-                  <td className="border px-2 py-1 whitespace-nowrap">
-                    <span className="text-gray-700 font-medium">
-                      {req.submittedBy || req.employeeName}
-                    </span>
-                  </td>
-                  <td className="border px-2 py-1 whitespace-nowrap">
-                    <span
-                      className={`px-1 py-0.5 rounded text-xs font-medium ${
-                        req.assignedTo === loggedInUser
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {req.assignedTo === loggedInUser ? 'Manager' : 'Employee'}
-                    </span>
-                  </td>
-                  <td className="border px-2 py-1 whitespace-nowrap">
-                    <div className="flex justify-center items-center gap-1">
-                      <span
-                        className={`font-semibold ${
-                          req.status.includes('Rejected')
-                            ? 'text-red-600'
-                            : req.status.includes('Pending')
-                              ? 'text-yellow-600'
-                              : 'text-green-600'
-                        }`}
-                      >
-                        {req.status.split('by')[0]}
-                      </span>
-                      {req.status === 'Rejected by VP Operations' && req.clarification && (
-                        <button
-                          onClick={() =>
-                            setModalData({
-                              reason: req.remarks || req.reason,
-                              clarification: req.clarification,
-                              formattedReason: formatReasons(
-                                req.remarks || req.reason,
-                                req.customReason
-                              ),
-                            })
-                          }
-                          title="View Remarks / Clarification"
-                          className="text-blue-600 hover:text-blue-800 ml-1"
-                        >
-                          <FaEye />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="border px-2 py-1 whitespace-nowrap">
-                    <div className="flex justify-center gap-1">
-                      <button
-                        disabled={!isActionAllowed(req)}
-                        onClick={() => handleApprove(req.submittedAt)}
-                        className={`px-2 py-0.5 rounded text-xs ${
-                          isActionAllowed(req)
-                            ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                        }`}
-                        title={
-                          isCurrentlyBeforeDeadline()
-                            ? 'Approve for same-day processing'
-                            : 'Approve for next-day processing (after 15:59)'
-                        }
-                      >
-                        Approve
-                      </button>
-                      <button
-                        disabled={!isActionAllowed(req)}
-                        onClick={() => setRejectId(req.submittedAt)}
-                        className={`px-2 py-0.5 rounded text-xs ${
-                          isActionAllowed(req)
-                            ? 'bg-red-500 text-white hover:bg-red-600'
-                            : 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                        }`}
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {paginatedRequests.length === 0 && (
-            <div className="text-center py-4 text-gray-500 text-sm">
-              No requests pending VP approval at this time.
-            </div>
-          )}
+        {/* Filter */}
+        <div className="bg-white rounded-xl border border-green-100 shadow-sm px-4 py-3 mb-5">
+          <ManagerFilter filters={filters} setFilters={setFilters} />
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-1 mt-4">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-2 py-1 border rounded text-xs ${
-                  page === currentPage
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white text-green-700 border-green-300'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
+        {/* Table */}
+        {paginatedRequests.length === 0 ? (
+          <div className="bg-white rounded-xl border border-green-100 shadow-sm py-16 text-center">
+            <p className="text-4xl mb-3">📭</p>
+            <p className="text-gray-500 font-medium">No requests pending VP approval.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-green-600 text-white">
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Request ID</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Name</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Emp ID</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Amount</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Date</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">O/S Bal</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Reason</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Submitted By</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Type</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Status</th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-green-50">
+                  {paginatedRequests.map((req) => (
+                    <tr key={req.submittedAt} className="hover:bg-green-50 transition-colors">
+                      <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">{req.requestId || '—'}</td>
+                      <td className="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">{req.employeeName}</td>
+                      <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{req.employeeId}</td>
+                      <td className="px-3 py-3 font-semibold text-green-700 whitespace-nowrap">₹{Number(req.amount).toLocaleString('en-IN')}</td>
+                      <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{req.requestDate}</td>
+                      <td className="px-3 py-3 text-gray-700 whitespace-nowrap">₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <button
+                          onClick={() => setModalData({
+                            reason: req.reason,
+                            customReason: req.customReason,
+                            formattedReason: formatReasons(req.reason, req.customReason),
+                          })}
+                          className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full hover:bg-green-100 transition"
+                        >
+                          <FaEye className="text-xs" /> View
+                        </button>
+                      </td>
+                      <td className="px-3 py-3 text-gray-700 whitespace-nowrap text-xs">{req.submittedBy || req.employeeName}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          req.assignedTo === loggedInUser
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {req.assignedTo === loggedInUser ? 'Manager' : 'Employee'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            req.status.includes('Rejected') ? 'bg-red-100 text-red-700' :
+                            req.status.includes('Pending') ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>
+                            {req.status}
+                          </span>
+                          {req.status === 'Rejected by VP Operations' && req.clarification && (
+                            <button
+                              onClick={() => setModalData({
+                                reason: req.remarks || req.reason,
+                                clarification: req.clarification,
+                                formattedReason: formatReasons(req.remarks || req.reason, req.customReason),
+                              })}
+                              title="View Clarification"
+                              className="text-blue-500 hover:text-blue-700"
+                            >
+                              <FaEye className="text-xs" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="flex gap-2">
+                          <button
+                            disabled={!isActionAllowed(req)}
+                            onClick={() => handleApprove(req.submittedAt)}
+                            title={isCurrentlyBeforeDeadline() ? 'Same-day processing' : 'Next-day processing'}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              isActionAllowed(req)
+                                ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            disabled={!isActionAllowed(req)}
+                            onClick={() => setRejectId(req.submittedAt)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              isActionAllowed(req)
+                                ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-2 px-4 py-4 border-t border-green-100">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 rounded-full text-sm font-semibold transition ${
+                      page === currentPage
+                        ? 'bg-green-600 text-white shadow'
+                        : 'bg-white text-green-700 border border-green-300 hover:bg-green-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Reason + Clarification Modal */}
+      {/* Reason / Clarification Modal */}
       {modalData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded shadow max-w-md w-full mx-2">
-            <h3 className="text-lg font-semibold mb-3">Request Details</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">📋 Request Details</h3>
             {(modalData.reason || modalData.customReason || modalData.formattedReason) && (
-              <div className="mb-3">
-                <h4 className="font-semibold text-gray-700 text-sm">Reason:</h4>
-                <p className="text-gray-800 mt-1 text-sm">
-                  {modalData.formattedReason ||
-                    formatReasons(modalData.reason, modalData.customReason)}
+              <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                <h4 className="font-semibold text-green-700 mb-1 text-sm">Reason(s)</h4>
+                <p className="text-gray-700 text-sm">
+                  {modalData.formattedReason || formatReasons(modalData.reason, modalData.customReason)}
                 </p>
               </div>
             )}
             {modalData.clarification && (
-              <div>
-                <h4 className="font-semibold text-green-700 text-sm">Employee Clarification:</h4>
-                <p className="text-gray-800 mt-1 text-sm">{modalData.clarification}</p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <h4 className="font-semibold text-yellow-700 mb-1 text-sm">Employee Clarification</h4>
+                <p className="text-gray-700 text-sm">{modalData.clarification}</p>
               </div>
             )}
-            <div className="text-right mt-4">
+            <div className="text-right mt-5">
               <button
                 onClick={() => setModalData(null)}
-                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition"
               >
                 Close
               </button>
@@ -477,31 +458,29 @@ const VPApproval = () => {
 
       {/* Reject Modal */}
       {rejectId !== null && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded shadow max-w-md w-full mx-2">
-            <h3 className="text-lg font-semibold mb-3">VP Rejection Remarks</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-1">❌ VP Rejection Remarks</h3>
+            <p className="text-sm text-gray-500 mb-4">Provide a detailed reason for rejecting this advance request.</p>
             <textarea
-              className="w-full border px-2 py-1 rounded mb-3 text-sm"
+              className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none mb-4"
               rows="4"
               placeholder="Enter detailed reason for rejection as VP Operations..."
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
-            ></textarea>
+            />
             <div className="flex justify-end gap-2">
               <button
-                onClick={handleReject}
-                className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-              >
-                Reject Request
-              </button>
-              <button
-                onClick={() => {
-                  setRejectId(null)
-                  setRemarks('')
-                }}
-                className="bg-gray-300 text-black px-3 py-1 rounded text-sm hover:bg-gray-400"
+                onClick={() => { setRejectId(null); setRemarks('') }}
+                className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
               >
                 Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                className="px-5 py-2 rounded-lg text-sm bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+              >
+                Confirm Reject
               </button>
             </div>
           </div>
