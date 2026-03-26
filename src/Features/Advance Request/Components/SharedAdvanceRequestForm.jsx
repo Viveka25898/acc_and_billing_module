@@ -1,9 +1,17 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { toast } from 'react-toastify'
+import {
+  createAdvanceRequest,
+  clearSubmitResult,
+  selectSubmitResult,
+  selectLoading,
+  selectErrors,
+} from '../../../store/slices/advanceRequestSlice'
 
-// ─── Role Configuration ───────────────────────────────────────────────────────
-// Defines the submission behaviour per role
+// ─── Role Configuration (workflow rules — not from backend) ──────────────────
 const ROLE_CONFIG = {
   employee: {
     status: 'Pending Manager Approval',
@@ -71,38 +79,30 @@ const REASON_OPTIONS = [
   'Other',
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const generateRequestId = () => {
-  const existing = JSON.parse(localStorage.getItem('advanceRequests') || '[]')
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  return `ADV-${year}${month}-${String(existing.length + 1).padStart(4, '0')}`
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
-/**
- * SharedAdvanceRequestForm
- * @param {string} role            - The role key (e.g. 'employee', 'line-manager')
- * @param {string} myRequestsPath  - Route for the "My Requests" button
- */
-const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashboard/employee/my-requests' }) => {
+const SharedAdvanceRequestForm = ({
+  role = 'employee',
+  myRequestsPath = '/dashboard/employee/my-requests',
+}) => {
+  const dispatch = useDispatch()
+  const submitResult = useSelector(selectSubmitResult)
+  const loading = useSelector(selectLoading)
+  const errors = useSelector(selectErrors)
+
   const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG['employee']
 
   const [formData, setFormData] = useState({
     employeeName: '',
     employeeId: '',
     amount: '',
-    reasons: [],       // always stored as array internally
+    reasons: [],
     customReason: '',
     requestDate: new Date().toISOString().slice(0, 10),
   })
 
-  const [submitted, setSubmitted] = useState(false)
-  const [submittedRequestId, setSubmittedRequestId] = useState('')
-  const [error, setError] = useState('')
+  const [localError, setLocalError] = useState('')
 
-  // Pre-fill employee info from localStorage
+  // ── Pre-fill from localStorage (will come from Redux auth store after API) ─
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem('user'))
     const allUsers = JSON.parse(localStorage.getItem('users')) || []
@@ -115,6 +115,16 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
       }))
     }
   }, [])
+
+  // ── Clear submit result when unmounting ────────────────────────────────────
+  useEffect(() => {
+    return () => { dispatch(clearSubmitResult()) }
+  }, [dispatch])
+
+  // ── Show toast for service errors ──────────────────────────────────────────
+  useEffect(() => {
+    if (errors.submit) toast.error(errors.submit)
+  }, [errors.submit])
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleChange = (e) => {
@@ -138,7 +148,6 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
     }))
   }
 
-  // ── Validation ──────────────────────────────────────────────────────────────
   const isFormValid = () => {
     const { employeeName, employeeId, amount, reasons, customReason } = formData
     if (!employeeName.trim() || !employeeId.trim() || !amount || Number(amount) <= 0) return false
@@ -147,62 +156,51 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
     return true
   }
 
-  // ── Submit ──────────────────────────────────────────────────────────────────
+  // ── Submit → dispatch createAdvanceRequest thunk ───────────────────────────
   const handleSubmit = (e) => {
     e.preventDefault()
-    setError('')
+    setLocalError('')
 
     if (!isFormValid()) {
-      setError('Please fill in all required fields.')
+      setLocalError('Please fill in all required fields.')
       return
     }
 
+    // Resolve who this gets assigned to (workflow logic — stays in frontend)
     const currentUser = JSON.parse(localStorage.getItem('user'))
     const allUsers = JSON.parse(localStorage.getItem('users')) || []
     const fullUser = allUsers.find((u) => u.username === currentUser.username)
-
     const assignedTo = roleConfig.getAssignedTo(fullUser, allUsers)
+
     if (!assignedTo) {
-      setError(`❌ ${roleConfig.errorMsg}`)
+      setLocalError(`❌ ${roleConfig.errorMsg}`)
       return
     }
 
-    // Resolve final reasons — replace 'Other' with custom text
     const finalReasons = formData.reasons.map((r) =>
       r === 'Other' && formData.customReason.trim() ? formData.customReason.trim() : r
     )
 
-    const requestId = generateRequestId()
-
-    const newRequest = {
-      requestId,
+    const payload = {
       employeeName: formData.employeeName,
       employeeId: formData.employeeId,
       amount: formData.amount,
-      reason: finalReasons,           // unified: always array
+      reason: finalReasons,
+      customReason: formData.reasons.includes('Other') ? formData.customReason : '',
       requestDate: formData.requestDate,
       status: roleConfig.status,
       currentLevel: roleConfig.currentLevel,
       assignedTo,
       submittedBy: currentUser.username,
-      submittedAt: new Date().toISOString(),
-      remarks: '',
-      clarification: '',
       ...(roleConfig.isVPRole && { isVPRequest: true }),
       ...(roleConfig.isManagerRole && { isManagerRequest: true }),
     }
 
-    const existing = JSON.parse(localStorage.getItem('advanceRequests') || '[]')
-    existing.push(newRequest)
-    localStorage.setItem('advanceRequests', JSON.stringify(existing))
-
-    setSubmittedRequestId(requestId)
-    setSubmitted(true)
+    dispatch(createAdvanceRequest(payload))
   }
 
   const handleReset = () => {
-    setSubmitted(false)
-    setSubmittedRequestId('')
+    dispatch(clearSubmitResult())
     setFormData((prev) => ({
       ...prev,
       amount: '',
@@ -212,12 +210,12 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
     }))
   }
 
+  const isSubmitting = loading.submit
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="px-4 py-6 flex justify-center">
       <div className="w-full max-w-2xl">
-
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-lg border border-green-100 overflow-hidden">
 
           {/* Header */}
@@ -237,17 +235,18 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
 
           {/* Body */}
           <div className="px-6 py-6">
-            {submitted ? (
-              // ── Success State ─────────────────────────────────────────────
+            {submitResult ? (
+              // ── Success State ───────────────────────────────────────────────
               <div className="text-center py-8 space-y-4">
                 <div className="text-5xl">✅</div>
                 <h2 className="text-xl font-bold text-green-700">Request Submitted!</h2>
                 <p className="text-gray-600 text-sm">Your advance request has been submitted successfully.</p>
 
-                {/* Request ID badge */}
                 <div className="inline-block bg-green-50 border border-green-200 rounded-xl px-6 py-3">
                   <p className="text-xs text-gray-500 mb-1">Your Request ID</p>
-                  <p className="text-lg font-bold text-green-700 tracking-wider">{submittedRequestId}</p>
+                  <p className="text-lg font-bold text-green-700 tracking-wider">
+                    {submitResult.requestId}
+                  </p>
                 </div>
 
                 <div className="flex gap-3 justify-center mt-4 flex-wrap">
@@ -265,43 +264,36 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
                 </div>
               </div>
             ) : (
-              // ── Form ──────────────────────────────────────────────────────
+              // ── Form ────────────────────────────────────────────────────────
               <form onSubmit={handleSubmit} className="space-y-5" noValidate>
 
                 {/* Error Banner */}
-                {error && (
+                {(localError || errors.submit) && (
                   <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex items-start gap-2">
                     <span>⚠️</span>
-                    <span>{error}</span>
+                    <span>{localError || errors.submit}</span>
                   </div>
                 )}
 
-                {/* Employee Info Row */}
+                {/* Employee Info */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Employee Name
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Employee Name</label>
                     <input
                       type="text"
                       name="employeeName"
                       value={formData.employeeName}
-                      onChange={handleChange}
                       readOnly
                       className="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-sm text-gray-700 cursor-not-allowed focus:outline-none"
                       placeholder="Auto-filled"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Employee ID
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Employee ID</label>
                     <input
                       type="text"
                       name="employeeId"
                       value={formData.employeeId}
-                      onChange={handleChange}
                       readOnly
                       className="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-sm text-gray-700 cursor-not-allowed focus:outline-none"
                       placeholder="Auto-filled"
@@ -322,7 +314,7 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
                       value={formData.amount}
                       onChange={handleChange}
                       min="1"
-                      className="w-full border border-gray-300 pl-8 pr-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                      className="w-full border border-gray-300 pl-8 pr-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition"
                       placeholder="e.g. 5000"
                     />
                   </div>
@@ -335,7 +327,6 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
                     <span className="text-xs text-gray-400 font-normal ml-2">(can select multiple)</span>
                   </label>
 
-                  {/* Selected Reasons Tags */}
                   {formData.reasons.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2 p-3 bg-green-50 border border-green-200 rounded-lg min-h-[44px]">
                       {formData.reasons.map((reason) => (
@@ -348,7 +339,6 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
                             type="button"
                             onClick={() => handleReasonRemove(reason)}
                             className="text-green-500 hover:text-red-500 transition font-bold ml-0.5 text-sm leading-none"
-                            aria-label={`Remove ${reason}`}
                           >
                             ×
                           </button>
@@ -359,7 +349,7 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
 
                   <select
                     onChange={handleReasonSelect}
-                    className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                    className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400 transition"
                   >
                     <option value="">-- Select Reason to Add --</option>
                     {REASON_OPTIONS.filter((opt) => !formData.reasons.includes(opt)).map((opt) => (
@@ -368,7 +358,7 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
                   </select>
                 </div>
 
-                {/* Custom Reason (if 'Other' selected) */}
+                {/* Custom Reason */}
                 {formData.reasons.includes('Other') && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -379,7 +369,7 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
                       name="customReason"
                       value={formData.customReason}
                       onChange={handleChange}
-                      className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                      className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition"
                       placeholder="Describe your reason..."
                     />
                   </div>
@@ -395,29 +385,31 @@ const SharedAdvanceRequestForm = ({ role = 'employee', myRequestsPath = '/dashbo
                     name="requestDate"
                     value={formData.requestDate}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                    className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition"
                   />
                 </div>
 
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={!isFormValid()}
+                  disabled={!isFormValid() || isSubmitting}
                   className={`w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 ${
-                    isFormValid()
+                    isFormValid() && !isSubmitting
                       ? 'bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg active:scale-[0.98]'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                   }`}
                 >
-                  {isFormValid() ? '📤 Submit Request' : 'Fill all fields to submit'}
+                  {isSubmitting
+                    ? '⏳ Submitting...'
+                    : isFormValid()
+                    ? '📤 Submit Request'
+                    : 'Fill all fields to submit'}
                 </button>
-
               </form>
             )}
           </div>
         </div>
 
-        {/* Footer note */}
         <p className="text-center text-xs text-gray-400 mt-4">
           Your request will be reviewed by your reporting manager.
         </p>
