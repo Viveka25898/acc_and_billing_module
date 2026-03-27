@@ -110,14 +110,7 @@ const PaymentBankSelectionModal = ({
     })
   }
 
-  // Debug logging - MUST be before early return
-  useEffect(() => {
-    if (isOpen && data) {
-      console.log('🔍 PaymentBankSelectionModal - Payment Type:', paymentType)
-      console.log('🔍 PaymentBankSelectionModal - Data:', data)
-      console.log('🔍 PaymentBankSelectionModal - Config Fields:', currentConfig.fields)
-    }
-  }, [isOpen, data, paymentType])
+  // No debug logging
 
   if (!isOpen) return null
 
@@ -215,6 +208,7 @@ const PaymentBankSelectionModal = ({
     green: {
       gradient: 'from-green-600 to-green-700',
       text: 'text-green-600',
+      subtitleText: 'text-green-100',
       bg: 'bg-green-50',
       border: 'border-green-200',
       hover: 'hover:bg-green-800',
@@ -224,6 +218,7 @@ const PaymentBankSelectionModal = ({
     blue: {
       gradient: 'from-blue-600 to-blue-700',
       text: 'text-blue-600',
+      subtitleText: 'text-blue-100',
       bg: 'bg-blue-50',
       border: 'border-blue-200',
       hover: 'hover:bg-blue-800',
@@ -233,6 +228,7 @@ const PaymentBankSelectionModal = ({
     purple: {
       gradient: 'from-purple-600 to-purple-700',
       text: 'text-purple-600',
+      subtitleText: 'text-purple-100',
       bg: 'bg-purple-50',
       border: 'border-purple-200',
       hover: 'hover:bg-purple-800',
@@ -251,7 +247,7 @@ const PaymentBankSelectionModal = ({
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-lg font-bold">{currentConfig.title}</h2>
-              <p className={`text-${currentConfig.color}-100 text-xs mt-1`}>
+              <p className={`${colors.subtitleText} text-xs mt-1`}>
                 {currentConfig.subtitle(entryCount, isMultiple)}
               </p>
             </div>

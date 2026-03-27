@@ -1,406 +1,289 @@
-/* eslint-disable no-unused-vars */
 import React, { useState } from 'react'
 import {
-  FaCalendarAlt,
-  FaUser,
-  FaCreditCard,
-  FaFileAlt,
-  FaBuilding,
-  FaTag,
-  FaRupeeSign,
-  FaCheck,
   FaTimes,
-  FaEdit,
+  FaCheckCircle,
+  FaFileInvoiceDollar,
+  FaBuilding,
   FaChevronDown,
-  FaChevronRight,
-  FaUsers,
+  FaChevronUp,
 } from 'react-icons/fa'
 
 const PaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
-  const [isEditable, setIsEditable] = useState(false)
-  const [currentPaymentData, setCurrentPaymentData] = useState(paymentData)
-  const [expandedVendors, setExpandedVendors] = useState({})
+  if (!isOpen || !paymentData) return null
 
-  if (!isOpen) return null
-
-  const handleEdit = () => {
-    setIsEditable(!isEditable)
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Approved':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'Rejected':
-        return 'bg-red-100 text-red-800 border-red-200'
-      case 'Pending Approval':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  // Toggle vendor expansion in breakdown section
-  const toggleVendorExpansion = (vendorIndex) => {
-    setExpandedVendors((prev) => ({
-      ...prev,
-      [vendorIndex]: !prev[vendorIndex],
-    }))
-  }
-
-  // Check if this is a multi-vendor payment
+  // Support single and multi-vendor display
   const isMultiVendor =
-    currentPaymentData.vendorDetails && currentPaymentData.vendorDetails.length > 1
+    paymentData.vendorDetails && Array.isArray(paymentData.vendorDetails)
+  const vendors = isMultiVendor
+    ? paymentData.vendorDetails
+    : [
+        {
+          vendorName: paymentData.vendor,
+          vendorGLCode: paymentData.vendorCode,
+          totalAmount: paymentData.amount,
+          invoices: [
+            {
+              invoiceNumber: paymentData.invoiceNo,
+              originalAmount: paymentData.amount,
+              paidAmount: paymentData.amount,
+              paymentType: 'full',
+            },
+          ],
+        },
+      ]
+
+  const totalAmountPaid = vendors.reduce(
+    (sum, v) => sum + (v.totalAmount || v.amount || 0),
+    0
+  )
+
+  const [expandedVendor, setExpandedVendor] = useState(
+    vendors.length === 1 ? 0 : null
+  )
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-y-auto">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-blue-500">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                <FaCreditCard className="text-blue-600" />
-                Payment Entry
-                {isMultiVendor && (
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-lg text-sm flex items-center gap-1">
-                    <FaUsers size={12} />
-                    Multi-Vendor
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-700 to-green-600 px-6 py-4 flex justify-between items-center text-white shrink-0 shadow-sm relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="relative z-10">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <span className="bg-white/20 p-1.5 rounded-lg text-sm">
+                <FaFileInvoiceDollar />
+              </span>
+              Payment Accounting Entry
+              <span className="ml-2 bg-green-800 text-green-100 text-xs px-2 py-0.5 rounded border border-green-500/30">
+                {paymentData.status || 'Posted'}
+              </span>
+            </h2>
+            <p className="text-green-100 text-xs mt-1 font-mono">
+              Entry No: {paymentData.entryNo} | Date: {paymentData.date}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-full transition-colors relative z-10"
+          >
+            <FaTimes size={18} />
+          </button>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 space-y-6">
+          {/* Top Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Basic Details */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 border-b border-gray-100 pb-2">
+                <FaBuilding className="text-gray-400" /> Payment Details
+              </h3>
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                <div>
+                  <span className="text-xs text-gray-500 block mb-0.5">Payment Method</span>
+                  <span className="font-semibold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
+                    {paymentData.paymentMethod}
                   </span>
-                )}
-              </h1>
-              <p className="text-gray-600 mt-1">Entry No: {currentPaymentData.entryNo}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Close Modal"
-              >
-                <FaTimes size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column */}
-            <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaCalendarAlt className="text-blue-600" size={20} />
-                  Basic Information
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Date:</span>
-                    <span className="font-medium">{currentPaymentData.date}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payment Method:</span>
-                    <span className="font-medium">{currentPaymentData.paymentMethod}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Bank Account:</span>
-                    <span className="font-medium text-sm">{currentPaymentData.bankAccount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Vendors:</span>
-                    <span className="font-medium">
-                      {isMultiVendor ? currentPaymentData.vendorDetails.length : 1}
-                    </span>
-                  </div>
                 </div>
-              </div>
-
-              {/* Vendor Information - Enhanced for Multiple Vendors */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaBuilding className="text-blue-600" size={20} />
-                  Vendor Details
-                  {isMultiVendor && (
-                    <span className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                      {currentPaymentData.vendorDetails.length} vendors
+                <div>
+                  <span className="text-xs text-gray-500 block mb-0.5">Bank Account</span>
+                  <span className="font-mono text-[11px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-block truncate max-w-full">
+                    {paymentData.bankAccount}
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-xs text-gray-500 block mb-0.5">Particulars</span>
+                  <span className="text-gray-700 line-clamp-2">
+                    {paymentData.particulars}
+                  </span>
+                </div>
+                {paymentData.utr && (
+                  <div className="col-span-2">
+                    <span className="text-xs text-gray-500 block mb-0.5">UTR Reference</span>
+                    <span className="font-mono bg-yellow-50 text-yellow-800 px-2 py-0.5 rounded border border-yellow-200">
+                      {paymentData.utr}
                     </span>
-                  )}
-                </h2>
-
-                {!isMultiVendor ? (
-                  // Single Vendor Display (existing code)
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Vendor Name:</span>
-                      <span className="font-medium">{currentPaymentData.vendor}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Vendor Code:</span>
-                      <span className="font-medium">{currentPaymentData.vendorCode}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Invoice No:</span>
-                      <span className="font-medium">{currentPaymentData.invoiceNo}</span>
-                    </div>
                   </div>
-                ) : (
-                  // Multiple Vendors Display (new code)
-                  <div className="space-y-4 max-h-80 overflow-y-auto">
-                    {currentPaymentData.vendorDetails.map((vendor, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-3 bg-white">
-                        <div
-                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded"
-                          onClick={() => toggleVendorExpansion(index)}
-                        >
-                          <div className="flex items-center gap-2">
-                            {expandedVendors[index] ? (
-                              <FaChevronDown size={14} />
-                            ) : (
-                              <FaChevronRight size={14} />
-                            )}
-                            <span className="font-medium text-gray-800">{vendor.vendorName}</span>
-                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
-                              ₹{vendor.totalAmount.toLocaleString()}
-                            </span>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {vendor.invoices.length} invoice{vendor.invoices.length > 1 ? 's' : ''}
-                          </span>
+                )}
+              </div>
+            </div>
+
+            {/* Vendor Breakdowns */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
+              <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+                <h3 className="text-sm font-bold text-gray-800">
+                  {isMultiVendor ? `Vendors Paid (${vendors.length})` : 'Vendor Paid'}
+                </h3>
+                <span className="text-lg font-bold text-green-600">
+                  ₹{totalAmountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto max-h-[140px] pr-2 custom-scrollbar">
+                <div className="space-y-2">
+                  {vendors.map((vendor, idx) => (
+                    <div key={idx} className="border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
+                      <button
+                        onClick={() =>
+                          setExpandedVendor(expandedVendor === idx ? null : idx)
+                        }
+                        className="w-full text-left px-3 py-2 flex justify-between items-center hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="overflow-hidden pr-2">
+                          <p className="text-xs font-bold text-gray-800 truncate">
+                            {vendor.vendorName}
+                          </p>
+                          <p className="text-[10px] text-gray-500 font-mono mt-0.5">
+                            {vendor.vendorGLCode || 'N/A'} • {vendor.invoices?.length || 0} invoice(s)
+                          </p>
                         </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-sm font-semibold text-gray-800">
+                            ₹{(vendor.totalAmount || vendor.amount || 0).toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                          {expandedVendor === idx ? (
+                            <FaChevronUp className="text-gray-400 text-[10px]" />
+                          ) : (
+                            <FaChevronDown className="text-gray-400 text-[10px]" />
+                          )}
+                        </div>
+                      </button>
 
-                        {expandedVendors[index] && (
-                          <div className="mt-3 pl-4 border-l-2 border-blue-200 space-y-2">
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>
-                                <span className="text-gray-600">Vendor Code:</span>
-                                <span className="ml-2 font-medium">
-                                  {vendor.vendorCode || 'VEN-' + String(index + 1).padStart(3, '0')}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">IFSC:</span>
-                                <span className="ml-2 font-medium">{vendor.ifscCode}</span>
-                              </div>
-                              <div className="col-span-2">
-                                <span className="text-gray-600">Account:</span>
-                                <span className="ml-2 font-medium">
-                                  {vendor.beneficiaryAccountNumber}
-                                </span>
-                              </div>
+                      {expandedVendor === idx && vendor.invoices && (
+                        <div className="bg-white px-3 py-2 border-t border-gray-100 divide-y divide-gray-50">
+                          {vendor.invoices.map((inv, i) => (
+                            <div key={i} className="flex justify-between py-1 text-xs">
+                              <span className="text-gray-600 font-mono">
+                                {inv.invoiceNumber}
+                                {inv.paymentType === 'partial' && (
+                                  <span className="ml-2 text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded border border-orange-200">
+                                    Partial
+                                  </span>
+                                )}
+                              </span>
+                              <span className="font-medium text-gray-800">
+                                ₹{(inv.paidAmount || 0).toLocaleString('en-IN')}
+                              </span>
                             </div>
-
-                            {/* Invoice Details */}
-                            <div className="bg-gray-50 p-2 rounded">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                Invoices:
-                              </h4>
-                              <div className="space-y-1">
-                                {vendor.invoices.map((invoice, invIndex) => (
-                                  <div
-                                    key={invIndex}
-                                    className="flex justify-between items-center text-xs"
-                                  >
-                                    <span className="text-blue-600 font-medium">
-                                      {invoice.invoiceNumber}
-                                    </span>
-                                    <div className="flex gap-2">
-                                      <span className="text-gray-500">
-                                        ₹{invoice.originalAmount.toLocaleString()}
-                                      </span>
-                                      <span className="text-green-600 font-medium">
-                                        → ₹{invoice.paidAmount.toLocaleString()}
-                                      </span>
-                                      {invoice.paymentType === 'partial' && (
-                                        <span className="bg-orange-100 text-orange-700 px-1 rounded text-xs">
-                                          Partial
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* GL Entries Table */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaTag className="text-blue-600" size={20} />
-                  GL Entries & Accounting Details
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-gray-300">
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          GL Code
-                        </th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          Description
-                        </th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          Cost Center
-                        </th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          Department
-                        </th>
-                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">
-                          Debit
-                        </th>
-                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">
-                          Credit
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentPaymentData.glEntries?.map((entry, index) => (
-                        <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
-                          <td className="py-2 px-1 text-sm font-medium text-blue-700">
-                            {entry.glCode}
-                          </td>
-                          <td className="py-2 px-1 text-sm">{entry.glDescription}</td>
-                          <td className="py-2 px-1 text-sm">{entry.costCenter}</td>
-                          <td className="py-2 px-1 text-sm">{entry.department}</td>
-                          <td className="py-2 px-1 text-sm text-right font-medium">
-                            {entry.debitAmount > 0
-                              ? `₹ ${entry.debitAmount.toLocaleString()}`
-                              : '-'}
-                          </td>
-                          <td className="py-2 px-1 text-sm text-right font-medium">
-                            {entry.creditAmount > 0
-                              ? `₹ ${entry.creditAmount.toLocaleString()}`
-                              : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t-2 border-gray-400 bg-gray-100">
-                        <td colSpan="4" className="py-2 px-1 text-sm font-bold text-gray-800">
-                          TOTALS
-                        </td>
-                        <td className="py-2 px-1 text-sm font-bold text-right">
-                          ₹{' '}
-                          {currentPaymentData.glEntries
-                            ?.reduce((sum, entry) => sum + entry.debitAmount, 0)
-                            .toLocaleString()}
-                        </td>
-                        <td className="py-2 px-1 text-sm font-bold text-right">
-                          ₹{' '}
-                          {currentPaymentData.glEntries
-                            ?.reduce((sum, entry) => sum + entry.creditAmount, 0)
-                            .toLocaleString()}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-6">
-              {/* Amount Breakdown */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaRupeeSign className="text-blue-600" size={20} />
-                  Amount Breakdown
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Base Amount:</span>
-                    <span className="font-medium">
-                      ₹ {currentPaymentData.netAmount?.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">GST Amount:</span>
-                    <span className="font-medium">
-                      ₹ {currentPaymentData.gstAmount?.toLocaleString()}
-                    </span>
-                  </div>
-                  <hr className="border-blue-300" />
-                  <div className="flex justify-between text-lg font-bold text-blue-800">
-                    <span>Total Payment:</span>
-                    <span>₹ {currentPaymentData.amount?.toLocaleString()}</span>
-                  </div>
-
-                  {/* Vendor-wise Amount Breakdown for Multi-vendor */}
-                  {isMultiVendor && (
-                    <div className="mt-4 pt-3 border-t border-blue-300">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                        Vendor-wise Breakdown:
-                      </h3>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {currentPaymentData.vendorDetails.map((vendor, index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span className="text-gray-600 truncate mr-2" title={vendor.vendorName}>
-                              {vendor.vendorName.length > 20
-                                ? vendor.vendorName.substring(0, 20) + '...'
-                                : vendor.vendorName}
-                            </span>
-                            <span className="font-medium">
-                              ₹ {vendor.totalAmount.toLocaleString()}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Particulars */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaFileAlt className="text-blue-600" size={20} />
-                  Particulars
-                </h2>
-                <p className="text-gray-700 leading-relaxed">{currentPaymentData.particulars}</p>
-              </div>
-
-              {/* Workflow Information */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaUser className="text-blue-600" size={20} />
-                  Workflow
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-gray-600 block">Prepared By:</span>
-                    <span className="font-medium">Account Executive</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 block">Approved By:</span>
-                    <span className="font-medium">Account Manager</span>
-                  </div>
-                  {currentPaymentData.remarks && (
-                    <div>
-                      <span className="text-gray-600 block">Remarks:</span>
-                      <span className="font-medium italic">{currentPaymentData.remarks}</span>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="mt-8 pt-4 border-t flex justify-end gap-3">
+          {/* GL Entries Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+              <h3 className="text-sm font-bold text-gray-800">General Ledger Entries</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left whitespace-nowrap">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">GL Code</th>
+                    <th className="px-4 py-3 font-semibold">Description</th>
+                    <th className="px-4 py-3 font-semibold">Cost Center</th>
+                    <th className="px-4 py-3 font-semibold text-right w-32 bg-green-50/50">Debit (₹)</th>
+                    <th className="px-4 py-3 font-semibold text-right w-32 bg-blue-50/50">Credit (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paymentData.glEntries?.map((entry, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                        {entry.glCode}
+                      </td>
+                      <td className="px-4 py-3 text-gray-800 font-medium">
+                        {entry.glDescription}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        {entry.costCenter}
+                        <span className="mx-1 text-gray-300">|</span>
+                        {entry.department}
+                      </td>
+                      <td className="px-4 py-3 text-right bg-green-50/30 font-semibold text-green-700">
+                        {entry.debitAmount > 0
+                          ? entry.debitAmount.toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                            })
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-right bg-blue-50/30 font-semibold text-blue-700">
+                        {entry.creditAmount > 0
+                          ? entry.creditAmount.toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                            })
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                  <tr>
+                    <td colSpan="3" className="px-4 py-3 text-right text-gray-700">
+                      Total:
+                    </td>
+                    <td className="px-4 py-3 text-right text-green-700">
+                      {paymentData.glEntries
+                        ?.reduce((sum, e) => sum + (e.debitAmount || 0), 0)
+                        .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3 text-right text-blue-700">
+                      {paymentData.glEntries
+                        ?.reduce((sum, e) => sum + (e.creditAmount || 0), 0)
+                        .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          {/* Workflow Footer */}
+          <div className="flex flex-wrap items-center gap-4 bg-green-50 border border-green-100 rounded-xl p-4 text-xs shadow-sm">
+            <div className="flex items-center gap-2">
+              <FaCheckCircle className="text-green-500" size={16} />
+              <span className="text-gray-600 font-semibold">Workflow Confirmed</span>
+            </div>
+            <div className="w-px h-6 bg-green-200 hidden sm:block"></div>
+            <div className="flex items-center gap-4 flex-1">
+              <div>
+                <span className="text-gray-400 block text-[10px]">Prepared By</span>
+                <span className="font-medium text-gray-800">{paymentData.preparedBy}</span>
+              </div>
+              <div className="hidden sm:block text-gray-300">→</div>
+              <div>
+                <span className="text-gray-400 block text-[10px]">Auto-Approved</span>
+                <span className="font-medium text-gray-800">{paymentData.approvedBy}</span>
+              </div>
+            </div>
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold shadow-sm hover:bg-green-700 hover:shadow transition ml-auto border border-green-600"
             >
-              Close
+              Done
             </button>
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+      `}</style>
     </div>
   )
 }

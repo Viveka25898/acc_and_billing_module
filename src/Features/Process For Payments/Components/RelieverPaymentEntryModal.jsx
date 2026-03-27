@@ -1,493 +1,199 @@
-/* eslint-disable no-unused-vars */
-// Components/RelieverPaymentEntryModal.jsx
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
-  FaCalendarAlt,
-  FaUser,
-  FaCreditCard,
-  FaFileAlt,
-  FaBuilding,
-  FaTag,
-  FaRupeeSign,
-  FaCheck,
   FaTimes,
-  FaEdit,
-  FaChevronDown,
-  FaChevronRight,
+  FaCheckCircle,
+  FaFileInvoiceDollar,
   FaUsers,
-  FaIdCard,
+  FaChevronDown,
+  FaChevronUp,
 } from 'react-icons/fa'
 
 const RelieverPaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
-  const [isEditable, setIsEditable] = useState(false)
-  const [currentPaymentData, setCurrentPaymentData] = useState(paymentData)
-  const [expandedRelievers, setExpandedRelievers] = useState({})
+  if (!isOpen || !paymentData) return null
 
-  if (!isOpen) return null
-
-  // Enhanced data handling with fallbacks
-  useEffect(() => {
-    if (paymentData) {
-      console.log('🔍 RelieverPaymentEntryModal received data:', paymentData)
-      setCurrentPaymentData(paymentData)
-    }
-  }, [paymentData])
-
-  // Safe data access with fallbacks
-  const safeData = {
-    entryNo: currentPaymentData?.entryNo || 'N/A',
-    date: currentPaymentData?.date || new Date().toISOString().split('T')[0],
-    vendor: currentPaymentData?.vendor || 'Unknown Reliever',
-    amount: currentPaymentData?.amount || 0,
-    paymentMethod: currentPaymentData?.paymentMethod || 'Bank Transfer',
-    bankAccount: currentPaymentData?.bankAccount || 'N/A',
-    invoiceNo: currentPaymentData?.invoiceNo || 'N/A',
-    particulars: currentPaymentData?.particulars || 'No particulars provided',
-    gstAmount: currentPaymentData?.gstAmount || 0,
-    netAmount: currentPaymentData?.netAmount || currentPaymentData?.amount || 0,
-    status: currentPaymentData?.status || 'Posted',
-    preparedBy: currentPaymentData?.preparedBy || 'System',
-    approvedBy: currentPaymentData?.approvedBy || 'System',
-    remarks: currentPaymentData?.remarks || '',
-    glEntries: currentPaymentData?.glEntries || [],
-    relieverDetails: currentPaymentData?.relieverDetails || currentPaymentData?.vendorDetails || [],
-    paymentCount: currentPaymentData?.paymentCount || 0,
-    totalAmount: currentPaymentData?.totalAmount || currentPaymentData?.amount || 0,
-  }
-
-  const handleEdit = () => {
-    setIsEditable(!isEditable)
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Approved':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'Rejected':
-        return 'bg-red-100 text-red-800 border-red-200'
-      case 'Pending Approval':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  // Toggle reliever expansion in breakdown section
-  const toggleRelieverExpansion = (relieverIndex) => {
-    setExpandedRelievers((prev) => ({
-      ...prev,
-      [relieverIndex]: !prev[relieverIndex],
-    }))
-  }
-
-  // Check if this is a multi-reliever payment
-  const isMultiReliever = safeData.relieverDetails && safeData.relieverDetails.length > 1
+  const [expanded, setExpanded] = useState(true)
+  const relievers = paymentData.relieverDetails || []
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-y-auto">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-purple-500">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                <FaCreditCard className="text-purple-600" />
-                Reliever Payment Entry
-                {isMultiReliever && (
-                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-lg text-sm flex items-center gap-1">
-                    <FaUsers size={12} />
-                    Multi-Reliever
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-700 to-blue-600 px-6 py-4 flex justify-between items-center text-white shrink-0 shadow-sm relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="relative z-10">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <span className="bg-white/20 p-1.5 rounded-lg text-sm">
+                <FaFileInvoiceDollar />
+              </span>
+              Reliever Payment Entry
+              <span className="ml-2 bg-blue-800 text-blue-100 text-xs px-2 py-0.5 rounded border border-blue-500/30">
+                {paymentData.status || 'Posted'}
+              </span>
+            </h2>
+            <p className="text-blue-100 text-xs mt-1 font-mono">
+              Entry No: {paymentData.entryNo} | Date: {paymentData.date}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-full transition-colors relative z-10"
+          >
+            <FaTimes size={18} />
+          </button>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 space-y-6 custom-scrollbar">
+          {/* Top Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Basic Details */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 border-b border-gray-100 pb-2">
+                <span className="text-gray-400">🏢</span> Payment Overview
+              </h3>
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                <div>
+                  <span className="text-xs text-gray-500 block mb-0.5">Payment Method</span>
+                  <span className="font-semibold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
+                    {paymentData.paymentMethod}
                   </span>
-                )}
-              </h1>
-              <p className="text-gray-600 mt-1">Entry No: {safeData.entryNo}</p>
-              {safeData.paymentCount > 0 && (
-                <p className="text-sm text-purple-600 mt-1">
-                  {safeData.paymentCount} reliever(s) • Total: ₹
-                  {safeData.totalAmount.toLocaleString()}
-                </p>
-              )}
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500 block mb-0.5">Bank Account</span>
+                  <span className="font-mono text-[11px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 block truncate" title={paymentData.bankAccount}>
+                    {paymentData.bankAccount}
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-xs text-gray-500 block mb-0.5">Particulars</span>
+                  <span className="text-gray-700 text-sm">
+                    {paymentData.particulars}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Close Modal"
-              >
-                <FaTimes size={20} />
-              </button>
+
+            {/* Reliever Breakdown Grid */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col max-h-[220px]">
+              <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2 shrink-0">
+                <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <FaUsers className="text-gray-400" /> Employees Paid ({paymentData.relieversProcessed})
+                </h3>
+                <span className="text-lg font-bold text-blue-600">
+                  ₹{(paymentData.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-1">
+                  {relievers.map((r, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-1.5 px-2 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-100 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-800">{r.relieverName}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">{r.employeeId}</span>
+                      </div>
+                      <span className="text-xs font-bold text-gray-700">
+                        ₹{Number(r.amount || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column */}
-            <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaCalendarAlt className="text-purple-600" size={20} />
-                  Payment Information
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payment Date:</span>
-                    <span className="font-medium">{safeData.date}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payment Method:</span>
-                    <span className="font-medium">{safeData.paymentMethod}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Bank Account:</span>
-                    <span className="font-medium text-sm">{safeData.bankAccount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Relievers:</span>
-                    <span className="font-medium text-purple-700">
-                      {isMultiReliever ? safeData.relieverDetails.length : 1}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Status:</span>
-                    <span
-                      className={`px-2 py-1 rounded text-sm font-medium ${getStatusColor(safeData.status)}`}
-                    >
-                      {safeData.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Reliever Information - Enhanced for Multiple Relievers */}
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaIdCard className="text-purple-600" size={20} />
-                  Reliever Details
-                  {isMultiReliever && (
-                    <span className="text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                      {safeData.relieverDetails.length} relievers
-                    </span>
-                  )}
-                </h2>
-
-                {!isMultiReliever ? (
-                  // Single Reliever Display
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Reliever Name:</span>
-                      <span className="font-medium">{safeData.vendor}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Employee ID:</span>
-                      <span className="font-medium">
-                        {safeData.relieverDetails[0]?.employeeId || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Amount:</span>
-                      <span className="font-medium text-purple-700">
-                        ₹ {safeData.amount?.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Account No:</span>
-                      <span className="font-medium text-sm">
-                        {safeData.relieverDetails[0]?.accountNo || 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  // Multiple Relievers Display
-                  <div className="space-y-4 max-h-80 overflow-y-auto">
-                    {safeData.relieverDetails.map((reliever, index) => (
-                      <div key={index} className="border border-purple-200 rounded-lg p-3 bg-white">
-                        <div
-                          className="flex items-center justify-between cursor-pointer hover:bg-purple-50 p-2 rounded"
-                          onClick={() => toggleRelieverExpansion(index)}
-                        >
-                          <div className="flex items-center gap-2">
-                            {expandedRelievers[index] ? (
-                              <FaChevronDown size={14} className="text-purple-600" />
-                            ) : (
-                              <FaChevronRight size={14} className="text-purple-600" />
-                            )}
-                            <span className="font-medium text-gray-800">{reliever.vendorName}</span>
-                            <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs">
-                              ₹{reliever.totalAmount?.toLocaleString() || '0'}
-                            </span>
+          {/* GL Entries Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setExpanded(!expanded)}>
+              <h3 className="text-sm font-bold text-gray-800">General Ledger Entries</h3>
+              {expanded ? <FaChevronUp className="text-gray-500 text-xs" /> : <FaChevronDown className="text-gray-500 text-xs" />}
+            </div>
+            
+            {expanded && (
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">GL Code</th>
+                      <th className="px-4 py-3 font-semibold">Description</th>
+                      <th className="px-4 py-3 font-semibold text-right w-32 bg-blue-50/50">Debit (₹)</th>
+                      <th className="px-4 py-3 font-semibold text-right w-32 bg-purple-50/50">Credit (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paymentData.glEntries?.map((entry, index) => (
+                      <tr key={index} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                          {entry.glCode}
+                        </td>
+                        <td className="px-4 py-3 text-gray-800 font-medium">
+                          {entry.glDescription}
+                          <div className="text-[10px] text-gray-400 font-normal mt-0.5">
+                            {entry.costCenter} • {entry.department}
                           </div>
-                          <span className="text-sm text-gray-500">
-                            {reliever.invoices?.length || 0} payment
-                            {(reliever.invoices?.length || 0) > 1 ? 's' : ''}
-                          </span>
-                        </div>
-
-                        {expandedRelievers[index] && (
-                          <div className="mt-3 pl-4 border-l-2 border-purple-200 space-y-2">
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>
-                                <span className="text-gray-600">Employee ID:</span>
-                                <span className="ml-2 font-medium">
-                                  {reliever.employeeId || 'N/A'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">Site:</span>
-                                <span className="ml-2 font-medium">
-                                  {reliever.site || 'General'}
-                                </span>
-                              </div>
-                              <div className="col-span-2">
-                                <span className="text-gray-600">Account No:</span>
-                                <span className="ml-2 font-medium">
-                                  {reliever.accountNo || 'N/A'}
-                                </span>
-                              </div>
-                              <div className="col-span-2">
-                                <span className="text-gray-600">IFSC Code:</span>
-                                <span className="ml-2 font-medium">
-                                  {reliever.ifscCode || 'N/A'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Payment Details */}
-                            <div className="bg-purple-50 p-2 rounded">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                Payment Details:
-                              </h4>
-                              <div className="space-y-1">
-                                {reliever.invoices?.map((invoice, invIndex) => (
-                                  <div
-                                    key={invIndex}
-                                    className="flex justify-between items-center text-xs"
-                                  >
-                                    <span className="text-purple-600 font-medium">
-                                      {invoice.invoiceNumber || `Payment-${index + 1}`}
-                                    </span>
-                                    <div className="flex gap-2">
-                                      <span className="text-gray-500">
-                                        Days: {invoice.days || 1}
-                                      </span>
-                                      <span className="text-green-600 font-medium">
-                                        ₹
-                                        {invoice.paidAmount?.toLocaleString() ||
-                                          invoice.originalAmount?.toLocaleString() ||
-                                          '0'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                )) || (
-                                  <div className="text-xs text-gray-500">
-                                    Single payment: ₹{reliever.totalAmount?.toLocaleString() || '0'}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                        </td>
+                        <td className="px-4 py-3 text-right bg-blue-50/30 font-semibold text-blue-700">
+                          {entry.debitAmount > 0
+                            ? entry.debitAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                            : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right bg-purple-50/30 font-semibold text-purple-700">
+                          {entry.creditAmount > 0
+                            ? entry.creditAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                            : '-'}
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                )}
+                  </tbody>
+                  <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                    <tr>
+                      <td colSpan="2" className="px-4 py-3 text-right text-gray-700">Summary Totals:</td>
+                      <td className="px-4 py-3 text-right text-blue-700">
+                        {paymentData.glEntries?.reduce((s, e) => s + (e.debitAmount || 0), 0)
+                          .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3 text-right text-purple-700">
+                        {paymentData.glEntries?.reduce((s, e) => s + (e.creditAmount || 0), 0)
+                          .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
-
-              {/* GL Entries Table */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaTag className="text-blue-600" size={20} />
-                  GL Entries & Accounting Details
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-gray-300">
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          GL Code
-                        </th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          Description
-                        </th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          Cost Center
-                        </th>
-                        <th className="text-left py-2 px-1 text-sm font-semibold text-gray-700">
-                          Department
-                        </th>
-                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">
-                          Debit
-                        </th>
-                        <th className="text-right py-2 px-1 text-sm font-semibold text-gray-700">
-                          Credit
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {safeData.glEntries.length > 0 ? (
-                        safeData.glEntries.map((entry, index) => (
-                          <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
-                            <td className="py-2 px-1 text-sm font-medium text-blue-700">
-                              {entry.glCode}
-                            </td>
-                            <td className="py-2 px-1 text-sm">{entry.glDescription}</td>
-                            <td className="py-2 px-1 text-sm">{entry.costCenter}</td>
-                            <td className="py-2 px-1 text-sm">{entry.department}</td>
-                            <td className="py-2 px-1 text-sm text-right font-medium">
-                              {entry.debitAmount > 0
-                                ? `₹ ${entry.debitAmount.toLocaleString()}`
-                                : '-'}
-                            </td>
-                            <td className="py-2 px-1 text-sm text-right font-medium">
-                              {entry.creditAmount > 0
-                                ? `₹ ${entry.creditAmount.toLocaleString()}`
-                                : '-'}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="6" className="py-4 text-center text-gray-500">
-                            No GL entries available
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t-2 border-gray-400 bg-gray-100">
-                        <td colSpan="4" className="py-2 px-1 text-sm font-bold text-gray-800">
-                          TOTALS
-                        </td>
-                        <td className="py-2 px-1 text-sm font-bold text-right">
-                          ₹{' '}
-                          {safeData.glEntries
-                            .reduce((sum, entry) => sum + (entry.debitAmount || 0), 0)
-                            .toLocaleString()}
-                        </td>
-                        <td className="py-2 px-1 text-sm font-bold text-right">
-                          ₹{' '}
-                          {safeData.glEntries
-                            .reduce((sum, entry) => sum + (entry.creditAmount || 0), 0)
-                            .toLocaleString()}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-6">
-              {/* Amount Breakdown */}
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaRupeeSign className="text-purple-600" size={20} />
-                  Amount Breakdown
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Payment Amount:</span>
-                    <span className="font-bold text-purple-800 text-lg">
-                      ₹ {safeData.amount?.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {isMultiReliever && (
-                    <div className="mt-4 pt-3 border-t border-purple-300">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                        Reliever-wise Breakdown:
-                      </h3>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {safeData.relieverDetails.map((reliever, index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span
-                              className="text-gray-600 truncate mr-2"
-                              title={reliever.vendorName}
-                            >
-                              {reliever.vendorName.length > 20
-                                ? reliever.vendorName.substring(0, 20) + '...'
-                                : reliever.vendorName}
-                            </span>
-                            <span className="font-medium text-purple-700">
-                              ₹ {reliever.totalAmount?.toLocaleString() || '0'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Particulars */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaFileAlt className="text-blue-600" size={20} />
-                  Particulars
-                </h2>
-                <p className="text-gray-700 leading-relaxed">{safeData.particulars}</p>
-              </div>
-
-              {/* Workflow Information */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaUser className="text-blue-600" size={20} />
-                  Workflow
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-gray-600 block">Prepared By:</span>
-                    <span className="font-medium">{safeData.preparedBy}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 block">Approved By:</span>
-                    <span className="font-medium">{safeData.approvedBy}</span>
-                  </div>
-                  {safeData.remarks && (
-                    <div>
-                      <span className="text-gray-600 block">Remarks:</span>
-                      <span className="font-medium italic">{safeData.remarks}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Payment Summary */}
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FaCheck className="text-green-600" size={20} />
-                  Payment Summary
-                </h2>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Transaction Type:</span>
-                    <span className="font-medium">Reliever Bank Payment</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">GL Impact:</span>
-                    <span className="font-medium">Debit L2001002, Credit Bank</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Processing Date:</span>
-                    <span className="font-medium">{new Date().toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="mt-8 pt-4 border-t flex justify-end gap-3">
+          {/* Workflow Footer */}
+          <div className="flex flex-wrap items-center gap-4 bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs shadow-sm">
+            <div className="flex items-center gap-2">
+              <FaCheckCircle className="text-blue-500" size={16} />
+              <span className="text-gray-700 font-semibold">Workflow Confirmed</span>
+            </div>
+            <div className="w-px h-6 bg-blue-200 hidden sm:block"></div>
+            <div className="flex items-center gap-4 flex-1">
+              <div>
+                <span className="text-gray-400 block text-[10px]">Prepared By</span>
+                <span className="font-medium text-gray-800">{paymentData.preparedBy}</span>
+              </div>
+              <div className="hidden sm:block text-gray-300">→</div>
+              <div>
+                <span className="text-gray-400 block text-[10px]">Auto-Approved</span>
+                <span className="font-medium text-gray-800">{paymentData.approvedBy}</span>
+              </div>
+            </div>
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-sm hover:bg-blue-700 transition ml-auto border border-blue-600"
             >
-              Close
+              Done
             </button>
           </div>
         </div>
       </div>
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      `}</style>
     </div>
   )
 }

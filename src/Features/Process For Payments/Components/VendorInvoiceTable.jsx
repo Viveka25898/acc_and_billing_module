@@ -1,6 +1,10 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
+
+// Spinner helper
+const Spinner = () => (
+  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-green-500" />
+)
 
 const VendorInvoiceTable = ({
   vendorData,
@@ -14,371 +18,278 @@ const VendorInvoiceTable = ({
   const [expandedVendor, setExpandedVendor] = useState(null)
   const [localPayments, setLocalPayments] = useState({})
 
-  // Load persisted payment data on component mount
+  // Load persisted selections on mount
   useEffect(() => {
-    const loadPersistedPaymentData = () => {
-      try {
-        const persistedPaymentsStr = localStorage.getItem('vendor_payment_selections')
-        const persistedPayments = persistedPaymentsStr ? JSON.parse(persistedPaymentsStr) : {}
-
-        const persistedSelectionsStr = localStorage.getItem('vendor_selection_state')
-        const persistedSelections = persistedSelectionsStr ? JSON.parse(persistedSelectionsStr) : {}
-
-        if (Object.keys(persistedPayments).length > 0) {
-          setLocalPayments(persistedPayments)
-          // Also update parent component with persisted payments
-          Object.entries(persistedPayments).forEach(([invoiceId, payment]) => {
-            onPaymentUpdate?.(invoiceId, payment.amount, payment.paymentType)
-          })
-        }
-
-        if (Object.keys(persistedSelections).length > 0) {
-          setSelectedVendors(persistedSelections)
-        }
-      } catch (error) {
-        console.error('Error loading persisted payment data:', error)
+    try {
+      const saved = JSON.parse(localStorage.getItem('vendor_payment_selections') || '{}')
+      const savedSelections = JSON.parse(localStorage.getItem('vendor_selection_state') || '{}')
+      if (Object.keys(saved).length > 0) {
+        setLocalPayments(saved)
+        Object.entries(saved).forEach(([id, p]) => onPaymentUpdate?.(id, p.amount, p.paymentType))
       }
+      if (Object.keys(savedSelections).length > 0) setSelectedVendors(savedSelections)
+    } catch {
+      // ignore
     }
-
-    loadPersistedPaymentData()
   }, [])
 
+  // Sync with parent
+  useEffect(() => setLocalPayments(invoicePayments), [invoicePayments])
+
+  // Default full-payment entry for new invoices
   useEffect(() => {
-    setLocalPayments(invoicePayments)
-  }, [invoicePayments])
-
-  // Persist payment data whenever it changes
-  const persistPaymentData = (payments, selections) => {
-    try {
-      localStorage.setItem('vendor_payment_selections', JSON.stringify(payments))
-      localStorage.setItem('vendor_selection_state', JSON.stringify(selections))
-    } catch (error) {
-      console.error('Error persisting payment data:', error)
-    }
-  }
-
-  const handleVendorClick = (vendorId) => {
-    setExpandedVendor(expandedVendor === vendorId ? null : vendorId)
-  }
-
-  const handleVendorCheckbox = (vendorId) => {
-    const newSelections = {
-      ...selectedVendors,
-      [vendorId]: !selectedVendors[vendorId],
-    }
-    setSelectedVendors(newSelections)
-    persistPaymentData(localPayments, newSelections)
-  }
-
-  const handleAmountChange = (invoiceId, amount) => {
-    const numericAmount = Number(amount)
-
-    // Allow 0 as valid amount for partial payments
-    if (numericAmount < 0) {
-      toast.error('Amount cannot be negative')
-      return
-    }
-
-    const currentPayment = localPayments[invoiceId] || {}
-    const updatedPayment = {
-      ...currentPayment,
-      amount: numericAmount,
-      paymentType: currentPayment.paymentType || 'partial',
-    }
-
-    const newPayments = {
-      ...localPayments,
-      [invoiceId]: updatedPayment,
-    }
-
-    setLocalPayments(newPayments)
-    persistPaymentData(newPayments, selectedVendors)
-
-    // Immediately update parent component
-    onPaymentUpdate?.(invoiceId, numericAmount, updatedPayment.paymentType)
-  }
-
-  const handlePaymentTypeChange = (invoiceId, paymentType, originalAmount) => {
-    let amount
-
-    if (paymentType === 'full') {
-      amount = originalAmount
-    } else {
-      // For partial payments, use existing amount or 0 if none set
-      amount = localPayments[invoiceId]?.amount || 0
-    }
-
-    const updatedPayment = {
-      amount: Number(amount),
-      paymentType: paymentType,
-    }
-
-    const newPayments = {
-      ...localPayments,
-      [invoiceId]: updatedPayment,
-    }
-
-    setLocalPayments(newPayments)
-    persistPaymentData(newPayments, selectedVendors)
-
-    // Immediately update parent component
-    onPaymentUpdate?.(invoiceId, Number(amount), paymentType)
-  }
-
-  // Initialize default payment data for all invoices when component mounts
-  useEffect(() => {
-    const initializePayments = () => {
-      const defaultPayments = {}
-      let hasNewPayments = false
-
-      vendorData.forEach((vendor) => {
-        vendor.invoices.forEach((invoice) => {
-          if (!localPayments[invoice.id]) {
-            defaultPayments[invoice.id] = {
-              amount: invoice.amount,
-              paymentType: 'full',
-            }
-            hasNewPayments = true
-            // Also update parent component
-            onPaymentUpdate?.(invoice.id, invoice.amount, 'full')
-          }
-        })
-      })
-
-      if (hasNewPayments) {
-        const newPayments = {
-          ...localPayments,
-          ...defaultPayments,
+    if (vendorData.length === 0) return
+    const defaults = {}
+    let hasNew = false
+    vendorData.forEach((vendor) => {
+      vendor.invoices.forEach((inv) => {
+        if (!localPayments[inv.id]) {
+          defaults[inv.id] = { amount: inv.amount, paymentType: 'full' }
+          hasNew = true
+          onPaymentUpdate?.(inv.id, inv.amount, 'full')
         }
-        setLocalPayments(newPayments)
-        persistPaymentData(newPayments, selectedVendors)
-      }
-    }
-
-    if (vendorData.length > 0) {
-      initializePayments()
+      })
+    })
+    if (hasNew) {
+      const merged = { ...localPayments, ...defaults }
+      setLocalPayments(merged)
+      persist(merged, selectedVendors)
     }
   }, [vendorData])
 
-  const handleApproveSelectedInvoices = () => {
-    // Pass both selected vendors and current payment state
-    onInvoiceApprove(selectedVendors, localPayments)
-
-    // Clear persisted data for approved invoices
+  const persist = (payments, selections) => {
     try {
-      const newPayments = { ...localPayments }
-      const newSelections = { ...selectedVendors }
-
-      vendorData.forEach((vendor) => {
-        if (selectedVendors[vendor.id]) {
-          // Remove payment data for approved vendor's invoices
-          vendor.invoices.forEach((invoice) => {
-            delete newPayments[invoice.id]
-          })
-          // Deselect the vendor
-          newSelections[vendor.id] = false
-        }
-      })
-
-      setLocalPayments(newPayments)
-      setSelectedVendors(newSelections)
-      persistPaymentData(newPayments, newSelections)
-    } catch (error) {
-      console.error('Error clearing persisted data after approval:', error)
+      localStorage.setItem('vendor_payment_selections', JSON.stringify(payments))
+      localStorage.setItem('vendor_selection_state', JSON.stringify(selections))
+    } catch {
+      // non-critical
     }
   }
 
-  const getVendorPaymentStatus = (vendor, payments) => {
-    let fullyPaid = true
-    let partiallyPaidInvoices = []
+  const handleVendorCheckbox = (vendorId) => {
+    const next = { ...selectedVendors, [vendorId]: !selectedVendors[vendorId] }
+    setSelectedVendors(next)
+    persist(localPayments, next)
+  }
 
-    vendor.invoices.forEach((inv) => {
-      const pay = payments[inv.id]
-      if (!pay) {
-        fullyPaid = false
-      } else if (Number(pay.amount) < inv.amount) {
-        fullyPaid = false
-        partiallyPaidInvoices.push({ ...inv, paidAmount: pay.amount })
+  const handleAmountChange = (invoiceId, value) => {
+    const num = Number(value)
+    if (num < 0) { toast.error('Amount cannot be negative'); return }
+    const current = localPayments[invoiceId] || {}
+    const updated = { ...current, amount: num, paymentType: current.paymentType || 'partial' }
+    const next = { ...localPayments, [invoiceId]: updated }
+    setLocalPayments(next)
+    persist(next, selectedVendors)
+    onPaymentUpdate?.(invoiceId, num, updated.paymentType)
+  }
+
+  const handlePaymentTypeChange = (invoiceId, paymentType, originalAmount) => {
+    const amount = paymentType === 'full' ? originalAmount : (localPayments[invoiceId]?.amount || 0)
+    const updated = { amount: Number(amount), paymentType }
+    const next = { ...localPayments, [invoiceId]: updated }
+    setLocalPayments(next)
+    persist(next, selectedVendors)
+    onPaymentUpdate?.(invoiceId, Number(amount), paymentType)
+  }
+
+  const handleApproveSelected = () => {
+    onInvoiceApprove(selectedVendors, localPayments)
+    // Clear local state for approved vendors
+    const newPayments = { ...localPayments }
+    const newSelections = { ...selectedVendors }
+    vendorData.forEach((v) => {
+      if (selectedVendors[v.id]) {
+        v.invoices.forEach((inv) => delete newPayments[inv.id])
+        newSelections[v.id] = false
       }
     })
-
-    return {
-      fullyPaid,
-      partiallyPaidInvoices,
-    }
+    setLocalPayments(newPayments)
+    setSelectedVendors(newSelections)
+    persist(newPayments, newSelections)
   }
 
-  // Helper function to get badge color based on invoice type
-  const getInvoiceTypeBadgeColor = (invoiceTypeLabel) => {
-    if (!invoiceTypeLabel) return 'bg-gray-100 text-gray-600'
-
-    if (invoiceTypeLabel.includes('Material')) {
-      return 'bg-blue-100 text-blue-700 border-blue-200'
-    } else if (invoiceTypeLabel.includes('Fixed Asset')) {
-      return 'bg-purple-100 text-purple-700 border-purple-200'
-    } else if (invoiceTypeLabel.includes('Uniform') || invoiceTypeLabel.includes('Prepaid')) {
-      return 'bg-green-100 text-green-700 border-green-200'
-    }
+  const typeBadgeColor = (label = '') => {
+    if (label.includes('Material')) return 'bg-blue-100 text-blue-700 border-blue-200'
+    if (label.includes('Fixed Asset')) return 'bg-purple-100 text-purple-700 border-purple-200'
+    if (label.includes('Uniform') || label.includes('Prepaid')) return 'bg-green-100 text-green-700 border-green-200'
+    if (label.includes('Rent')) return 'bg-yellow-100 text-yellow-700 border-yellow-200'
     return 'bg-gray-100 text-gray-600 border-gray-200'
   }
 
-  const filteredVendors = vendorData.filter((vendor) => vendor.invoices.length > 0)
+  const filteredVendors = vendorData.filter((v) => v.invoices.length > 0)
+  const selectedCount = Object.values(selectedVendors).filter(Boolean).length
 
-  const renderInvoiceRow = (invoice, vendor) => {
-    const payment = localPayments[invoice.id] || { amount: invoice.amount, paymentType: 'full' }
-    const isPartialPayment = payment.paymentType === 'partial'
-    const displayAmount =
-      payment.amount !== undefined ? String(payment.amount) : String(invoice.amount)
-
-    // Check if this is a rent voucher
-    const isRentVoucher = invoice.isRentVoucher || vendor.isRentVoucher
-
+  if (filteredVendors.length === 0) {
     return (
-      <tr key={invoice.id} className="bg-gray-100 border text-[10px] leading-tight">
-        <td className="px-[2px] py-[2px] text-center border">-</td>
-        <td className="px-[2px] py-[2px] text-center border">-</td>
-        <td className="px-[2px] py-[2px] text-black border">└ {vendor.vendorName}</td>
-        <td className="px-[2px] py-[2px] border">
-          <div className="flex flex-col space-y-1">
-            <button
-              onClick={() => onInvoiceSelect?.(invoice)}
-              className="text-blue-600 hover:underline font-medium text-[10px] text-left"
-            >
-              {invoice.invoiceNumber}
-              {isRentVoucher && (
-                <span className="ml-1 bg-green-100 text-green-700 px-1 rounded text-[8px]">
-                  Rent
-                </span>
-              )}
-            </button>
-            {invoice.invoiceTypeLabel && (
-              <span
-                className={`inline-block text-[8px] px-1.5 py-0.5 rounded-full border font-medium ${getInvoiceTypeBadgeColor(invoice.invoiceTypeLabel)}`}
-              >
-                {invoice.invoiceTypeLabel}
-              </span>
-            )}
-          </div>
-        </td>
-        <td className="px-[2px] py-[2px] border">
-          <div className="space-y-[2px]">
-            <div className="flex items-center space-x-[2px]">
-              <span className="text-[10px] text-black">₹</span>
-              <input
-                type="number"
-                value={displayAmount}
-                onChange={(e) => handleAmountChange(invoice.id, e.target.value)}
-                disabled={!isPartialPayment}
-                className={`w-[60px] px-[4px] py-[2px] text-[10px] border rounded focus:outline-none ${
-                  isPartialPayment ? 'bg-white border-blue-300' : 'bg-gray-100 border-gray-300'
-                }`}
-                step="0.01"
-                min="0"
-                max={invoice.amount}
-              />
-            </div>
-
-            <div className="flex flex-col space-y-[1px]">
-              <label className="flex items-center text-[9px]">
-                <input
-                  type="radio"
-                  name={`payment-${invoice.id}`}
-                  value="full"
-                  checked={payment.paymentType !== 'partial'}
-                  onChange={() => handlePaymentTypeChange(invoice.id, 'full', invoice.amount)}
-                  className="mr-[3px] text-blue-600 scale-[0.8]"
-                />
-                <span className="text-green-600">Full</span>
-              </label>
-
-              <label className="flex items-center text-[9px]">
-                <input
-                  type="radio"
-                  name={`payment-${invoice.id}`}
-                  value="partial"
-                  checked={payment.paymentType === 'partial'}
-                  onChange={() => handlePaymentTypeChange(invoice.id, 'partial', invoice.amount)}
-                  className="mr-[3px] text-orange-600 scale-[0.8]"
-                />
-                <span className="text-orange-600">Partial</span>
-              </label>
-            </div>
-          </div>
-        </td>
-      </tr>
+      <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+        <div className="text-4xl mb-3">📭</div>
+        <p className="text-sm font-semibold text-gray-600">No pending vendor invoices</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Approved invoices from AM / BM / Finance Head will appear here
+        </p>
+      </div>
     )
   }
 
   return (
-    <div className="w-full overflow-x-auto">
-      <table className="w-full table-auto min-w-[650px] text-xs border">
-        <thead className="bg-gray-100 sticky top-0 text-[11px] border">
-          <tr className="border">
-            <th className="px-2 py-2 border">Sr</th>
-            <th className="px-2 py-2 border">Select</th>
-            <th className="px-2 py-2 border">Vendor</th>
-            <th className="px-2 py-2 border">Invoice</th>
-            <th className="px-1 py-1 border">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredVendors.map((vendor, index) => (
-            <React.Fragment key={vendor.id}>
-              <tr className="hover:bg-gray-50 transition-colors text-xs border">
-                <td className="px-2 py-2 text-center border">{index + 1}</td>
-                <td className="px-2 py-2 text-center border">
-                  <input
-                    type="checkbox"
-                    checked={selectedVendors[vendor.id] || false}
-                    onChange={() => handleVendorCheckbox(vendor.id)}
-                    className="h-3 w-3 text-blue-600"
-                  />
-                </td>
-                <td className="px-2 py-2 border">
-                  <button
-                    onClick={() => handleVendorClick(vendor.id)}
-                    className="flex items-center space-x-1 hover:text-blue-600 font-medium"
-                  >
-                    <span className="text-[10px]">{expandedVendor === vendor.id ? '▼' : '▶'}</span>
-                    <span>{vendor.vendorName}</span>
-                    {vendor.isRentVoucher && (
-                      <span className="ml-1 text-[10px] text-green-600 bg-green-100 px-1 rounded-full">
-                        Rent
+    <div className="flex flex-col h-full">
+      <div className="overflow-x-auto flex-1">
+        <table className="w-full text-xs min-w-[520px]">
+          <thead className="bg-green-50 border-b border-green-100 sticky top-0 z-10">
+            <tr>
+              <th className="px-3 py-2 text-center text-gray-600 font-semibold w-8">#</th>
+              <th className="px-3 py-2 text-center text-gray-600 font-semibold w-8">✓</th>
+              <th className="px-3 py-2 text-left text-gray-600 font-semibold">Vendor</th>
+              <th className="px-3 py-2 text-left text-gray-600 font-semibold">Invoice</th>
+              <th className="px-3 py-2 text-right text-gray-600 font-semibold pr-4">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filteredVendors.map((vendor, idx) => (
+              <React.Fragment key={vendor.id}>
+                {/* Vendor row */}
+                <tr className="hover:bg-gray-50 transition-colors">
+                  <td className="px-3 py-2 text-center text-gray-400">{idx + 1}</td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedVendors[vendor.id] || false}
+                      onChange={() => handleVendorCheckbox(vendor.id)}
+                      className="h-3.5 w-3.5 rounded accent-green-600"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      onClick={() =>
+                        setExpandedVendor(expandedVendor === vendor.id ? null : vendor.id)
+                      }
+                      className="flex items-center gap-1.5 text-left font-semibold text-gray-800 hover:text-green-700 transition-colors"
+                    >
+                      <span className="text-[10px] text-gray-400">
+                        {expandedVendor === vendor.id ? '▼' : '▶'}
                       </span>
-                    )}
-                    <span className="ml-1 text-[10px] text-gray-500 bg-gray-100 px-1 rounded-full">
-                      {getVendorPaymentStatus(vendor, localPayments).fullyPaid ? 'Paid' : 'Pending'}
-                    </span>
-                    <span className="text-[10px] text-gray-500 bg-gray-100 px-1 rounded-full">
-                      {vendor.invoices.length} {vendor.isRentVoucher ? 'vouchers' : 'inv'}
-                    </span>
-                  </button>
-                </td>
-                <td className="px-1 py-1 text-[10px] border">
-                  {expandedVendor === vendor.id ? '↓ invoices below' : 'Click name'}
-                </td>
-                <td className="px-1 py-1 text-[10px] border">
-                  ₹{vendor.invoices.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
-                </td>
-              </tr>
-              {expandedVendor === vendor.id &&
-                vendor.invoices.map((invoice) => renderInvoiceRow(invoice, vendor))}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
+                      <span className="truncate max-w-[140px]" title={vendor.vendorName}>
+                        {vendor.vendorName}
+                      </span>
+                      {vendor.isRentVoucher && (
+                        <span className="bg-yellow-100 text-yellow-700 text-[9px] px-1.5 rounded-full border border-yellow-200">
+                          Rent
+                        </span>
+                      )}
+                      <span className="bg-gray-100 text-gray-500 text-[9px] px-1.5 rounded-full">
+                        {vendor.invoices.length} inv
+                      </span>
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-gray-400 text-[10px]">
+                    {expandedVendor === vendor.id ? 'See below' : 'Click to expand'}
+                  </td>
+                  <td className="px-3 py-2 text-right font-semibold text-gray-700 pr-4">
+                    ₹{vendor.invoices.reduce((s, i) => s + i.amount, 0).toLocaleString('en-IN')}
+                  </td>
+                </tr>
 
-      {filteredVendors.length === 0 && (
-        <div className="text-center py-6 text-black">
-          <div className="text-sm mb-1 font-semibold">No vendors found</div>
-          <div className="text-xs">Upload a payment file or add vendors</div>
-        </div>
-      )}
+                {/* Invoice sub-rows */}
+                {expandedVendor === vendor.id &&
+                  vendor.invoices.map((invoice) => {
+                    const payment = localPayments[invoice.id] || {
+                      amount: invoice.amount,
+                      paymentType: 'full',
+                    }
+                    const isPartial = payment.paymentType === 'partial'
+                    return (
+                      <tr key={invoice.id} className="bg-green-50/50 border-l-2 border-green-400">
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2 text-gray-500 text-[10px] pl-5">
+                          └ {vendor.vendorName}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="space-y-1">
+                            <button
+                              onClick={() => onInvoiceSelect?.(invoice)}
+                              className="text-blue-600 hover:underline font-semibold text-[10px] text-left block"
+                            >
+                              {invoice.invoiceNumber}
+                            </button>
+                            {invoice.invoiceTypeLabel && (
+                              <span
+                                className={`inline-block text-[8px] px-1.5 py-0.5 rounded-full border font-medium ${typeBadgeColor(invoice.invoiceTypeLabel)}`}
+                              >
+                                {invoice.invoiceTypeLabel}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 pr-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 justify-end">
+                              <span className="text-[10px] text-gray-500">₹</span>
+                              <input
+                                type="number"
+                                value={isPartial ? payment.amount : invoice.amount}
+                                onChange={(e) => handleAmountChange(invoice.id, e.target.value)}
+                                disabled={!isPartial}
+                                min="0"
+                                max={invoice.amount}
+                                step="0.01"
+                                className={`w-16 text-[10px] px-1.5 py-0.5 border rounded text-right focus:outline-none focus:ring-1 focus:ring-green-400 ${
+                                  isPartial
+                                    ? 'bg-white border-blue-300'
+                                    : 'bg-gray-100 border-gray-200'
+                                }`}
+                              />
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                              <label className="flex items-center gap-0.5 text-[9px] cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`pay-${invoice.id}`}
+                                  checked={payment.paymentType !== 'partial'}
+                                  onChange={() =>
+                                    handlePaymentTypeChange(invoice.id, 'full', invoice.amount)
+                                  }
+                                  className="accent-green-600 scale-90"
+                                />
+                                <span className="text-green-700">Full</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 text-[9px] cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`pay-${invoice.id}`}
+                                  checked={payment.paymentType === 'partial'}
+                                  onChange={() =>
+                                    handlePaymentTypeChange(invoice.id, 'partial', invoice.amount)
+                                  }
+                                  className="accent-orange-500 scale-90"
+                                />
+                                <span className="text-orange-600">Partial</span>
+                              </label>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <div className="mt-4 text-right">
+      {/* Approve bar */}
+      <div className="border-t border-gray-100 p-3 flex items-center justify-between bg-white">
+        <span className="text-xs text-gray-500">
+          {selectedCount > 0 ? `${selectedCount} vendor(s) selected` : 'Select vendors to approve'}
+        </span>
         <button
-          onClick={handleApproveSelectedInvoices}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-4 rounded"
+          onClick={handleApproveSelected}
+          disabled={selectedCount === 0}
+          className={`text-xs font-semibold px-4 py-1.5 rounded-full transition-all ${
+            selectedCount > 0
+              ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}
         >
           Approve Selected
         </button>
