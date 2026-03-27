@@ -41,7 +41,6 @@ import AEInvoiceApproval from '../Features/PurchaseBookingHKMaterial/AEInvoiceAp
 import VendorCreationForm from '../Features/Vendor Creation Process/VendorCreationForm'
 import VendorTable from '../Features/Vendor Creation Process/VendorsTable'
 import ProcessPaymentPage from '../Features/Process For Payments/ProcessPaymentPage'
-import VendorLedgerPage from '../Features/Process For Payments/VendorLedgerPage'
 import TDSMapping from '../Features/Process of Auto JV for TDS Booking/Pages/TDSMapping'
 import StatutorySetup from '../Features/Process of Auto JV for TDS Booking/Pages/StatutorySetup'
 import ExpenseBookingPage from '../Features/Process of Auto JV for TDS Booking/Pages/ExpenseBooking'
@@ -617,10 +616,7 @@ export const router = createBrowserRouter([
         path: 'process-payments',
         element: <ProcessPaymentPage />,
       },
-      {
-        path: 'vendor-ledger',
-        element: <VendorLedgerPage />,
-      },
+
       {
         path: 'map-tds',
         element: <TDSMapping />,
