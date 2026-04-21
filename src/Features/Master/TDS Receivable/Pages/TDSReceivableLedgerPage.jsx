@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // TDS Receivable Ledger Page — max-w-5xl, green theme
 import { useState } from 'react'
 import TDSReceivableLedgerHeader from '../Components/TDSReceivableLedgerHeader'

@@ -144,6 +144,12 @@ import VPMyRequest from '../Features/Advance Request/Pages/VPMyRequest'
 import AEAdvanceApprovalPage from '../Features/Advance Request/Pages/AEAdvanceApprovalPage'
 import VPReview from '../Features/Advance Settlement/Pages/VPReview'
 import AEAdvanceSettlementApproval from '../Features/Advance Settlement/Pages/AEAdvanaceSettlementApprovalPage'
+import LineManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/LineManagerAdvanceSettlementForm'
+import VPAdvanceSettlementForm from '../Features/Advance Settlement/Pages/VPAdvanceSettlementForm'
+import ManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ManagerAdvanceSettlementForm'
+import ComplianceTeamAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ComplianceTeamAdvanceSettlementForm'
+import ComplianceManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ComplianceManagerAdvanceSettlementForm'
+import OperationExecutiveAdvanceSettlementForm from '../Features/Advance Settlement/Pages/OperationExecutiveAdvanceSettlementForm'
 import ManagerAdvanceRequestForm from '../Features/Advance Request/Pages/ManagerAdvanceRequestForm'
 import LineManagerMyRequests from '../Features/Advance Request/Pages/LineManagerMyRequests'
 import ComplianceTeamAdvanceRequestForm from '../Features/Advance Request/Pages/ComplainceTeamAdvanceRequestForm'
@@ -337,6 +343,14 @@ export const router = createBrowserRouter([
         path: 'line-manager-reliever-approval',
         element: <LineManagerRelieverApprovalPage />,
       },
+      {
+        path: 'submit-advance-settlement',
+        element: <LineManagerAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
+      },
     ],
   },
   // *******************************VP Operations***********************************
@@ -383,6 +397,14 @@ export const router = createBrowserRouter([
       {
         path: 'reliever-approval-vp-operation-page',
         element: <VPRelieverApprovalPage />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <VPAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
       },
     ],
   },
@@ -445,6 +467,14 @@ export const router = createBrowserRouter([
       {
         path: 'invoice-verification',
         element: <InvoiceVerificationPage />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <ManagerAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
       },
     ],
   },
@@ -683,6 +713,14 @@ export const router = createBrowserRouter([
         path: 'submitted-entries',
         element: <ComplianceTeamSubmittedEntries />,
       },
+      {
+        path: 'submit-advance-settlement',
+        element: <ComplianceTeamAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
+      },
     ],
   },
 
@@ -711,6 +749,14 @@ export const router = createBrowserRouter([
       {
         path: 'statutory-compliances-requests',
         element: <ComplianceManagerApprovalPage />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <ComplianceManagerAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
       },
     ],
   },
@@ -920,6 +966,14 @@ export const router = createBrowserRouter([
       {
         path: 'my-uploaded-attendence',
         element: <MyUploadedAttendance />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <OperationExecutiveAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
       },
     ],
   },

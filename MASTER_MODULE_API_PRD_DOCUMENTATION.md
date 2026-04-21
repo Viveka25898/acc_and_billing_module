@@ -419,6 +419,217 @@ X2001005    - OTHER FEES
 }
 ```
 
+---
+
+## 17. Specialized Ledger APIs: Bank Ledgers (A3004)
+
+The Bank Ledger is the liquid control layer of the accounting module. It records all outgoing payments (credit to bank asset) and incoming receipts (debit to bank asset). Any posted transaction line touching `A3004*` accounts must be traceable here.
+
+### 17.0 Scope Boundary (Current Phase)
+
+To keep this phase implementation-safe, this section excludes dependency on expense-head-level enrichment.
+
+- Included now:
+  - Bank header metadata
+  - Ledger rows with running balance
+  - Footer totals
+  - Voucher, counterparty, status, and dimension fields
+- Deferred to next phase:
+  - Expense-head driven enrichments and category-level analytics
+  - Deep payment instrument workflows beyond ledger posting view
+
+### 17.1 Data Sourcing and Integration Rule-set
+
+Accounting sign convention for Bank (Asset):
+
+- `Debit` increases bank balance (money in)
+- `Credit` decreases bank balance (money out)
+
+| Ledger Column | Source Module | Backend Rule |
+|---|---|---|
+| Date | Accounts | Date when transaction is posted to ledger (posting date, not UI draft date). |
+| Voucher No | Accounts | Generated only on explicit approval/posting by authorized approver. |
+| Voucher Link | Accounts/Documents | Nullable URL to immutable signed voucher document. May be `null` if document service is not enabled yet. |
+| Entry Type | Accounts | Strict derived enum: `PAYMENT` when bank line is credit, `RECEIPT` when bank line is debit, `OPENING` for opening row. |
+| Debit (INR) | Accounts | Amount for incoming bank movement (receipt). |
+| Credit (INR) | Accounts | Amount for outgoing bank movement (payment). |
+| Balance (INR) | Accounts | Chronological running value: `Opening + Debit - Credit`. |
+| Narration | Accounts | Ledger narration from posted bank-side line, fallback to transaction narration. |
+| Ref No | Accounts/Bank Integration | Prefer UTR/Bank Txn Ref when available; fallback to source transaction reference id. |
+| Counterparty | Accounts | Must resolve to opposite-side ledger in same journal/transaction. |
+| Approved By | Security/Auth | Final approver who posted/authorized voucher. |
+| Status | Accounts | Lifecycle state: `POSTED`, `RECONCILED`, `REVERSED`, `VOIDED`. |
+| Cost Center / Customer / Site / State | Accounts Dimensions | Dimensions inherited from root transaction or line-level overrides. |
+
+### 17.2 Bank Ledger Header API
+
+**Endpoint:** `GET /api/v1/master/ledger/bank/:glCode/header`
+
+**Purpose:** Returns the header block metadata for the selected bank ledger.
+
+**Path Parameter:**
+
+- `glCode` (required): Must be a postable bank ledger under `A3004*`.
+
+**Validation Rules:**
+
+- Reject non-bank GLs.
+- Reject non-postable/folder nodes.
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "glAccountCode": "A3004001001",
+    "accountName": "HDFC MAIN ACCOUNT",
+    "bankName": "HDFC Bank",
+    "accountNumber": "50100123456789",
+    "ifscCode": "HDFC0001234",
+    "branch": "Mumbai - Andheri East",
+    "accountType": "Current Account",
+    "financialYear": "2025-2026",
+    "openingBalance": 500000.00,
+    "openingBalanceDate": "2025-04-01"
+  }
+}
+```
+
+### 17.3 Bank Ledger Data Grid API (Paginated Entries)
+
+**Endpoint:** `GET /api/v1/master/ledger/bank/:glCode/entries`
+
+**Purpose:** Returns the ledger table rows with running balance.
+
+**Mandatory Rule: Opening Row on First Page**
+
+- If `page=1`, API must prepend an opening balance row at index `0`.
+- If `page>1`, opening row must not be injected.
+
+**Query Parameters:**
+
+- `page` (integer, default `1`)
+- `limit` (integer, default `100`)
+- `fromDate` (date, optional)
+- `toDate` (date, optional)
+- `status` (string, optional)
+- `entryType` (enum: `PAYMENT|RECEIPT`, optional)
+- `search` (string, optional: voucherNo, narration, refNo, counterparty)
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "entries": [
+      {
+        "id": "opening-balance-sys",
+        "date": "2025-04-01",
+        "voucherNo": "OB-2025",
+        "voucherLink": null,
+        "entryType": "OPENING",
+        "debit": 500000.00,
+        "credit": null,
+        "balance": 500000.00,
+        "narration": "Opening Balance B/F FY 2025-26",
+        "refNo": "-",
+        "counterparty": "-",
+        "approvedBy": "System",
+        "status": "POSTED",
+        "costCenter": "Head Office",
+        "customer": "-",
+        "site": "-",
+        "state": "-",
+        "isOverdraft": false
+      },
+      {
+        "id": "entry-uuid-889",
+        "date": "2025-05-10",
+        "voucherNo": "PAY/MH01/2025/0081",
+        "voucherLink": "https://erp.internal/documents/signed/pay_081.pdf",
+        "entryType": "PAYMENT",
+        "debit": null,
+        "credit": 15000.00,
+        "balance": 485000.00,
+        "narration": "Monthly Vendor Payment - Tech Support",
+        "refNo": "UTR-HDFC-99182371",
+        "counterparty": "L2005001 - Reliance Tech Services",
+        "approvedBy": "Alice Manager",
+        "status": "POSTED",
+        "costCenter": "IT Dept",
+        "customer": "Internal",
+        "site": "Mumbai HQ",
+        "state": "MH",
+        "isOverdraft": false
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 100,
+      "totalItems": 1400,
+      "totalPages": 14
+    }
+  }
+}
+```
+
+### 17.4 Bank Ledger Footer/Summary API
+
+**Endpoint:** `GET /api/v1/master/ledger/bank/:glCode/footer`
+
+**Purpose:** Returns aggregate totals for footer rendering without client-side heavy reductions.
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalDebit": 500000.00,
+    "totalCredit": 15000.00,
+    "closingBalance": 485000.00,
+    "balanceType": "DR",
+    "isOverdraft": false
+  }
+}
+```
+
+### 17.5 Edge Cases and Production Fault Tolerance
+
+Backend must enforce the following:
+
+1. Negative balance (overdraft):
+   - If running/closing balance `< 0`, set `isOverdraft=true` in row/footer payload.
+
+2. Missing counterparty integrity:
+   - If opposite ledger line cannot be resolved, return fallback `counterparty="UNCATEGORIZED_LEDGER_ERROR"` (do not break response).
+
+3. Invalid date range:
+   - If `fromDate > toDate`, return `400 BAD_REQUEST`.
+
+4. Reversal and void handling:
+   - Never delete original posted row.
+   - Post explicit reversal row with opposite sign and `status="REVERSED"`.
+   - Link reversal row to original voucher/reference.
+
+5. Immutable voucher numbering:
+   - Once posted, `voucherNo` cannot be edited.
+   - Corrections must be performed through reversal/rebook entries.
+
+### 17.6 Validation and Error Codes
+
+| Scenario | Endpoint | Error Code | HTTP |
+|---|---|---|---|
+| Invalid/non-bank GL code | `/ledger/bank/:glCode/*` | `INVALID_BANK_GL_CODE` | 400 |
+| Non-postable bank node | `/ledger/bank/:glCode/*` | `BANK_GL_NOT_POSTABLE` | 400 |
+| Date range invalid | `/ledger/bank/:glCode/entries` | `INVALID_DATE_RANGE` | 400 |
+| Ledger not found | `/ledger/bank/:glCode/*` | `LEDGER_NOT_FOUND` | 404 |
+| Unauthorized ledger access | `/ledger/bank/:glCode/*` | `FORBIDDEN_LEDGER_ACCESS` | 403 |
+
+---
+
 ### 7. Post Transaction/Journal Entry
 
 **Endpoint:** `POST /api/master/transactions`
@@ -1652,4 +1863,486 @@ For clarifications or additional requirements, please refer to:
 
 ---
 
+## 🚀 14. Phase 1: Chart of Accounts Dashboard APIs
+
+This section defines only the APIs required to power the Chart of Accounts dashboard screen, including summary cards, data grid, add/edit/delete flows, and account details modal.
+
+### 14.0 Phase 1 API Conventions
+
+**Base URL:** `/api/v1/master`
+
+**Standard Success Envelope:**
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+**Standard Error Envelope:**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable message",
+    "fieldErrors": [
+      {
+        "field": "fieldName",
+        "code": "VALIDATION_RULE",
+        "message": "Validation message"
+      }
+    ]
+  },
+  "traceId": "request-trace-id"
+}
+```
+
+**Pagination Defaults:** `page=1`, `limit=50`  
+**Sorting Defaults:** `sortBy=code`, `sortOrder=asc`
+
+---
+
+### 14.1 Dashboard Summary Cards API
+
+**Endpoint:** `GET /api/v1/master/accounts/summary`
+
+**Purpose:** Returns top card metrics: total accounts, root count, folder-type count, and posted entry count.
+
+**Rules:**
+- `totalAccounts`: total active accounts (all levels).
+- `rootAccounts`: count where `type=ROOT`.
+- `folderAccounts`: count where `type IN (FOLDER, SUBFOLDER, SUB_SUBFOLDER, ACCOUNT_SUBCATEGORY, ACCOUNT_TYPE)`.
+- `totalEntries`: count of posted transaction lines only.
+
+**Request:** No body or query parameters.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "totalAccounts": 129,
+    "rootAccounts": 4,
+    "folderAccounts": 10,
+    "totalEntries": 0
+  }
+}
+```
+
+---
+
+### 14.2 Chart of Accounts Data Grid API (Search, Filter, Tree, Pagination)
+
+**Endpoint:** `GET /api/v1/master/accounts`
+
+**Purpose:** Returns account rows for the grid as a flat list; frontend builds tree using `parentCode`.
+
+**Supported Use Cases:**
+- Root load (`level=ROOT`)
+- Lazy child load (`parentCode=<code>`)
+- Search by code/name/type
+- Paginated browsing
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| page | Integer | No | Page number (default: 1) |
+| limit | Integer | No | Page size (default: 50) |
+| search | String | No | Partial match on code, name, type |
+| level | String | No | Filter by level/type |
+| parentCode | String | No | Fetch direct children of a parent |
+| isPostable | Boolean | No | Filter postable vs grouping nodes |
+| includeBalance | Boolean | No | Include computed balance in each row (default: true) |
+| asOfDate | Date | No | Balance snapshot date (YYYY-MM-DD) |
+| sortBy | String | No | `code`, `name`, `type`, `createdAt` |
+| sortOrder | String | No | `asc` or `desc` |
+| includeInactive | Boolean | No | Include inactive accounts (default: false) |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "accounts": [
+      {
+        "id": "uuid-1",
+        "code": "A",
+        "name": "ASSETS",
+        "type": "ROOT",
+        "parentCode": null,
+        "isPostable": false,
+        "isActive": true,
+        "balance": 2551461.6,
+        "normalBalance": "DR",
+        "hasChildren": true,
+        "childCount": 5
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 1,
+      "totalItems": 4,
+      "limit": 50,
+      "hasNextPage": false,
+      "hasPreviousPage": false
+    }
+  }
+}
+```
+
+---
+
+### 14.3 Add Account Modal Initialization APIs
+
+#### 14.3.A Fetch Account Types
+
+**Endpoint:** `GET /api/v1/master/accounts/types`
+
+**Purpose:** Returns backend-supported account types.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    { "value": "ROOT", "label": "Root Category" },
+    { "value": "FOLDER", "label": "Folder Category" },
+    { "value": "SUBFOLDER", "label": "Subfolder Category" },
+    { "value": "ACCOUNT", "label": "Account (Final Ledger)" }
+  ]
+}
+```
+
+#### 14.3.B Fetch Eligible Parent Accounts
+
+**Endpoint:** `GET /api/v1/master/accounts`
+
+**Purpose:** Returns valid parents for selected target type.
+
+**Required Query:** `targetType` (e.g., `ACCOUNT`, `FOLDER`)
+
+**Example Request:**  
+`GET /api/v1/master/accounts?targetType=ACCOUNT&isPostable=false&limit=1000`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "accounts": [
+      {
+        "id": "uuid-1",
+        "code": "A",
+        "name": "ASSETS",
+        "type": "ROOT",
+        "parentCode": null,
+        "isPostable": false
+      },
+      {
+        "id": "uuid-5",
+        "code": "A1",
+        "name": "FIXED ASSETS",
+        "type": "FOLDER",
+        "parentCode": "A",
+        "isPostable": false
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 1,
+      "totalItems": 45,
+      "limit": 1000
+    }
+  }
+}
+```
+
+---
+
+### 14.4 Preview GL Code API
+
+**Endpoint:** `GET /api/v1/master/accounts/generate-code`
+
+**Purpose:** Returns advisory preview code for UI display before create.
+
+**Important:** Preview code is non-binding. Final code is generated atomically during create.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| parentCode | String | Yes | Selected parent GL code |
+| type | String | Yes | Target account type |
+| entityType | String | No | `EMPLOYEE`, `VENDOR`, `CLIENT` (for special patterns) |
+| entityId | String | No | Entity reference for special code formats |
+
+**Example Request:**  
+`GET /api/v1/master/accounts/generate-code?parentCode=A3004001&type=ACCOUNT`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "proposedCode": "A3004001003",
+    "parentCode": "A3004001",
+    "message": "GL Code generated successfully."
+  }
+}
+```
+
+---
+
+### 14.5 Create Account API
+
+**Endpoint:** `POST /api/v1/master/accounts`
+
+**Purpose:** Creates account/folder and returns the final persisted record.
+
+**Backend Validations:**
+- Parent exists.
+- Name unique within same parent.
+- Parent-child hierarchy rule is valid.
+- Parent eligibility (`isPostable=false` for grouping parents).
+- Final GL code generated atomically at insert to avoid race collisions.
+
+**Request Body:**
+```json
+{
+  "name": "State Bank of India",
+  "parentCode": "A3004001",
+  "type": "ACCOUNT"
+}
+```
+
+**Success (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-new-account",
+    "code": "A3004001003",
+    "name": "State Bank of India",
+    "type": "ACCOUNT",
+    "parentCode": "A3004001",
+    "normalBalance": "DR",
+    "isPostable": true,
+    "createdAt": "2025-10-12T10:00:00Z"
+  }
+}
+```
+
+**Duplicate Name (409):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "DUPLICATE_ACCOUNT_NAME",
+    "message": "An account named 'State Bank of India' already exists under 'BANK ACCOUNTS'.",
+    "fieldErrors": [
+      {
+        "field": "name",
+        "code": "MUST_BE_UNIQUE_IN_PARENT",
+        "message": "Account name must be unique within its parent folder."
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 14.6 Update / Rename Account API
+
+**Endpoint:** `PUT /api/v1/master/accounts/:id`
+
+**Purpose:** Renames account and/or updates parent (as per policy).
+
+**Immutability Rule:** `code` (GL code) is immutable and cannot be changed.
+
+**Optimistic Locking:** Client must send `version`; mismatch returns `VERSION_CONFLICT`.
+
+**Validation Rules:**
+- Reject `code` mutation.
+- Block circular parent assignment.
+- Enforce unique name in parent.
+- Validate parent eligibility for selected type.
+
+**Request Body:**
+```json
+{
+  "name": "State Bank of India (Main Branch)",
+  "type": "ACCOUNT",
+  "parentCode": "A3004001",
+  "version": 1
+}
+```
+
+**Success (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-account",
+    "code": "A3004001003",
+    "name": "State Bank of India (Main Branch)",
+    "type": "ACCOUNT",
+    "parentCode": "A3004001",
+    "version": 2,
+    "updatedAt": "2025-10-15T14:20:00Z"
+  }
+}
+```
+
+**Circular Reference (400):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CIRCULAR_REFERENCE",
+    "message": "Cannot move 'ASSETS' into 'CURRENT ASSETS' because it would create a circular loop."
+  }
+}
+```
+
+---
+
+### 14.7 Delete Account API
+
+**Endpoint:** `DELETE /api/v1/master/accounts/:id`
+
+**Purpose:** Deletes unused account/folder tree.
+
+**Rules:**
+- If folder/group node: cascade delete descendants.
+- If target node or any descendant has posted transactions: block delete.
+- Deleted code is retired and never reused.
+
+**Success (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "deletedCount": 1,
+    "message": "Account successfully deleted."
+  }
+}
+```
+
+**Blocked by Posted Transactions (409):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "HAS_TRANSACTIONS",
+    "message": "Cannot delete 'State Bank of India' because it has 42 posted transactions."
+  }
+}
+```
+
+---
+
+### 14.8 Get Single Account Details API (Account Details Modal)
+
+Use explicit routes to avoid ambiguity:
+- **By ID:** `GET /api/v1/master/accounts/:id`
+- **By Code:** `GET /api/v1/master/accounts/code/:code`
+
+**Purpose:** Returns full account profile used by details modal.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-account",
+    "code": "A3004001003",
+    "name": "State Bank of India",
+    "type": "ACCOUNT",
+    "parentCode": "A3004001",
+    "normalBalance": "DR",
+    "isActive": true,
+    "isPostable": true,
+    "ancestorPath": [
+      { "code": "A", "name": "ASSETS" },
+      { "code": "A3004", "name": "CASH & BANK BALANCES" },
+      { "code": "A3004001", "name": "BANK ACCOUNTS" }
+    ],
+    "financialMetrics": {
+      "openingBalance": 500000,
+      "totalDebit": 250000,
+      "totalCredit": 100000,
+      "currentBalance": 650000
+    },
+    "metadata": {
+      "transactionCount": 42,
+      "lastTransactionDate": "2025-11-20T14:30:00Z",
+      "createdBy": "Admin User",
+      "createdAt": "2025-10-12T10:00:00Z",
+      "updatedAt": "2025-10-12T10:00:00Z",
+      "version": 1
+    }
+  }
+}
+```
+
+---
+
+### 14.9 Validation Matrix (Phase 1)
+
+| Scenario | Endpoint | Error Code | HTTP |
+|---|---|---|---|
+| Parent not found | POST/PUT `/accounts` | `PARENT_NOT_FOUND` | 400 |
+| Invalid hierarchy mapping | POST/PUT `/accounts` | `INVALID_HIERARCHY` | 400 |
+| Duplicate sibling name | POST/PUT `/accounts` | `DUPLICATE_ACCOUNT_NAME` | 409 |
+| Circular parent assignment | PUT `/accounts/:id` | `CIRCULAR_REFERENCE` | 400 |
+| Stale edit version | PUT `/accounts/:id` | `VERSION_CONFLICT` | 409 |
+| Account has posted transactions | DELETE `/accounts/:id` | `HAS_TRANSACTIONS` | 409 |
+| Account not found | GET/PUT/DELETE | `ACCOUNT_NOT_FOUND` | 404 |
+
+---
+
 **END OF DOCUMENTATION**
+
+
+
+
+### 15.2 Fixed Asset Ledger Summary API (Header/Footer Totals)
+**Endpoint:** `GET /api/v1/master/ledger/fixed-assets/:glCode/summary`
+
+**Purpose:** Feeds the Top Header Cards and Bottom Footer summaries instantly, bypassing the need to calculate totals from thousands of raw frontend rows.
+
+**Strict GL Validation:** `glCode` MUST strictly be a fixed-asset ledger (A1XXX range) AND `isPostable` must be true. Reject `A1` folders or invalid codes explicitly.
+
+**Query Parameters:**
+- `asOfDate` (Date - Optional): For point-in-time audit reporting. Defaults to `today`.
+- `includeDisposed` (Boolean - Optional): Whether to calculate historical NBV including disposed assets.
+
+**Response Example (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "generatedAt": "2026-03-31T00:00:00Z",
+    "currency": "INR",
+
+    "headerDetails": {
+      "assetCode": "A1001",
+      "assetCategory": "FA COMPUTERS",
+      "glAccountCode": "A1001",
+      "accountName": "FA COMPUTERS",
+      "depreciationRate": "40%",
+      "depreciationMethod": "WDV",
+      "totalAssets": 150,
+      "activeAssets": 142
+    },
+
+    "summaryCards": {
+      "totalPurchaseValue": 1500000.00,
+      "accumulatedDepreciation": 450000.00,
+      "netBookValue": 1050000.00
+    }
+  }
+}

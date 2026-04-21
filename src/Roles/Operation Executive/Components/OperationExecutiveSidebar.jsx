@@ -58,6 +58,20 @@ const OperationExecutiveSidebar = () => {
         </li>
         <hr className="border-white mx-4" />
 
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/operation-executive/submit-advance-settlement">
+                Submit Advance Settlement
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/operation-executive/my-settelment-requests">
+                My Settlement Requests
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
         
        
         </ul>
