@@ -1,215 +1,200 @@
 /* eslint-disable no-unused-vars */
-;import "react-toastify/dist/ReactToastify.css";
+import "react-toastify/dist/ReactToastify.css"
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { useDispatch, useSelector } from "react-redux"
+import { toast } from "react-toastify"
 import iSmartImg from "../assets/Web_Photo_Editor.jpg"
-import {useNavigate} from "react-router-dom"
-import { useDispatch } from "react-redux";
-import { login } from "../authSlice";
-const LoginForm=(props)=>{
-  // Declearing All the States 
+import { loginUserThunk } from "../authSlice"
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [role,setRoleValue]=useState("")
+// ─── Role-based Route Mapping ───────────────────────────────────────────────
+// Replaces the entire 15-level if/else chain
+const ROLE_ROUTES = {
+  'employee': '/dashboard/employee',
+  'line-manager': '/dashboard/line-manager',
+  'vp-operations': '/dashboard/vp-operations',
+  'supervisor': '/dashboard/supervisor',
+  'manager': '/dashboard/manager',
+  'ph': '/dashboard/ph',
+  'vendor': '/dashboard/vendor',
+  'ae': '/dashboard/ae',
+  'compliance-team': '/dashboard/compliance-team',
+  'compliance-manager': '/dashboard/compliance-manager',
+  'payroll-team': '/dashboard/payroll-team',
+  'financial-head': '/dashboard/financial-head',
+  'billing-manager': '/dashboard/billing-manager',
+  'operation-executive': '/dashboard/operation-executive',
+  'account-manager': '/dashboard/account-manager',
+}
 
+/**
+ * LoginForm Component
+ * ──────────────────
+ * DUAL-MODE LOGIN:
+ *   1. With role selection (testing mode) — User selects role from dropdown
+ *   2. Without role selection (production mode) — Role extracted from JWT token
+ *
+ * This allows testing with partial credentials while supporting full prod flow.
+ * Once all credentials are available, remove the role dropdown entirely.
+ */
 
-  const dispatch=useDispatch()
-  const navigate=useNavigate()
+const LoginForm = (props) => {
+  // ─── Form States ────────────────────────────────────────────────────────────
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [role, setRoleValue] = useState("")
+  const [localError, setLocalError] = useState("")  // For frontend validation
 
-  // Navigate To Dashboard 
-  
-  const handleLoginFormSubmit=(e)=>{
-          e.preventDefault()
-          if(!role){
-            alert("Please Select the Role!")
-            return
-          }
-          // 
-          const userData = { username,
-            role,
-};
-                  
-              dispatch(login(userData));
-              localStorage.setItem("userData",JSON.stringify(userData))
-              localStorage.setItem("showLoginToast", "true");
+  // ─── Redux & Router ─────────────────────────────────────────────────────────
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
 
-             
+  // ─── Redux Auth State ───────────────────────────────────────────────────────
+  const { loading, error: authError } = useSelector((state) => state.auth)
 
-
-
-          //Routing on the basis of Role.
-            if(role==="employee") navigate("/dashboard/employee")
-              else if(role==="line-manager") navigate("/dashboard/line-manager")
-                else if(role==="vp-operations") navigate("/dashboard/vp-operations")
-                  else if(role==="supervisor") navigate("/dashboard/supervisor") 
-                    else if(role==="manager") navigate("/dashboard/manager")
-                      else if(role==="ph") navigate("/dashboard/ph")
-                        else if(role==="vendor") navigate("/dashboard/vendor")
-                          else if(role==="ae") navigate("/dashboard/ae")
-                            else if(role==="compliance-team") navigate("/dashboard/compliance-team")
-                              else if(role==="compliance-manager") navigate("/dashboard/compliance-manager")
-                                else if(role==="payroll-team") navigate("/dashboard/payroll-team")
-                                  else if(role==="financial-head") navigate("/dashboard/financial-head")
-                                    else if(role==="billing-manager") navigate("/dashboard/billing-manager")
-                                      else if(role==="operation-executive") navigate("/dashboard/operation-executive")
-                                        else if(role==="account-manager") navigate("/dashboard/account-manager")
-                  //For Toaster
-                  localStorage.setItem("showLoginToast", "true");
-
+  // ─── Navigate by Role ───────────────────────────────────────────────────────
+  const navigateByRole = (userRole) => {
+    const route = ROLE_ROUTES[userRole]
+    if (!route) {
+      toast.error("Unknown role. Please contact admin.")
+      return
+    }
+    navigate(route)
   }
 
+  // ─── Handle Login Form Submit ────────────────────────────────────────────────
+  const handleLoginFormSubmit = async (e) => {
+    e.preventDefault()
+    setLocalError("")  // Clear previous local errors
+
+    // ─── Frontend Validation ────────────────────────────────────────────────
+    if (!email.trim()) {
+      setLocalError("Email cannot be empty.")
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setLocalError("Please enter a valid email address.")
+      return
+    }
+
+    if (!password.trim()) {
+      setLocalError("Password cannot be empty.")
+      return
+    }
+
+    // Note: Role is now optional — extracted from JWT token if not selected
 
 
-    // return(
-    //     <>
-    //       {/* This is Main Div  */}
+    // ─── Dispatch Async Login Thunk ─────────────────────────────────────────
+    const result = await dispatch(
+      loginUserThunk({ email, password, role })
+    )
 
-    //     <div className="flex flex-col lg:flex-row min-h-screen">
-    //   {/* Left Part: Image Section (Hidden on Small Screens) */}
-    //           <div className="w-full lg:w-1/2 h-64 lg:h-auto flex items-center justify-center bg-gray-200">
-    //                     <img
-    //                     src={iSmartImg}
-    //                     alt="Login"
-    //                     className="w-full h-full object-cover"
-    //                     />
-    //           </div>
+    // ─── Handle Success ─────────────────────────────────────────────────────
+    if (loginUserThunk.fulfilled.match(result)) {
+      toast.success("Login successful! Welcome back.")
+      // Use role from thunk result (which is either user-selected OR extracted from token)
+      navigateByRole(result.payload.role)
+    }
+    // ─── Handle Failure (error is shown in inline banner below) ────────────
+  }
 
-    //   {/* Right Part: Login Form */}
+  // ─── Display Error (Priority: local validation > Redux error) ──────────────
+  const displayError = localError || authError
 
+  return (
+    <>
+      <div className="flex flex-col lg:flex-row min-h-screen">
 
+        {/* Left Part: Image Section */}
+        <div className="w-full lg:w-1/2 h-64 lg:h-screen">
+          <img
+            src={iSmartImg}
+            alt="Login"
+            className="w-full h-full object-cover"
+          />
+        </div>
 
-    //   <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8">
-    //         <div className="w-full max-w-sm text-center">
-    //             <h2 className="text-5xl font-bold text-green-700 mb-8 font-mulish">{props.heading}</h2>
-    //               <form className="space-y-4" onSubmit={handleLoginFormSubmit}>
-    //                   <input
-    //                     type="text"
-    //                     placeholder="Username"
-    //                     value={username}
-    //                     onChange={(e)=>setUsername(e.target.value)}
-    //                     required
-    //                     className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish"
-    //                   />
+        {/* Right Part: Login Form */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
+          <div className="w-full max-w-md text-center">
+            <h2 className="text-4xl lg:text-5xl font-bold text-green-700 mb-8 font-mulish">
+              {props.heading}
+            </h2>
 
-    //                   <input
-    //                     type="password"
-    //                     placeholder="Password"
-    //                     value={password}
-    //                     onChange={(e)=>setPassword(e.target.value)}
-    //                     required
-    //                     className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish"
-    //                   />
-    //                   <select
-    //                   className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-    //                   value={role} onChange={(e) => setRoleValue(e.target.value)} required>
-    //                         <option value="" className="font-mulish">Select Role</option>
-    //                         <option value="employee" className="font-mulish">Employee</option>
-    //                         <option value="line-manager" className="font-mulish">Line Manager</option>
-    //                         <option value="vp-operations" className="font-mulish">VP Operations</option>
-    //                         <option value="supervisor" className="font-mulish">Supervisor</option>
-    //                         <option value="manager" className="font-mulish">Manager</option>
-    //                         <option value="ph" className="font-mulish">PH</option>
-    //                         <option value="vendor" className="font-mulish">Vendor</option>
-    //                         <option value="ae" className="font-mulish">Account Executive</option>
-    //                         <option value="compliance-team" className="font-mulish">Compliance Team</option>
-    //                         <option value="compliance-manager" className="font-mulish">Compliance Manager</option>
-    //                         <option value="payroll-team" className="font-mulish">Payroll Team</option>
-    //                         <option value="financial-head" className="font-mulish">Financial Head</option>
-    //                         <option value="billing-manager" className="font-mulish">Billing Manager</option>
-    //                         <option value="operation-executive" className="font-mulish">Operation Executive</option>
-                           
+            {/* Error Banner */}
+            {displayError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 rounded-lg">
+                <p className="text-red-600 text-sm font-mulish">{displayError}</p>
+              </div>
+            )}
 
-                            
-    //                   </select>
+            <form className="space-y-4" onSubmit={handleLoginFormSubmit}>
+              {/* Email Field */}
+              <input
+                type="email"
+                placeholder="Email Address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                required
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
 
-    //                   <button
-    //                     type="submit"
-    //                     className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-800 transition font-mulish"                       
-    //                   >
-    //                   Login
-    //                   </button>
-    //               </form>
-    //         </div>
-    //   </div>
-    // </div>
-    //     </>
-    // )
+              {/* Password Field */}
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
 
-   return (
-  <>
-    <div className="flex flex-col lg:flex-row min-h-screen">
+              {/* Role Dropdown (Optional) */}
+              {/* If user doesn't select role, it will be extracted from JWT token */}
+              {/* TODO: Remove this dropdown entirely when all users have proper login credentials */}
+              <select
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
+                value={role}
+                onChange={(e) => setRoleValue(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">Select Role</option>
+                <option value="employee">Employee</option>
+                <option value="line-manager">Line Manager</option>
+                <option value="vp-operations">VP Operations</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="manager">Manager</option>
+                <option value="ph">PH</option>
+                <option value="vendor">Vendor</option>
+                <option value="ae">Account Executive</option>
+                <option value="compliance-team">Compliance Team</option>
+                <option value="compliance-manager">Compliance Manager</option>
+                <option value="payroll-team">Payroll Team</option>
+                <option value="financial-head">Financial Head</option>
+                <option value="billing-manager">Billing Manager</option>
+                <option value="operation-executive">Operation Executive</option>
+                <option value="account-manager">Account Manager</option>
+              </select>
 
-      {/* Left Part: Image Section (visible on all screens) */}
-      <div className="w-full lg:w-1/2 h-64 lg:h-screen">
-        <img
-          src={iSmartImg}
-          alt="Login"
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      {/* Right Part: Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
-        <div className="w-full max-w-md text-center">
-          <h2 className="text-4xl lg:text-5xl font-bold text-green-700 mb-8 font-mulish">
-            {props.heading}
-          </h2>
-          <form className="space-y-4" onSubmit={handleLoginFormSubmit}>
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish"
-            />
-
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish"
-            />
-
-            <select
-              className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={role}
-              onChange={(e) => setRoleValue(e.target.value)}
-              required
-            >
-              <option value="">Select Role</option>
-              <option value="employee">Employee</option>
-              <option value="line-manager">Line Manager</option>
-              <option value="vp-operations">VP Operations</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="manager">Manager</option>
-              <option value="ph">PH</option>
-              <option value="vendor">Vendor</option>
-              <option value="ae">Account Executive</option>
-              <option value="compliance-team">Compliance Team</option>
-              <option value="compliance-manager">Compliance Manager</option>
-              <option value="payroll-team">Payroll Team</option>
-              <option value="financial-head">Financial Head</option>
-              <option value="billing-manager">Billing Manager</option>
-              <option value="operation-executive">Operation Executive</option>
-              <option value="account-manager">Account Manager</option>
-            </select>
-
-            <button
-              type="submit"
-              className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-800 transition font-mulish"
-            >
-              Login
-            </button>
-          </form>
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-800 transition font-mulish disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? "Logging in..." : "Login"}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
-  </>
-);
-
-
+    </>
+  )
 }
+
 export default LoginForm

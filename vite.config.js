@@ -14,4 +14,17 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+
+  // ─── Development Server Configuration ────────────────────────────────────
+  server: {
+    // Proxy API requests to backend to bypass CORS issues in development
+    // Routes /api/* requests to http://dev-int.ismart.org/api
+    proxy: {
+      '/api': {
+        target: 'http://dev-int.ismart.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
+      }
+    }
+  }
 })
