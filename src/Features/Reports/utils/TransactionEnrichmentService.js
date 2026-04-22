@@ -634,7 +634,6 @@ export class TransactionEnrichmentService {
         const isAsset = this.hasAssetEntries(txn)
         if (isAsset) {
           assetTransactionCount++
-          console.log(`🔍 Found Asset transaction: ${txn.voucherNo}, GL Codes: ${txn.entries?.map(e => e.glCode).filter(c => c?.startsWith('A')).join(', ') || 'none'}`)
         }
         
         const enriched = this.enrichTransaction(txn, billingData)

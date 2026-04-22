@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FaTimes, FaCheckCircle } from 'react-icons/fa'
+import { BANK_ACCOUNT_CONFIG } from '../config/advanceRequestConfig'
 
 const AEBankSelectionModal = ({ isOpen, onClose, onBankSelect, requestData }) => {
   const [banks, setBanks] = useState([])
@@ -11,9 +12,10 @@ const AEBankSelectionModal = ({ isOpen, onClose, onBankSelect, requestData }) =>
       // Load banks from chartOfAccounts
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || []
 
-      // Filter banks: parentCode = "A3004003" and type = "ACCOUNT"
+      // Filter banks using config
       const bankAccounts = chartOfAccounts.filter(
-        (acc) => acc.parentCode === 'A3004001' && acc.type === 'ACCOUNT'
+        (acc) => acc.parentCode === BANK_ACCOUNT_CONFIG.PARENT_CODE && 
+                 acc.type === BANK_ACCOUNT_CONFIG.TYPE
       )
 
       setBanks(bankAccounts)

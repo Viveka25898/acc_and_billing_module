@@ -76,9 +76,9 @@ function App() {
       // Check for accounts in localStorage that aren't in code (user-created)
       storedAccounts.forEach((storedAccount) => {
         if (!codeMap.has(storedAccount.code)) {
-          console.log(
-            `👤 User-created account preserved: ${storedAccount.code} - ${storedAccount.name}`
-          )
+          // console.log(
+          //   `👤 User-created account preserved: ${storedAccount.code} - ${storedAccount.name}`
+          // )
         }
       })
 

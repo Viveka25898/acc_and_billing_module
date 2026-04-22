@@ -84,6 +84,16 @@ export const createAdvanceRequest = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.message)
     }
+  },
+  {
+    // ── Concurrent Request Guard ─────────────────────────────────────────
+    // Prevent duplicate requests if user double-clicks submit button
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.submit) {
+        return false  // ← Block if already submitting
+      }
+    }
   }
 )
 
@@ -108,6 +118,12 @@ export const managerApprove = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.message)
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.managerApprove) return false
+    }
   }
 )
 
@@ -119,6 +135,12 @@ export const managerReject = createAsyncThunk(
       return await service.managerRejectRequest({ requestId, remarks })
     } catch (err) {
       return rejectWithValue(err.message)
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.managerReject) return false
     }
   }
 )
@@ -132,6 +154,12 @@ export const vpApprove = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.message)
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.vpApprove) return false
+    }
   }
 )
 
@@ -143,6 +171,12 @@ export const vpReject = createAsyncThunk(
       return await service.vpRejectRequest({ requestId, remarks })
     } catch (err) {
       return rejectWithValue(err.message)
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.vpReject) return false
     }
   }
 )
@@ -156,6 +190,12 @@ export const aeApprove = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.message)
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.aeApprove) return false
+    }
   }
 )
 
@@ -168,6 +208,12 @@ export const aeApproveBatchThunk = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.message)
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.aeApproveBatch) return false
+    }
   }
 )
 
@@ -179,6 +225,12 @@ export const aeReject = createAsyncThunk(
       return await service.aeRejectRequest({ requestId, reason })
     } catch (err) {
       return rejectWithValue(err.message)
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.aeReject) return false
     }
   }
 )

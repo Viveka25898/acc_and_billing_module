@@ -4,6 +4,13 @@
  * ─────────────────────────
  * Service layer for all Advance Request API calls.
  *
+ * PRODUCTION READY:
+ * - Status transition validation
+ * - O/S balance validation
+ * - Request ID consistency
+ * - Deadline calculations
+ * - Error handling with context
+ *
  * CURRENT MODE: localStorage (works without a backend today)
  * API READY:    Uncomment the axios blocks and delete the localStorage blocks.
  *               Zero changes needed in Redux slice or components.
@@ -13,7 +20,26 @@
 
 // import axiosInstance from '../../api/axiosInstance'  // ← uncomment when API is ready
 
-// ─── Helpers (localStorage only — remove when API is ready) ──────────────────
+// ─── CONFIGURATION ────────────────────────────────────────────────────────────
+const ADVANCE_REQUEST_CONFIG = {
+  VP_DEADLINE_HOUR: 12,        // Before 12:00 PM = same-day processing
+  AE_DEADLINE_HOUR: 15,        // Before 15:00 (3 PM) = eligible for processing
+  BANK_ACCOUNT_PARENT_CODE: 'A3004001',  // GL code for bank accounts
+  DEFAULT_PAGE_SIZE: 5,
+}
+
+// ─── VALID STATUS TRANSITIONS (State Machine) ─────────────────────────────────
+const VALID_STATUS_TRANSITIONS = {
+  'Pending Manager Approval': ['Rejected by Line Manager', 'Pending VP Approval'],
+  'Rejected by Line Manager': ['Pending Manager Approval'],  // Only via clarification
+  'Pending VP Approval': ['Rejected by VP Operations', 'Pending AE Approval'],
+  'Rejected by VP Operations': ['Pending VP Approval'],  // Only via clarification
+  'Pending AE Approval': ['Rejected by AE', 'Approved'],
+  'Rejected by AE': ['Pending Manager Approval'],  // Only via clarification
+  'Approved': [],  // Final state
+}
+
+// ─── HELPERS (localStorage only — remove when API is ready) ──────────────────
 const getStoredRequests = () =>
   JSON.parse(localStorage.getItem('advanceRequests')) || []
 
@@ -26,11 +52,121 @@ const getLoggedInUser = () =>
 const getAllUsers = () =>
   JSON.parse(localStorage.getItem('users')) || []
 
+// ─── VALIDATION FUNCTIONS (Production-Ready) ───────────────────────────────────
+
+/**
+ * Validate status transition follows state machine rules
+ * @throws {Error} If transition is invalid
+ */
+export const validateStatusTransition = (currentStatus, newStatus) => {
+  const allowedTransitions = VALID_STATUS_TRANSITIONS[currentStatus]
+  
+  if (!allowedTransitions) {
+    throw new Error(`Unknown status: ${currentStatus}`)
+  }
+  
+  if (!allowedTransitions.includes(newStatus)) {
+    throw new Error(
+      `Invalid status transition: ${currentStatus} → ${newStatus}. ` +
+      `Allowed: ${allowedTransitions.join(', ') || 'None (final state)'}`
+    )
+  }
+}
+
+/**
+ * Validate O/S balance is sufficient
+ * @throws {Error} If amount exceeds available balance
+ */
+export const validateOSBalance = (amount, employeeId) => {
+  const users = getAllUsers()
+  const employee = users.find(
+    (u) => u.empId === employeeId || u.username === employeeId
+  )
+  
+  if (!employee) {
+    throw new Error(`Employee not found: ${employeeId}`)
+  }
+  
+  const osBalance = employee.osBalance || 0
+  const amountNum = parseFloat(amount)
+  
+  if (amountNum <= 0) {
+    throw new Error('Amount must be greater than zero')
+  }
+  
+  if (amountNum > osBalance) {
+    throw new Error(
+      `Insufficient O/S balance. Requested: ₹${amountNum.toLocaleString()}, ` +
+      `Available: ₹${osBalance.toLocaleString()}`
+    )
+  }
+}
+
+/**
+ * Validate request ID format and existence
+ * @throws {Error} If request not found or invalid ID
+ */
+export const validateRequestExists = (requestId) => {
+  if (!requestId || typeof requestId !== 'string') {
+    throw new Error('Invalid request ID')
+  }
+  
+  const requests = getStoredRequests()
+  const found = requests.find((r) => r.requestId === requestId)
+  
+  if (!found) {
+    throw new Error(`Request not found: ${requestId}`)
+  }
+  
+  return found
+}
+
+/**
+ * Validate reporting hierarchy
+ * @throws {Error} If manager not found
+ */
+export const validateReportingHierarchy = (userId, expectedManagerType) => {
+  const users = getAllUsers()
+  const user = users.find((u) => u.username === userId)
+  
+  if (!user) {
+    throw new Error(`User not found: ${userId}`)
+  }
+  
+  if (!user.reportsTo) {
+    throw new Error(
+      `Reporting hierarchy not configured for ${user.fullName || userId}. ` +
+      `Please set 'reportsTo' field.`
+    )
+  }
+  
+  return user
+}
+
+/**
+ * Check if current time is before VP deadline (12:00 PM)
+ */
+export const isBeforeVPDeadline = () => {
+  const now = new Date()
+  return now.getHours() < ADVANCE_REQUEST_CONFIG.VP_DEADLINE_HOUR
+}
+
+/**
+ * Check if current time is before AE deadline (3 PM / 15:00)
+ */
+export const isBeforeAEDeadline = () => {
+  const now = new Date()
+  return now.getHours() < ADVANCE_REQUEST_CONFIG.AE_DEADLINE_HOUR
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SUBMIT ADVANCE REQUEST
 //    POST /api/advance-requests
 // ─────────────────────────────────────────────────────────────────────────────
 export const submitAdvanceRequest = async (payload) => {
+  // ── VALIDATION (Production-Ready) ───────────────────────────────────────
+  validateOSBalance(payload.amount, payload.employeeId)
+  
   // ── localStorage implementation ──────────────────────────────────────────
   const existing = getStoredRequests()
   const now = new Date()
@@ -178,6 +314,10 @@ export const fetchManagerApprovalRequests = async (
 //    POST /api/advance-requests/:requestId/manager-approve
 // ─────────────────────────────────────────────────────────────────────────────
 export const managerApproveRequest = async ({ requestId }) => {
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  const request = validateRequestExists(requestId)
+  validateStatusTransition(request.status, 'Pending VP Approval')
+  
   // ── localStorage implementation ──────────────────────────────────────────
   const all = getStoredRequests()
   const index = all.findIndex((r) => r.requestId === requestId)
@@ -210,6 +350,10 @@ export const managerApproveRequest = async ({ requestId }) => {
 //    POST /api/advance-requests/:requestId/manager-reject
 // ─────────────────────────────────────────────────────────────────────────────
 export const managerRejectRequest = async ({ requestId, remarks }) => {
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  const request = validateRequestExists(requestId)
+  validateStatusTransition(request.status, 'Rejected by Line Manager')
+  
   // ── localStorage implementation ──────────────────────────────────────────
   const all = getStoredRequests()
   const index = all.findIndex((r) => r.requestId === requestId)
@@ -279,13 +423,12 @@ export const fetchVPApprovalRequests = async () => {
     return { ...req, osBalance: emp?.osBalance || 0, submittedByType }
   })
 
-  const isBeforeDeadline =
-    new Date().getHours() < 12 // 11:59 per API spec
+  const isBeforeDeadline = isBeforeVPDeadline()
 
   return {
     success: true,
     isBeforeDeadline,
-    deadline: '11:59',
+    deadline: '12:00',
     requests: enriched,
   }
 
@@ -299,6 +442,10 @@ export const fetchVPApprovalRequests = async () => {
 //    POST /api/advance-requests/:requestId/vp-approve
 // ─────────────────────────────────────────────────────────────────────────────
 export const vpApproveRequest = async ({ requestId }) => {
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  const request = validateRequestExists(requestId)
+  validateStatusTransition(request.status, 'Pending AE Approval')
+  
   // ── localStorage implementation ──────────────────────────────────────────
   const all = getStoredRequests()
   const index = all.findIndex((r) => r.requestId === requestId)
@@ -306,7 +453,7 @@ export const vpApproveRequest = async ({ requestId }) => {
 
   const currentUser = getLoggedInUser()
   const approvalTime = new Date()
-  const isBeforeDeadline = approvalTime.getHours() < 12
+  const vpApprovedBeforeDeadline = isBeforeVPDeadline()
 
   all[index] = {
     ...all[index],
@@ -315,19 +462,19 @@ export const vpApproveRequest = async ({ requestId }) => {
     vpApprovedBy: currentUser?.username,
     vpApprovedAt: approvalTime.toISOString(),
     isVPRequest: true,
-    vpApprovedBeforeDeadline: isBeforeDeadline,
+    vpApprovedBeforeDeadline,
   }
   saveRequests(all)
 
   return {
     success: true,
-    message: isBeforeDeadline
-      ? 'Request approved and forwarded to Account Executive (Same day processing eligible)'
+    message: vpApprovedBeforeDeadline
+      ? 'Request approved and forwarded to Account Executive (Same-day processing eligible)'
       : 'Request approved and forwarded to Account Executive (Next working day processing)',
     requestId,
     status: 'Pending AE Approval',
-    vpApprovedBeforeDeadline: isBeforeDeadline,
-    processingType: isBeforeDeadline ? 'Same day processing eligible' : 'Next working day processing',
+    vpApprovedBeforeDeadline,
+    processingType: vpApprovedBeforeDeadline ? 'Same day processing eligible' : 'Next working day processing',
   }
 
   // ── API implementation (uncomment when backend is ready) ─────────────────
@@ -340,6 +487,10 @@ export const vpApproveRequest = async ({ requestId }) => {
 //    POST /api/advance-requests/:requestId/vp-reject
 // ─────────────────────────────────────────────────────────────────────────────
 export const vpRejectRequest = async ({ requestId, remarks }) => {
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  const request = validateRequestExists(requestId)
+  validateStatusTransition(request.status, 'Rejected by VP Operations')
+  
   // ── localStorage implementation ──────────────────────────────────────────
   const all = getStoredRequests()
   const index = all.findIndex((r) => r.requestId === requestId)
@@ -382,13 +533,12 @@ export const fetchAEApprovalRequests = async () => {
       req.status === 'Rejected by AE'
   )
 
-  const isBeforeDeadline =
-    new Date().getHours() < 15 ||
-    (new Date().getHours() === 15 && new Date().getMinutes() <= 59)
+  const aeIsBeforeDeadline = isBeforeAEDeadline()
 
   return {
     success: true,
-    isBeforeDeadline,
+    isBeforeDeadline: aeIsBeforeDeadline,
+    deadline: '15:00',
     requests,
   }
 
@@ -402,6 +552,10 @@ export const fetchAEApprovalRequests = async () => {
 //     POST /api/advance-requests/:requestId/ae-approve
 // ─────────────────────────────────────────────────────────────────────────────
 export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }) => {
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  const request = validateRequestExists(requestId)
+  validateStatusTransition(request.status, 'Approved')
+  
   // ── localStorage implementation ──────────────────────────────────────────
   const all = getStoredRequests()
   const index = all.findIndex((r) => r.requestId === requestId)
@@ -409,7 +563,7 @@ export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }
 
   const currentUser = getLoggedInUser()
   const now = new Date()
-  const isBeforeDeadline = now.getHours() < 15
+  const aeApprovedBeforeDeadline = isBeforeAEDeadline()
 
   all[index] = {
     ...all[index],
@@ -419,7 +573,7 @@ export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }
     bankName,
     aeApprovedBy: currentUser?.username,
     approvedAt: now.toISOString(),
-    aeApprovedBeforeDeadline: isBeforeDeadline,
+    aeApprovedBeforeDeadline,
   }
   saveRequests(all)
 
@@ -428,7 +582,7 @@ export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }
     message: 'Accounting entries posted successfully',
     requestId,
     status: 'Approved',
-    aeApprovedBeforeDeadline: isBeforeDeadline,
+    aeApprovedBeforeDeadline,
     updatedRequest: all[index],
   }
 
@@ -444,6 +598,11 @@ export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }
 //     POST /api/advance-requests/ae-approve-batch
 // ─────────────────────────────────────────────────────────────────────────────
 export const aeApproveBatch = async ({ requestIds, bankId, bankCode, bankName }) => {
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
+    throw new Error('At least one request ID is required')
+  }
+
   // ── localStorage implementation ──────────────────────────────────────────
   const all = getStoredRequests()
   const currentUser = getLoggedInUser()
@@ -455,6 +614,17 @@ export const aeApproveBatch = async ({ requestIds, bankId, bankCode, bankName })
   const uniqueIds = [...new Set(requestIds)]
 
   uniqueIds.forEach((rid) => {
+    try {
+      validateRequestExists(rid)
+      const idx = all.findIndex((r) => r.requestId === rid)
+      if (all[idx].status !== 'Pending AE Approval') {
+        validateStatusTransition(all[idx].status, 'Approved')
+      }
+    } catch (error) {
+      skipped.push({ requestId: rid, reason: error.message })
+      return
+    }
+
     const idx = all.findIndex((r) => r.requestId === rid)
     if (idx === -1 || all[idx].status !== 'Pending AE Approval') {
       skipped.push({ requestId: rid, reason: 'Not eligible for AE approval' })
@@ -501,6 +671,10 @@ export const aeApproveBatch = async ({ requestIds, bankId, bankCode, bankName })
 //     POST /api/advance-requests/:requestId/ae-reject
 // ─────────────────────────────────────────────────────────────────────────────
 export const aeRejectRequest = async ({ requestId, reason }) => {
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  const request = validateRequestExists(requestId)
+  validateStatusTransition(request.status, 'Rejected by AE')
+  
   // ── localStorage implementation ──────────────────────────────────────────
   const all = getStoredRequests()
   const index = all.findIndex((r) => r.requestId === requestId)

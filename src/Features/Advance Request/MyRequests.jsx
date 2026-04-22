@@ -1,8 +1,15 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
 import RequestFilter from './RequestFilter'
+import {
+  fetchMyRequests,
+  submitClarificationThunk,
+  selectMyRequests,
+  selectLoading,
+  selectErrors,
+} from '../../store/slices/advanceRequestSlice'
 
 // Status badge helper
 const StatusBadge = ({ status }) => {
@@ -19,7 +26,11 @@ const formatReasons = (reason) => {
 }
 
 const MyRequests = () => {
-  const [requests, setRequests] = useState([])
+  const dispatch = useDispatch()
+  const requests = useSelector(selectMyRequests)
+  const loading = useSelector(selectLoading)
+  const errors = useSelector(selectErrors)
+
   const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [showClarifyModal, setShowClarifyModal] = useState(false)
@@ -28,33 +39,16 @@ const MyRequests = () => {
 
   const itemsPerPage = 5
 
-  // Get logged-in user from Redux
-  const authUser = useSelector((state) => state.auth.user)
-
+  // ── Load on mount ──────────────────────────────────────────────────────
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('advanceRequests')) || []
-    const allUsers = JSON.parse(localStorage.getItem('users')) || []
+    dispatch(fetchMyRequests())
+  }, [dispatch])
 
-    // Find the current user's username / employeeId
-    const currentUser = JSON.parse(localStorage.getItem('user'))
-    const fullUser = allUsers.find((u) => u.username === currentUser?.username)
-
-    // Match by submittedBy (most reliable) OR employeeId OR username
-    const userRequests = stored
-      .filter((r) => {
-        const submittedBy = r.submittedBy?.toLowerCase()
-        const username = currentUser?.username?.toLowerCase()
-        const empId = fullUser?.employeeId || fullUser?.empId || fullUser?.username
-        return (
-          submittedBy === username ||
-          r.employeeId === empId ||
-          r.employeeId === username
-        )
-      })
-      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
-
-    setRequests(userRequests)
-  }, [authUser])
+  // ── Show error toast ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (errors.fetchMyRequests) toast.error(errors.fetchMyRequests)
+    if (errors.clarification) toast.error(errors.clarification)
+  }, [errors.fetchMyRequests, errors.clarification])
 
   const filteredRequests = requests.filter((r) => !dateFilter || r.requestDate === dateFilter)
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
@@ -69,32 +63,26 @@ const MyRequests = () => {
     setShowClarifyModal(true)
   }
 
-  const submitClarification = () => {
+  const submitClarification = async () => {
     if (!clarificationText.trim()) {
       toast.error('Clarification cannot be empty.')
       return
     }
-
-    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
-    const updated = allRequests.map((r) =>
-      r.submittedAt === selectedRequest.submittedAt
-        ? { ...r, clarification: clarificationText, status: 'Pending Manager Approval' }
-        : r
+    const result = await dispatch(
+      submitClarificationThunk({
+        requestId: selectedRequest.requestId,
+        clarification: clarificationText,
+      })
     )
-    localStorage.setItem('advanceRequests', JSON.stringify(updated))
-
-    // Refresh local state
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.submittedAt === selectedRequest.submittedAt
-          ? { ...r, clarification: clarificationText, status: 'Pending Manager Approval' }
-          : r
-      )
-    )
-
-    setShowClarifyModal(false)
-    toast.success('Clarification submitted successfully.')
+    if (submitClarificationThunk.fulfilled.match(result)) {
+      setShowClarifyModal(false)
+      toast.success('Clarification submitted. Request sent back for review.')
+      // Refresh the list after clarification
+      dispatch(fetchMyRequests())
+    }
   }
+
+  const isLoading = loading.fetchMyRequests
 
   return (
     <div className="px-4 py-6">
@@ -111,14 +99,21 @@ const MyRequests = () => {
           <RequestFilter currentDate={dateFilter} onDateChange={setDateFilter} />
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+          </div>
+        )}
+
         {/* Table / Empty State */}
-        {paginatedRequests.length === 0 ? (
+        {!isLoading && paginatedRequests.length === 0 ? (
           <div className="bg-white rounded-xl border border-green-100 shadow-sm py-16 text-center">
             <p className="text-4xl mb-3">📭</p>
             <p className="text-gray-500 font-medium">No advance requests found.</p>
             <p className="text-gray-400 text-sm mt-1">Submit a request to see it here.</p>
           </div>
-        ) : (
+        ) : !isLoading && (
           <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -134,8 +129,8 @@ const MyRequests = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-green-50">
-                  {paginatedRequests.map((req, index) => (
-                    <tr key={index} className="hover:bg-green-50 transition-colors">
+                  {paginatedRequests.map((req) => (
+                    <tr key={req.requestId} className="hover:bg-green-50 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs text-gray-600">
                         {req.requestId || '—'}
                       </td>
@@ -196,19 +191,21 @@ const MyRequests = () => {
         )}
 
         {/* Stats summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          {[
-            { label: 'Total', count: requests.length, color: 'bg-gray-100 text-gray-700' },
-            { label: 'Pending', count: requests.filter((r) => r.status?.includes('Pending')).length, color: 'bg-yellow-100 text-yellow-700' },
-            { label: 'Approved', count: requests.filter((r) => r.status === 'Approved').length, color: 'bg-green-100 text-green-700' },
-            { label: 'Rejected', count: requests.filter((r) => r.status?.includes('Rejected')).length, color: 'bg-red-100 text-red-700' },
-          ].map(({ label, count, color }) => (
-            <div key={label} className={`${color} rounded-xl px-4 py-3 text-center`}>
-              <p className="text-xl font-bold">{count}</p>
-              <p className="text-xs font-medium mt-0.5">{label}</p>
-            </div>
-          ))}
-        </div>
+        {!isLoading && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+            {[
+              { label: 'Total', count: requests.length, color: 'bg-gray-100 text-gray-700' },
+              { label: 'Pending', count: requests.filter((r) => r.status?.includes('Pending')).length, color: 'bg-yellow-100 text-yellow-700' },
+              { label: 'Approved', count: requests.filter((r) => r.status === 'Approved').length, color: 'bg-green-100 text-green-700' },
+              { label: 'Rejected', count: requests.filter((r) => r.status?.includes('Rejected')).length, color: 'bg-red-100 text-red-700' },
+            ].map(({ label, count, color }) => (
+              <div key={label} className={`${color} rounded-xl px-4 py-3 text-center`}>
+                <p className="text-xl font-bold">{count}</p>
+                <p className="text-xs font-medium mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Clarification Modal */}
@@ -235,9 +232,10 @@ const MyRequests = () => {
               </button>
               <button
                 onClick={submitClarification}
-                className="px-5 py-2 rounded-lg text-sm bg-green-600 text-white font-semibold hover:bg-green-700 transition"
+                disabled={loading.clarification}
+                className="px-5 py-2 rounded-lg text-sm bg-green-600 text-white font-semibold hover:bg-green-700 transition disabled:opacity-50"
               >
-                Submit
+                {loading.clarification ? 'Submitting...' : 'Submit'}
               </button>
             </div>
           </div>
