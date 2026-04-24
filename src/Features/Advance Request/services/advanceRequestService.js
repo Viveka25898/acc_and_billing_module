@@ -18,7 +18,7 @@
  * Each function signature matches the API contract exactly.
  */
 
-// import axiosInstance from '../../api/axiosInstance'  // ← uncomment when API is ready
+import axiosInstance from '../../../api/axiosInstance'  // ✅ API integration active
 
 // ─── CONFIGURATION ────────────────────────────────────────────────────────────
 const ADVANCE_REQUEST_CONFIG = {
@@ -164,39 +164,18 @@ export const isBeforeAEDeadline = () => {
 //    POST /api/advance-requests
 // ─────────────────────────────────────────────────────────────────────────────
 export const submitAdvanceRequest = async (payload) => {
-  // ── VALIDATION (Production-Ready) ───────────────────────────────────────
-  validateOSBalance(payload.amount, payload.employeeId)
+  // ── VALIDATION ──────────────────────────────────────────────────────────
+  // ✅ REMOVED: Client-side OS balance validation (validateOSBalance)
+  // Reason: Backend has real employee master data and will validate.
+  //         Client-side validation uses mock data and fails for real employees.
+  // Strategy: Let backend validate and return user-friendly errors.
   
-  // ── localStorage implementation ──────────────────────────────────────────
-  const existing = getStoredRequests()
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const requestId = `ADV-${year}${month}-${String(existing.length + 1).padStart(4, '0')}`
-
-  const newRequest = {
-    ...payload,
-    requestId,
-    submittedAt: now.toISOString(),
-    remarks: '',
-    clarification: '',
-  }
-
-  existing.push(newRequest)
-  saveRequests(existing)
-
-  return {
-    success: true,
-    message: 'Advance request submitted successfully',
-    requestId,
-    status: payload.status,
-    assignedTo: payload.assignedTo,
-    submittedAt: newRequest.submittedAt,
-  }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post('/advance-requests', payload)
-  // return res.data
+  // ── API implementation (Active) ──────────────────────────────────────────
+  console.log('📡 Service: Calling POST /accounts/advance-requests with payload:', payload)
+  const res = await axiosInstance.post('/accounts/advance-requests', payload)
+  console.log('✅ Service: API response received:', res)
+  // API Response: { responseId, timestamp, results: { message, requestId, status, assignedTo, submittedAt } }
+  return res.data.results
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -204,38 +183,12 @@ export const submitAdvanceRequest = async (payload) => {
 //    GET /api/advance-requests/my-requests
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchMyRequests = async ({ date, page = 1, limit = 5 } = {}) => {
-  // ── localStorage implementation ──────────────────────────────────────────
-  const currentUser = getLoggedInUser()
-  const allUsers = getAllUsers()
-  const fullUser = allUsers.find((u) => u.username === currentUser?.username)
-  const empId = fullUser?.employeeId || fullUser?.empId || fullUser?.username
-  const username = currentUser?.username?.toLowerCase()
-
-  const all = getStoredRequests()
-  let filtered = all
-    .filter((r) => {
-      const submittedBy = r.submittedBy?.toLowerCase()
-      return submittedBy === username || r.employeeId === empId
-    })
-    .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
-
-  if (date) filtered = filtered.filter((r) => r.requestDate === date)
-
-  const totalItems = filtered.length
-  const totalPages = Math.ceil(totalItems / limit)
-  const requests = filtered.slice((page - 1) * limit, page * limit)
-
-  return {
-    success: true,
-    pagination: { currentPage: page, totalPages, totalItems, pageSize: limit },
-    requests,
-  }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.get('/advance-requests/my-requests', {
-  //   params: { date, page, limit },
-  // })
-  // return res.data
+  // ── API implementation (Active) ──────────────────────────────────────────
+  const res = await axiosInstance.get('/accounts/advance-requests/my-requests', {
+    params: { page, limit, ...(date && { date }) }
+  })
+  // API Response: { responseId, timestamp, results: { pagination, requests } }
+  return res.data.results
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,31 +196,16 @@ export const fetchMyRequests = async ({ date, page = 1, limit = 5 } = {}) => {
 //    POST /api/advance-requests/:requestId/clarification
 // ─────────────────────────────────────────────────────────────────────────────
 export const submitClarification = async ({ requestId, clarification }) => {
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const index = all.findIndex((r) => r.requestId === requestId)
-  if (index === -1) throw new Error('Request not found')
-
-  all[index] = {
-    ...all[index],
-    clarification,
-    status: 'Pending Manager Approval',
-  }
-  saveRequests(all)
-
-  return {
-    success: true,
-    message: 'Clarification submitted successfully. Request sent back for manager review.',
-    requestId,
-    status: 'Pending Manager Approval',
-  }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post(
-  //   `/advance-requests/${requestId}/clarification`,
-  //   { clarification }
-  // )
-  // return res.data
+  // ── VALIDATION ───────────────────────────────────────────────────────────
+  validateRequestExists(requestId)
+  
+  // ── API implementation (Active) ──────────────────────────────────────────
+  const res = await axiosInstance.post(
+    `/accounts/advance-requests/${requestId}/clarification`,
+    { clarification }
+  )
+  // API Response: { responseId, timestamp, results: { message, requestId, status } }
+  return res.data.results
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -275,38 +213,15 @@ export const submitClarification = async ({ requestId, clarification }) => {
 //    GET /api/advance-requests/manager-approval
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchManagerApprovalRequests = async (
-  { name = '', employeeId = '', date = '', requestId = '', page = 1, limit = 100 } = {}
+  { page = 1, limit = 100 } = {}
 ) => {
-  // ── localStorage implementation ──────────────────────────────────────────
-  const currentUser = getLoggedInUser()
-  const all = getStoredRequests()
-  const allUsers = getAllUsers()
-
-  const requests = all.filter(
-    (req) =>
-      req.assignedTo === currentUser?.username &&
-      (req.status === 'Pending Manager Approval' ||
-        (req.status === 'Rejected by Line Manager' && req.clarification))
-  )
-
-  // Attach osBalance from user profile
-  const enriched = requests.map((req) => {
-    const emp = allUsers.find(
-      (u) =>
-        u.empId === req.employeeId ||
-        u.username === req.employeeId ||
-        (u.empId && u.empId.toString() === req.employeeId?.toString())
-    )
-    return { ...req, osBalance: emp?.osBalance || 0 }
+  // ── API implementation (Active) ──────────────────────────────────────────
+  const res = await axiosInstance.get('/accounts/advance-requests/manager-approval', {
+    params: { page, limit }
   })
-
-  return { success: true, requests: enriched }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.get('/advance-requests/manager-approval', {
-  //   params: { name, employeeId, date, requestId, page, limit },
-  // })
-  // return res.data
+  // API Response: { responseId, timestamp, results: { pagination, requests } }
+  // Note: Backend filters by logged-in manager automatically
+  return res.data.results
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -318,31 +233,12 @@ export const managerApproveRequest = async ({ requestId }) => {
   const request = validateRequestExists(requestId)
   validateStatusTransition(request.status, 'Pending VP Approval')
   
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const index = all.findIndex((r) => r.requestId === requestId)
-  if (index === -1) throw new Error('Request not found')
-
-  const currentUser = getLoggedInUser()
-  all[index] = {
-    ...all[index],
-    status: 'Pending VP Approval',
-    remarks: '',
-    managerApprovedBy: currentUser?.username,
-    managerApprovedAt: new Date().toISOString(),
-  }
-  saveRequests(all)
-
-  return {
-    success: true,
-    message: 'Request approved and forwarded to VP Operations',
-    requestId,
-    status: 'Pending VP Approval',
-  }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post(`/advance-requests/${requestId}/manager-approve`)
-  // return res.data
+  // ── API implementation (Active) ──────────────────────────────────────────
+  const res = await axiosInstance.post(
+    `/accounts/advance-requests/${requestId}/manager-approve`
+  )
+  // API Response: { responseId, timestamp, results: { message, requestId, status, approvedBy, approvedAt } }
+  return res.data.results
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -385,6 +281,7 @@ export const managerRejectRequest = async ({ requestId, remarks }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 7. FETCH REQUESTS FOR VP APPROVAL
 //    GET /api/advance-requests/vp-approval
+//    ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchVPApprovalRequests = async () => {
   // ── localStorage implementation ──────────────────────────────────────────
@@ -440,6 +337,7 @@ export const fetchVPApprovalRequests = async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. VP — APPROVE REQUEST
 //    POST /api/advance-requests/:requestId/vp-approve
+//    ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────
 export const vpApproveRequest = async ({ requestId }) => {
   // ── VALIDATION ───────────────────────────────────────────────────────────
@@ -485,6 +383,7 @@ export const vpApproveRequest = async ({ requestId }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 9. VP — REJECT REQUEST
 //    POST /api/advance-requests/:requestId/vp-reject
+//    ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────
 export const vpRejectRequest = async ({ requestId, remarks }) => {
   // ── VALIDATION ───────────────────────────────────────────────────────────
@@ -522,6 +421,7 @@ export const vpRejectRequest = async ({ requestId, remarks }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 10. FETCH REQUESTS FOR AE APPROVAL
 //     GET /api/advance-requests/ae-approval
+//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchAEApprovalRequests = async () => {
   // ── localStorage implementation ──────────────────────────────────────────
@@ -550,6 +450,7 @@ export const fetchAEApprovalRequests = async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 11. AE — APPROVE SINGLE REQUEST
 //     POST /api/advance-requests/:requestId/ae-approve
+//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────
 export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }) => {
   // ── VALIDATION ───────────────────────────────────────────────────────────
@@ -596,6 +497,7 @@ export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }
 // ─────────────────────────────────────────────────────────────────────────────
 // 12. AE — APPROVE MULTIPLE REQUESTS (BATCH)
 //     POST /api/advance-requests/ae-approve-batch
+//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────
 export const aeApproveBatch = async ({ requestIds, bankId, bankCode, bankName }) => {
   // ── VALIDATION ───────────────────────────────────────────────────────────
@@ -669,6 +571,7 @@ export const aeApproveBatch = async ({ requestIds, bankId, bankCode, bankName })
 // ─────────────────────────────────────────────────────────────────────────────
 // 13. AE — REJECT REQUEST
 //     POST /api/advance-requests/:requestId/ae-reject
+//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────
 export const aeRejectRequest = async ({ requestId, reason }) => {
   // ── VALIDATION ───────────────────────────────────────────────────────────

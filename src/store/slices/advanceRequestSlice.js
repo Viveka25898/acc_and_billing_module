@@ -25,16 +25,40 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import * as service from '../../Features/Advance Request/services/advanceRequestService'
 
-// ─── Async Thunks ─────────────────────────────────────────────────────────────
+// ─── Error Handling Helper ───────────────────────────────────────────────────
+/**
+ * Safe error extraction from API response or Error object
+ * Priority: error.message > error.errorMessage > generic fallback
+ */
+const extractErrorMessage = (error) => {
+  if (!error) return 'An unexpected error occurred'
+  
+  // If it's already a string (from rejectWithValue)
+  if (typeof error === 'string') return error
+  
+  // If it's an Error object
+  if (error instanceof Error) return error.message
+  
+  // If it's a validation error with custom format
+  if (error.errorMessage) return error.errorMessage
+  
+  // Fallback
+  return error.message || 'An unexpected error occurred'
+}
 
 /** Fetch the logged-in user's own requests */
 export const fetchMyRequests = createAsyncThunk(
   'advanceRequest/fetchMyRequests',
   async (params = {}, { rejectWithValue }) => {
     try {
-      return await service.fetchMyRequests(params)
+      const result = await service.fetchMyRequests(params)
+      // Validate API response shape
+      if (!result?.requests || !Array.isArray(result.requests)) {
+        return rejectWithValue('Invalid API response: missing requests array')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   }
 )
@@ -44,9 +68,14 @@ export const fetchManagerApprovalRequests = createAsyncThunk(
   'advanceRequest/fetchManagerApprovalRequests',
   async (params = {}, { rejectWithValue }) => {
     try {
-      return await service.fetchManagerApprovalRequests(params)
+      const result = await service.fetchManagerApprovalRequests(params)
+      // Validate API response shape
+      if (!result?.requests || !Array.isArray(result.requests)) {
+        return rejectWithValue('Invalid API response: missing requests array')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   }
 )
@@ -80,9 +109,21 @@ export const createAdvanceRequest = createAsyncThunk(
   'advanceRequest/createAdvanceRequest',
   async (payload, { rejectWithValue }) => {
     try {
-      return await service.submitAdvanceRequest(payload)
+      console.log('🎬 Thunk: Starting createAdvanceRequest with payload:', payload)
+      const result = await service.submitAdvanceRequest(payload)
+      console.log('✅ Thunk: Service returned result:', result)
+      // Validate required fields in response
+      if (!result?.requestId || !result?.status) {
+        console.error('❌ Thunk: Invalid API response - missing requestId or status')
+        return rejectWithValue('Invalid API response: missing requestId or status')
+      }
+      console.log('✅ Thunk: Validation passed, returning result')
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      console.error('❌ Thunk: Error caught:', err)
+      const errorMsg = extractErrorMessage(err)
+      console.error('❌ Thunk: Extracted error message:', errorMsg)
+      return rejectWithValue(errorMsg)
     }
   },
   {
@@ -91,6 +132,7 @@ export const createAdvanceRequest = createAsyncThunk(
     condition: (_, { getState }) => {
       const { loading } = getState().advanceRequest
       if (loading.submit) {
+        console.warn('⚠️ Thunk: Already submitting, blocking duplicate request')
         return false  // ← Block if already submitting
       }
     }
@@ -102,9 +144,19 @@ export const submitClarificationThunk = createAsyncThunk(
   'advanceRequest/submitClarification',
   async ({ requestId, clarification }, { rejectWithValue }) => {
     try {
-      return await service.submitClarification({ requestId, clarification })
+      if (!requestId) {
+        return rejectWithValue('Request ID is required')
+      }
+      if (!clarification || clarification.trim().length === 0) {
+        return rejectWithValue('Clarification text is required')
+      }
+      const result = await service.submitClarification({ requestId, clarification })
+      if (!result?.status || !result?.requestId) {
+        return rejectWithValue('Invalid API response: missing status or requestId')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   }
 )
@@ -114,9 +166,16 @@ export const managerApprove = createAsyncThunk(
   'advanceRequest/managerApprove',
   async ({ requestId }, { rejectWithValue }) => {
     try {
-      return await service.managerApproveRequest({ requestId })
+      if (!requestId) {
+        return rejectWithValue('Request ID is required')
+      }
+      const result = await service.managerApproveRequest({ requestId })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   },
   {
@@ -132,9 +191,19 @@ export const managerReject = createAsyncThunk(
   'advanceRequest/managerReject',
   async ({ requestId, remarks }, { rejectWithValue }) => {
     try {
-      return await service.managerRejectRequest({ requestId, remarks })
+      if (!requestId) {
+        return rejectWithValue('Request ID is required')
+      }
+      if (!remarks || remarks.trim().length === 0) {
+        return rejectWithValue('Rejection remarks are required')
+      }
+      const result = await service.managerRejectRequest({ requestId, remarks })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   },
   {
@@ -150,9 +219,16 @@ export const vpApprove = createAsyncThunk(
   'advanceRequest/vpApprove',
   async ({ requestId }, { rejectWithValue }) => {
     try {
-      return await service.vpApproveRequest({ requestId })
+      if (!requestId) {
+        return rejectWithValue('Request ID is required')
+      }
+      const result = await service.vpApproveRequest({ requestId })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   },
   {
@@ -168,9 +244,19 @@ export const vpReject = createAsyncThunk(
   'advanceRequest/vpReject',
   async ({ requestId, remarks }, { rejectWithValue }) => {
     try {
-      return await service.vpRejectRequest({ requestId, remarks })
+      if (!requestId) {
+        return rejectWithValue('Request ID is required')
+      }
+      if (!remarks || remarks.trim().length === 0) {
+        return rejectWithValue('Rejection remarks are required')
+      }
+      const result = await service.vpRejectRequest({ requestId, remarks })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   },
   {
@@ -186,9 +272,19 @@ export const aeApprove = createAsyncThunk(
   'advanceRequest/aeApprove',
   async ({ requestId, bankId, bankCode, bankName }, { rejectWithValue }) => {
     try {
-      return await service.aeApproveRequest({ requestId, bankId, bankCode, bankName })
+      if (!requestId) {
+        return rejectWithValue('Request ID is required')
+      }
+      if (!bankId || !bankCode || !bankName) {
+        return rejectWithValue('Bank details (ID, code, name) are required')
+      }
+      const result = await service.aeApproveRequest({ requestId, bankId, bankCode, bankName })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   },
   {
@@ -204,9 +300,19 @@ export const aeApproveBatchThunk = createAsyncThunk(
   'advanceRequest/aeApproveBatch',
   async ({ requestIds, bankId, bankCode, bankName }, { rejectWithValue }) => {
     try {
-      return await service.aeApproveBatch({ requestIds, bankId, bankCode, bankName })
+      if (!requestIds || requestIds.length === 0) {
+        return rejectWithValue('At least one request ID is required')
+      }
+      if (!bankId || !bankCode || !bankName) {
+        return rejectWithValue('Bank details (ID, code, name) are required')
+      }
+      const result = await service.aeApproveBatch({ requestIds, bankId, bankCode, bankName })
+      if (!result?.approvedRequests || !Array.isArray(result.approvedRequests)) {
+        return rejectWithValue('Invalid API response: missing approvedRequests array')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   },
   {
@@ -222,9 +328,19 @@ export const aeReject = createAsyncThunk(
   'advanceRequest/aeReject',
   async ({ requestId, reason }, { rejectWithValue }) => {
     try {
-      return await service.aeRejectRequest({ requestId, reason })
+      if (!requestId) {
+        return rejectWithValue('Request ID is required')
+      }
+      if (!reason || reason.trim().length === 0) {
+        return rejectWithValue('Rejection reason is required')
+      }
+      const result = await service.aeRejectRequest({ requestId, reason })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(extractErrorMessage(err))
     }
   },
   {
@@ -323,12 +439,19 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(fetchMyRequests.fulfilled, (state, action) => {
         state.loading.fetchMyRequests = false
-        state.myRequests = action.payload.requests
-        state.pagination = action.payload.pagination || state.pagination
+        // Safe assignment with fallback to empty array
+        state.myRequests = action.payload?.requests || []
+        // Update pagination, default to first page if missing
+        state.pagination = {
+          currentPage: action.payload?.pagination?.currentPage || 1,
+          totalPages: action.payload?.pagination?.totalPages || 1,
+          totalItems: action.payload?.pagination?.totalItems || 0,
+          pageSize: action.payload?.pagination?.pageSize || 5,
+        }
       })
       .addCase(fetchMyRequests.rejected, (state, action) => {
         state.loading.fetchMyRequests = false
-        state.errors.fetchMyRequests = action.payload
+        state.errors.fetchMyRequests = extractErrorMessage(action.payload)
       })
 
     // ── fetchManagerApprovalRequests ────────────────────────────────────────
@@ -339,11 +462,12 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(fetchManagerApprovalRequests.fulfilled, (state, action) => {
         state.loading.fetchManagerRequests = false
-        state.managerRequests = action.payload.requests
+        // Safe assignment with fallback to empty array
+        state.managerRequests = action.payload?.requests || []
       })
       .addCase(fetchManagerApprovalRequests.rejected, (state, action) => {
         state.loading.fetchManagerRequests = false
-        state.errors.fetchManagerRequests = action.payload
+        state.errors.fetchManagerRequests = extractErrorMessage(action.payload)
       })
 
     // ── fetchVPApprovalRequests ─────────────────────────────────────────────
@@ -354,12 +478,12 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(fetchVPApprovalRequests.fulfilled, (state, action) => {
         state.loading.fetchVPRequests = false
-        state.vpRequests = action.payload.requests
-        state.isBeforeDeadline = action.payload.isBeforeDeadline ?? true
+        state.vpRequests = action.payload?.requests || []
+        state.isBeforeDeadline = action.payload?.isBeforeDeadline ?? true
       })
       .addCase(fetchVPApprovalRequests.rejected, (state, action) => {
         state.loading.fetchVPRequests = false
-        state.errors.fetchVPRequests = action.payload
+        state.errors.fetchVPRequests = extractErrorMessage(action.payload)
       })
 
     // ── fetchAEApprovalRequests ─────────────────────────────────────────────
@@ -370,12 +494,12 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(fetchAEApprovalRequests.fulfilled, (state, action) => {
         state.loading.fetchAERequests = false
-        state.aeRequests = action.payload.requests
-        state.isBeforeDeadline = action.payload.isBeforeDeadline ?? true
+        state.aeRequests = action.payload?.requests || []
+        state.isBeforeDeadline = action.payload?.isBeforeDeadline ?? true
       })
       .addCase(fetchAEApprovalRequests.rejected, (state, action) => {
         state.loading.fetchAERequests = false
-        state.errors.fetchAERequests = action.payload
+        state.errors.fetchAERequests = extractErrorMessage(action.payload)
       })
 
     // ── createAdvanceRequest ────────────────────────────────────────────────
@@ -387,11 +511,13 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(createAdvanceRequest.fulfilled, (state, action) => {
         state.loading.submit = false
-        state.submitResult = action.payload
+        // Store the result object for display in success screen
+        state.submitResult = action.payload || {}
       })
       .addCase(createAdvanceRequest.rejected, (state, action) => {
         state.loading.submit = false
-        state.errors.submit = action.payload
+        state.errors.submit = extractErrorMessage(action.payload)
+        state.submitResult = null
       })
 
     // ── submitClarificationThunk ────────────────────────────────────────────
@@ -404,16 +530,16 @@ const advanceRequestSlice = createSlice({
         state.loading.clarification = false
         // Update the status in myRequests optimistically
         const idx = state.myRequests.findIndex(
-          (r) => r.requestId === action.payload.requestId
+          (r) => r?.requestId === action.payload?.requestId
         )
-        if (idx !== -1) {
-          state.myRequests[idx].status = 'Pending Manager Approval'
+        if (idx !== -1 && state.myRequests[idx]) {
+          state.myRequests[idx].status = action.payload?.status || 'Pending Manager Approval'
           state.myRequests[idx].clarification = action.meta.arg.clarification
         }
       })
       .addCase(submitClarificationThunk.rejected, (state, action) => {
         state.loading.clarification = false
-        state.errors.clarification = action.payload
+        state.errors.clarification = extractErrorMessage(action.payload)
       })
 
     // ── managerApprove ──────────────────────────────────────────────────────
@@ -424,14 +550,14 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(managerApprove.fulfilled, (state, action) => {
         state.loading.managerApprove = false
-        // Remove from manager queue (optimistic)
+        // Remove from manager queue (optimistic update)
         state.managerRequests = state.managerRequests.filter(
           (r) => r.requestId !== action.meta.arg.requestId
         )
       })
       .addCase(managerApprove.rejected, (state, action) => {
         state.loading.managerApprove = false
-        state.errors.approve = action.payload
+        state.errors.approve = extractErrorMessage(action.payload)
       })
 
     // ── managerReject ───────────────────────────────────────────────────────
@@ -442,13 +568,14 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(managerReject.fulfilled, (state, action) => {
         state.loading.managerReject = false
+        // Remove from manager queue
         state.managerRequests = state.managerRequests.filter(
           (r) => r.requestId !== action.meta.arg.requestId
         )
       })
       .addCase(managerReject.rejected, (state, action) => {
         state.loading.managerReject = false
-        state.errors.reject = action.payload
+        state.errors.reject = extractErrorMessage(action.payload)
       })
 
     // ── vpApprove ───────────────────────────────────────────────────────────
@@ -465,7 +592,7 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(vpApprove.rejected, (state, action) => {
         state.loading.vpApprove = false
-        state.errors.approve = action.payload
+        state.errors.approve = extractErrorMessage(action.payload)
       })
 
     // ── vpReject ────────────────────────────────────────────────────────────
@@ -482,7 +609,7 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(vpReject.rejected, (state, action) => {
         state.loading.vpReject = false
-        state.errors.reject = action.payload
+        state.errors.reject = extractErrorMessage(action.payload)
       })
 
     // ── aeApprove ───────────────────────────────────────────────────────────
@@ -499,7 +626,7 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(aeApprove.rejected, (state, action) => {
         state.loading.aeApprove = false
-        state.errors.approve = action.payload
+        state.errors.approve = extractErrorMessage(action.payload)
       })
 
     // ── aeApproveBatchThunk ─────────────────────────────────────────────────
@@ -510,14 +637,14 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(aeApproveBatchThunk.fulfilled, (state, action) => {
         state.loading.aeApproveBatch = false
-        const approvedIds = action.payload.approvedRequests.map((r) => r.requestId)
+        const approvedIds = (action.payload?.approvedRequests || []).map((r) => r?.requestId).filter(Boolean)
         state.aeRequests = state.aeRequests.filter(
           (r) => !approvedIds.includes(r.requestId)
         )
       })
       .addCase(aeApproveBatchThunk.rejected, (state, action) => {
         state.loading.aeApproveBatch = false
-        state.errors.approve = action.payload
+        state.errors.approve = extractErrorMessage(action.payload)
       })
 
     // ── aeReject ────────────────────────────────────────────────────────────
@@ -534,7 +661,7 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(aeReject.rejected, (state, action) => {
         state.loading.aeReject = false
-        state.errors.reject = action.payload
+        state.errors.reject = extractErrorMessage(action.payload)
       })
   },
 })
@@ -549,13 +676,14 @@ export const {
 } = advanceRequestSlice.actions
 
 // ─── Selectors ─────────────────────────────────────────────────────────────────
-export const selectMyRequests     = (state) => state.advanceRequest.myRequests
-export const selectManagerRequests = (state) => state.advanceRequest.managerRequests
-export const selectVPRequests     = (state) => state.advanceRequest.vpRequests
-export const selectAERequests     = (state) => state.advanceRequest.aeRequests
-export const selectSubmitResult   = (state) => state.advanceRequest.submitResult
-export const selectIsBeforeDeadline = (state) => state.advanceRequest.isBeforeDeadline
-export const selectLoading        = (state) => state.advanceRequest.loading
-export const selectErrors         = (state) => state.advanceRequest.errors
+export const selectMyRequests     = (state) => state.advanceRequest?.myRequests || []
+export const selectManagerRequests = (state) => state.advanceRequest?.managerRequests || []
+export const selectVPRequests     = (state) => state.advanceRequest?.vpRequests || []
+export const selectAERequests     = (state) => state.advanceRequest?.aeRequests || []
+export const selectSubmitResult   = (state) => state.advanceRequest?.submitResult || null
+export const selectIsBeforeDeadline = (state) => state.advanceRequest?.isBeforeDeadline ?? true
+export const selectLoading        = (state) => state.advanceRequest?.loading || {}
+export const selectErrors         = (state) => state.advanceRequest?.errors || {}
+export const selectPagination     = (state) => state.advanceRequest?.pagination || {}
 
 export default advanceRequestSlice.reducer

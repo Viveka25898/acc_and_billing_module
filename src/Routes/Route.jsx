@@ -11,7 +11,7 @@ import ManagerApproval from '../Features/Advance Request/ManagerApproal'
 import VPDashboard from '../Roles/VP Operations/Pages/VPDashboard'
 import VPHome from '../Roles/VP Operations/Components/VPHome'
 import VPApproval from '../Features/Advance Request/VPApproval'
-import MyRequests from '../Features/Advance Request/MyRequests'
+import EmployeeMyRequests from '../Features/Advance Request/Pages/EmployeeMyRequests'
 import EmployeeAdvanceSettlementPage from '../Features/Advance Settlement/Pages/EmployeeAdvanceSettlementPage'
 import ExpenseRequestsPage from '../Features/Advance Settlement/Pages/ExpenseRequestsPage'
 import MySettlements from '../Features/Advance Settlement/Components/MySettlements'
@@ -277,7 +277,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'my-requests',
-        element: <MyRequests />,
+        element: <EmployeeMyRequests />,
       },
       {
         path: 'advance-settlement',

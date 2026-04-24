@@ -6,68 +6,39 @@ import { toast } from 'react-toastify'
 import {
   createAdvanceRequest,
   clearSubmitResult,
+  clearErrors,
   selectSubmitResult,
   selectLoading,
   selectErrors,
 } from '../../../store/slices/advanceRequestSlice'
+import { selectAuthContext } from '../../../Auth/authSlice'
 
-// ─── Role Configuration (workflow rules — not from backend) ──────────────────
+// ─── Workflow Status Messages (Backend Now Determines Actual Status) ──────────
+// Frontend only shows next expected level for UI messages
 const ROLE_CONFIG = {
   employee: {
-    status: 'Pending Manager Approval',
-    currentLevel: 'line-manager',
-    getAssignedTo: (fullUser) => fullUser?.reportsTo,
-    errorMsg: "No reporting manager assigned. Please set 'reportsTo' in users.",
+    nextApprovalLevel: 'Line Manager',
   },
   'line-manager': {
-    status: 'Pending VP Approval',
-    currentLevel: 'vp-operations',
-    getAssignedTo: (fullUser) => fullUser?.reportsTo,
-    errorMsg: "No VP assigned. Please set 'reportsTo' in users.",
+    nextApprovalLevel: 'VP Operations',
   },
   'compliance-team': {
-    status: 'Pending VP Approval',
-    currentLevel: 'vp-operations',
-    getAssignedTo: (fullUser) => fullUser?.reportsTo,
-    errorMsg: "No VP assigned. Please set 'reportsTo' in users.",
+    nextApprovalLevel: 'VP Operations',
   },
   'compliance-manager': {
-    status: 'Pending VP Approval',
-    currentLevel: 'vp-operations',
-    getAssignedTo: (fullUser) => fullUser?.reportsTo,
-    errorMsg: "No VP assigned. Please set 'reportsTo' in users.",
+    nextApprovalLevel: 'VP Operations',
   },
   'payroll-team': {
-    status: 'Pending VP Approval',
-    currentLevel: 'vp-operations',
-    getAssignedTo: (fullUser) => fullUser?.reportsTo,
-    errorMsg: "No VP assigned. Please set 'reportsTo' in users.",
+    nextApprovalLevel: 'VP Operations',
   },
   'operation-executive': {
-    status: 'Pending VP Approval',
-    currentLevel: 'vp-operations',
-    getAssignedTo: (fullUser) => fullUser?.reportsTo,
-    errorMsg: "No VP assigned. Please set 'reportsTo' in users.",
+    nextApprovalLevel: 'VP Operations',
   },
   manager: {
-    status: 'Pending AE Approval',
-    currentLevel: 'account-executive',
-    getAssignedTo: (_fullUser, allUsers) => {
-      const ae = allUsers.find((u) => u.role === 'ae' || u.role === 'account-executive')
-      return ae?.username
-    },
-    errorMsg: 'No Account Executive found in the system.',
-    isManagerRole: true,
+    nextApprovalLevel: 'Account Executive',
   },
   'vp-operations': {
-    status: 'Pending AE Approval',
-    currentLevel: 'account-executive',
-    getAssignedTo: (_fullUser, allUsers) => {
-      const ae = allUsers.find((u) => u.role === 'ae' || u.role === 'account-executive')
-      return ae?.username
-    },
-    errorMsg: 'No Account Executive found in the system.',
-    isVPRole: true,
+    nextApprovalLevel: 'Account Executive',
   },
 }
 
@@ -88,6 +59,8 @@ const SharedAdvanceRequestForm = ({
   const submitResult = useSelector(selectSubmitResult)
   const loading = useSelector(selectLoading)
   const errors = useSelector(selectErrors)
+  // ✅ Step 4.2: Get auth context from Redux (replaces localStorage)
+  const authContext = useSelector(selectAuthContext)
 
   const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG['employee']
 
@@ -101,20 +74,42 @@ const SharedAdvanceRequestForm = ({
   })
 
   const [localError, setLocalError] = useState('')
+  const [isPreFilled, setIsPreFilled] = useState(false)
+  const prefillRef = React.useRef(false)  // ✅ Prevent re-runs with ref
 
-  // ── Pre-fill from localStorage (will come from Redux auth store after API) ─
+  // ✅ Step 4.3: Pre-fill from Redux auth state (replaces localStorage lookup)
+  // ✅ Only run ONCE on mount to prevent overwriting user input
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem('user'))
-    const allUsers = JSON.parse(localStorage.getItem('users')) || []
-    if (currentUser) {
-      const fullUser = allUsers.find((u) => u.username === currentUser.username)
+    // ✅ Use ref to prevent re-running even if deps array changes
+    if (prefillRef.current) return
+    if (!authContext) return  // Not logged in yet, skip
+    
+    try {
+      // Extract employeeId and employeeName from Redux auth context
+      const empId = authContext.employeeId || authContext.email || ''
+      const empName = authContext.employeeName || authContext.email || ''
+
+      // ✅ Validate before setting
+      if (typeof empId !== 'string' || typeof empName !== 'string') {
+        throw new Error('Invalid auth context data')
+      }
+
+      console.log('🔧 Pre-filling form with:', { empId, empName })
+
       setFormData((prev) => ({
         ...prev,
-        employeeName: fullUser?.fullName || fullUser?.username || '',
-        employeeId: fullUser?.employeeId || fullUser?.empId || fullUser?.username || '',
+        employeeId: empId,
+        employeeName: empName,
       }))
+      prefillRef.current = true  // ✅ Mark as done with ref
+      setIsPreFilled(true)
+    } catch (error) {
+      console.error('Failed to pre-fill form from auth context:', error)
+      setLocalError('Unable to auto-fill employee details. Please enter manually.')
+      prefillRef.current = true  // ✅ Mark as attempted
+      setIsPreFilled(true)
     }
-  }, [])
+  }, [])  // ✅ Empty dependency array = run ONLY once on mount
 
   // ── Clear submit result when unmounting ────────────────────────────────────
   useEffect(() => {
@@ -123,12 +118,18 @@ const SharedAdvanceRequestForm = ({
 
   // ── Show toast for service errors ──────────────────────────────────────────
   useEffect(() => {
-    if (errors.submit) toast.error(errors.submit)
+    if (errors.submit) {
+      // ✅ Step 9.3: Show server error in toast
+      toast.error(`❌ ${errors.submit}`)
+    }
   }, [errors.submit])
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleChange = (e) => {
     const { name, value } = e.target
+    // ✅ Clear error when user starts editing
+    setLocalError('')
+    dispatch(clearErrors())  // ✅ Clear Redux errors too
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -160,43 +161,79 @@ const SharedAdvanceRequestForm = ({
   const handleSubmit = (e) => {
     e.preventDefault()
     setLocalError('')
+    
+    console.log('📤 Form submitted. Validating...', formData)
 
+    // ✅ Step 9.2: Client-side validation before submit
     if (!isFormValid()) {
-      setLocalError('Please fill in all required fields.')
+      const msg = 'Please fill in all required fields.'
+      console.warn('❌ Form validation failed:', msg, formData)
+      setLocalError(msg)
       return
     }
 
-    // Resolve who this gets assigned to (workflow logic — stays in frontend)
-    const currentUser = JSON.parse(localStorage.getItem('user'))
-    const allUsers = JSON.parse(localStorage.getItem('users')) || []
-    const fullUser = allUsers.find((u) => u.username === currentUser.username)
-    const assignedTo = roleConfig.getAssignedTo(fullUser, allUsers)
+    try {
+      // ✅ Step 9.2: Try-catch for form preparation errors
+      // Build API-ready payload
+      const finalReasons = formData.reasons.map((r) =>
+        r === 'Other' && formData.customReason.trim() ? formData.customReason.trim() : r
+      )
 
-    if (!assignedTo) {
-      setLocalError(`❌ ${roleConfig.errorMsg}`)
-      return
+      // Validate employeeId and employeeName before submit (edge cases)
+      const empId = formData.employeeId?.trim()
+      const empName = formData.employeeName?.trim()
+
+      console.log('✅ Employee Info:', { empId, empName })
+
+      if (!empId) {
+        const msg = 'Employee ID is required. Please refresh and try again.'
+        console.warn('❌', msg)
+        setLocalError(msg)
+        return
+      }
+      if (!empName) {
+        const msg = 'Employee Name is required. Please enter your name.'
+        console.warn('❌', msg)
+        setLocalError(msg)
+        return
+      }
+
+      // Build payload
+      const payload = {
+        employeeName: empName,
+        employeeId: empId,
+        amount: formData.amount,
+        reason: finalReasons,
+        customReason: formData.reasons.includes('Other') ? formData.customReason : '',
+        requestDate: formData.requestDate,
+      }
+
+      console.log('📦 Submitting payload:', payload)
+
+      // ✅ Step 9.2: Dispatch with error handling
+      const dispatchResult = dispatch(createAdvanceRequest(payload))
+      
+      console.log('✅ Dispatch called, waiting for response...', dispatchResult)
+      
+      // Handle async thunk completion
+      if (dispatchResult && typeof dispatchResult.then === 'function') {
+        dispatchResult
+          .then((result) => {
+            console.log('✅ Thunk completed successfully:', result)
+          })
+          .catch((error) => {
+            console.error('❌ Thunk error:', error)
+            setLocalError('An unexpected error occurred. Please try again.')
+          })
+      }
+    } catch (error) {
+      // ✅ Step 9.3: Catch validation/preparation errors
+      console.error('❌ Error preparing advance request:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to prepare request'
+      setLocalError(`Validation error: ${errorMessage}`)
+      // ✅ Also show in toast for visibility
+      toast.error(`Error: ${errorMessage}`)
     }
-
-    const finalReasons = formData.reasons.map((r) =>
-      r === 'Other' && formData.customReason.trim() ? formData.customReason.trim() : r
-    )
-
-    const payload = {
-      employeeName: formData.employeeName,
-      employeeId: formData.employeeId,
-      amount: formData.amount,
-      reason: finalReasons,
-      customReason: formData.reasons.includes('Other') ? formData.customReason : '',
-      requestDate: formData.requestDate,
-      status: roleConfig.status,
-      currentLevel: roleConfig.currentLevel,
-      assignedTo,
-      submittedBy: currentUser.username,
-      ...(roleConfig.isVPRole && { isVPRequest: true }),
-      ...(roleConfig.isManagerRole && { isManagerRequest: true }),
-    }
-
-    dispatch(createAdvanceRequest(payload))
   }
 
   const handleReset = () => {
@@ -278,14 +315,17 @@ const SharedAdvanceRequestForm = ({
                 {/* Employee Info */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Employee Name</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Employee Name <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       name="employeeName"
                       value={formData.employeeName}
-                      readOnly
-                      className="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-sm text-gray-700 cursor-not-allowed focus:outline-none"
-                      placeholder="Auto-filled"
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition"
+                      placeholder="Your full name"
+                      required
                     />
                   </div>
                   <div>
@@ -411,7 +451,7 @@ const SharedAdvanceRequestForm = ({
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Your request will be reviewed by your reporting manager.
+          Your request will be reviewed by {roleConfig.nextApprovalLevel || 'the approver'}.
         </p>
       </div>
     </div>

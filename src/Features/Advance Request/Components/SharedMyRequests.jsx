@@ -42,13 +42,22 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
 
   // ── Load on mount ──────────────────────────────────────────────────────────
   useEffect(() => {
-    dispatch(fetchMyRequests())
+    try {
+      dispatch(fetchMyRequests())
+    } catch (error) {
+      console.error('Failed to load my requests:', error)
+      toast.error('❌ Failed to load your requests. Please refresh the page.')
+    }
   }, [dispatch])
 
   // ── Show error toast ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (errors.fetchMyRequests) toast.error(errors.fetchMyRequests)
-    if (errors.clarification) toast.error(errors.clarification)
+    if (errors.fetchMyRequests) {
+      toast.error(`❌ Failed to load requests: ${errors.fetchMyRequests}`)
+    }
+    if (errors.clarification) {
+      toast.error(`❌ Clarification error: ${errors.clarification}`)
+    }
   }, [errors.fetchMyRequests, errors.clarification])
 
   const filteredRequests = requests.filter((r) => !dateFilter || r.requestDate === dateFilter)
@@ -65,19 +74,47 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
   }
 
   const submitClarification = async () => {
+    // ✅ Step 9.2: Client-side validation
     if (!clarificationText.trim()) {
-      toast.error('Clarification cannot be empty.')
+      toast.error('❌ Clarification cannot be empty.')
       return
     }
-    const result = await dispatch(
-      submitClarificationThunk({
-        requestId: selectedRequest.requestId,
-        clarification: clarificationText,
-      })
-    )
-    if (submitClarificationThunk.fulfilled.match(result)) {
-      setShowClarifyModal(false)
-      toast.success('Clarification submitted. Request sent back for review.')
+
+    // ✅ Additional edge case checks
+    if (!selectedRequest || !selectedRequest.requestId) {
+      toast.error('❌ Request ID is missing. Please refresh and try again.')
+      return
+    }
+
+    try {
+      // ✅ Step 9.2: Try-catch for clarification submission
+      const result = await dispatch(
+        submitClarificationThunk({
+          requestId: selectedRequest.requestId,
+          clarification: clarificationText.trim(),
+        })
+      )
+
+      // ✅ Step 9.3: Check for success
+      if (submitClarificationThunk.fulfilled.match(result)) {
+        // Success - close modal and show success toast
+        setShowClarifyModal(false)
+        setClarificationText('')
+        setSelectedRequest(null)
+        toast.success('✅ Clarification submitted. Request sent back for review.')
+        
+        // Refresh requests list
+        dispatch(fetchMyRequests())
+      } else if (submitClarificationThunk.rejected.match(result)) {
+        // ✅ Step 9.3: Show server error with context
+        const errorMsg = result.payload || 'Failed to submit clarification'
+        toast.error(`❌ ${errorMsg}`)
+      }
+    } catch (error) {
+      // ✅ Step 9.2: Catch unexpected errors
+      console.error('Clarification submission error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`❌ Error submitting clarification: ${errorMessage}`)
     }
   }
 

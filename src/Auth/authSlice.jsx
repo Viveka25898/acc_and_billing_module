@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { loginUser } from "./services/authService";
-import { decodeToken } from "../utils/decodeToken";
+import { decodeToken, extractEmployeeIdFromToken } from "../utils/decodeToken";
 
 // ─── Backend Role to Frontend Role Mapping ──────────────────────────────────
 // Backend sends roles in different formats (VP_OPS, AE, etc.)
@@ -46,10 +46,11 @@ const mapBackendRoleToFrontend = (backendRole) => {
 const storedToken = localStorage.getItem('token')
 const storedUser = JSON.parse(localStorage.getItem('user')) || null
 
-// ─── Initial State ──────────────────────────────────────────────────────────
+// ─── Initial State ──────────────────────────────────────────────────────
 const initialState = {
-  user: storedUser,                    // { email, role } — restored from localStorage
+  user: storedUser,                    // { email, role, employeeId, employeeName } — restored from localStorage
   role: storedUser?.role || null,      // role from dropdown OR extracted from JWT token
+  employeeId: storedUser?.employeeId || null,  // unique identifier extracted from JWT.sub
   token: storedToken || null,          // JWT access_token string
   isAuthenticated: !!storedToken,      // true when token exists
   loading: false,                      // disables button, shows spinner
@@ -64,6 +65,18 @@ export const loginUserThunk = createAsyncThunk(
       const data = await loginUser({ email, password })
       // data = { access_token, token_type }
 
+      // ─── Validate access token ──────────────────────────────────────────
+      if (!data?.access_token || typeof data.access_token !== 'string') {
+        return rejectWithValue('Invalid token received from server')
+      }
+
+      // ─── Extract employeeId from JWT.sub claim ──────────────────────────
+      const employeeId = extractEmployeeIdFromToken(data.access_token)
+      if (!employeeId) {
+        // Log warning but don't fail login — backend may send sub in future
+        console.warn('employeeId not found in JWT, will use email as fallback')
+      }
+
       // ─── Extract role from token if not provided by user ───────────────
       // Priority: user-selected role > role from JWT token
       let finalRole = role
@@ -73,10 +86,16 @@ export const loginUserThunk = createAsyncThunk(
         finalRole = mapBackendRoleToFrontend(decoded?.role) || null
       }
 
+      // ─── Determine employeeName (email fallback until backend adds name field) ─
+      // Once backend adds name field, update to: employeeName: decoded?.name || email
+      const employeeName = email || 'Unknown User'  // Fallback if email missing (unlikely)
+
       return {
         access_token: data.access_token,
         role: finalRole,  // Either from dropdown or decoded from token
-        email, // pass email forward for user object
+        email,
+        employeeId: employeeId || email,  // Use email as fallback if sub missing
+        employeeName,  // Email used as name until backend provides name field
       }
     } catch (error) {
       // Error message comes from authService or axiosInstance
@@ -128,18 +147,38 @@ const authSlice = createSlice({
 
       // ──── Login Fulfilled ────────────────────────────────────────────────
       .addCase(loginUserThunk.fulfilled, (state, action) => {
-        const { access_token, role, email } = action.payload
+        const { access_token, role, email, employeeId, employeeName } = action.payload
+
+        // ─── Validate required fields ────────────────────────────────────
+        if (!access_token || !email) {
+          state.loading = false
+          state.error = 'Invalid login response: missing token or email'
+          state.isAuthenticated = false
+          return
+        }
 
         state.loading = false
         state.token = access_token
         state.role = role                         // From dropdown (now)
-        state.user = { email, role }              // Store for restoration
+        state.employeeId = employeeId || null     // Extracted from JWT.sub or email fallback
+        state.user = {
+          email,
+          role,
+          employeeId: employeeId || null,         // Unique identifier for later use
+          employeeName: employeeName || email,    // Display name (email fallback)
+        }
         state.isAuthenticated = true
         state.error = null
 
         // ─── Persist to localStorage ───────────────────────────────────────
+        // Store complete user object with employeeId for form pre-fill
         localStorage.setItem('token', access_token)
-        localStorage.setItem('user', JSON.stringify({ email, role }))
+        localStorage.setItem('user', JSON.stringify({
+          email,
+          role,
+          employeeId: employeeId || null,
+          employeeName: employeeName || email,
+        }))
       })
 
       // ──── Login Rejected ─────────────────────────────────────────────────
@@ -155,5 +194,31 @@ const authSlice = createSlice({
 })
 
 export const { logout, clearError } = authSlice.actions
+
+// ─── Defensive Selectors ────────────────────────────────────────────────────────
+// All selectors have null-safety and sensible fallbacks
+export const selectAuthUser = (state) => state.auth?.user || null
+export const selectAuthToken = (state) => state.auth?.token || null
+export const selectAuthRole = (state) => state.auth?.role || null
+export const selectAuthEmployeeId = (state) => state.auth?.employeeId || state.auth?.user?.employeeId || null
+export const selectAuthEmployeeName = (state) => state.auth?.user?.employeeName || state.auth?.user?.email || 'Unknown User'
+export const selectAuthEmail = (state) => state.auth?.user?.email || null
+export const selectIsAuthenticated = (state) => state.auth?.isAuthenticated ?? false
+export const selectAuthLoading = (state) => state.auth?.loading ?? false
+export const selectAuthError = (state) => state.auth?.error || null
+
+// ─── Composite Selector: Get full user context with all fields ─────────────────
+export const selectAuthContext = (state) => ({
+  user: state.auth?.user || null,
+  token: state.auth?.token || null,
+  role: state.auth?.role || null,
+  employeeId: state.auth?.employeeId || state.auth?.user?.employeeId || null,
+  employeeName: state.auth?.user?.employeeName || state.auth?.user?.email || 'Unknown User',
+  email: state.auth?.user?.email || null,
+  isAuthenticated: state.auth?.isAuthenticated ?? false,
+  loading: state.auth?.loading ?? false,
+  error: state.auth?.error || null,
+})
+
 export default authSlice.reducer
 

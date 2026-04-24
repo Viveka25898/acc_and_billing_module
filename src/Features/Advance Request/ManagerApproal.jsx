@@ -29,14 +29,25 @@ const ManagerApproval = () => {
 
   // ── Load requests on mount ─────────────────────────────────────────────────
   useEffect(() => {
-    dispatch(fetchManagerApprovalRequests())
+    try {
+      dispatch(fetchManagerApprovalRequests())
+    } catch (error) {
+      console.error('Failed to load manager approval requests:', error)
+      toast.error('❌ Failed to load requests. Please refresh the page.')
+    }
   }, [dispatch])
 
   // ── Toast on errors ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (errors.fetchManagerRequests) toast.error(errors.fetchManagerRequests)
-    if (errors.approve) toast.error(errors.approve)
-    if (errors.reject) toast.error(errors.reject)
+    if (errors.fetchManagerRequests) {
+      toast.error(`❌ Failed to load requests: ${errors.fetchManagerRequests}`)
+    }
+    if (errors.approve) {
+      toast.error(`❌ Approval error: ${errors.approve}`)
+    }
+    if (errors.reject) {
+      toast.error(`❌ Rejection error: ${errors.reject}`)
+    }
   }, [errors.fetchManagerRequests, errors.approve, errors.reject])
 
   // ── Format reasons (array or string) ───────────────────────────────────────
@@ -58,25 +69,92 @@ const ManagerApproval = () => {
 
   // ── Approve → dispatch thunk ────────────────────────────────────────────────
   const handleApprove = async (requestId) => {
-    const result = await dispatch(managerApprove({ requestId }))
-    if (managerApprove.fulfilled.match(result)) {
-      toast.success('Request Approved – Forwarded to VP Operations')
-      dispatch(fetchManagerApprovalRequests()) // refresh queue
+    try {
+      // ✅ Step 9.2: Validate requestId before dispatch
+      if (!requestId || typeof requestId !== 'string') {
+        toast.error('❌ Invalid request ID. Please refresh and try again.')
+        return
+      }
+
+      // ✅ Step 9.2: Try-catch for approval
+      const result = await dispatch(managerApprove({ requestId }))
+
+      // ✅ Step 9.3: Check result and show appropriate message
+      if (managerApprove.fulfilled.match(result)) {
+        toast.success('✅ Request Approved – Forwarded to VP Operations')
+        
+        // Refresh queue to remove approved request
+        try {
+          dispatch(fetchManagerApprovalRequests())
+        } catch (refreshError) {
+          console.warn('Failed to refresh requests:', refreshError)
+          // Don't fail the operation, user can refresh manually
+        }
+      } else if (managerApprove.rejected.match(result)) {
+        // ✅ Step 9.3: Show server error with context
+        const errorMsg = result.payload || 'Failed to approve request'
+        toast.error(`❌ Approval failed: ${errorMsg}`)
+      }
+    } catch (error) {
+      // ✅ Step 9.2: Catch unexpected errors
+      console.error('Approval error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`❌ Error approving request: ${errorMessage}`)
     }
   }
 
   // ── Reject → dispatch thunk ─────────────────────────────────────────────────
   const handleReject = async () => {
-    if (!remarks.trim()) {
-      toast.error('Please provide rejection remarks.')
-      return
-    }
-    const result = await dispatch(managerReject({ requestId: rejectRequestId, remarks }))
-    if (managerReject.fulfilled.match(result)) {
-      toast.error('Request Rejected.')
-      setRemarks('')
-      setRejectRequestId(null)
-      dispatch(fetchManagerApprovalRequests())
+    try {
+      // ✅ Step 9.2: Client-side validation
+      if (!remarks.trim()) {
+        toast.error('❌ Please provide rejection remarks.')
+        return
+      }
+
+      // ✅ Additional edge case checks
+      if (!rejectRequestId || typeof rejectRequestId !== 'string') {
+        toast.error('❌ Invalid request ID. Please refresh and try again.')
+        return
+      }
+
+      // ✅ Validate remarks length
+      if (remarks.trim().length < 5) {
+        toast.error('❌ Rejection remarks must be at least 5 characters.')
+        return
+      }
+
+      // ✅ Step 9.2: Try-catch for rejection
+      const result = await dispatch(
+        managerReject({ 
+          requestId: rejectRequestId, 
+          remarks: remarks.trim() 
+        })
+      )
+
+      // ✅ Step 9.3: Check result and show appropriate message
+      if (managerReject.fulfilled.match(result)) {
+        // Success - clear form and refresh
+        toast.success('✅ Request Rejected – Employee notified.')
+        setRemarks('')
+        setRejectRequestId(null)
+        
+        // Refresh queue
+        try {
+          dispatch(fetchManagerApprovalRequests())
+        } catch (refreshError) {
+          console.warn('Failed to refresh requests:', refreshError)
+        }
+      } else if (managerReject.rejected.match(result)) {
+        // ✅ Step 9.3: Show server error with context
+        const errorMsg = result.payload || 'Failed to reject request'
+        toast.error(`❌ Rejection failed: ${errorMsg}`)
+      }
+    } catch (error) {
+      // ✅ Step 9.2: Catch unexpected errors
+      console.error('Rejection error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`❌ Error rejecting request: ${errorMessage}`)
     }
   }
 
