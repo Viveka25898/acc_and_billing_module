@@ -137,7 +137,27 @@ const EmployeeAdvanceSettlementPage = () => {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'))
     const allUsers = JSON.parse(localStorage.getItem('users')) || []
-    const fullUser = allUsers.find((u) => u.username === user?.username)
+    let fullUser = allUsers.find((u) => u.username === user?.username)
+    
+    // Fallback: If user not found in users array, create a basic user object from logged-in user
+    if (!fullUser && user) {
+      fullUser = {
+        username: user.username,
+        role: user.role,
+        fullName: user.username,
+        empId: `emp-${Date.now()}`, // Generate a temporary empId
+        reportsTo: null,
+        site: 'Unknown',
+        department: 'Operations',
+        designation: 'Employee',
+        glCode: null,
+        osBalance: 0,
+        email: '',
+        mobile: '',
+      }
+      console.warn('⚠️ User not found in users array, using fallback user object')
+    }
+    
     setCurrentUser(fullUser)
 
     if (!localStorage.getItem('settlements')) {
