@@ -162,6 +162,7 @@ import AccountManagerHome from '../Roles/Account Manager/Components/AccountManag
 import ReportsDashboard from '../Features/Reports/Pages/ReportsDashboard'
 import PLReportPage from '../Features/Reports/ProfitAndLossReports/Pages/PLReportPage'
 import TDS26ASRecoPage from '../Features/Reports/26 AS Reco/Pages/TDS26ASRecoPage'
+import FDDReportPage from '../Features/Reports/FDD/Pages/FDDReportPage'
 import AMInvoiceReviewPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerInvoiceReviewPage'
 import AMInvoiceApproval from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage'
 import AMFixedAssetEntryPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage'
@@ -959,6 +960,10 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: <ReportsDashboard />,
+      },
+      {
+        path: 'fdd-report',
+        element: <FDDReportPage />,
       },
       {
         path: 'tds-26as-reco',

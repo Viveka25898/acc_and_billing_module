@@ -5,6 +5,7 @@ import QuarterSelectionModal from './QuarterSelectionModal'
 import YearSelectionModal from './YearSelectionModal'
 import MISReportPage from '../MISReports/Pages/MISReportPage'
 import BalanceSheetCard from '../BalanceSheet/Components/BalanceSheetCard'
+import FDDReportCard from '../FDD/Components/FDDReportCard'
 
 const ReportTabs = ({ initial = 'pnl', onView }) => {
   const [active, setActive] = useState(initial)
@@ -112,6 +113,15 @@ const ReportTabs = ({ initial = 'pnl', onView }) => {
         >
           Cashflow
         </button>
+        <button
+          onClick={() => setActive('fdd')}
+          className={`px-4 py-2 rounded-md text-sm sm:text-base transition-colors ${active === 'fdd'
+            ? 'bg-green-600 text-white shadow-md'
+            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+        >
+          FDD Report
+        </button>
       </div>
 
       <div>
@@ -171,6 +181,12 @@ const ReportTabs = ({ initial = 'pnl', onView }) => {
               description="Customer aging report"
               onOpen={() => openReport('aging')}
             />
+          </div>
+        )}
+
+        {active === 'fdd' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FDDReportCard />
           </div>
         )}
       </div>
