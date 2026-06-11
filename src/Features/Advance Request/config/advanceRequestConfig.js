@@ -31,26 +31,48 @@ export const PAGINATION = {
   MAX_PAGE_SIZE: 100,        // Max items that can be fetched
 }
 
-// ── STATUS VALUES ───────────────────────────────────────────────────────────
+// ── STATUS VALUES — 5-Level Hierarchy ──────────────────────────────────────
 export const REQUEST_STATUS = {
-  PENDING_MANAGER: 'Pending Manager Approval',
-  REJECTED_BY_MANAGER: 'Rejected by Line Manager',
-  PENDING_VP: 'Pending VP Approval',
-  REJECTED_BY_VP: 'Rejected by VP Operations',
-  PENDING_AE: 'Pending AE Approval',
-  REJECTED_BY_AE: 'Rejected by AE',
-  APPROVED: 'Approved',
+  // ─── Level 2: Regional Head ────────────────────────────────────────────────
+  PENDING_REGIONAL_HEAD:    'Pending Regional Head Approval',
+  REJECTED_BY_REGIONAL_HEAD:'Rejected by Regional Head',
+
+  // ─── Level 3: AVP Operations ───────────────────────────────────────────────
+  PENDING_AVP:              'Pending AVP Approval',
+  REJECTED_BY_AVP:          'Rejected by AVP Operations',
+
+  // ─── Level 4: VP Operations ────────────────────────────────────────────────
+  PENDING_VP:               'Pending VP Approval',
+  REJECTED_BY_VP:           'Rejected by VP Operations',
+
+  // ─── Level 5: Account Executive ────────────────────────────────────────────
+  PENDING_AE:               'Pending AE Approval',
+  REJECTED_BY_AE:           'Rejected by AE',
+
+  // ─── Legacy / Backward-compat ─────────────────────────────────────────────
+  PENDING_MANAGER:          'Pending Manager Approval',
+  REJECTED_BY_MANAGER:      'Rejected by Line Manager',
+
+  // ─── Final State ──────────────────────────────────────────────────────────
+  APPROVED:                 'Approved',
 }
 
 // ── STATUS COLORS (for UI) ──────────────────────────────────────────────────
 export const STATUS_COLORS = {
-  [REQUEST_STATUS.PENDING_MANAGER]: 'bg-yellow-100 text-yellow-700',
-  [REQUEST_STATUS.REJECTED_BY_MANAGER]: 'bg-red-100 text-red-700',
-  [REQUEST_STATUS.PENDING_VP]: 'bg-yellow-100 text-yellow-700',
-  [REQUEST_STATUS.REJECTED_BY_VP]: 'bg-red-100 text-red-700',
-  [REQUEST_STATUS.PENDING_AE]: 'bg-yellow-100 text-yellow-700',
-  [REQUEST_STATUS.REJECTED_BY_AE]: 'bg-red-100 text-red-700',
-  [REQUEST_STATUS.APPROVED]: 'bg-green-100 text-green-700',
+  // Pending states → yellow
+  [REQUEST_STATUS.PENDING_REGIONAL_HEAD]:     'bg-yellow-100 text-yellow-700',
+  [REQUEST_STATUS.PENDING_AVP]:               'bg-yellow-100 text-yellow-700',
+  [REQUEST_STATUS.PENDING_VP]:                'bg-yellow-100 text-yellow-700',
+  [REQUEST_STATUS.PENDING_AE]:                'bg-yellow-100 text-yellow-700',
+  [REQUEST_STATUS.PENDING_MANAGER]:           'bg-yellow-100 text-yellow-700',
+  // Rejected states → red
+  [REQUEST_STATUS.REJECTED_BY_REGIONAL_HEAD]: 'bg-red-100 text-red-700',
+  [REQUEST_STATUS.REJECTED_BY_AVP]:           'bg-red-100 text-red-700',
+  [REQUEST_STATUS.REJECTED_BY_VP]:            'bg-red-100 text-red-700',
+  [REQUEST_STATUS.REJECTED_BY_AE]:            'bg-red-100 text-red-700',
+  [REQUEST_STATUS.REJECTED_BY_MANAGER]:       'bg-red-100 text-red-700',
+  // Final state → green
+  [REQUEST_STATUS.APPROVED]:                  'bg-green-100 text-green-700',
 }
 
 // ── VALID STATUS TRANSITIONS (State Machine) ────────────────────────────────

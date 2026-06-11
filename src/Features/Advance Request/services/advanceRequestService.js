@@ -54,6 +54,67 @@ const getAllUsers = () =>
 
 // ─── VALIDATION FUNCTIONS (Production-Ready) ───────────────────────────────────
 
+const ADVANCE_REQUEST_BASE_PATHS = [
+  '/accounts/advances',
+  '/v1/accounts/advances',
+  '/accounts/advance-requests',
+  '/v1/accounts/advance-requests',
+  '/advance-requests',
+  '/accounts/advance-request',
+  '/v1/accounts/advance-request',
+  '/advance-request',
+]
+
+const ADVANCE_REASON_CODE_MAP = {
+  'Visit to Client': 'TRAVEL',
+  'Travelling Allowance': 'TRAVEL',
+  'Petrol Expense': 'PETROL',
+  'Office Expense': 'OFFICE',
+  Other: 'OTHER',
+}
+
+const isNotFoundApiError = (error) =>
+  error?.response?.status === 404 ||
+  /status code 404|not found|cannot (get|post|put|patch|delete)/i.test(error?.message || '')
+
+const getApiResponsePayload = (response) =>
+  response?.data?.data ?? response?.data?.results ?? response?.data
+
+const toAdvanceReasonCode = (reason) => {
+  if (typeof reason !== 'string') return reason
+  return ADVANCE_REASON_CODE_MAP[reason] || reason.trim().toUpperCase().replace(/\s+/g, '_')
+}
+
+const callAdvanceRequestApi = async ({ method, suffix = '', data, config }) => {
+  const triedUrls = []
+  let lastError = null
+
+  for (const basePath of ADVANCE_REQUEST_BASE_PATHS) {
+    const url = `${basePath}${suffix}`
+    triedUrls.push(url)
+
+    try {
+      if (method === 'get') {
+        return await axiosInstance.get(url, config)
+      }
+      if (method === 'post') {
+        return await axiosInstance.post(url, data, config)
+      }
+      throw new Error(`Unsupported API method: ${method}`)
+    } catch (error) {
+      if (!isNotFoundApiError(error)) {
+        throw error
+      }
+      lastError = error
+    }
+  }
+
+  throw new Error(
+    `Advance Request API endpoint was not found. Tried: ${triedUrls.join(', ')}. ` +
+    (lastError?.message || '')
+  )
+}
+
 /**
  * Validate status transition follows state machine rules
  * @throws {Error} If transition is invalid
@@ -164,18 +225,66 @@ export const isBeforeAEDeadline = () => {
 //    POST /api/advance-requests
 // ─────────────────────────────────────────────────────────────────────────────
 export const submitAdvanceRequest = async (payload) => {
-  // ── VALIDATION ──────────────────────────────────────────────────────────
-  // ✅ REMOVED: Client-side OS balance validation (validateOSBalance)
-  // Reason: Backend has real employee master data and will validate.
-  //         Client-side validation uses mock data and fails for real employees.
-  // Strategy: Let backend validate and return user-friendly errors.
-  
-  // ── API implementation (Active) ──────────────────────────────────────────
-  console.log('📡 Service: Calling POST /accounts/advance-requests with payload:', payload)
-  const res = await axiosInstance.post('/accounts/advance-requests', payload)
-  console.log('✅ Service: API response received:', res)
-  // API Response: { responseId, timestamp, results: { message, requestId, status, assignedTo, submittedAt } }
-  return res.data.results
+  // ── Payload Field Mapping ────────────────────────────────────────────────
+  // API (Postman) expects snake_case: amount, reasons[], custom_reason, request_date
+  // Component sends camelCase: amount, reason[], customReason, requestDate
+  // Service is the translation layer — handles mapping here so components stay clean
+
+  // ── Guard: Validate required fields before hitting API ───────────────────
+  const amount      = parseFloat(payload?.amount)
+  const reasons     = Array.isArray(payload?.reason) ? payload.reason : []
+  const customReason = typeof payload?.customReason === 'string' ? payload.customReason.trim() : ''
+  const requestDate = payload?.requestDate?.trim?.() || ''
+
+  if (!amount || amount <= 0) {
+    throw new Error('Amount must be greater than zero')
+  }
+  if (reasons.length === 0) {
+    throw new Error('At least one reason must be selected')
+  }
+  if (!requestDate) {
+    throw new Error('Request date is required')
+  }
+  if (reasons.includes('Other') && !customReason) {
+    throw new Error('Custom reason is required when "Other" is selected')
+  }
+
+  // ── Build API Payload (snake_case — matches Postman) ─────────────────────
+  const apiPayload = {
+    amount,
+    reasons: reasons.map(toAdvanceReasonCode),
+    custom_reason: customReason,
+    request_date:  requestDate,
+  }
+
+  // ── API Call ─────────────────────────────────────────────────────────────
+  const res = await callAdvanceRequestApi({
+    method: 'post',
+    data: apiPayload,
+  })
+
+  // ── Validate Response Shape ───────────────────────────────────────────────
+  // Postman response: { success, message, data: { id, requestId, status, assignedTo, submittedAt }, errors }
+  const responseData = getApiResponsePayload(res)
+
+  if (!responseData) {
+    throw new Error('Unexpected response from server. Please try again.')
+  }
+  if (!responseData.requestId) {
+    throw new Error('Server did not return a request ID. Please contact support.')
+  }
+  if (!responseData.status) {
+    throw new Error('Server did not return a status. Please contact support.')
+  }
+
+  // ── Return normalized result ──────────────────────────────────────────────
+  return {
+    requestId:   responseData.requestId,
+    status:      responseData.status,
+    assignedTo:  responseData.assignedTo  || null,
+    submittedAt: responseData.submittedAt || new Date().toISOString(),
+    id:          responseData.id          || null,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -184,11 +293,13 @@ export const submitAdvanceRequest = async (payload) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchMyRequests = async ({ date, page = 1, limit = 5 } = {}) => {
   // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await axiosInstance.get('/accounts/advance-requests/my-requests', {
-    params: { page, limit, ...(date && { date }) }
+  const res = await callAdvanceRequestApi({
+    method: 'get',
+    suffix: '/my-requests',
+    config: { params: { page, limit, ...(date && { date }) } },
   })
   // API Response: { responseId, timestamp, results: { pagination, requests } }
-  return res.data.results
+  return getApiResponsePayload(res)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,12 +311,13 @@ export const submitClarification = async ({ requestId, clarification }) => {
   validateRequestExists(requestId)
   
   // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await axiosInstance.post(
-    `/accounts/advance-requests/${requestId}/clarification`,
-    { clarification }
-  )
+  const res = await callAdvanceRequestApi({
+    method: 'post',
+    suffix: `/${requestId}/clarification`,
+    data: { clarification },
+  })
   // API Response: { responseId, timestamp, results: { message, requestId, status } }
-  return res.data.results
+  return getApiResponsePayload(res)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -216,12 +328,14 @@ export const fetchManagerApprovalRequests = async (
   { page = 1, limit = 100 } = {}
 ) => {
   // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await axiosInstance.get('/accounts/advance-requests/manager-approval', {
-    params: { page, limit }
+  const res = await callAdvanceRequestApi({
+    method: 'get',
+    suffix: '/manager-approval',
+    config: { params: { page, limit } },
   })
   // API Response: { responseId, timestamp, results: { pagination, requests } }
   // Note: Backend filters by logged-in manager automatically
-  return res.data.results
+  return getApiResponsePayload(res)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -234,11 +348,12 @@ export const managerApproveRequest = async ({ requestId }) => {
   validateStatusTransition(request.status, 'Pending VP Approval')
   
   // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await axiosInstance.post(
-    `/accounts/advance-requests/${requestId}/manager-approve`
-  )
+  const res = await callAdvanceRequestApi({
+    method: 'post',
+    suffix: `/${requestId}/manager-approve`,
+  })
   // API Response: { responseId, timestamp, results: { message, requestId, status, approvedBy, approvedAt } }
-  return res.data.results
+  return getApiResponsePayload(res)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

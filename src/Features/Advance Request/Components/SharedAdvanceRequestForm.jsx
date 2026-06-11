@@ -15,31 +15,27 @@ import { selectAuthContext } from '../../../Auth/authSlice'
 
 // ─── Workflow Status Messages (Backend Now Determines Actual Status) ──────────
 // Frontend only shows next expected level for UI messages
+// ─── Role → Next Approval Level Map ─────────────────────────────────────────────────────
 const ROLE_CONFIG = {
-  employee: {
-    nextApprovalLevel: 'Line Manager',
-  },
-  'line-manager': {
-    nextApprovalLevel: 'VP Operations',
-  },
-  'compliance-team': {
-    nextApprovalLevel: 'VP Operations',
-  },
-  'compliance-manager': {
-    nextApprovalLevel: 'VP Operations',
-  },
-  'payroll-team': {
-    nextApprovalLevel: 'VP Operations',
-  },
-  'operation-executive': {
-    nextApprovalLevel: 'VP Operations',
-  },
-  manager: {
-    nextApprovalLevel: 'Account Executive',
-  },
-  'vp-operations': {
-    nextApprovalLevel: 'Account Executive',
-  },
+  // ─── Level 1: Requesters (go to Regional Head) ────────────────────────────────
+  'operation-executive': { nextApprovalLevel: 'Regional Head' },
+  'operation-manager':   { nextApprovalLevel: 'Regional Head' },
+  'supervisor':          { nextApprovalLevel: 'Regional Head' },
+
+  // ─── Level 2: Regional Head (go to AVP Operations) ─────────────────────────
+  'regional-head':       { nextApprovalLevel: 'AVP Operations' },
+
+  // ─── Level 3: AVP Operations (go to VP Operations) ─────────────────────────
+  'avp-operations':      { nextApprovalLevel: 'VP Operations' },
+
+  // ─── Legacy fallback (old hierarchy) ────────────────────────────────────
+  'employee':            { nextApprovalLevel: 'Regional Head' },
+  'line-manager':        { nextApprovalLevel: 'VP Operations' },
+  'compliance-team':     { nextApprovalLevel: 'VP Operations' },
+  'compliance-manager':  { nextApprovalLevel: 'VP Operations' },
+  'payroll-team':        { nextApprovalLevel: 'VP Operations' },
+  'manager':             { nextApprovalLevel: 'Account Executive' },
+  'vp-operations':       { nextApprovalLevel: 'Account Executive' },
 }
 
 const REASON_OPTIONS = [
@@ -213,16 +209,16 @@ const SharedAdvanceRequestForm = ({
       // ✅ Step 9.2: Dispatch with error handling
       const dispatchResult = dispatch(createAdvanceRequest(payload))
       
-      console.log('✅ Dispatch called, waiting for response...', dispatchResult)
-      
       // Handle async thunk completion
       if (dispatchResult && typeof dispatchResult.then === 'function') {
         dispatchResult
           .then((result) => {
-            console.log('✅ Thunk completed successfully:', result)
+            if (result?.error) {
+              console.error('Thunk rejected:', result.error)
+            }
           })
           .catch((error) => {
-            console.error('❌ Thunk error:', error)
+            console.error('Thunk unexpected error:', error)
             setLocalError('An unexpected error occurred. Please try again.')
           })
       }
