@@ -4,9 +4,22 @@
  * Handles all authentication API calls.
  * Keeps API logic separate from Redux state management.
  *
- * Usage in authSlice.js:
- *   const response = await loginUser({ email, password })
- *   // Returns: { access_token, token_type }
+ * API Response Shape (from /auth/login):
+ * {
+ *   success: true,
+ *   message: "Login successful",
+ *   data: {
+ *     access_token:  "eyJ...",
+ *     refresh_token: "eyJ...",
+ *     token_type:    "bearer",
+ *     expires_in:    3600,
+ *     emp_name:      "Meena Pillai",
+ *     emp_id:        "EMP0000011",
+ *     role:          "AVP_OPERATIONS",
+ *     region:        "WEST"
+ *   },
+ *   errors: null
+ * }
  */
 
 import axiosInstance from '../../api/axiosInstance'
@@ -26,18 +39,35 @@ export const loginUser = async ({ email, password }) => {
   }
 
   // ─── API Call ───────────────────────────────────────────────────────────
-  // axiosInstance handles:
-  //   ✅ Base URL from .env
-  //   ✅ Authorization header with existing token (if any)
-  //   ✅ Error handling (network, 401, 429, 500, etc.)
   const res = await axiosInstance.post('/accounts/auth/login', {
-    email: email.trim().toLowerCase(),
+    username: email.trim().toLowerCase(),  // Backend expects 'username', not 'email'
     password,
   })
 
-  // ─── Return Token Data ──────────────────────────────────────────────────
-  // Response shape: { responseId, timestamp, results: { access_token, token_type } }
-  return res.data.results  // Returns: { access_token, token_type }
+  // ─── Extract & Validate Response Shape ──────────────────────────────────
+  // Response path is res.data.data (NOT res.data.results)
+  // Validate shape before destructuring to avoid cryptic JS crashes
+  const responseData = res.data?.data
+
+  if (!responseData) {
+    throw new Error('Unexpected response from server. Please try again.')
+  }
+  if (!responseData.access_token) {
+    throw new Error('Authentication failed: no token received. Please try again.')
+  }
+
+  const {
+    access_token,
+    refresh_token,
+    token_type,
+    expires_in,
+    emp_name,
+    emp_id,
+    role,
+    region,
+  } = responseData
+
+  return { access_token, refresh_token, token_type, expires_in, emp_name, emp_id, role, region }
 }
 
 export default loginUser
