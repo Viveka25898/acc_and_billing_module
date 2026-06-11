@@ -5,7 +5,7 @@ const OperationExecutiveAdvanceRequestForm = () => {
   return (
     <SharedAdvanceRequestForm
       role="operation-executive"
-      myRequestsPath="/dashboard/operation-executive/my-advance-requests"
+      myRequestsPath="/dashboard/employee/my-advance-requests"
     />
   )
 }
