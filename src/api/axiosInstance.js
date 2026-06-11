@@ -47,13 +47,22 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       // Check if this was a login request — if so, don't auto-redirect
       if (!error.config?.url?.includes('/login')) {
-        // This is a protected endpoint with expired/invalid token — redirect to login
+        // Protected endpoint with expired/invalid token — clear all auth data
         localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
+        // ─── Set session expired flag ──────────────────────────────────────
+        // LoginForm reads this on mount and shows a toast to explain the redirect
+        localStorage.setItem('sessionExpired', 'true')
         window.location.href = '/login'
         return Promise.reject(new Error('Session expired. Please login again.'))
       }
-      // For login endpoint, just reject and let the thunk handle it
+      // For login endpoint, extract specific error and bubble to thunk
+      const loginError =
+        error.response?.data?.errors?.[0]?.errorMessage ||
+        error.response?.data?.message ||
+        'Invalid email or password. Please try again.'
+      return Promise.reject(new Error(loginError))
     }
 
     // ─── 429: Rate Limiting ──────────────────────────────────────────────────

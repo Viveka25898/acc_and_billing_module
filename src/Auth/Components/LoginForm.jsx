@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import "react-toastify/dist/ReactToastify.css"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
 import { toast } from "react-toastify"
@@ -8,23 +8,30 @@ import iSmartImg from "../assets/Web_Photo_Editor.jpg"
 import { loginUserThunk } from "../authSlice"
 
 // ─── Role-based Route Mapping ───────────────────────────────────────────────
-// Replaces the entire 15-level if/else chain
+// Maps each frontend role to its dashboard path after login
 const ROLE_ROUTES = {
-  'employee': '/dashboard/employee',
-  'line-manager': '/dashboard/line-manager',
-  'vp-operations': '/dashboard/vp-operations',
-  'supervisor': '/dashboard/supervisor',
-  'manager': '/dashboard/manager',
-  'ph': '/dashboard/ph',
-  'vendor': '/dashboard/vendor',
-  'ae': '/dashboard/ae',
-  'compliance-team': '/dashboard/compliance-team',
-  'compliance-manager': '/dashboard/compliance-manager',
-  'payroll-team': '/dashboard/payroll-team',
-  'financial-head': '/dashboard/financial-head',
-  'billing-manager': '/dashboard/billing-manager',
-  'operation-executive': '/dashboard/operation-executive',
-  'account-manager': '/dashboard/account-manager',
+  // ─── Level 1 — All route to Employee Dashboard ────────────────────────
+  'employee':            '/dashboard/employee',   // backward compat
+  'operation-executive': '/dashboard/employee',
+  'operation-manager':   '/dashboard/employee',
+  'supervisor':          '/dashboard/employee',   // region-based supervisor
+  // ─── Level 2 ──────────────────────────────────────────────────────────
+  'regional-head':       '/dashboard/regional-head',
+  // ─── Level 3 ──────────────────────────────────────────────────────────
+  'avp-operations':      '/dashboard/avp-operations',
+  // ─── Unchanged Roles ──────────────────────────────────────────────────
+  'line-manager':        '/dashboard/line-manager',
+  'vp-operations':       '/dashboard/vp-operations',
+  'manager':             '/dashboard/manager',
+  'ph':                  '/dashboard/ph',
+  'vendor':              '/dashboard/vendor',
+  'ae':                  '/dashboard/ae',
+  'compliance-team':     '/dashboard/compliance-team',
+  'compliance-manager':  '/dashboard/compliance-manager',
+  'payroll-team':        '/dashboard/payroll-team',
+  'financial-head':      '/dashboard/financial-head',
+  'billing-manager':     '/dashboard/billing-manager',
+  'account-manager':     '/dashboard/account-manager',
 }
 
 /**
@@ -51,6 +58,19 @@ const LoginForm = (props) => {
 
   // ─── Redux Auth State ───────────────────────────────────────────────────────
   const { loading, error: authError } = useSelector((state) => state.auth)
+
+  // ─── Session Expired Notification ──────────────────────────────────────────
+  // axiosInstance sets this flag when a 401 occurs on a protected endpoint.
+  // We show a toast here so the user understands why they were redirected.
+  useEffect(() => {
+    if (localStorage.getItem('sessionExpired') === 'true') {
+      localStorage.removeItem('sessionExpired')
+      toast.warning('Your session has expired. Please login again.', {
+        position: 'top-right',
+        autoClose: 5000,
+      })
+    }
+  }, [])
 
   // ─── Navigate by Role ───────────────────────────────────────────────────────
   const navigateByRole = (userRole) => {
@@ -154,8 +174,8 @@ const LoginForm = (props) => {
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
 
-              {/* Role Dropdown (Optional) */}
-              {/* If user doesn't select role, it will be extracted from JWT token */}
+              {/* Role Dropdown (Testing Mode) */}
+              {/* Role comes from API — this dropdown is for testing only */}
               {/* TODO: Remove this dropdown entirely when all users have proper login credentials */}
               <select
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -163,22 +183,28 @@ const LoginForm = (props) => {
                 onChange={(e) => setRoleValue(e.target.value)}
                 disabled={loading}
               >
-                <option value="">Select Role</option>
-                <option value="employee">Employee</option>
-                <option value="line-manager">Line Manager</option>
-                <option value="vp-operations">VP Operations</option>
+                <option value="">Select Role (Optional)</option>
+                {/* ── Level 1 — Employee Dashboard ────────────────── */}
+                <option value="operation-executive">Operation Executive</option>
+                <option value="operation-manager">Operation Manager</option>
                 <option value="supervisor">Supervisor</option>
-                <option value="manager">Manager</option>
-                <option value="ph">PH</option>
-                <option value="vendor">Vendor</option>
+                {/* ── Level 2 ─────────────────────────────────────── */}
+                <option value="regional-head">Regional Head</option>
+                {/* ── Level 3 ─────────────────────────────────────── */}
+                <option value="avp-operations">AVP Operations</option>
+                {/* ── Level 4 & 5 ─────────────────────────────────── */}
+                <option value="vp-operations">VP Operations</option>
                 <option value="ae">Account Executive</option>
+                {/* ── Other Roles ──────────────────────────────────── */}
                 <option value="compliance-team">Compliance Team</option>
                 <option value="compliance-manager">Compliance Manager</option>
                 <option value="payroll-team">Payroll Team</option>
                 <option value="financial-head">Financial Head</option>
                 <option value="billing-manager">Billing Manager</option>
-                <option value="operation-executive">Operation Executive</option>
                 <option value="account-manager">Account Manager</option>
+                <option value="manager">Manager</option>
+                <option value="ph">PH</option>
+                <option value="vendor">Vendor</option>
               </select>
 
               {/* Submit Button */}

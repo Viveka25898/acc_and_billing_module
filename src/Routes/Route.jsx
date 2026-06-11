@@ -262,7 +262,7 @@ export const router = createBrowserRouter([
   {
     path: '/dashboard/employee',
     element: (
-      <ProtectedRoute allowedRoles={['employee']}>
+      <ProtectedRoute allowedRoles={['employee', 'operation-executive', 'operation-manager', 'supervisor']}>
         <EmployeeDashboard />
       </ProtectedRoute>
     ),
