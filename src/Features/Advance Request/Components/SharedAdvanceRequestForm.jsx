@@ -85,16 +85,16 @@ const SharedAdvanceRequestForm = ({
     if (!authContext) return  // Not logged in yet, skip
     
     try {
-      // Extract employeeId and employeeName from Redux auth context
-      const empId = authContext.employeeId || authContext.email || ''
-      const empName = authContext.employeeName || authContext.email || ''
+      // ─── Extract empId and empName from Redux auth context ─────────────────
+      // Our authSlice stores: { empId, empName, email, role, region }
+      // Old field names (employeeId / employeeName) no longer exist in the store
+      const empId   = authContext?.empId   || authContext?.email || ''
+      const empName = authContext?.empName || authContext?.email || ''
 
       // ✅ Validate before setting
       if (typeof empId !== 'string' || typeof empName !== 'string') {
         throw new Error('Invalid auth context data')
       }
-
-      console.log('🔧 Pre-filling form with:', { empId, empName })
 
       setFormData((prev) => ({
         ...prev,
