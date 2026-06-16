@@ -289,35 +289,114 @@ export const submitAdvanceRequest = async (payload) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. FETCH MY REQUESTS (for the logged-in user, any role)
-//    GET /api/advance-requests/my-requests
+//    GET /accounts/advances
+//    Auth: Bearer JWT token (attached automatically by axiosInstance)
+//    Response: { success, pagination: { currentPage, totalPages, totalItems, pageSize }, requests[] }
 // ─────────────────────────────────────────────────────────────────────────────
-export const fetchMyRequests = async ({ date, page = 1, limit = 5 } = {}) => {
-  // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await callAdvanceRequestApi({
-    method: 'get',
-    suffix: '/my-requests',
-    config: { params: { page, limit, ...(date && { date }) } },
-  })
-  // API Response: { responseId, timestamp, results: { pagination, requests } }
-  return getApiResponsePayload(res)
+export const fetchMyRequests = async ({ date, page = 1, limit = 10 } = {}) => {
+  // ── Build query params ───────────────────────────────────────────────────
+  const params = { page, limit }
+  if (date && typeof date === 'string' && date.trim()) {
+    params.date = date.trim()
+  }
+
+  // ── API Call ─────────────────────────────────────────────────────────────
+  // Direct call — no URL fallback loop needed. Endpoint is confirmed from Postman.
+  const res = await axiosInstance.get('/accounts/advances', { params })
+
+  // ── Validate Response Shape ───────────────────────────────────────────────
+  // Postman confirmed response: { success, pagination, requests[] }
+  // No nested 'data' or 'results' wrapper — direct top-level keys
+  const data = res.data
+
+  if (!data) {
+    throw new Error('Empty response from server. Please try again.')
+  }
+  if (!data.success && data.success !== undefined) {
+    // Server explicitly returned success: false
+    throw new Error(data.message || 'Server returned an error. Please try again.')
+  }
+  if (!Array.isArray(data.requests)) {
+    throw new Error('Invalid API response: expected requests array.')
+  }
+
+  // ── Return normalized shape (matches Redux slice expectation) ─────────────
+  return {
+    requests: data.requests,
+    pagination: {
+      currentPage: data.pagination?.currentPage  ?? 1,
+      totalPages:  data.pagination?.totalPages   ?? 1,
+      totalItems:  data.pagination?.totalItems   ?? data.requests.length,
+      pageSize:    data.pagination?.pageSize     ?? limit,
+    },
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. SUBMIT CLARIFICATION FOR REJECTED REQUEST
-//    POST /api/advance-requests/:requestId/clarification
+//    POST /accounts/advances/:requestId/clarification
+//    Auth: Bearer JWT token (attached automatically by axiosInstance)
+//
+//    Body (raw JSON):
+//      { "clarification": "Your explanation here..." }
+//
+//    Response (200 OK) — FLAT top-level keys (Postman confirmed, NO nested wrapper):
+//      {
+//        "success": true,
+//        "message": "Clarification submitted successfully. Request sent back for manager review.",
+//        "requestId": "ADV-202606-094744049522-302F",
+//        "status": "Pending Regional Head Approval"
+//      }
 // ─────────────────────────────────────────────────────────────────────────────
 export const submitClarification = async ({ requestId, clarification }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
-  validateRequestExists(requestId)
-  
-  // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await callAdvanceRequestApi({
-    method: 'post',
-    suffix: `/${requestId}/clarification`,
-    data: { clarification },
-  })
-  // API Response: { responseId, timestamp, results: { message, requestId, status } }
-  return getApiResponsePayload(res)
+  // ── Client-side validation (before hitting API) ──────────────────────────
+  if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+    throw new Error('Request ID is required to submit clarification.')
+  }
+  if (!clarification || typeof clarification !== 'string' || !clarification.trim()) {
+    throw new Error('Clarification text cannot be empty.')
+  }
+  if (clarification.trim().length < 10) {
+    throw new Error('Clarification must be at least 10 characters.')
+  }
+  if (clarification.trim().length > 500) {
+    throw new Error('Clarification cannot exceed 500 characters.')
+  }
+
+  // ── API Call ─────────────────────────────────────────────────────────────
+  // NOTE: validateRequestExists() was removed — it read from localStorage.
+  // The server validates the requestId. If it doesn't exist or doesn't belong
+  // to the logged-in user, the server returns 404/403 which axiosInstance handles.
+  const res = await axiosInstance.post(
+    `/accounts/advances/${requestId.trim()}/clarification`,
+    { clarification: clarification.trim() }
+  )
+
+  // ── Validate Response Shape ───────────────────────────────────────────────
+  // Postman confirmed: FLAT response — { success, message, requestId, status }
+  // No nested 'data' wrapper.
+  const data = res.data
+
+  if (!data) {
+    throw new Error('Empty response from server after submitting clarification.')
+  }
+  if (data.success === false) {
+    // Server explicitly returned failure
+    throw new Error(data.message || 'Failed to submit clarification. Please try again.')
+  }
+  if (!data.requestId) {
+    throw new Error('Server did not return a request ID. Please contact support.')
+  }
+  if (!data.status) {
+    throw new Error('Server did not return updated status. Please contact support.')
+  }
+
+  // ── Return normalized result ──────────────────────────────────────────────
+  return {
+    requestId: data.requestId,
+    status:    data.status,
+    message:   data.message || 'Clarification submitted successfully.',
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
