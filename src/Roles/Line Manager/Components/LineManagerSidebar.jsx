@@ -1,15 +1,39 @@
 /* eslint-disable no-unused-vars */
-import { useState } from "react";
-import { FaBars, FaTimes } from "react-icons/fa";
-import { NavLink } from "react-router-dom";
+import { useState } from 'react'
+import { FaBars, FaTimes } from 'react-icons/fa'
+import { NavLink } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { selectRole, selectRegion } from '../../../Auth/authSlice'
 
+// Derive base path from role so regional-head uses /dashboard/regional-head/* instead of /dashboard/line-manager/*
+const BASE_PATH_BY_ROLE = {
+  'line-manager':   '/dashboard/line-manager',
+  'regional-head':  '/dashboard/regional-head',
+}
 
 const LineManagerSidebar = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
+  const role = useSelector(selectRole)
+  const region = useSelector(selectRegion)
+  const base = BASE_PATH_BY_ROLE[role] || '/dashboard/line-manager'
+  const roleLabel = role === 'regional-head' ? 'Regional Head' : 'Line Manager'
+  const regionLabel = region ? `${region.charAt(0).toUpperCase()}${region.slice(1).toLowerCase()} Region` : ''
+
+  const links = [
+    { to: base,                                         label: 'Dashboard' },
+    { to: `${base}/advance-request`,                    label: 'Advance Request' },
+    { to: `${base}/advance-approval`,                   label: 'Employee Advance Approval' },
+    { to: `${base}/advance-settelment`,                 label: 'Settlement Approvals' },
+    { to: `${base}/submit-advance-settlement`,          label: 'Submit Advance Settlement' },
+    { to: `${base}/my-settelment-requests`,             label: 'My Settlement Requests' },
+    { to: `${base}/conveyance-approval`,                label: 'Conveyance Approval' },
+    { to: `${base}/conveyance-form`,                    label: 'Conveyance Form' },
+    { to: `${base}/line-manager-reliever-approval`,     label: 'Reliever Requests Approval' },
+  ]
 
   return (
     <>
-      {/* Sidebar Toggle Button for Mobile */}
+      {/* Mobile toggle */}
       <button
         className="lg:hidden fixed top-4 left-4 z-50 bg-green-600 text-white p-2 rounded-md"
         onClick={() => setIsOpen(!isOpen)}
@@ -17,90 +41,37 @@ const LineManagerSidebar = () => {
         {isOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
       </button>
 
-      {/* Sidebar Container */}
       <div
         className={`fixed top-0 left-0 h-full w-48 bg-green-700 text-white shadow-lg transform ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         } transition-transform lg:translate-x-0 lg:w-48 lg:block`}
       >
-        {/* Sidebar Header */}
-        <div className="p-4 text-xl font-semibold bg-green-800 text-center">   
-         Line Manager
+        <div className="p-4 bg-green-800 text-center">
+          <p className="text-base font-semibold">{roleLabel}</p>
+          {regionLabel && <p className="text-xs text-green-200 mt-0.5">{regionLabel}</p>}
         </div>
 
-        {/* Sidebar Menu */}
         <ul className="mt-6">
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager">
-                Dashboard
+          {links.map(({ to, label }, i) => (
+            <li key={i}>
+              <NavLink
+                to={to}
+                end={to === base}
+                className={({ isActive }) =>
+                  `block px-6 py-2 text-sm cursor-pointer hover:bg-green-600 transition ${
+                    isActive ? 'bg-green-600 font-semibold' : ''
+                  }`
+                }
+              >
+                {label}
               </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-         <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/advance-request">
-                Advance Request
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/advance-approval">
-                Employee Advance Approval
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/advance-settelment">
-                Settlement Approvals
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/submit-advance-settlement">
-                Submit Advance Settlement
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/my-settelment-requests">
-                My Settlement Requests
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/conveyance-approval">
-                Conveyance Approval
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/conveyance-form">
-                Conveyance Form
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-        
-
-
-        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
-              <NavLink to="/dashboard/line-manager/line-manager-reliever-approval">
-                Reliever Requests Approval
-              </NavLink>
-        </li>
-        <hr className="border-white mx-4" />
-
-       
-       
+              <hr className="border-white mx-4" />
+            </li>
+          ))}
         </ul>
       </div>
     </>
-  );
-};
+  )
+}
 
-export default LineManagerSidebar;
+export default LineManagerSidebar

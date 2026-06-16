@@ -353,6 +353,28 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // *******************************Regional Head*********************************
+  {
+    path: '/dashboard/regional-head',
+    element: (
+      <ProtectedRoute allowedRoles={['regional-head']}>
+        <LineManagerDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <LineManagerHome /> },
+      { path: 'advance-request', element: <ManagerAdvanceRequest /> },
+      { path: 'my-requests', element: <LineManagerMyRequests /> },
+      { path: 'advance-approval', element: <ManagerApproval /> },
+      { path: 'advance-settelment', element: <ExpenseRequestsPage /> },
+      { path: 'conveyance-approval', element: <ManagerConveyanceApprovalsPage /> },
+      { path: 'conveyance-form', element: <LinemanagerConveyanceFormPage /> },
+      { path: 'my-conveyance-requests', element: <MyConveyanceRequestsPage /> },
+      { path: 'line-manager-reliever-approval', element: <LineManagerRelieverApprovalPage /> },
+      { path: 'submit-advance-settlement', element: <LineManagerAdvanceSettlementForm /> },
+      { path: 'my-settelment-requests', element: <MySettlements /> },
+    ],
+  },
   // *******************************VP Operations***********************************
   {
     path: '/dashboard/vp-operations',
