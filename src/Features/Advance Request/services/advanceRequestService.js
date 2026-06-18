@@ -400,76 +400,87 @@ export const submitClarification = async ({ requestId, clarification }) => {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. FETCH REQUESTS FOR LINE MANAGER APPROVAL
-//    GET /api/advance-requests/manager-approval
+// 4. FETCH REGIONAL HEAD APPROVAL QUEUE
+//    GET /accounts/advances/queue
+//    Auth: Bearer JWT — server filters by logged-in user's region automatically
+//    Response: { success, message, data: [{ id, request_id, employee_name, amount, status, region }] }
 // ─────────────────────────────────────────────────────────────────────────────
-export const fetchManagerApprovalRequests = async (
-  { page = 1, limit = 100 } = {}
-) => {
-  // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await callAdvanceRequestApi({
-    method: 'get',
-    suffix: '/manager-approval',
-    config: { params: { page, limit } },
-  })
-  // API Response: { responseId, timestamp, results: { pagination, requests } }
-  // Note: Backend filters by logged-in manager automatically
-  return getApiResponsePayload(res)
+export const fetchManagerApprovalRequests = async () => {
+  const res = await axiosInstance.get('/accounts/advances/queue')
+  const data = res.data
+
+  if (!data) throw new Error('Empty response from server.')
+  if (data.success === false) throw new Error(data.message || 'Failed to fetch approval queue.')
+  if (!Array.isArray(data.data)) throw new Error('Invalid API response: expected data array.')
+
+  // Normalize snake_case API fields to camelCase for Redux state
+  const requests = data.data.map((item) => ({
+    id:           item.id,
+    requestId:    item.request_id,
+    employeeName: item.employee_name,
+    amount:       item.amount,
+    status:       item.status,
+    region:       item.region,
+  }))
+
+  return { requests }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. LINE MANAGER — APPROVE REQUEST
-//    POST /api/advance-requests/:requestId/manager-approve
+// 5. REGIONAL HEAD — APPROVE REQUEST
+//    PATCH /accounts/advances/:id/workflow
+//    Body: { action: 'approve', comments }
+//    Response: { success, message, data: { id, requestId, status, assignedTo, submittedAt } }
 // ─────────────────────────────────────────────────────────────────────────────
-export const managerApproveRequest = async ({ requestId }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
-  const request = validateRequestExists(requestId)
-  validateStatusTransition(request.status, 'Pending VP Approval')
-  
-  // ── API implementation (Active) ──────────────────────────────────────────
-  const res = await callAdvanceRequestApi({
-    method: 'post',
-    suffix: `/${requestId}/manager-approve`,
+export const managerApproveRequest = async ({ id, comments = 'Approved' }) => {
+  if (!id || typeof id !== 'string' || !id.trim()) throw new Error('Advance ID is required to approve.')
+
+  const res = await axiosInstance.patch(`/accounts/advances/${id.trim()}/workflow`, {
+    action:   'approve',
+    comments: comments.trim() || 'Approved',
   })
-  // API Response: { responseId, timestamp, results: { message, requestId, status, approvedBy, approvedAt } }
-  return getApiResponsePayload(res)
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 6. LINE MANAGER — REJECT REQUEST
-//    POST /api/advance-requests/:requestId/manager-reject
-// ─────────────────────────────────────────────────────────────────────────────
-export const managerRejectRequest = async ({ requestId, remarks }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
-  const request = validateRequestExists(requestId)
-  validateStatusTransition(request.status, 'Rejected by Line Manager')
-  
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const index = all.findIndex((r) => r.requestId === requestId)
-  if (index === -1) throw new Error('Request not found')
-
-  const currentUser = getLoggedInUser()
-  all[index] = {
-    ...all[index],
-    status: 'Rejected by Line Manager',
-    remarks,
-    clarification: '',
-    managerRejectedBy: currentUser?.username,
-    managerRejectedAt: new Date().toISOString(),
-  }
-  saveRequests(all)
+  const data = res.data
+  if (!data) throw new Error('Empty response from server after approval.')
+  if (data.success === false) throw new Error(data.message || 'Approval failed. Please try again.')
+  if (!data.data?.id) throw new Error('Server did not return updated request data.')
 
   return {
-    success: true,
-    message: 'Request rejected successfully',
-    requestId,
-    status: 'Rejected by Line Manager',
+    id:        data.data.id,
+    requestId: data.data.requestId,
+    status:    data.data.status,
+    message:   data.message || 'Request approved successfully.',
   }
+}
 
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post(`/advance-requests/${requestId}/manager-reject`, { remarks })
-  // return res.data
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. REGIONAL HEAD — REJECT REQUEST
+//    PATCH /accounts/advances/:id/workflow
+//    Body: { action: 'reject', comments, rejection_reason }
+//    Response: { success, message, data: { id, requestId, status, assignedTo, submittedAt } }
+// ─────────────────────────────────────────────────────────────────────────────
+export const managerRejectRequest = async ({ id, comments, rejectionReason }) => {
+  if (!id || typeof id !== 'string' || !id.trim()) throw new Error('Advance ID is required to reject.')
+  if (!comments || !comments.trim()) throw new Error('Rejection comments are required.')
+  if (!rejectionReason || !rejectionReason.trim()) throw new Error('Rejection reason is required.')
+
+  const res = await axiosInstance.patch(`/accounts/advances/${id.trim()}/workflow`, {
+    action:           'reject',
+    comments:         comments.trim(),
+    rejection_reason: rejectionReason.trim(),
+  })
+
+  const data = res.data
+  if (!data) throw new Error('Empty response from server after rejection.')
+  if (data.success === false) throw new Error(data.message || 'Rejection failed. Please try again.')
+  if (!data.data?.id) throw new Error('Server did not return updated request data.')
+
+  return {
+    id:        data.data.id,
+    requestId: data.data.requestId,
+    status:    data.data.status,
+    message:   data.message || 'Request rejected successfully.',
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

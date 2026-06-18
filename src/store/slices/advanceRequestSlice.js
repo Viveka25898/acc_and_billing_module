@@ -164,15 +164,11 @@ export const submitClarificationThunk = createAsyncThunk(
 /** Line Manager approves request */
 export const managerApprove = createAsyncThunk(
   'advanceRequest/managerApprove',
-  async ({ requestId }, { rejectWithValue }) => {
+  async ({ id, comments = 'Approved' }, { rejectWithValue }) => {
     try {
-      if (!requestId) {
-        return rejectWithValue('Request ID is required')
-      }
-      const result = await service.managerApproveRequest({ requestId })
-      if (!result?.status) {
-        return rejectWithValue('Invalid API response: missing status')
-      }
+      if (!id) return rejectWithValue('Advance ID is required')
+      const result = await service.managerApproveRequest({ id, comments })
+      if (!result?.status) return rejectWithValue('Invalid API response: missing status')
       return result
     } catch (err) {
       return rejectWithValue(extractErrorMessage(err))
@@ -189,18 +185,13 @@ export const managerApprove = createAsyncThunk(
 /** Line Manager rejects request */
 export const managerReject = createAsyncThunk(
   'advanceRequest/managerReject',
-  async ({ requestId, remarks }, { rejectWithValue }) => {
+  async ({ id, comments, rejectionReason }, { rejectWithValue }) => {
     try {
-      if (!requestId) {
-        return rejectWithValue('Request ID is required')
-      }
-      if (!remarks || remarks.trim().length === 0) {
-        return rejectWithValue('Rejection remarks are required')
-      }
-      const result = await service.managerRejectRequest({ requestId, remarks })
-      if (!result?.status) {
-        return rejectWithValue('Invalid API response: missing status')
-      }
+      if (!id) return rejectWithValue('Advance ID is required')
+      if (!comments || !comments.trim()) return rejectWithValue('Rejection comments are required')
+      if (!rejectionReason || !rejectionReason.trim()) return rejectWithValue('Rejection reason is required')
+      const result = await service.managerRejectRequest({ id, comments, rejectionReason })
+      if (!result?.status) return rejectWithValue('Invalid API response: missing status')
       return result
     } catch (err) {
       return rejectWithValue(extractErrorMessage(err))
@@ -550,10 +541,11 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(managerApprove.fulfilled, (state, action) => {
         state.loading.managerApprove = false
-        // Remove from manager queue (optimistic update)
-        state.managerRequests = state.managerRequests.filter(
-          (r) => r.requestId !== action.meta.arg.requestId
-        )
+        // Update status in-place — row stays visible until AE approves
+        const idx = state.managerRequests.findIndex((r) => r.id === action.meta.arg.id)
+        if (idx !== -1) {
+          state.managerRequests[idx].status = action.payload?.status || 'Pending AVP Approval'
+        }
       })
       .addCase(managerApprove.rejected, (state, action) => {
         state.loading.managerApprove = false
@@ -568,10 +560,11 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(managerReject.fulfilled, (state, action) => {
         state.loading.managerReject = false
-        // Remove from manager queue
-        state.managerRequests = state.managerRequests.filter(
-          (r) => r.requestId !== action.meta.arg.requestId
-        )
+        // Update status in-place — row stays visible until AE approves
+        const idx = state.managerRequests.findIndex((r) => r.id === action.meta.arg.id)
+        if (idx !== -1) {
+          state.managerRequests[idx].status = action.payload?.status || 'Rejected'
+        }
       })
       .addCase(managerReject.rejected, (state, action) => {
         state.loading.managerReject = false
