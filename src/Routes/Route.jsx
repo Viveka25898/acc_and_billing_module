@@ -242,6 +242,8 @@ import {
   ServiceTaxLedgerPage,
   RoundOffLedgerPage,
 } from '../Features/Billing/Ledgers'
+import AVPDashboard from '../Roles/AVP Opearations/Pages/AVPDashboard'
+import AVPHome from './../Roles/AVP Opearations/Components/AVPHome';
 // =================================================================
 
 export const router = createBrowserRouter([
@@ -373,6 +375,22 @@ export const router = createBrowserRouter([
       { path: 'line-manager-reliever-approval', element: <LineManagerRelieverApprovalPage /> },
       { path: 'submit-advance-settlement', element: <LineManagerAdvanceSettlementForm /> },
       { path: 'my-settelment-requests', element: <MySettlements /> },
+    ],
+  },
+
+  // *******************************AVP Operations*********************************
+  {
+    path: '/dashboard/avp-operations',
+    element: (
+      <ProtectedRoute allowedRoles={['avp-operations']}>
+        <AVPDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <AVPHome /> },
+      { path: 'advance-request', element: <ManagerAdvanceRequest /> },
+      { path: 'my-requests', element: <LineManagerMyRequests /> },
+      { path: 'advance-approval', element: <ManagerApproval /> },
     ],
   },
   // *******************************VP Operations***********************************
