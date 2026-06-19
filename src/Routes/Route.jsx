@@ -227,7 +227,9 @@ import ProfessionalTaxPayableLedgerPage from '../Features/Master/Payment Entry F
 import BonusProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
 import BonusExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
 import TDSReceivableAssetLedgerPage from '../Features/Master/TDS Receivable/Pages/TDSReceivableLedgerPage'
-
+import AVPAdvanceRequestForm from '../Features/Advance Request/Pages/AVPAdvanceRequestForm'
+import AVPMyAdvanceRequests from '../Features/Advance Request/Pages/AVPMyAdvanceRequests'
+import AVPAdvanceRequestApproval from '../Features/Advance Request/AVPAdvanceRequestApproval'
 // ============== BILLING LEDGERS IMPORTS (11 Ledgers) ==============
 import {
   HKChargesLedgerPage,
@@ -388,9 +390,9 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <AVPHome /> },
-      { path: 'advance-request', element: <ManagerAdvanceRequest /> },
-      { path: 'my-requests', element: <LineManagerMyRequests /> },
-      { path: 'advance-approval', element: <ManagerApproval /> },
+      { path: 'advance-request', element: <AVPAdvanceRequestForm /> },
+      { path: 'my-requests', element: <AVPMyAdvanceRequests /> },
+      { path: 'advance-approval', element: <AVPAdvanceRequestApproval /> },
     ],
   },
   // *******************************VP Operations***********************************
