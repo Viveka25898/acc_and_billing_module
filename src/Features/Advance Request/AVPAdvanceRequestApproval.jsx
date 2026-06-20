@@ -5,29 +5,29 @@ import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import ManagerFilter from './ManagerFilter'
 import {
-  fetchManagerApprovalRequests,
-  managerApprove,
-  managerReject,
-  selectManagerRequests,
+  fetchAVPApprovalRequests,
+  avpApprove,
+  avpReject,
+  selectAVPRequests,
   selectLoading,
   selectErrors,
 } from '../../store/slices/advanceRequestSlice'
 
 // Pending first → Approved (forwarded) → Rejected last
 const STATUS_ORDER = {
-  'PENDING_REGIONAL_HEAD': 1,
-  'Pending AVP Approval':  2,
-  'Rejected':              3,
+  'PENDING_AVP':         1,
+  'Pending VP Approval': 2,
+  'Rejected':            3,
 }
 
 const getStatusBadgeClass = (status = '') => {
-  if (status === 'PENDING_REGIONAL_HEAD') return 'bg-yellow-100 text-yellow-700'
+  if (status === 'PENDING_AVP') return 'bg-yellow-100 text-yellow-700'
   if (status.toLowerCase().includes('rejected')) return 'bg-red-100 text-red-700'
   return 'bg-green-100 text-green-700'
 }
 
 const formatStatus = (status = '') => {
-  if (status === 'PENDING_REGIONAL_HEAD') return 'Pending Approval'
+  if (status === 'PENDING_AVP') return 'Pending Approval'
   return status || '—'
 }
 
@@ -44,7 +44,7 @@ const formatReasons = (reason, customReason) => {
 
 const ManagerApproval = () => {
   const dispatch = useDispatch()
-  const requests = useSelector(selectManagerRequests)
+  const requests = useSelector(selectAVPRequests)
   const loading  = useSelector(selectLoading)
   const errors   = useSelector(selectErrors)
 
@@ -60,7 +60,7 @@ const ManagerApproval = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        await dispatch(fetchManagerApprovalRequests()).unwrap()
+        await dispatch(fetchAVPApprovalRequests()).unwrap()
       } catch (err) {
         toast.error(`❌ Failed to load approval queue: ${err}`)
       }
@@ -69,7 +69,7 @@ const ManagerApproval = () => {
   }, [dispatch])
 
   // Toast on Redux errors
-  useEffect(() => { if (errors.fetchManagerRequests) toast.error(`❌ ${errors.fetchManagerRequests}`) }, [errors.fetchManagerRequests])
+  useEffect(() => { if (errors.fetchAVPRequests) toast.error(`❌ ${errors.fetchAVPRequests}`) }, [errors.fetchAVPRequests])
   useEffect(() => { if (errors.approve) toast.error(`❌ Approval failed: ${errors.approve}`) }, [errors.approve])
   useEffect(() => { if (errors.reject)  toast.error(`❌ Rejection failed: ${errors.reject}`)  }, [errors.reject])
 
@@ -78,8 +78,8 @@ const ManagerApproval = () => {
     try {
       if (!id) { toast.error('❌ Invalid request. Please refresh.'); return }
       setApprovingId(id)
-      await dispatch(managerApprove({ id, comments: 'Approved by Regional Head' })).unwrap()
-      toast.success('✅ Request approved — forwarded to AVP Operations')
+      await dispatch(avpApprove({ id })).unwrap()
+      toast.success('✅ Request approved — forwarded to VP Operations')
     } catch (err) {
       const msg = typeof err === 'string' ? err : err?.message || 'Approval failed. Please try again.'
       toast.error(`❌ ${msg}`)
@@ -95,10 +95,9 @@ const ManagerApproval = () => {
       if (!remarks.trim()) { toast.error('❌ Please provide rejection remarks.'); return }
       if (remarks.trim().length < 5) { toast.error('❌ Remarks must be at least 5 characters.'); return }
 
-      await dispatch(managerReject({
+      await dispatch(avpReject({
         id:              rejectId,
-        comments:        remarks.trim(),
-        rejectionReason: remarks.trim(),
+        remarks:         remarks.trim(),
       })).unwrap()
 
       toast.success('✅ Request rejected — employee will be notified.')
@@ -110,7 +109,7 @@ const ManagerApproval = () => {
     }
   }
 
-  const isActionAllowed = (req) => req.status === 'PENDING_REGIONAL_HEAD'
+  const isActionAllowed = (req) => req.status === 'PENDING_AVP'
 
   // Filter with optional chaining — missing fields show — in UI but won't crash filter
   const filteredRequests = requests
@@ -125,7 +124,7 @@ const ManagerApproval = () => {
   const totalPages        = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE)
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
-  const isLoading = loading.fetchManagerRequests
+  const isLoading = loading.fetchAVPRequests
 
   return (
     <div className="px-4 py-6">
@@ -133,8 +132,8 @@ const ManagerApproval = () => {
 
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">✅ Advance Requests – Regional Head Approval</h1>
-          <p className="text-green-100 text-sm mt-0.5">Review and approve / reject advance requests for your region</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">✅ Advance Requests – AVP Approval</h1>
+          <p className="text-green-100 text-sm mt-0.5">Review and approve / reject advance requests for AVP Operations</p>
         </div>
 
         {/* Filter */}
@@ -240,10 +239,10 @@ const ManagerApproval = () => {
                           <div className="flex gap-2 flex-wrap">
                             {/* Approve */}
                             <button
-                              disabled={!actionable || isApproving || loading.managerApprove}
+                              disabled={!actionable || isApproving || loading.avpApprove}
                               onClick={() => handleApprove(req.id)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition min-w-[70px] flex items-center justify-center gap-1 ${
-                                actionable && !isApproving && !loading.managerApprove
+                                actionable && !isApproving && !loading.avpApprove
                                   ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
                                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
@@ -261,10 +260,10 @@ const ManagerApproval = () => {
 
                             {/* Reject */}
                             <button
-                              disabled={!actionable || loading.managerReject}
+                              disabled={!actionable || loading.avpReject}
                               onClick={() => { setRejectId(req.id); setRemarks('') }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition min-w-[60px] ${
-                                actionable && !loading.managerReject
+                                actionable && !loading.avpReject
                                   ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
                                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
@@ -352,17 +351,17 @@ const ManagerApproval = () => {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setRejectId(null); setRemarks('') }}
-                disabled={loading.managerReject}
+                disabled={loading.avpReject}
                 className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleReject}
-                disabled={loading.managerReject || remarks.trim().length < 5}
+                disabled={loading.avpReject || remarks.trim().length < 5}
                 className="px-5 py-2 rounded-lg text-sm bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
               >
-                {loading.managerReject ? (
+                {loading.avpReject ? (
                   <>
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

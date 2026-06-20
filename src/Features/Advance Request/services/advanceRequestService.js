@@ -484,7 +484,89 @@ export const managerRejectRequest = async ({ id, comments, rejectionReason }) =>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. FETCH REQUESTS FOR VP APPROVAL
+// 7. FETCH REQUESTS FOR AVP APPROVAL
+//    GET /accounts/advances/queue
+//    Auth: Bearer JWT — server filters by logged-in user's role/region
+//    Response: { success, message, data: [{ id, request_id, employee_name, amount, status, region }] }
+// ─────────────────────────────────────────────────────────────────────────────
+export const fetchAVPApprovalRequests = async () => {
+  const res = await axiosInstance.get('/accounts/advances/queue')
+  const data = res.data
+
+  if (!data) throw new Error('Empty response from server.')
+  if (data.success === false) throw new Error(data.message || 'Failed to fetch AVP approval queue.')
+  if (!Array.isArray(data.data)) throw new Error('Invalid API response: expected data array.')
+
+  // Normalize snake_case API fields to camelCase for Redux state
+  const requests = data.data.map((item) => ({
+    id:           item.id,
+    requestId:    item.request_id,
+    employeeName: item.employee_name,
+    amount:       item.amount,
+    status:       item.status,
+    region:       item.region,
+  }))
+
+  return { requests }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. AVP — APPROVE REQUEST
+//    PATCH /accounts/advances/:id/workflow
+//    Body: { action: 'approve', comments }
+// ─────────────────────────────────────────────────────────────────────────────
+export const avpApproveRequest = async ({ id, comments = 'Approved by AVP Operations' }) => {
+  if (!id || typeof id !== 'string' || !id.trim()) throw new Error('Advance ID is required to approve.')
+
+  const res = await axiosInstance.patch(`/accounts/advances/${id.trim()}/workflow`, {
+    action:   'approve',
+    comments: comments.trim(),
+  })
+
+  const data = res.data
+  if (!data) throw new Error('Empty response from server after approval.')
+  if (data.success === false) throw new Error(data.message || 'Approval failed. Please try again.')
+  if (!data.data?.id) throw new Error('Server did not return updated request data.')
+
+  return {
+    id:        data.data.id,
+    requestId: data.data.requestId,
+    status:    data.data.status,
+    message:   data.message || 'Request approved and forwarded to VP Operations.',
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. AVP — REJECT REQUEST
+//    PATCH /accounts/advances/:id/workflow
+//    Body: { action: 'reject', comments, rejection_reason }
+// ─────────────────────────────────────────────────────────────────────────────
+export const avpRejectRequest = async ({ id, comments, rejectionReason }) => {
+  if (!id || typeof id !== 'string' || !id.trim()) throw new Error('Advance ID is required to reject.')
+  if (!comments || !comments.trim()) throw new Error('Rejection comments are required.')
+  if (!rejectionReason || !rejectionReason.trim()) throw new Error('Rejection reason is required.')
+
+  const res = await axiosInstance.patch(`/accounts/advances/${id.trim()}/workflow`, {
+    action:           'reject',
+    comments:         comments.trim(),
+    rejection_reason: rejectionReason.trim(),
+  })
+
+  const data = res.data
+  if (!data) throw new Error('Empty response from server after rejection.')
+  if (data.success === false) throw new Error(data.message || 'Rejection failed. Please try again.')
+  if (!data.data?.id) throw new Error('Server did not return updated request data.')
+
+  return {
+    id:        data.data.id,
+    requestId: data.data.requestId,
+    status:    data.data.status,
+    message:   data.message || 'Request rejected successfully.',
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. FETCH REQUESTS FOR VP APPROVAL
 //    GET /api/advance-requests/vp-approval
 //    ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
 // ─────────────────────────────────────────────────────────────────────────────

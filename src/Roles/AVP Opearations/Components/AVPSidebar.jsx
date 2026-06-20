@@ -17,7 +17,15 @@ const AVPSidebar = () => {
   const region = useSelector(selectRegion)
   const base = BASE_PATH_BY_ROLE[role] || '/dashboard/avp-operations'
   const roleLabel = role === 'avp-operations' ? 'AVP Operations' : 'Line Manager'
-  const regionLabel = region ? `${region.charAt(0).toUpperCase()}${region.slice(1).toLowerCase()} Region` : ''
+  
+  const formatRegion = (reg) => {
+    if (!reg) return ''
+    if (Array.isArray(reg)) {
+      return reg.map(r => `${r.charAt(0).toUpperCase()}${r.slice(1).toLowerCase()}`).join(' & ') + ' Region'
+    }
+    return `${reg.charAt(0).toUpperCase()}${reg.slice(1).toLowerCase()} Region`
+  }
+  const regionLabel = formatRegion(region)
 
   const links = [
     { to: base,                                         label: 'Dashboard' },

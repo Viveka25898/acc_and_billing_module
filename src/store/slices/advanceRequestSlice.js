@@ -104,6 +104,18 @@ export const fetchAEApprovalRequests = createAsyncThunk(
   }
 )
 
+/** Fetch requests for AVP approval queue */
+export const fetchAVPApprovalRequests = createAsyncThunk(
+  'advanceRequest/fetchAVPApprovalRequests',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await service.fetchAVPApprovalRequests()
+    } catch (err) {
+      return rejectWithValue(err.message)
+    }
+  }
+)
+
 /** Submit a new advance request */
 export const createAdvanceRequest = createAsyncThunk(
   'advanceRequest/createAdvanceRequest',
@@ -258,6 +270,59 @@ export const vpReject = createAsyncThunk(
   }
 )
 
+/** AVP Operations approves request */
+export const avpApprove = createAsyncThunk(
+  'advanceRequest/avpApprove',
+  async ({ id }, { rejectWithValue }) => {
+    try {
+      if (!id) {
+        return rejectWithValue('Advance ID is required')
+      }
+      const result = await service.avpApproveRequest({ id })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err))
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.avpApprove) return false
+    }
+  }
+)
+
+/** AVP Operations rejects request */
+export const avpReject = createAsyncThunk(
+  'advanceRequest/avpReject',
+  async ({ id, remarks }, { rejectWithValue }) => {
+    try {
+      if (!id) {
+        return rejectWithValue('Advance ID is required')
+      }
+      if (!remarks || remarks.trim().length === 0) {
+        return rejectWithValue('Rejection remarks are required')
+      }
+      const result = await service.avpRejectRequest({ id, comments: remarks, rejectionReason: remarks })
+      if (!result?.status) {
+        return rejectWithValue('Invalid API response: missing status')
+      }
+      return result
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err))
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceRequest
+      if (loading.avpReject) return false
+    }
+  }
+)
+
 /** Account Executive approves single request */
 export const aeApprove = createAsyncThunk(
   'advanceRequest/aeApprove',
@@ -347,6 +412,7 @@ const initialState = {
   // Data
   myRequests: [],
   managerRequests: [],
+  avpRequests: [],
   vpRequests: [],
   aeRequests: [],
 
@@ -360,12 +426,15 @@ const initialState = {
   loading: {
     fetchMyRequests: false,
     fetchManagerRequests: false,
+    fetchAVPRequests: false,
     fetchVPRequests: false,
     fetchAERequests: false,
     submit: false,
     clarification: false,
     managerApprove: false,
     managerReject: false,
+    avpApprove: false,
+    avpReject: false,
     vpApprove: false,
     vpReject: false,
     aeApprove: false,
@@ -377,6 +446,7 @@ const initialState = {
   errors: {
     fetchMyRequests: null,
     fetchManagerRequests: null,
+    fetchAVPRequests: null,
     fetchVPRequests: null,
     fetchAERequests: null,
     submit: null,
@@ -406,6 +476,11 @@ const advanceRequestSlice = createSlice({
     /** Manually refresh a single request in the manager queue (optimistic update) */
     removeFromManagerQueue: (state, action) => {
       state.managerRequests = state.managerRequests.filter(
+        (r) => r.requestId !== action.payload
+      )
+    },
+    removeFromAVPQueue: (state, action) => {
+      state.avpRequests = state.avpRequests.filter(
         (r) => r.requestId !== action.payload
       )
     },
@@ -571,6 +646,57 @@ const advanceRequestSlice = createSlice({
         state.errors.reject = extractErrorMessage(action.payload)
       })
 
+    // ── fetchAVPApprovalRequests ────────────────────────────────────────────
+    builder
+      .addCase(fetchAVPApprovalRequests.pending, (state) => {
+        state.loading.fetchAVPRequests = true
+        state.errors.fetchAVPRequests = null
+      })
+      .addCase(fetchAVPApprovalRequests.fulfilled, (state, action) => {
+        state.loading.fetchAVPRequests = false
+        state.avpRequests = action.payload?.requests || []
+      })
+      .addCase(fetchAVPApprovalRequests.rejected, (state, action) => {
+        state.loading.fetchAVPRequests = false
+        state.errors.fetchAVPRequests = extractErrorMessage(action.payload)
+      })
+
+    // ── avpApprove ───────────────────────────────────────────────────────────
+    builder
+      .addCase(avpApprove.pending, (state) => {
+        state.loading.avpApprove = true
+        state.errors.approve = null
+      })
+      .addCase(avpApprove.fulfilled, (state, action) => {
+        state.loading.avpApprove = false
+        const idx = state.avpRequests.findIndex((r) => r.id === action.meta.arg.id)
+        if (idx !== -1) {
+          state.avpRequests[idx].status = action.payload?.status || 'Pending VP Approval'
+        }
+      })
+      .addCase(avpApprove.rejected, (state, action) => {
+        state.loading.avpApprove = false
+        state.errors.approve = extractErrorMessage(action.payload)
+      })
+
+    // ── avpReject ────────────────────────────────────────────────────────────
+    builder
+      .addCase(avpReject.pending, (state) => {
+        state.loading.avpReject = true
+        state.errors.reject = null
+      })
+      .addCase(avpReject.fulfilled, (state, action) => {
+        state.loading.avpReject = false
+        const idx = state.avpRequests.findIndex((r) => r.id === action.meta.arg.id)
+        if (idx !== -1) {
+          state.avpRequests[idx].status = action.payload?.status || 'Rejected'
+        }
+      })
+      .addCase(avpReject.rejected, (state, action) => {
+        state.loading.avpReject = false
+        state.errors.reject = extractErrorMessage(action.payload)
+      })
+
     // ── vpApprove ───────────────────────────────────────────────────────────
     builder
       .addCase(vpApprove.pending, (state) => {
@@ -664,6 +790,7 @@ export const {
   clearSubmitResult,
   clearErrors,
   removeFromManagerQueue,
+  removeFromAVPQueue,
   removeFromVPQueue,
   removeFromAEQueue,
 } = advanceRequestSlice.actions
@@ -671,6 +798,7 @@ export const {
 // ─── Selectors ─────────────────────────────────────────────────────────────────
 export const selectMyRequests     = (state) => state.advanceRequest?.myRequests || []
 export const selectManagerRequests = (state) => state.advanceRequest?.managerRequests || []
+export const selectAVPRequests    = (state) => state.advanceRequest?.avpRequests || []
 export const selectVPRequests     = (state) => state.advanceRequest?.vpRequests || []
 export const selectAERequests     = (state) => state.advanceRequest?.aeRequests || []
 export const selectSubmitResult   = (state) => state.advanceRequest?.submitResult || null
