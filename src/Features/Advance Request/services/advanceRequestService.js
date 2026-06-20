@@ -567,142 +567,88 @@ export const avpRejectRequest = async ({ id, comments, rejectionReason }) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 10. FETCH REQUESTS FOR VP APPROVAL
-//    GET /api/advance-requests/vp-approval
-//    ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
+//     GET /accounts/advances/queue
+//     Auth: Bearer JWT — server filters by logged-in user's role/region
+//     Response: { success, message, data: [{ id, request_id, employee_name, amount, status, region }] }
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchVPApprovalRequests = async () => {
-  // ── localStorage implementation ──────────────────────────────────────────
-  const currentUser = getLoggedInUser()
-  const loggedInUser = currentUser?.username
-  const all = getStoredRequests()
-  const allUsers = getAllUsers()
+  const res = await axiosInstance.get('/accounts/advances/queue')
+  const data = res.data
 
-  const lineManagersUnderThisVP = allUsers
-    .filter((u) => u.reportsTo === loggedInUser && u.role === 'line-manager')
-    .map((u) => u.username)
+  if (!data) throw new Error('Empty response from server.')
+  if (data.success === false) throw new Error(data.message || 'Failed to fetch VP approval queue.')
+  if (!Array.isArray(data.data)) throw new Error('Invalid API response: expected data array.')
 
-  const requests = all.filter((req) => {
-    const validStatus =
-      req.status === 'Pending VP Approval' ||
-      req.status === 'Pending AE Approval' ||
-      (req.status === 'Rejected by VP Operations' && req.clarification)
+  // Normalize snake_case API fields to camelCase for Redux state
+  const requests = data.data.map((item) => ({
+    id:           item.id,
+    requestId:    item.request_id,
+    employeeName: item.employee_name,
+    amount:       item.amount,
+    status:       item.status,
+    region:       item.region,
+    reasons:      item.reasons || [],
+    customReason: item.custom_reason || '',
+    requestDate:  item.request_date || '',
+    osBalance:    item.os_balance || 0,
+  }))
 
-    const isEmployeeRequest = lineManagersUnderThisVP.includes(req.assignedTo) && validStatus
-    const isLMRequest =
-      req.assignedTo === loggedInUser &&
-      lineManagersUnderThisVP.includes(req.submittedBy) &&
-      validStatus
-
-    return isEmployeeRequest || isLMRequest
-  })
-
-  const enriched = requests.map((req) => {
-    const emp = allUsers.find(
-      (u) =>
-        u.empId === req.employeeId ||
-        u.username === req.employeeId ||
-        (u.empId && u.empId.toString() === req.employeeId?.toString())
-    )
-    const submittedByType = req.assignedTo === loggedInUser ? 'Manager' : 'Employee'
-    return { ...req, osBalance: emp?.osBalance || 0, submittedByType }
-  })
-
-  const isBeforeDeadline = isBeforeVPDeadline()
-
-  return {
-    success: true,
-    isBeforeDeadline,
-    deadline: '12:00',
-    requests: enriched,
-  }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.get('/advance-requests/vp-approval')
-  // return res.data
+  return { requests }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. VP — APPROVE REQUEST
-//    POST /api/advance-requests/:requestId/vp-approve
-//    ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
+// 11. VP — APPROVE REQUEST
+//     PATCH /accounts/advances/:id/workflow
+//     Body: { action: 'approve', comments }
 // ─────────────────────────────────────────────────────────────────────────────
-export const vpApproveRequest = async ({ requestId }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
-  const request = validateRequestExists(requestId)
-  validateStatusTransition(request.status, 'Pending AE Approval')
-  
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const index = all.findIndex((r) => r.requestId === requestId)
-  if (index === -1) throw new Error('Request not found')
+export const vpApproveRequest = async ({ id, comments = 'Approved by VP Operations' }) => {
+  if (!id || typeof id !== 'string' || !id.trim()) throw new Error('Advance ID is required to approve.')
 
-  const currentUser = getLoggedInUser()
-  const approvalTime = new Date()
-  const vpApprovedBeforeDeadline = isBeforeVPDeadline()
+  const res = await axiosInstance.patch(`/accounts/advances/${id.trim()}/workflow`, {
+    action:   'approve',
+    comments: comments.trim(),
+  })
 
-  all[index] = {
-    ...all[index],
-    status: 'Pending AE Approval',
-    remarks: '',
-    vpApprovedBy: currentUser?.username,
-    vpApprovedAt: approvalTime.toISOString(),
-    isVPRequest: true,
-    vpApprovedBeforeDeadline,
-  }
-  saveRequests(all)
+  const data = res.data
+  if (!data) throw new Error('Empty response from server after approval.')
+  if (data.success === false) throw new Error(data.message || 'Approval failed. Please try again.')
+  if (!data.data?.id) throw new Error('Server did not return updated request data.')
 
   return {
-    success: true,
-    message: vpApprovedBeforeDeadline
-      ? 'Request approved and forwarded to Account Executive (Same-day processing eligible)'
-      : 'Request approved and forwarded to Account Executive (Next working day processing)',
-    requestId,
-    status: 'Pending AE Approval',
-    vpApprovedBeforeDeadline,
-    processingType: vpApprovedBeforeDeadline ? 'Same day processing eligible' : 'Next working day processing',
+    id:        data.data.id,
+    requestId: data.data.request_id || data.data.requestId,
+    status:    data.data.status,
+    message:   data.message || 'Request approved and forwarded to Account Executive.',
   }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post(`/advance-requests/${requestId}/vp-approve`)
-  // return res.data
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 9. VP — REJECT REQUEST
-//    POST /api/advance-requests/:requestId/vp-reject
-//    ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
+// 12. VP — REJECT REQUEST
+//     PATCH /accounts/advances/:id/workflow
+//     Body: { action: 'reject', comments, rejection_reason }
 // ─────────────────────────────────────────────────────────────────────────────
-export const vpRejectRequest = async ({ requestId, remarks }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
-  const request = validateRequestExists(requestId)
-  validateStatusTransition(request.status, 'Rejected by VP Operations')
-  
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const index = all.findIndex((r) => r.requestId === requestId)
-  if (index === -1) throw new Error('Request not found')
+export const vpRejectRequest = async ({ id, comments, rejectionReason }) => {
+  if (!id || typeof id !== 'string' || !id.trim()) throw new Error('Advance ID is required to reject.')
+  if (!comments || !comments.trim()) throw new Error('Rejection comments are required.')
+  if (!rejectionReason || !rejectionReason.trim()) throw new Error('Rejection reason is required.')
 
-  const currentUser = getLoggedInUser()
-  all[index] = {
-    ...all[index],
-    status: 'Rejected by VP Operations',
-    remarks,
-    clarification: '',
-    vpRejectedBy: currentUser?.username,
-    vpRejectedAt: new Date().toISOString(),
-  }
-  saveRequests(all)
+  const res = await axiosInstance.patch(`/accounts/advances/${id.trim()}/workflow`, {
+    action:           'reject',
+    comments:         comments.trim(),
+    rejection_reason: rejectionReason.trim(),
+  })
+
+  const data = res.data
+  if (!data) throw new Error('Empty response from server after rejection.')
+  if (data.success === false) throw new Error(data.message || 'Rejection failed. Please try again.')
+  if (!data.data?.id) throw new Error('Server did not return updated request data.')
 
   return {
-    success: true,
-    message: 'Request rejected by VP Operations',
-    requestId,
-    status: 'Rejected by VP Operations',
+    id:        data.data.id,
+    requestId: data.data.request_id || data.data.requestId,
+    status:    data.data.status,
+    message:   data.message || 'Request rejected successfully.',
   }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post(`/advance-requests/${requestId}/vp-reject`, { remarks })
-  // return res.data
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

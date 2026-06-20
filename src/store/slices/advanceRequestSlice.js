@@ -220,12 +220,12 @@ export const managerReject = createAsyncThunk(
 /** VP Operations approves request */
 export const vpApprove = createAsyncThunk(
   'advanceRequest/vpApprove',
-  async ({ requestId }, { rejectWithValue }) => {
+  async ({ id }, { rejectWithValue }) => {
     try {
-      if (!requestId) {
-        return rejectWithValue('Request ID is required')
+      if (!id) {
+        return rejectWithValue('Advance ID is required')
       }
-      const result = await service.vpApproveRequest({ requestId })
+      const result = await service.vpApproveRequest({ id })
       if (!result?.status) {
         return rejectWithValue('Invalid API response: missing status')
       }
@@ -245,15 +245,15 @@ export const vpApprove = createAsyncThunk(
 /** VP Operations rejects request */
 export const vpReject = createAsyncThunk(
   'advanceRequest/vpReject',
-  async ({ requestId, remarks }, { rejectWithValue }) => {
+  async ({ id, remarks }, { rejectWithValue }) => {
     try {
-      if (!requestId) {
-        return rejectWithValue('Request ID is required')
+      if (!id) {
+        return rejectWithValue('Advance ID is required')
       }
       if (!remarks || remarks.trim().length === 0) {
         return rejectWithValue('Rejection remarks are required')
       }
-      const result = await service.vpRejectRequest({ requestId, remarks })
+      const result = await service.vpRejectRequest({ id, comments: remarks, rejectionReason: remarks })
       if (!result?.status) {
         return rejectWithValue('Invalid API response: missing status')
       }
@@ -705,9 +705,10 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(vpApprove.fulfilled, (state, action) => {
         state.loading.vpApprove = false
-        state.vpRequests = state.vpRequests.filter(
-          (r) => r.requestId !== action.meta.arg.requestId
-        )
+        const idx = state.vpRequests.findIndex((r) => r.id === action.meta.arg.id)
+        if (idx !== -1) {
+          state.vpRequests[idx].status = action.payload?.status || 'Pending Account Executive Approval'
+        }
       })
       .addCase(vpApprove.rejected, (state, action) => {
         state.loading.vpApprove = false
@@ -722,9 +723,10 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(vpReject.fulfilled, (state, action) => {
         state.loading.vpReject = false
-        state.vpRequests = state.vpRequests.filter(
-          (r) => r.requestId !== action.meta.arg.requestId
-        )
+        const idx = state.vpRequests.findIndex((r) => r.id === action.meta.arg.id)
+        if (idx !== -1) {
+          state.vpRequests[idx].status = action.payload?.status || 'Rejected by VP Operations'
+        }
       })
       .addCase(vpReject.rejected, (state, action) => {
         state.loading.vpReject = false

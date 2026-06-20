@@ -19,9 +19,13 @@ const ROLE_ROUTES = {
   'regional-head':       '/dashboard/regional-head',
   // ─── Level 3 ──────────────────────────────────────────────────────────
   'avp-operations':      '/dashboard/avp-operations',
+  'avp_operations':      '/dashboard/avp-operations',
+  'AVP_OPERATIONS':      '/dashboard/avp-operations',
   // ─── Unchanged Roles ──────────────────────────────────────────────────
   'line-manager':        '/dashboard/line-manager',
   'vp-operations':       '/dashboard/vp-operations',
+  'vp_operations':       '/dashboard/vp-operations',
+  'VP_OPERATIONS':       '/dashboard/vp-operations',
   'manager':             '/dashboard/manager',
   'ph':                  '/dashboard/ph',
   'vendor':              '/dashboard/vendor',

@@ -9,6 +9,7 @@ const BACKEND_ROLE_MAP = {
   'EMPLOYEE':             'employee',
   'LINE_MANAGER':         'line-manager',
   'VP_OPS':               'vp-operations',
+  'VP_OPERATIONS':        'vp-operations',
   'SUPERVISOR':           'supervisor',
   'MANAGER':              'manager',
   'PH':                   'ph',
@@ -30,19 +31,15 @@ const BACKEND_ROLE_MAP = {
 const mapBackendRoleToFrontend = (backendRole) => {
   if (!backendRole) return null
 
-  // Try exact match first (case-sensitive)
-  if (BACKEND_ROLE_MAP[backendRole]) {
-    return BACKEND_ROLE_MAP[backendRole]
+  // Normalize string format first: convert to uppercase, swap hyphen for underscore to match keys in mapping
+  const normalizedKey = backendRole.toUpperCase().replace(/-/g, '_')
+
+  if (BACKEND_ROLE_MAP[normalizedKey]) {
+    return BACKEND_ROLE_MAP[normalizedKey]
   }
 
-  // Try uppercase match (in case backend sends lowercase)
-  const upperRole = backendRole.toUpperCase()
-  if (BACKEND_ROLE_MAP[upperRole]) {
-    return BACKEND_ROLE_MAP[upperRole]
-  }
-
-  // Fallback: return lowercase as-is (for unmapped roles)
-  return backendRole.toLowerCase()
+  // Fallback: return lowercase with hyphens
+  return backendRole.toLowerCase().replace(/_/g, '-')
 }
 
 // ─── Safe localStorage Helpers ───────────────────────────────────────────────
@@ -86,7 +83,7 @@ const storedUser         = safeGetJSON('user')
 // ─── Initial State ──────────────────────────────────────────────────────────
 const initialState = {
   user:            storedUser,                        // { email, role, empName, empId, region }
-  role:            storedUser?.role        || null,   // active role string (kebab-case)
+  role:            storedUser?.role        ? mapBackendRoleToFrontend(storedUser.role) : null,   // active role string (kebab-case)
   token:           storedToken             || null,   // JWT access_token
   refreshToken:    storedRefreshToken      || null,   // JWT refresh_token
   empName:         storedUser?.empName     || null,   // e.g. "Meena Pillai" — for form pre-fill
