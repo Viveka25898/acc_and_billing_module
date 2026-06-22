@@ -33,7 +33,27 @@ const AdvanceRequestPaymentEntryModal = ({ isOpen, onClose, requestData, approve
 
   useEffect(() => {
     if (isOpen && requests.length > 0) {
-      const needsLoad = requests.some(r => !r.accountingDetails)
+      const needsLoad = requests.some(r => {
+        const details = r.accountingDetails;
+        if (!details) return true;
+        const hasGLCode = 
+          details.employeeGLCode || 
+          details.employeeGlCode || 
+          details.employee_gl_code || 
+          details.employee?.gl_code || 
+          details.employee?.glCode || 
+          details.employee_code ||
+          details.bankGLCode || 
+          details.bankGlCode || 
+          details.bank_gl_code || 
+          details.bank?.gl_code || 
+          details.bank?.glCode || 
+          details.bank_code ||
+          details.voucherNo ||
+          details.voucher_no;
+        return !hasGLCode;
+      });
+
       if (!needsLoad) {
         setPaymentEntries(requests.map(r => ({ data: { accountingDetails: r.accountingDetails } })))
         setLoading(false)
@@ -99,8 +119,8 @@ const AdvanceRequestPaymentEntryModal = ({ isOpen, onClose, requestData, approve
 
     if (!details) return
 
-    const employeeGLCode = details.employeeGLCode || details.employeeGlCode || details.employee_gl_code || details.employee_code || request.employeeGLCode || 'N/A'
-    const bankGLCode = details.bankGLCode || details.bankGlCode || details.bank_gl_code || details.bank_code || request.bankGLCode || 'N/A'
+    const employeeGLCode = details.employeeGLCode || details.employeeGlCode || details.employee_gl_code || details.employee?.gl_code || details.employee?.glCode || details.employee_code || request.employeeGLCode || 'N/A'
+    const bankGLCode = details.bankGLCode || details.bankGlCode || details.bank_gl_code || details.bank?.gl_code || details.bank?.glCode || details.bank_code || request.bankGLCode || 'N/A'
     const voucherNo = details.voucherNo || details.voucher_no || request.voucherNo || 'N/A'
     const transactionId = details.transactionId || details.transaction_id || request.transactionId || 'N/A'
 

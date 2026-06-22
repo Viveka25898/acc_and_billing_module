@@ -691,6 +691,7 @@ export const fetchAEApprovalRequests = async () => {
     submittedAt:              item.submitted_at || item.request_date,
     employeeGLCode:           item.employee_gl_code || item.employeeGLCode,
     bankGLCode:               item.bank_gl_code || item.bankGLCode,
+    approvedAt:               item.approved_at || item.approvedAt || null,
   }))
 
   return {
@@ -809,5 +810,24 @@ export const fetchBanks = async () => {
 export const fetchPaymentEntry = async (id) => {
   if (!id) throw new Error('Advance ID is required to fetch payment entry.')
   const res = await axiosInstance.get(`/accounts/advances/${id}/payment-entry`)
+  return res.data
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 16. AE — DOWNLOAD PAYMENT FILE (EXCEL)
+//     POST /accounts/advances/download-payment-file
+// ─────────────────────────────────────────────────────────────────────────────
+export const downloadPaymentFile = async (requestIds) => {
+  const payload = {}
+  if (requestIds && Array.isArray(requestIds)) {
+    payload.request_ids = requestIds
+  } else {
+    payload.request_ids = []
+  }
+
+  const res = await axiosInstance.post('/accounts/advances/download-payment-file', payload, {
+    responseType: 'blob'
+  })
+
   return res.data
 }

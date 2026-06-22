@@ -188,7 +188,7 @@ export default function AEAdvanceApprovalPage() {
             bankId: bankData.bankId,
             voucherNo: approvedItem?.voucherNo || approvedItem?.accountingDetails?.voucherNo || request.voucherNo,
             transactionId: approvedItem?.transactionId || approvedItem?.accountingDetails?.transactionId || request.transactionId,
-            accountingDetails: approvedItem?.accountingDetails || approvedItem,
+            accountingDetails: approvedItem?.accountingDetails,
           })
         })
 
@@ -235,7 +235,11 @@ export default function AEAdvanceApprovalPage() {
   // ── Download complete → refresh ────────────────────────────────────────────
   const handleDownloadComplete = (downloadedRequestIds) => {
     dispatch(fetchAEApprovalRequests())
-    toast.success(`${downloadedRequestIds.length} requests downloaded and processed`)
+    if (downloadedRequestIds && Array.isArray(downloadedRequestIds)) {
+      toast.success(`${downloadedRequestIds.length} requests downloaded and processed`)
+    } else {
+      toast.success(`Bank upload file downloaded successfully`)
+    }
   }
 
   // ── Filter ─────────────────────────────────────────────────────────────────
