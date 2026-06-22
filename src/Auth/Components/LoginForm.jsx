@@ -30,6 +30,8 @@ const ROLE_ROUTES = {
   'ph':                  '/dashboard/ph',
   'vendor':              '/dashboard/vendor',
   'ae':                  '/dashboard/ae',
+  'account-executive':   '/dashboard/ae',
+  'ACCOUNT_EXECUTIVE':   '/dashboard/ae',
   'compliance-team':     '/dashboard/compliance-team',
   'compliance-manager':  '/dashboard/compliance-manager',
   'payroll-team':        '/dashboard/payroll-team',

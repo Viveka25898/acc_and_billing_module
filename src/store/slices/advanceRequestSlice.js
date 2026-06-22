@@ -326,15 +326,15 @@ export const avpReject = createAsyncThunk(
 /** Account Executive approves single request */
 export const aeApprove = createAsyncThunk(
   'advanceRequest/aeApprove',
-  async ({ requestId, bankId, bankCode, bankName }, { rejectWithValue }) => {
+  async ({ id, bankId, bankCode, bankName, comments, costCenterId }, { rejectWithValue }) => {
     try {
-      if (!requestId) {
-        return rejectWithValue('Request ID is required')
+      if (!id) {
+        return rejectWithValue('Advance ID is required')
       }
       if (!bankId || !bankCode || !bankName) {
         return rejectWithValue('Bank details (ID, code, name) are required')
       }
-      const result = await service.aeApproveRequest({ requestId, bankId, bankCode, bankName })
+      const result = await service.aeApproveRequest({ id, bankId, bankCode, bankName, comments, costCenterId })
       if (!result?.status) {
         return rejectWithValue('Invalid API response: missing status')
       }
@@ -354,7 +354,7 @@ export const aeApprove = createAsyncThunk(
 /** Account Executive approves multiple requests (batch) */
 export const aeApproveBatchThunk = createAsyncThunk(
   'advanceRequest/aeApproveBatch',
-  async ({ requestIds, bankId, bankCode, bankName }, { rejectWithValue }) => {
+  async ({ requestIds, bankId, bankCode, bankName, comments, costCenterId }, { rejectWithValue }) => {
     try {
       if (!requestIds || requestIds.length === 0) {
         return rejectWithValue('At least one request ID is required')
@@ -362,7 +362,7 @@ export const aeApproveBatchThunk = createAsyncThunk(
       if (!bankId || !bankCode || !bankName) {
         return rejectWithValue('Bank details (ID, code, name) are required')
       }
-      const result = await service.aeApproveBatch({ requestIds, bankId, bankCode, bankName })
+      const result = await service.aeApproveBatch({ requestIds, bankId, bankCode, bankName, comments, costCenterId })
       if (!result?.approvedRequests || !Array.isArray(result.approvedRequests)) {
         return rejectWithValue('Invalid API response: missing approvedRequests array')
       }
@@ -382,15 +382,15 @@ export const aeApproveBatchThunk = createAsyncThunk(
 /** Account Executive rejects request */
 export const aeReject = createAsyncThunk(
   'advanceRequest/aeReject',
-  async ({ requestId, reason }, { rejectWithValue }) => {
+  async ({ id, reason }, { rejectWithValue }) => {
     try {
-      if (!requestId) {
-        return rejectWithValue('Request ID is required')
+      if (!id) {
+        return rejectWithValue('Advance ID is required')
       }
       if (!reason || reason.trim().length === 0) {
         return rejectWithValue('Rejection reason is required')
       }
-      const result = await service.aeRejectRequest({ requestId, reason })
+      const result = await service.aeRejectRequest({ id, reason })
       if (!result?.status) {
         return rejectWithValue('Invalid API response: missing status')
       }
@@ -742,7 +742,7 @@ const advanceRequestSlice = createSlice({
       .addCase(aeApprove.fulfilled, (state, action) => {
         state.loading.aeApprove = false
         state.aeRequests = state.aeRequests.filter(
-          (r) => r.requestId !== action.meta.arg.requestId
+          (r) => r.id !== action.meta.arg.id
         )
       })
       .addCase(aeApprove.rejected, (state, action) => {
@@ -758,9 +758,9 @@ const advanceRequestSlice = createSlice({
       })
       .addCase(aeApproveBatchThunk.fulfilled, (state, action) => {
         state.loading.aeApproveBatch = false
-        const approvedIds = (action.payload?.approvedRequests || []).map((r) => r?.requestId).filter(Boolean)
+        const approvedIds = (action.payload?.approvedRequests || []).map((r) => r?.id).filter(Boolean)
         state.aeRequests = state.aeRequests.filter(
-          (r) => !approvedIds.includes(r.requestId)
+          (r) => !approvedIds.includes(r.id)
         )
       })
       .addCase(aeApproveBatchThunk.rejected, (state, action) => {
@@ -777,7 +777,7 @@ const advanceRequestSlice = createSlice({
       .addCase(aeReject.fulfilled, (state, action) => {
         state.loading.aeReject = false
         state.aeRequests = state.aeRequests.filter(
-          (r) => r.requestId !== action.meta.arg.requestId
+          (r) => r.id !== action.meta.arg.id
         )
       })
       .addCase(aeReject.rejected, (state, action) => {

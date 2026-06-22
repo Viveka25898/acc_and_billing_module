@@ -85,6 +85,15 @@ const toAdvanceReasonCode = (reason) => {
   return ADVANCE_REASON_CODE_MAP[reason] || reason.trim().toUpperCase().replace(/\s+/g, '_')
 }
 
+const mapApiStatusToUi = (status) => {
+  if (status === 'PENDING_AE') return 'Pending AE Approval'
+  if (status === 'PENDING_VP') return 'Pending VP Approval'
+  if (status === 'PENDING_AVP') return 'Pending AVP Approval'
+  if (status === 'PENDING_MANAGER') return 'Pending Manager Approval'
+  return status
+}
+
+
 const callAdvanceRequestApi = async ({ method, suffix = '', data, config }) => {
   const triedUrls = []
   let lastError = null
@@ -653,20 +662,36 @@ export const vpRejectRequest = async ({ id, comments, rejectionReason }) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 10. FETCH REQUESTS FOR AE APPROVAL
-//     GET /api/advance-requests/ae-approval
-//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
+//     GET /accounts/advances/queue
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchAEApprovalRequests = async () => {
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const requests = all.filter(
-    (req) =>
-      req.status === 'Pending AE Approval' ||
-      req.status === 'Approved' ||
-      req.status === 'Rejected by AE'
-  )
+  const res = await axiosInstance.get('/accounts/advances/queue')
+  const data = res.data
+
+  if (!data) throw new Error('Empty response from server.')
+  if (data.success === false) throw new Error(data.message || 'Failed to fetch queue.')
+  if (!Array.isArray(data.data)) throw new Error('Invalid API response: expected data array.')
 
   const aeIsBeforeDeadline = isBeforeAEDeadline()
+
+  const requests = data.data.map((item) => ({
+    id:                       item.id,
+    requestId:                item.request_id,
+    employeeId:               item.employee_id,
+    employeeName:             item.employee_name,
+    amount:                   item.amount,
+    status:                   mapApiStatusToUi(item.status),
+    region:                   item.region,
+    requestDate:              item.request_date,
+    osBalance:                Number(item.os_balance || 0),
+    reasons:                  item.reasons || [],
+    customReason:             item.custom_reason || '',
+    isVPRequest:              item.is_vp_request || false,
+    vpApprovedBeforeDeadline: item.vp_approved_before_deadline ?? true,
+    submittedAt:              item.submitted_at || item.request_date,
+    employeeGLCode:           item.employee_gl_code || item.employeeGLCode,
+    bankGLCode:               item.bank_gl_code || item.bankGLCode,
+  }))
 
   return {
     success: true,
@@ -674,166 +699,115 @@ export const fetchAEApprovalRequests = async () => {
     deadline: '15:00',
     requests,
   }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.get('/advance-requests/ae-approval')
-  // return res.data
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 11. AE — APPROVE SINGLE REQUEST
-//     POST /api/advance-requests/:requestId/ae-approve
-//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
+//     POST /accounts/advances/:id/ae-approve
 // ─────────────────────────────────────────────────────────────────────────────
-export const aeApproveRequest = async ({ requestId, bankId, bankCode, bankName }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
-  const request = validateRequestExists(requestId)
-  validateStatusTransition(request.status, 'Approved')
-  
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const index = all.findIndex((r) => r.requestId === requestId)
-  if (index === -1) throw new Error('Request not found')
+export const aeApproveRequest = async ({ id, bankId, bankCode, bankName, comments = 'Approved', costCenterId = 1 }) => {
+  if (!id) throw new Error('Advance ID is required to approve.')
 
-  const currentUser = getLoggedInUser()
-  const now = new Date()
-  const aeApprovedBeforeDeadline = isBeforeAEDeadline()
+  const res = await axiosInstance.post(`/accounts/advances/${id}/ae-approve`, {
+    bank_id: bankId,
+    bank_code: bankCode,
+    bank_name: bankName,
+    comments: comments,
+    cost_center_id: Number(costCenterId) || 1
+  })
 
-  all[index] = {
-    ...all[index],
-    status: 'Approved',
-    bankId,
-    bankCode,
-    bankName,
-    aeApprovedBy: currentUser?.username,
-    approvedAt: now.toISOString(),
-    aeApprovedBeforeDeadline,
-  }
-  saveRequests(all)
+  const data = res.data
+  if (!data) throw new Error('Empty response from server.')
+  if (data.success === false) throw new Error(data.message || 'Approval failed.')
 
   return {
     success: true,
-    message: 'Accounting entries posted successfully',
-    requestId,
+    message: data.message || 'Accounting entries posted successfully',
+    requestId: data.data?.requestId,
     status: 'Approved',
-    aeApprovedBeforeDeadline,
-    updatedRequest: all[index],
+    aeApprovedBeforeDeadline: data.data?.aeApprovedBeforeDeadline ?? true,
+    updatedRequest: data.data,
   }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post(`/advance-requests/${requestId}/ae-approve`, {
-  //   bankId, bankCode, bankName,
-  // })
-  // return res.data
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 12. AE — APPROVE MULTIPLE REQUESTS (BATCH)
-//     POST /api/advance-requests/ae-approve-batch
-//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
+//     POST /accounts/advances/batch-approve
 // ─────────────────────────────────────────────────────────────────────────────
-export const aeApproveBatch = async ({ requestIds, bankId, bankCode, bankName }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
+export const aeApproveBatch = async ({ requestIds, bankId, bankCode, bankName, comments = 'Batch disbursement approved', costCenterId = 1 }) => {
   if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
     throw new Error('At least one request ID is required')
   }
 
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const currentUser = getLoggedInUser()
-  const now = new Date()
-
-  const approved = []
-  const skipped = []
-
-  const uniqueIds = [...new Set(requestIds)]
-
-  uniqueIds.forEach((rid) => {
-    try {
-      validateRequestExists(rid)
-      const idx = all.findIndex((r) => r.requestId === rid)
-      if (all[idx].status !== 'Pending AE Approval') {
-        validateStatusTransition(all[idx].status, 'Approved')
-      }
-    } catch (error) {
-      skipped.push({ requestId: rid, reason: error.message })
-      return
-    }
-
-    const idx = all.findIndex((r) => r.requestId === rid)
-    if (idx === -1 || all[idx].status !== 'Pending AE Approval') {
-      skipped.push({ requestId: rid, reason: 'Not eligible for AE approval' })
-      return
-    }
-    if (all[idx].isVPRequest && !all[idx].vpApprovedBeforeDeadline) {
-      skipped.push({ requestId: rid, reason: 'VP approved after deadline' })
-      return
-    }
-    all[idx] = {
-      ...all[idx],
-      status: 'Approved',
-      bankId,
-      bankCode,
-      bankName,
-      aeApprovedBy: currentUser?.username,
-      approvedAt: now.toISOString(),
-    }
-    approved.push(all[idx])
+  const res = await axiosInstance.post('/accounts/advances/batch-approve', {
+    request_ids: requestIds,
+    bank_id: bankId,
+    bank_code: bankCode,
+    bank_name: bankName,
+    comments: comments,
+    cost_center_id: Number(costCenterId) || 1
   })
 
-  saveRequests(all)
+  const data = res.data
+  if (!data) throw new Error('Empty response from server.')
+  if (data.success === false) throw new Error(data.message || 'Batch approval failed.')
 
   return {
     success: true,
-    message: `${approved.length} requests approved successfully`,
-    totalApproved: approved.length,
-    totalSkipped: skipped.length,
-    approvedRequests: approved,
-    skippedRequests: skipped,
-    failedRequests: [],
-    totalAmount: approved.reduce((sum, r) => sum + Number(r.amount), 0),
+    message: data.message || 'Advances batch approved successfully',
+    totalApproved: data.data?.length || 0,
+    approvedRequests: (data.data || []).map((item) => ({
+      id: item.id,
+      requestId: item.requestId || item.request_id,
+      status: 'Approved',
+      submittedAt: item.submittedAt || item.submitted_at || item.request_date,
+      voucherNo: item.accountingDetails?.voucherNo || item.voucherNo || item.voucher_no,
+      transactionId: item.accountingDetails?.transactionId || item.transactionId || item.transaction_id,
+      accountingDetails: item.accountingDetails || item.accounting_details || item,
+    })),
   }
-
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post('/advance-requests/ae-approve-batch', {
-  //   requestIds, bankId, bankCode, bankName,
-  // })
-  // return res.data
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 13. AE — REJECT REQUEST
-//     POST /api/advance-requests/:requestId/ae-reject
-//     ⚠️ TODO: API NOT YET PROVIDED — Keeping localStorage until backend ready
+//     PATCH /accounts/advances/:id/workflow (Same as VP/AVP)
 // ─────────────────────────────────────────────────────────────────────────────
-export const aeRejectRequest = async ({ requestId, reason }) => {
-  // ── VALIDATION ───────────────────────────────────────────────────────────
-  const request = validateRequestExists(requestId)
-  validateStatusTransition(request.status, 'Rejected by AE')
-  
-  // ── localStorage implementation ──────────────────────────────────────────
-  const all = getStoredRequests()
-  const index = all.findIndex((r) => r.requestId === requestId)
-  if (index === -1) throw new Error('Request not found')
+export const aeRejectRequest = async ({ id, reason }) => {
+  if (!id) throw new Error('Advance ID is required to reject.')
+  if (!reason || !reason.trim()) throw new Error('Rejection reason is required.')
 
-  const currentUser = getLoggedInUser()
-  all[index] = {
-    ...all[index],
-    status: 'Rejected by AE',
-    remarks: reason,
-    rejectedAt: new Date().toISOString(),
-    aeRejectedBy: currentUser?.username,
-  }
-  saveRequests(all)
+  const res = await axiosInstance.patch(`/accounts/advances/${id}/workflow`, {
+    action: 'reject',
+    comments: reason.trim(),
+    rejection_reason: reason.trim(),
+  })
+
+  const data = res.data
+  if (!data) throw new Error('Empty response from server.')
+  if (data.success === false) throw new Error(data.message || 'Rejection failed.')
 
   return {
     success: true,
-    message: 'Request rejected by Account Executive',
-    requestId,
+    message: data.message || 'Request rejected successfully',
     status: 'Rejected by AE',
   }
+}
 
-  // ── API implementation (uncomment when backend is ready) ─────────────────
-  // const res = await axiosInstance.post(`/advance-requests/${requestId}/ae-reject`, { reason })
-  // return res.data
+// ─────────────────────────────────────────────────────────────────────────────
+// 14. AE — FETCH BANKS
+//     GET /accounts/banks
+// ─────────────────────────────────────────────────────────────────────────────
+export const fetchBanks = async () => {
+  const res = await axiosInstance.get('/accounts/banks')
+  return res.data
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 15. AE — FETCH PAYMENT ENTRY DETAILS
+//     GET /accounts/advances/:id/payment-entry
+// ─────────────────────────────────────────────────────────────────────────────
+export const fetchPaymentEntry = async (id) => {
+  if (!id) throw new Error('Advance ID is required to fetch payment entry.')
+  const res = await axiosInstance.get(`/accounts/advances/${id}/payment-entry`)
+  return res.data
 }

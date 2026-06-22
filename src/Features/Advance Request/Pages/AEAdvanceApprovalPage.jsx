@@ -8,11 +8,9 @@ import AERequestTable from '../Components/AERequestTable'
 import AdvanceRequestPaymentEntryModal from '../Components/AdvanceRequestPaymentEntryModal'
 import AEBankSelectionModal from '../Components/AEBankSelectionModal'
 import {
-  processAdvanceApproval,
-  processMultipleAdvanceApprovals,
-} from '../../Master/utils/accountingHelpers'
-import {
   fetchAEApprovalRequests,
+  aeApprove,
+  aeApproveBatchThunk,
   aeReject,
   selectAERequests,
   selectIsBeforeDeadline,
@@ -70,19 +68,17 @@ export default function AEAdvanceApprovalPage() {
   }
 
   // ── Single approve → open bank modal ─────────────────────────────────────
-  const handleApprove = (submittedAt) => {
+  const handleApprove = (id) => {
     try {
-      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
-      const requestIndex = allRequests.findIndex((req) => req.submittedAt === submittedAt)
-      if (requestIndex === -1) { toast.error('Request not found'); return }
+      const request = aeRequestsFromStore.find((req) => req.id === id)
+      if (!request) { toast.error('Request not found'); return }
 
-      const request = allRequests[requestIndex]
       if (request.isVPRequest && !request.vpApprovedBeforeDeadline) {
         toast.error('Cannot approve: VP request was approved after 15:59 deadline')
         return
       }
 
-      setPendingApprovalData({ type: 'single', request, requestIndex })
+      setPendingApprovalData({ type: 'single', request })
       setIsBankModalOpen(true)
     } catch (error) {
       toast.error('Failed to initiate approval process')
@@ -90,13 +86,12 @@ export default function AEAdvanceApprovalPage() {
   }
 
   // ── Batch approve → open bank modal ──────────────────────────────────────
-  const handleApproveMultiple = (requestsData) => {
+  const handleApproveMultiple = (ids) => {
     try {
-      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
-      const requestsToApprove = requestsData
-        .map((submittedAt) => {
-          const index = allRequests.findIndex((req) => req.submittedAt === submittedAt)
-          return index !== -1 ? { request: allRequests[index], index } : null
+      const requestsToApprove = ids
+        .map((id) => {
+          const request = aeRequestsFromStore.find((req) => req.id === id)
+          return request ? { request } : null
         })
         .filter(Boolean)
         .filter((item) => !item.request.isVPRequest || item.request.vpApprovedBeforeDeadline)
@@ -119,115 +114,92 @@ export default function AEAdvanceApprovalPage() {
     setIsProcessing(true)
 
     try {
-      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
       const approvalTime = new Date()
       const aeIsBeforeDeadline =
         approvalTime.getHours() < 15 ||
         (approvalTime.getHours() === 15 && approvalTime.getMinutes() <= 59)
 
-      const currentUser = JSON.parse(localStorage.getItem('user'))
-      let updatedRequests = [...allRequests]
+      const currentUser = JSON.parse(localStorage.getItem('user')) || {}
       const approvedRequestsData = []
-      let accountingProcessingResult = null
 
       if (pendingApprovalData.type === 'single') {
-        const { request, requestIndex } = pendingApprovalData
+        const { request } = pendingApprovalData
 
-        // Step 1: Accounting first
-        accountingProcessingResult = await processAdvanceApproval(
-          {
-            ...request,
-            status: 'Approved',
-            approvedAt: approvalTime.toISOString(),
-            aeApprovedBy: currentUser.username,
-            aeApprovedBeforeDeadline: aeIsBeforeDeadline,
-            bankCode: bankData.bankCode,
-            bankName: bankData.bankName,
-            bankId: bankData.bankId,
-          },
-          bankData
-        )
+        const actionResult = await dispatch(aeApprove({
+          id: request.id,
+          bankId: bankData.bankId,
+          bankCode: bankData.bankCode,
+          bankName: bankData.bankName,
+          comments: `Disbursing from ${bankData.bankName}`,
+          costCenterId: 1
+        })).unwrap()
 
-        if (!accountingProcessingResult.success) {
-          throw new Error(accountingProcessingResult.message)
-        }
-
-        // Step 2: Update request status
-        updatedRequests[requestIndex] = {
+        const approvedRequest = {
           ...request,
           status: 'Approved',
           approvedAt: approvalTime.toISOString(),
-          aeApprovedBy: currentUser.username,
+          aeApprovedBy: currentUser.emp_name || currentUser.username || 'Ankit Verma',
           aeApprovedBeforeDeadline: aeIsBeforeDeadline,
           bankCode: bankData.bankCode,
           bankName: bankData.bankName,
           bankId: bankData.bankId,
-          voucherNo: accountingProcessingResult.voucherNo,
-          transactionId: accountingProcessingResult.transactionId,
-          glCode: accountingProcessingResult.employeeGLCode,
+          voucherNo: actionResult.updatedRequest?.accountingDetails?.voucherNo || actionResult.updatedRequest?.voucherNo || actionResult.voucherNo,
+          transactionId: actionResult.updatedRequest?.accountingDetails?.transactionId || actionResult.updatedRequest?.transactionId || actionResult.transactionId,
+          accountingDetails: actionResult.updatedRequest?.accountingDetails || actionResult.updatedRequest
         }
-        approvedRequestsData.push(updatedRequests[requestIndex])
-
-        // Step 3: Save
-        localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests))
+        approvedRequestsData.push(approvedRequest)
 
         if (isMounted.current) {
-          setAccountingResult(accountingProcessingResult)
-          setSelectedRequest(updatedRequests[requestIndex])
+          setSelectedRequest(approvedRequest)
           setApprovedRequests([])
         }
 
         toast.success(
           aeIsBeforeDeadline
-            ? `✅ ${accountingProcessingResult.message} (Same-day processing)`
-            : `✅ ${accountingProcessingResult.message} (Next working day)`
+            ? `✅ Advance Approved (Same-day processing)`
+            : `✅ Advance Approved (Next working day)`
         )
       } else if (pendingApprovalData.type === 'multiple') {
-        const requestsArray = pendingApprovalData.requests.map((r) => ({
-          ...r.request,
-          status: 'Approved',
-          approvedAt: approvalTime.toISOString(),
-          aeApprovedBy: currentUser.username,
-          aeApprovedBeforeDeadline: aeIsBeforeDeadline,
+        const idsToApprove = pendingApprovalData.requests.map((r) => r.request.id)
+
+        const actionResult = await dispatch(aeApproveBatchThunk({
+          requestIds: idsToApprove,
+          bankId: bankData.bankId,
           bankCode: bankData.bankCode,
           bankName: bankData.bankName,
-          bankId: bankData.bankId,
-        }))
+          comments: 'Batch disbursement approved',
+          costCenterId: 1
+        })).unwrap()
 
-        accountingProcessingResult = await processMultipleAdvanceApprovals(requestsArray, bankData)
-
-        if (!accountingProcessingResult.success) {
-          throw new Error(accountingProcessingResult.message)
-        }
-
-        pendingApprovalData.requests.forEach(({ request, index }) => {
-          updatedRequests[index] = {
+        pendingApprovalData.requests.forEach(({ request }) => {
+          const approvedItem = (actionResult.approvedRequests || []).find(
+            (r) =>
+              (r.id && request.id && r.id.toString() === request.id.toString()) ||
+              (r.requestId && request.requestId && r.requestId.toString().toLowerCase() === request.requestId.toString().toLowerCase())
+          )
+          approvedRequestsData.push({
             ...request,
             status: 'Approved',
             approvedAt: approvalTime.toISOString(),
-            aeApprovedBy: currentUser.username,
+            aeApprovedBy: currentUser.emp_name || currentUser.username || 'Ankit Verma',
             aeApprovedBeforeDeadline: aeIsBeforeDeadline,
             bankCode: bankData.bankCode,
             bankName: bankData.bankName,
             bankId: bankData.bankId,
-            voucherNo: accountingProcessingResult.voucherNo,
-            transactionId: accountingProcessingResult.transactionId,
-          }
-          approvedRequestsData.push(updatedRequests[index])
+            voucherNo: approvedItem?.voucherNo || approvedItem?.accountingDetails?.voucherNo || request.voucherNo,
+            transactionId: approvedItem?.transactionId || approvedItem?.accountingDetails?.transactionId || request.transactionId,
+            accountingDetails: approvedItem?.accountingDetails || approvedItem,
+          })
         })
 
-        localStorage.setItem('advanceRequests', JSON.stringify(updatedRequests))
-
         if (isMounted.current) {
-          setAccountingResult(accountingProcessingResult)
           setSelectedRequest(null)
           setApprovedRequests(approvedRequestsData)
         }
 
-        toast.success(`✅ ${approvedRequestsData.length} requests approved – ${accountingProcessingResult.message}`)
+        toast.success(`✅ ${approvedRequestsData.length} requests approved successfully`)
       }
 
-      // Refresh AE queue from Redux
       dispatch(fetchAEApprovalRequests())
 
       if (isMounted.current) {
@@ -236,11 +208,10 @@ export default function AEAdvanceApprovalPage() {
         setPendingApprovalData(null)
       }
     } catch (error) {
-      toast.error(`Approval failed: ${error.message}`)
+      toast.error(`Approval failed: ${error.message || error}`)
       if (isMounted.current) {
         setIsBankModalOpen(false)
         setPendingApprovalData(null)
-        setAccountingResult(null)
       }
     } finally {
       if (isMounted.current) setIsProcessing(false)
@@ -248,38 +219,31 @@ export default function AEAdvanceApprovalPage() {
   }
 
   // ── Reject → dispatch thunk ────────────────────────────────────────────────
-  const handleReject = async (submittedAt, reason) => {
-    // Find requestId by submittedAt (until API provides requestId directly)
-    const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
-    const req = allRequests.find((r) => r.submittedAt === submittedAt)
-    if (!req) { toast.error('Request not found'); return }
+  const handleReject = async (id, reason) => {
+    try {
+      const request = aeRequestsFromStore.find((req) => req.id === id)
+      if (!request) { toast.error('Request not found'); return }
 
-    const result = await dispatch(aeReject({ requestId: req.requestId, reason }))
-    if (aeReject.fulfilled.match(result)) {
-      toast.error('Request Rejected by Account Executive')
+      await dispatch(aeReject({ id: request.id, reason })).unwrap()
+      toast.success('Request Rejected by Account Executive')
       dispatch(fetchAEApprovalRequests())
+    } catch (error) {
+      toast.error(error || 'Failed to reject request')
     }
   }
 
   // ── Download complete → refresh ────────────────────────────────────────────
   const handleDownloadComplete = (downloadedRequestIds) => {
-    try {
-      const allRequests = JSON.parse(localStorage.getItem('advanceRequests')) || []
-      const remaining = allRequests.filter((req) => !downloadedRequestIds.includes(req.submittedAt))
-      localStorage.setItem('advanceRequests', JSON.stringify(remaining))
-      dispatch(fetchAEApprovalRequests())
-      toast.success(`${downloadedRequestIds.length} requests downloaded and processed`)
-    } catch {
-      toast.error('Failed to process download')
-    }
+    dispatch(fetchAEApprovalRequests())
+    toast.success(`${downloadedRequestIds.length} requests downloaded and processed`)
   }
 
   // ── Filter ─────────────────────────────────────────────────────────────────
   const filteredRequests = aeRequestsFromStore.filter(
     (r) =>
-      r.employeeName.toLowerCase().includes(filter.name.toLowerCase()) &&
-      r.employeeId.toLowerCase().includes(filter.empId.toLowerCase()) &&
-      (filter.date === '' || r.requestDate.includes(filter.date)) &&
+      (r.employeeName || '').toLowerCase().includes(filter.name.toLowerCase()) &&
+      (r.employeeId || '').toLowerCase().includes(filter.empId.toLowerCase()) &&
+      (filter.date === '' || (r.requestDate || '').includes(filter.date)) &&
       (filter.requestId === '' ||
         (r.requestId && r.requestId.toLowerCase().includes(filter.requestId.toLowerCase())))
   )

@@ -15,6 +15,7 @@ const BACKEND_ROLE_MAP = {
   'PH':                   'ph',
   'VENDOR':               'vendor',
   'AE':                   'ae',
+  'ACCOUNT_EXECUTIVE':    'ae',
   'COMPLIANCE_TEAM':      'compliance-team',
   'COMPLIANCE_MANAGER':   'compliance-manager',
   'PAYROLL_TEAM':         'payroll-team',

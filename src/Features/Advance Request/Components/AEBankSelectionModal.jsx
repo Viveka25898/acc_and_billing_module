@@ -1,24 +1,36 @@
 import React, { useState, useEffect } from 'react'
 import { FaTimes, FaCheckCircle } from 'react-icons/fa'
-import { BANK_ACCOUNT_CONFIG } from '../config/advanceRequestConfig'
+import { fetchBanks } from '../services/advanceRequestService'
+import { toast } from 'react-toastify'
 
 const AEBankSelectionModal = ({ isOpen, onClose, onBankSelect, requestData }) => {
   const [banks, setBanks] = useState([])
   const [selectedBankCode, setSelectedBankCode] = useState('')
   const [selectedBank, setSelectedBank] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      // Load banks from chartOfAccounts
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || []
+      const loadBanks = async () => {
+        setLoading(true)
+        try {
+          const res = await fetchBanks()
+          if (res && res.success && Array.isArray(res.data)) {
+            setBanks(res.data)
+            console.log("Banks fetched from backend:", res.data)
+          } else {
+            setBanks([])
+            toast.error(res?.message || 'Failed to fetch banks.')
+          }
+        } catch (error) {
+          setBanks([])
+          toast.error(error.message || 'Failed to load bank accounts.')
+        } finally {
+          setLoading(false)
+        }
+      }
 
-      // Filter banks using config
-      const bankAccounts = chartOfAccounts.filter(
-        (acc) => acc.parentCode === BANK_ACCOUNT_CONFIG.PARENT_CODE && 
-                 acc.type === BANK_ACCOUNT_CONFIG.TYPE
-      )
-
-      setBanks(bankAccounts)
+      loadBanks()
 
       // Reset selection when modal opens
       setSelectedBankCode('')
@@ -31,7 +43,7 @@ const AEBankSelectionModal = ({ isOpen, onClose, onBankSelect, requestData }) =>
     setSelectedBankCode(bankCode)
 
     // Find selected bank details
-    const bank = banks.find((b) => b.code === bankCode)
+    const bank = banks.find((b) => b.bank_code === bankCode)
     setSelectedBank(bank)
   }
 
@@ -41,15 +53,24 @@ const AEBankSelectionModal = ({ isOpen, onClose, onBankSelect, requestData }) =>
       return
     }
 
+    const BANK_CODE_MAP = {
+      'HDFC': 'BNK0001',
+      'ICICI': 'BNK0002',
+      'SBI': 'BNK0003'
+    }
+
+    const bankCodeVal = BANK_CODE_MAP[selectedBank.bank_code] || selectedBank.bank_code
+
     // Pass selected bank to parent
     onBankSelect({
-      bankCode: selectedBank.code,
-      bankName: selectedBank.name,
-      bankId: selectedBank.id,
+      bankCode: bankCodeVal,
+      bankName: selectedBank.bank_name,
+      bankId: selectedBank.bank_id,
     })
   }
 
   if (!isOpen) return null
+
 
   // Determine if single or multiple requests
   const isMultiple = Array.isArray(requestData)
@@ -158,8 +179,8 @@ const AEBankSelectionModal = ({ isOpen, onClose, onBankSelect, requestData }) =>
               >
                 <option value="">-- Select Bank --</option>
                 {banks.map((bank) => (
-                  <option key={bank.code} value={bank.code}>
-                    {bank.name} ({bank.code})
+                  <option key={bank.bank_code} value={bank.bank_code}>
+                    {bank.bank_name} ({bank.bank_code})
                   </option>
                 ))}
               </select>
@@ -179,11 +200,11 @@ const AEBankSelectionModal = ({ isOpen, onClose, onBankSelect, requestData }) =>
                 {/* Reduced spacing and text */}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Bank:</span>
-                  <span className="font-medium">{selectedBank.name}</span>
+                  <span className="font-medium">{selectedBank.bank_name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">GL Code:</span>
-                  <span className="font-medium font-mono text-blue-600">{selectedBank.code}</span>
+                  <span className="font-medium font-mono text-blue-600">{selectedBank.gl_code || selectedBank.bank_code}</span>
                 </div>
               </div>
             </div>

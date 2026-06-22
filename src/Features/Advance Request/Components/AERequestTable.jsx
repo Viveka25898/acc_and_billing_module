@@ -75,8 +75,8 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
   };
 
   // Modified single approve function to trigger modal
-  const handleSingleApprove = (submittedAt) => {
-    onApprove(submittedAt); // This will trigger the modal in parent component
+  const handleSingleApprove = (id) => {
+    onApprove(id); // This will trigger the modal in parent component
   };
 
   // Enhanced download function - download and remove approved requests
@@ -85,7 +85,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
     console.log("All data for download check:", data);
 
     const approvedRequests = data.filter(req => {
-      console.log(`\nChecking request ${req.requestId || req.submittedAt}:`);
+      console.log(`\nChecking request ${req.requestId || req.id}:`);
       console.log("- Status:", req.status);
       console.log("- Request Type:", req.isVPRequest ? "VP Request" : "Employee Request");
       console.log("- approvedAt:", req.approvedAt);
@@ -160,7 +160,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
       "CUR": "INR",
       "BENIFICARY A/C NO": req.bankAccountNumber || "9876543210",
       "IFSC CODE": req.ifscCode || "SBIN0000123",
-      "NARRTION/NAME (NOT MORE THAN 20)": req.employeeName.slice(0, 20),
+      "NARRTION/NAME (NOT MORE THAN 20)": (req.employeeName || '').slice(0, 20),
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
@@ -184,7 +184,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
     saveAs(file, "BankUploadFile.xlsx");
     
     // Get the IDs of downloaded requests
-    const downloadedRequestIds = approvedRequests.map(req => req.submittedAt);
+    const downloadedRequestIds = approvedRequests.map(req => req.id);
     
     // Call the parent component's function to remove downloaded requests
     if (onDownloadComplete) {
@@ -197,13 +197,13 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
   // Modified approve all function to trigger modal with multiple requests
   const handleApproveAll = () => {
     const selectableRequests = getSelectableRequests();
-    const requestIds = selectableRequests.map(req => req.submittedAt);
+    const requestIds = selectableRequests.map(req => req.id);
     
     if (onApproveMultiple) {
       onApproveMultiple(requestIds); // This will trigger the modal in parent component
     } else {
       // Fallback to individual approvals if onApproveMultiple is not provided
-      selectableRequests.forEach(req => onApprove(req.submittedAt));
+      selectableRequests.forEach(req => onApprove(req.id));
     }
     setSelectedIds([]);
   };
@@ -211,11 +211,11 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
   // Modified approve selected function to trigger modal
   const handleApproveSelected = () => {
     const requestsToApprove = paginatedData.filter(
-      req => selectedIds.includes(req.submittedAt) && 
+      req => selectedIds.includes(req.id) && 
              isActionAllowed(req)
     );
     
-    const requestIds = requestsToApprove.map(req => req.submittedAt);
+    const requestIds = requestsToApprove.map(req => req.id);
     
     if (onApproveMultiple && requestIds.length > 1) {
       onApproveMultiple(requestIds); // Trigger modal for multiple
@@ -223,7 +223,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
       onApprove(requestIds[0]); // Trigger modal for single
     } else {
       // Fallback to individual approvals
-      requestsToApprove.forEach(req => onApprove(req.submittedAt));
+      requestsToApprove.forEach(req => onApprove(req.id));
     }
     
     setSelectedIds([]);
@@ -240,7 +240,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                 onChange={(e) => {
                   if (e.target.checked) {
                     const selectableRequests = getSelectableRequests();
-                    setSelectedIds(selectableRequests.map(req => req.submittedAt));
+                    setSelectedIds(selectableRequests.map(req => req.id));
                   } else {
                     setSelectedIds([]);
                   }
@@ -270,16 +270,16 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
             const isVPRequestAfterDeadline = req.isVPRequest && !isVPApprovedBeforeDeadline(req);
             
             return (
-              <tr key={req.submittedAt} className="text-center">
+              <tr key={req.id} className="text-center hover:bg-gray-50 transition-colors">
                 <td className="p-2">
                   <input
                     type="checkbox"
-                    checked={selectedIds.includes(req.submittedAt)}
+                    checked={selectedIds.includes(req.id)}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedIds([...selectedIds, req.submittedAt]);
+                        setSelectedIds([...selectedIds, req.id]);
                       } else {
-                        setSelectedIds(selectedIds.filter(id => id !== req.submittedAt));
+                        setSelectedIds(selectedIds.filter(id => id !== req.id));
                       }
                     }}
                     disabled={!canTakeAction}
@@ -298,7 +298,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                 <td className="p-2 border">
                   <button 
                     onClick={() => setCurrentReason({
-                      reason: req.reason,
+                      reason: req.reason || req.reasons,
                       customReason: req.customReason
                     })}
                     className="text-blue-600 hover:text-blue-800"
@@ -344,7 +344,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                   <div className="flex flex-col gap-2 items-center">
                     <button
                       disabled={!canTakeAction}
-                      onClick={() => handleSingleApprove(req.submittedAt)} // Modified to use handleSingleApprove
+                      onClick={() => handleSingleApprove(req.id)}
                       className={`px-3 py-1 rounded text-white ${
                         canTakeAction
                           ? 'bg-green-600 hover:bg-green-700'
@@ -356,7 +356,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                     </button>
                     <button
                       disabled={!canTakeAction}
-                      onClick={() => setRejectingId(req.submittedAt)}
+                      onClick={() => setRejectingId(req.id)}
                       className={`px-3 py-1 rounded text-white ${
                         canTakeAction
                           ? 'bg-red-600 hover:bg-red-700'
@@ -379,7 +379,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
           {selectedIds.length > 0 && (
             <>
               <button
-                onClick={handleApproveSelected} // Modified to use handleApproveSelected
+                onClick={handleApproveSelected}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               >
                 Approve Selected ({selectedIds.length})
@@ -395,7 +395,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
           
           {getSelectableRequests().length > 0 && (
             <button
-              onClick={handleApproveAll} // Modified to use handleApproveAll
+              onClick={handleApproveAll}
               className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             >
               Approve All Eligible ({getSelectableRequests().length})

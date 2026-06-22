@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { logout } from "../../../Auth/authSlice";
+import { logout, selectEmpName, selectRegion } from "../../../Auth/authSlice";
 import { toast } from "react-toastify";
 import ProfileImage from "../../../Auth/assets/profile-picture.jpg"
 
@@ -10,7 +10,22 @@ const AENavbar = () => {
 
   const navigate=useNavigate()
   const dispatch=useDispatch()
+  const empName = useSelector(selectEmpName);
+  const region = useSelector(selectRegion);
 
+  const formatRegion = (reg) => {
+    if (!reg) return '';
+    if (Array.isArray(reg)) {
+      return reg.map(r => {
+        if (typeof r !== 'string') return '';
+        return `${r.charAt(0).toUpperCase()}${r.slice(1).toLowerCase()}`;
+      }).filter(Boolean).join(' & ') + ' Region';
+    }
+    if (typeof reg !== 'string') return '';
+    return `${reg.charAt(0).toUpperCase()}${reg.slice(1).toLowerCase()} Region`;
+  };
+
+  const regionLabel = formatRegion(region);
 
   // ****************************Logout Handle Submit********************
   const handleLogout=()=>{
@@ -34,8 +49,8 @@ const AENavbar = () => {
 
       {/* Center: Site Name & Location (Hidden on very small screens) */}
       <div className="hidden sm:flex flex-col items-center text-center">
-            <span className="text-base font-medium"> Name:- ABC</span>
-            <span className="text-xs">Location:- Pune, India</span>
+            <span className="text-base font-medium">{empName || 'User'}</span>
+            {regionLabel && <span className="text-xs">{regionLabel}</span>}
       </div>
 
       {/* Right: Profile Image + Dropdown */}

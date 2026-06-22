@@ -2,9 +2,26 @@
 import { useState } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { selectRegion } from "../../../Auth/authSlice";
 
 const AESidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const region = useSelector(selectRegion);
+
+  const formatRegion = (reg) => {
+    if (!reg) return '';
+    if (Array.isArray(reg)) {
+      return reg.map(r => {
+        if (typeof r !== 'string') return '';
+        return `${r.charAt(0).toUpperCase()}${r.slice(1).toLowerCase()}`;
+      }).filter(Boolean).join(' & ') + ' Region';
+    }
+    if (typeof reg !== 'string') return '';
+    return `${reg.charAt(0).toUpperCase()}${reg.slice(1).toLowerCase()} Region`;
+  };
+
+  const regionLabel = formatRegion(region);
 
   return (
     <>
@@ -23,8 +40,9 @@ const AESidebar = () => {
         } lg:translate-x-0 lg:w-48 lg:block`}
       >
         {/* Header */}
-        <div className="p-4 text-xl font-semibold bg-green-800 text-center">
-          Account Executive
+        <div className="p-4 bg-green-800 text-center">
+          <p className="text-base font-semibold">Account Executive</p>
+          {regionLabel && <p className="text-xs text-green-200 mt-0.5">{regionLabel}</p>}
         </div>
 
         {/* Scrollable Menu */}
