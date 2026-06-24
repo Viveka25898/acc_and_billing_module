@@ -7,24 +7,43 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
 
   optimizeDeps: {
-    exclude: ['pdfjs-dist']
+    exclude: ['pdfjs-dist'],
   },
 
-  // Add this to handle PDF.js worker correctly
   define: {
     global: 'globalThis',
   },
 
-  // ─── Development Server Configuration ────────────────────────────────────
   server: {
-    // Proxy API requests to backend to bypass CORS issues in development
-    // Routes /api/* requests to http://dev-int.ismart.org/api
+    port: 5173,
+
     proxy: {
-      '/api': {
-        target: 'http://dev-int.ismart.org',
+      // ── Proxy all /api/v1/* calls to the real backend ──────────────────────
+      // WHY: Browser blocks cross-origin requests (CORS) to dev-int.ismart.org.
+      //      Vite acts as a server-side proxy — Node.js makes the actual request,
+      //      so CORS does not apply.
+      //
+      // WHY .env uses /api/v1 (not full URL):
+      //      If axiosInstance.baseURL = full https URL, browser calls it directly
+      //      → CORS blocked. With /api/v1, browser calls localhost → Vite proxies.
+      //
+      // WHY headers override Origin/Referer:
+      //      Backend CORS middleware silently returns 404 for unknown origins.
+      //      Setting Origin = target domain makes the request look same-origin.
+      '/api/v1': {
+        target: 'https://dev-int.ismart.org',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api'),
-      }
-    }
-  }
+        secure: false,
+        headers: {
+          // Make the request look same-origin to the backend's CORS middleware.
+          // Postman doesn't send Origin at all — backend trusts it.
+          // We spoof Origin to the backend's own domain to get the same behavior.
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
+    },
+  },
 })
+
+

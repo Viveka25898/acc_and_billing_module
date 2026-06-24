@@ -65,9 +65,17 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(new Error(loginError))
     }
 
+    // ─── 404: Not Found ───────────────────────────────────────────────────────
+    // Pass 404s through as raw Axios errors (with error.response.status === 404).
+    // Individual service functions handle 404 semantics per-endpoint.
+    // Example: OS Balance 404 = employee has no advance transactions → treat as ₹0
+    if (error.response?.status === 404) {
+      return Promise.reject(error)  // ← pass original Axios error (has .response.status)
+    }
+
     // ─── 429: Rate Limiting ──────────────────────────────────────────────────
     if (error.response?.status === 429) {
-      return Promise.reject(new Error('Too many login attempts. Please wait and try again.'))
+      return Promise.reject(new Error('Too many requests. Please wait and try again.'))
     }
 
     // ─── 500+: Server Error ──────────────────────────────────────────────────

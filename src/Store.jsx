@@ -3,12 +3,27 @@
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './Auth/authSlice'
 import advanceRequestReducer from './store/slices/advanceRequestSlice'
+import advanceSettlementReducer from './store/slices/advanceSettlementSlice'
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
     advanceRequest: advanceRequestReducer,
+    advanceSettlement: advanceSettlementReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Ignore non-serializable File/Blob objects in download and submit actions
+        ignoredActions: [
+          'advanceSettlement/downloadTemplate/fulfilled',
+          'advanceSettlement/submitSettlement/pending',
+          'advanceSettlement/submitSettlement/fulfilled',
+          'advanceSettlement/submitSettlement/rejected',
+        ],
+        ignoredActionPaths: ['payload.blob', 'meta.arg'],
+      },
+    }),
 })
 
 export default store

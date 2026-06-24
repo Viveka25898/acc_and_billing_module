@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const ExpenseUploadForm = ({ onSubmit, onError }) => {
+const ExpenseUploadForm = ({ onSubmit, onError, isSubmitting = false }) => {
   const [attachments, setAttachments] = useState([{ id: 1, file: null }]);
   const [totalSize, setTotalSize] = useState(0); // Track total size in bytes
   const excelRef = useRef(null);
@@ -124,83 +124,109 @@ const ExpenseUploadForm = ({ onSubmit, onError }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6">
-      {/* Excel File Upload */}
-      <div className="mb-6">
-        <label className="block font-medium mb-1">Excel File (.xls/.xlsx) - Max 1MB</label>
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          ref={excelRef}
-          className="w-full border p-2 rounded"
-          required
-        />
-      </div>
-
-      {/* Attachments */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <label className="block font-medium">
-            Attachments (Bills/Receipts) - Max 1MB each
-          </label>
-          <span className="text-sm text-gray-600">
-            Total: {formatFileSize(totalSize)} / {formatFileSize(MAX_TOTAL_SIZE)}
-          </span>
-        </div>
-        
-        {attachments.map((item, index) => (
-          <div key={item.id} className="flex items-center gap-2 mb-2">
-            <input
-              type="file"
-              ref={(el) => (attachmentRefs.current[index] = el)}
-              onChange={(e) => handleAttachmentChange(index, e.target.files[0])}
-              className="flex-1 border p-2 rounded"
-              required={index === 0}
-            />
-            {item.file && (
-              <span className="text-xs text-gray-500">
-                {formatFileSize(item.file.size)}
-              </span>
-            )}
-            
-            <div className="flex gap-1">
-              {attachments.length < 10 && (
-                <button
-                  type="button"
-                  onClick={addAttachmentField}
-                  className="text-white bg-green-600 px-2 py-1 rounded text-sm"
-                  title="Add another attachment"
-                >
-                  +
-                </button>
-              )}
-              {attachments.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeAttachmentField(index)}
-                  className="text-white bg-red-600 px-2 py-1 rounded text-sm"
-                  title="Remove this attachment"
-                >
-                  -
-                </button>
-              )}
-            </div>
+    <form onSubmit={handleSubmit} className="w-full p-4 sm:p-6 space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column: Excel File Upload */}
+        <div className="bg-gray-50/50 border border-gray-200/60 rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[160px]">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+              📊 Excel File (.xls/.xlsx) - Max 1MB
+            </label>
+            <p className="text-xs text-gray-500 mb-4">
+              Upload the formatted Excel sheet containing your expense ledger lines.
+            </p>
           </div>
-        ))}
-        
-        <p className="text-sm text-gray-600 mt-2">
-          Maximum 10 attachments allowed (10MB total)
-        </p>
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            ref={excelRef}
+            className="w-full border border-gray-200 bg-white px-3 py-2.5 rounded-xl text-sm file:mr-4 file:py-1.5 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
+            required
+            disabled={isSubmitting}
+          />
+        </div>
+
+        {/* Right Column: Attachments */}
+        <div className="bg-gray-50/50 border border-gray-200/60 rounded-2xl p-5 shadow-sm">
+          <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+            <label className="block text-sm font-bold text-gray-700 flex items-center gap-1.5">
+              📎 Attachments (Max 1MB each)
+            </label>
+            <span className="text-xs font-semibold text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-100 shadow-sm shrink-0">
+              Total: {formatFileSize(totalSize)} / {formatFileSize(MAX_TOTAL_SIZE)}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">
+            Upload supporting receipts/bills (Max 10 files allowed).
+          </p>
+          
+          <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+            {attachments.map((item, index) => (
+              <div key={item.id} className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={(el) => (attachmentRefs.current[index] = el)}
+                  onChange={(e) => handleAttachmentChange(index, e.target.files[0])}
+                  className="flex-1 border border-gray-200 bg-white px-3 py-2 rounded-xl text-sm file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  required={index === 0}
+                  disabled={isSubmitting}
+                />
+                {item.file && (
+                  <span className="text-xs font-medium text-gray-500 bg-gray-150 px-2 py-0.5 rounded shrink-0">
+                    {formatFileSize(item.file.size)}
+                  </span>
+                )}
+                
+                <div className="flex gap-1 shrink-0">
+                  {attachments.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={addAttachmentField}
+                      className="text-white bg-green-600 hover:bg-green-700 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition active:scale-95 flex items-center justify-center w-7 h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Add another attachment"
+                      disabled={isSubmitting}
+                    >
+                      +
+                    </button>
+                  )}
+                  {attachments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeAttachmentField(index)}
+                      className="text-white bg-red-500 hover:bg-red-650 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition active:scale-95 flex items-center justify-center w-7 h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Remove this attachment"
+                      disabled={isSubmitting}
+                    >
+                      -
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Submit */}
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded disabled:bg-gray-400"
-        disabled={totalSize > MAX_TOTAL_SIZE}
-      >
-        Submit to Line Manager
-      </button>
+      <div className="pt-4 border-t border-gray-100">
+        <button
+          type="submit"
+          className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-650 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition transform active:scale-[0.99] disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+          disabled={isSubmitting || totalSize > MAX_TOTAL_SIZE}
+        >
+          {isSubmitting ? (
+            <>
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Uploading Settlement...</span>
+            </>
+          ) : (
+            <span>Submit Settlement Request</span>
+          )}
+        </button>
+      </div>
     </form>
   );
 };
