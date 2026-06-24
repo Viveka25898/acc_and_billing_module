@@ -6,27 +6,27 @@ import { loginUser } from "./services/authService";
 // This maps them to our kebab-case frontend ROLE_ROUTES keys
 const BACKEND_ROLE_MAP = {
   // ─── Existing Roles ────────────────────────────────────────
-  'EMPLOYEE':             'employee',
-  'LINE_MANAGER':         'line-manager',
-  'VP_OPS':               'vp-operations',
-  'VP_OPERATIONS':        'vp-operations',
-  'SUPERVISOR':           'supervisor',
-  'MANAGER':              'manager',
-  'PH':                   'ph',
-  'VENDOR':               'vendor',
-  'AE':                   'ae',
-  'ACCOUNT_EXECUTIVE':    'ae',
-  'COMPLIANCE_TEAM':      'compliance-team',
-  'COMPLIANCE_MANAGER':   'compliance-manager',
-  'PAYROLL_TEAM':         'payroll-team',
-  'FINANCIAL_HEAD':       'financial-head',
-  'BILLING_MANAGER':      'billing-manager',
-  'OPERATION_EXECUTIVE':  'operation-executive',
-  'ACCOUNT_MANAGER':      'account-manager',
+  'EMPLOYEE': 'employee',
+  'LINE_MANAGER': 'line-manager',
+  'VP_OPS': 'vp-operations',
+  'VP_OPERATIONS': 'vp-operations',
+  'SUPERVISOR': 'supervisor',
+  'MANAGER': 'manager',
+  'PH': 'ph',
+  'VENDOR': 'vendor',
+  'AE': 'ae',
+  'ACCOUNT_EXECUTIVE': 'ae',
+  'COMPLIANCE_TEAM': 'compliance-team',
+  'COMPLIANCE_MANAGER': 'compliance-manager',
+  'PAYROLL_TEAM': 'payroll-team',
+  'FINANCIAL_HEAD': 'financial-head',
+  'BILLING_MANAGER': 'billing-manager',
+  'OPERATION_EXECUTIVE': 'operation-executive',
+  'ACCOUNT_MANAGER': 'account-manager',
   // ─── New Roles (Advance Request Hierarchy) ──────────────────
-  'OPERATION_MANAGER':    'operation-manager',
-  'REGIONAL_HEAD':        'regional-head',
-  'AVP_OPERATIONS':       'avp-operations',
+  'OPERATION_MANAGER': 'operation-manager',
+  'REGIONAL_HEAD': 'regional-head',
+  'AVP_OPERATIONS': 'avp-operations',
 }
 
 const mapBackendRoleToFrontend = (backendRole) => {
@@ -77,22 +77,22 @@ const safeSaveJSON = (key, value) => {
 
 // ─── Rehydrate State from localStorage ───────────────────────────────────────
 // On app startup/refresh, restore auth state so user doesn't get logged out
-const storedToken        = safeGetItem('token')
+const storedToken = safeGetItem('token')
 const storedRefreshToken = safeGetItem('refreshToken')
-const storedUser         = safeGetJSON('user')
+const storedUser = safeGetJSON('user')
 
 // ─── Initial State ──────────────────────────────────────────────────────────
 const initialState = {
-  user:            storedUser,                        // { email, role, empName, empId, region }
-  role:            storedUser?.role        ? mapBackendRoleToFrontend(storedUser.role) : null,   // active role string (kebab-case)
-  token:           storedToken             || null,   // JWT access_token
-  refreshToken:    storedRefreshToken      || null,   // JWT refresh_token
-  empName:         storedUser?.empName     || null,   // e.g. "Meena Pillai" — for form pre-fill
-  empId:           storedUser?.empId       || null,   // e.g. "EMP0000011" — for form pre-fill
-  region:          storedUser?.region      || null,   // e.g. "WEST" — for region-based filtering
+  user: storedUser,                        // { email, role, empName, empId, region }
+  role: storedUser?.role ? mapBackendRoleToFrontend(storedUser.role) : null,   // active role string (kebab-case)
+  token: storedToken || null,   // JWT access_token
+  refreshToken: storedRefreshToken || null,   // JWT refresh_token
+  empName: storedUser?.empName || null,   // e.g. "Meena Pillai" — for form pre-fill
+  empId: storedUser?.empId || null,   // e.g. "EMP0000011" — for form pre-fill
+  region: storedUser?.region || null,   // e.g. "WEST" — for region-based filtering
   isAuthenticated: !!storedToken,                     // true when token exists
-  loading:         false,                             // disables button, shows spinner
-  error:           null,                              // red error banner on LoginForm
+  loading: false,                             // disables button, shows spinner
+  error: null,                              // red error banner on LoginForm
 }
 
 // ─── Async Thunk: Login User ────────────────────────────────────────────────
@@ -105,16 +105,16 @@ export const loginUserThunk = createAsyncThunk(
       // Role comes directly from API — no need to decode JWT
 
       // Role priority: user-selected dropdown > API response role
-      const apiRole   = mapBackendRoleToFrontend(data.role)
+      const apiRole = mapBackendRoleToFrontend(data.role)
       const finalRole = role || apiRole  // dropdown value overrides if selected
 
       return {
-        access_token:  data.access_token,
+        access_token: data.access_token,
         refresh_token: data.refresh_token,
-        role:          finalRole,
-        emp_name:      data.emp_name,
-        emp_id:        data.emp_id,
-        region:        data.region,
+        role: finalRole,
+        emp_name: data.emp_name,
+        emp_id: data.emp_id,
+        region: data.region,
         email,
       }
     } catch (error) {
@@ -140,15 +140,15 @@ const authSlice = createSlice({
   reducers: {
     // ─── Logout Reducer ─────────────────────────────────────────────────────
     logout: (state) => {
-      state.user            = null
-      state.role            = null
-      state.token           = null
-      state.refreshToken    = null
-      state.empName         = null
-      state.empId           = null
-      state.region          = null
+      state.user = null
+      state.role = null
+      state.token = null
+      state.refreshToken = null
+      state.empName = null
+      state.empId = null
+      state.region = null
       state.isAuthenticated = false
-      state.error           = null
+      state.error = null
       localStorage.removeItem('token')
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('user')
@@ -166,7 +166,7 @@ const authSlice = createSlice({
       // ──── Login Pending ──────────────────────────────────────────────────
       .addCase(loginUserThunk.pending, (state) => {
         state.loading = true
-        state.error   = null
+        state.error = null
       })
 
       // ──── Login Fulfilled ────────────────────────────────────────────────
@@ -181,16 +181,16 @@ const authSlice = createSlice({
           region,
         } = action.payload
 
-        state.loading         = false
-        state.token           = access_token
-        state.refreshToken    = refresh_token
-        state.role            = role
-        state.empName         = emp_name
-        state.empId           = emp_id
-        state.region          = region
-        state.user            = { email, role, empName: emp_name, empId: emp_id, region }
+        state.loading = false
+        state.token = access_token
+        state.refreshToken = refresh_token
+        state.role = role
+        state.empName = emp_name
+        state.empId = emp_id
+        state.region = region
+        state.user = { email, role, empName: emp_name, empId: emp_id, region }
         state.isAuthenticated = true
-        state.error           = null
+        state.error = null
 
         // ─── Persist to localStorage (safely) ─────────────────────────────
         try { localStorage.setItem('token', access_token) } catch { console.warn('[Auth] Could not save token') }
@@ -200,15 +200,15 @@ const authSlice = createSlice({
 
       // ──── Login Rejected ─────────────────────────────────────────────────
       .addCase(loginUserThunk.rejected, (state, action) => {
-        state.loading         = false
-        state.error           = action.payload  // Error message from authService/axiosInstance
-        state.user            = null
-        state.role            = null
-        state.token           = null
-        state.refreshToken    = null
-        state.empName         = null
-        state.empId           = null
-        state.region          = null
+        state.loading = false
+        state.error = action.payload  // Error message from authService/axiosInstance
+        state.user = null
+        state.role = null
+        state.token = null
+        state.refreshToken = null
+        state.empName = null
+        state.empId = null
+        state.region = null
         state.isAuthenticated = false
       })
   }
@@ -217,18 +217,18 @@ const authSlice = createSlice({
 export const { logout, clearError } = authSlice.actions
 
 // ─── Selectors ───────────────────────────────────────────────────────────────
-export const selectUser            = (state) => state.auth.user
-export const selectRole            = (state) => state.auth.role
-export const selectToken           = (state) => state.auth.token
+export const selectUser = (state) => state.auth.user
+export const selectRole = (state) => state.auth.role
+export const selectToken = (state) => state.auth.token
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated
-export const selectAuthLoading     = (state) => state.auth.loading
-export const selectAuthError       = (state) => state.auth.error
+export const selectAuthLoading = (state) => state.auth.loading
+export const selectAuthError = (state) => state.auth.error
 // ─── New selectors — used by advance request forms and other components ───────
-export const selectEmpName         = (state) => state.auth.empName
-export const selectEmpId           = (state) => state.auth.empId
-export const selectRegion          = (state) => state.auth.region
-export const selectRefreshToken    = (state) => state.auth.refreshToken
+export const selectEmpName = (state) => state.auth.empName
+export const selectEmpId = (state) => state.auth.empId
+export const selectRegion = (state) => state.auth.region
+export const selectRefreshToken = (state) => state.auth.refreshToken
 // ─── Composite — for components that need full auth context ───────────────────
-export const selectAuthContext     = (state) => state.auth.user
+export const selectAuthContext = (state) => state.auth.user
 
 export default authSlice.reducer

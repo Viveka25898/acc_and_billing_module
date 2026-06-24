@@ -1069,9 +1069,8 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
               filteredAccounts.map((account, index) => (
                 <tr
                   key={account.id || index}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                    account.type === 'ROOT' ? 'bg-blue-50' : ''
-                  } ${account.type === 'ACCOUNT' ? 'hover:bg-indigo-50' : ''}`}
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${account.type === 'ROOT' ? 'bg-blue-50' : ''
+                    } ${account.type === 'ACCOUNT' ? 'hover:bg-indigo-50' : ''}`}
                   onClick={() => handleRowClick(account)}
                 >
                   <td className="py-3 px-6 text-sm">
@@ -1104,8 +1103,7 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                       >
                         <span className="text-lg">{getTypeIcon(account.type)}</span>
                         <span
-                          className={`text-gray-900 ${
-                            account.type === 'ROOT'
+                          className={`text-gray-900 ${account.type === 'ROOT'
                               ? 'font-bold text-blue-900'
                               : account.type === 'FOLDER'
                                 ? 'font-medium'
@@ -1116,7 +1114,7 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                                     : account.type === 'ACCOUNT_TYPE'
                                       ? 'font-medium text-purple-700'
                                       : ''
-                          }`}
+                            }`}
                         >
                           {account.name}
                         </span>
@@ -1151,13 +1149,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
                       </div>
                     ) : (
                       <span
-                        className={`font-mono font-medium ${
-                          balances[account.code] > 0
+                        className={`font-mono font-medium ${balances[account.code] > 0
                             ? 'text-green-700'
                             : balances[account.code] < 0
                               ? 'text-red-700'
                               : 'text-gray-600'
-                        }`}
+                          }`}
                       >
                         {formatBalance(balances[account.code])}
                       </span>

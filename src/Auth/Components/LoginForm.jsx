@@ -11,33 +11,33 @@ import { loginUserThunk } from "../authSlice"
 // Maps each frontend role to its dashboard path after login
 const ROLE_ROUTES = {
   // ─── Level 1 — All route to Employee Dashboard ────────────────────────
-  'employee':            '/dashboard/employee',   // backward compat
+  'employee': '/dashboard/employee',   // backward compat
   'operation-executive': '/dashboard/employee',
-  'operation-manager':   '/dashboard/employee',
-  'supervisor':          '/dashboard/employee',   // region-based supervisor
+  'operation-manager': '/dashboard/employee',
+  'supervisor': '/dashboard/employee',   // region-based supervisor
   // ─── Level 2 ──────────────────────────────────────────────────────────
-  'regional-head':       '/dashboard/regional-head',
+  'regional-head': '/dashboard/regional-head',
   // ─── Level 3 ──────────────────────────────────────────────────────────
-  'avp-operations':      '/dashboard/avp-operations',
-  'avp_operations':      '/dashboard/avp-operations',
-  'AVP_OPERATIONS':      '/dashboard/avp-operations',
+  'avp-operations': '/dashboard/avp-operations',
+  'avp_operations': '/dashboard/avp-operations',
+  'AVP_OPERATIONS': '/dashboard/avp-operations',
   // ─── Unchanged Roles ──────────────────────────────────────────────────
-  'line-manager':        '/dashboard/line-manager',
-  'vp-operations':       '/dashboard/vp-operations',
-  'vp_operations':       '/dashboard/vp-operations',
-  'VP_OPERATIONS':       '/dashboard/vp-operations',
-  'manager':             '/dashboard/manager',
-  'ph':                  '/dashboard/ph',
-  'vendor':              '/dashboard/vendor',
-  'ae':                  '/dashboard/ae',
-  'account-executive':   '/dashboard/ae',
-  'ACCOUNT_EXECUTIVE':   '/dashboard/ae',
-  'compliance-team':     '/dashboard/compliance-team',
-  'compliance-manager':  '/dashboard/compliance-manager',
-  'payroll-team':        '/dashboard/payroll-team',
-  'financial-head':      '/dashboard/financial-head',
-  'billing-manager':     '/dashboard/billing-manager',
-  'account-manager':     '/dashboard/account-manager',
+  'line-manager': '/dashboard/line-manager',
+  'vp-operations': '/dashboard/vp-operations',
+  'vp_operations': '/dashboard/vp-operations',
+  'VP_OPERATIONS': '/dashboard/vp-operations',
+  'manager': '/dashboard/manager',
+  'ph': '/dashboard/ph',
+  'vendor': '/dashboard/vendor',
+  'ae': '/dashboard/ae',
+  'account-executive': '/dashboard/ae',
+  'ACCOUNT_EXECUTIVE': '/dashboard/ae',
+  'compliance-team': '/dashboard/compliance-team',
+  'compliance-manager': '/dashboard/compliance-manager',
+  'payroll-team': '/dashboard/payroll-team',
+  'financial-head': '/dashboard/financial-head',
+  'billing-manager': '/dashboard/billing-manager',
+  'account-manager': '/dashboard/account-manager',
 }
 
 /**
