@@ -199,7 +199,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                 <td className="p-2 border">₹{req.amount}</td>
                 <td className="p-2 border">{req.requestDate}</td>
                 <td className="p-3 border">
-                   ₹{(getEmployeeOSBalance(req.employeeId) || 0).toFixed(2)}
+                   ₹{(req.osBalance != null ? req.osBalance : (getEmployeeOSBalance(req.employeeId) || 0)).toFixed(2)}
                 </td>
                 <td className="p-2 border">
                   <button 

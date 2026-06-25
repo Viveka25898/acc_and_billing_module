@@ -4,6 +4,7 @@ import { FaEye } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import ManagerFilter from './ManagerFilter'
+import ReasonModal from './Components/ReasonModal'
 import {
   fetchManagerApprovalRequests,
   managerApprove,
@@ -218,7 +219,7 @@ const ManagerApproval = () => {
                         <td className="px-4 py-3">
                           {formattedReason ? (
                             <button
-                              onClick={() => setModalData({ formattedReason })}
+                              onClick={() => setModalData(req)}
                               className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full hover:bg-green-100 transition"
                             >
                               <FaEye className="text-xs" /> View
@@ -318,22 +319,11 @@ const ManagerApproval = () => {
 
       {/* Reason View Modal */}
       {modalData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">📋 Request Reason</h3>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-gray-700 text-sm">{modalData.formattedReason}</p>
-            </div>
-            <div className="text-right mt-5">
-              <button
-                onClick={() => setModalData(null)}
-                className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReasonModal
+          reason={modalData.reason || modalData.reasons}
+          customReason={modalData.customReason}
+          onClose={() => setModalData(null)}
+        />
       )}
 
       {/* Reject Modal */}

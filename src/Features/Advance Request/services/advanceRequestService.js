@@ -261,7 +261,7 @@ export const submitAdvanceRequest = async (payload) => {
   // ── Build API Payload (snake_case — matches Postman) ─────────────────────
   const apiPayload = {
     amount,
-    reasons: reasons.map(toAdvanceReasonCode),
+    reasons,
     custom_reason: customReason,
     request_date:  requestDate,
   }
@@ -426,10 +426,16 @@ export const fetchManagerApprovalRequests = async () => {
   const requests = data.data.map((item) => ({
     id:           item.id,
     requestId:    item.request_id,
+    employeeId:   item.employee_id,
     employeeName: item.employee_name,
     amount:       item.amount,
     status:       item.status,
     region:       item.region,
+    requestDate:  item.request_date || '',
+    osBalance:    item.os_balance || 0,
+    reason:       item.reasons || [],
+    reasons:      item.reasons || [],
+    customReason: item.custom_reason || '',
   }))
 
   return { requests }
@@ -510,10 +516,16 @@ export const fetchAVPApprovalRequests = async () => {
   const requests = data.data.map((item) => ({
     id:           item.id,
     requestId:    item.request_id,
+    employeeId:   item.employee_id,
     employeeName: item.employee_name,
     amount:       item.amount,
     status:       item.status,
     region:       item.region,
+    requestDate:  item.request_date || '',
+    osBalance:    item.os_balance || 0,
+    reason:       item.reasons || [],
+    reasons:      item.reasons || [],
+    customReason: item.custom_reason || '',
   }))
 
   return { requests }
@@ -592,11 +604,13 @@ export const fetchVPApprovalRequests = async () => {
   const requests = data.data.map((item) => ({
     id:           item.id,
     requestId:    item.request_id,
+    employeeId:   item.employee_id,
     employeeName: item.employee_name,
     amount:       item.amount,
     status:       item.status,
     region:       item.region,
     reasons:      item.reasons || [],
+    reason:       item.reasons || [],
     customReason: item.custom_reason || '',
     requestDate:  item.request_date || '',
     osBalance:    item.os_balance || 0,

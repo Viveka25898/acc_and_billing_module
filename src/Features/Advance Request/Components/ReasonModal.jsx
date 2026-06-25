@@ -32,12 +32,38 @@ export default function ReasonModal({
             </div>
           )}
 
-          {reason && reason !== 'Other' && (
-            <div>
-              <h3 className="font-medium text-gray-700 mb-1">Reason</h3>
-              <p className="text-gray-700 bg-gray-50 p-3 rounded">{reason}</p>
-            </div>
-          )}
+          {(() => {
+            let list = [];
+            if (Array.isArray(reason)) {
+              list = reason;
+            } else if (typeof reason === 'string' && reason.trim()) {
+              const trimmed = reason.trim();
+              if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                try {
+                  list = JSON.parse(trimmed);
+                } catch (_) {
+                  list = [trimmed];
+                }
+              } else {
+                list = trimmed.split(',').map((r) => r.trim());
+              }
+            } else if (reason) {
+              list = [String(reason)];
+            }
+
+            const displayReason = list
+              .filter((r) => r && r !== 'Other' && r !== customReason)
+              .join(', ');
+
+            if (!displayReason) return null;
+
+            return (
+              <div>
+                <h3 className="font-medium text-gray-700 mb-1">Reason</h3>
+                <p className="text-gray-700 bg-gray-50 p-3 rounded">{displayReason}</p>
+              </div>
+            );
+          })()}
 
           {customReason && (
             <div>
