@@ -81,7 +81,7 @@ export const normalizeSettlement = (raw) => {
 
     // Clarification
     clarification:         raw.clarification_text     || raw.clarification      || null,
-    clarificationAt:       raw.clarification_at       || null,
+    clarificationAt:       raw.clarification_submitted_at || raw.clarification_at || null,
 
     // Rejection
     rejectionReason:       raw.rejection_reason       || raw.rejectionReason    || null,

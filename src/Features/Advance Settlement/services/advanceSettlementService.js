@@ -39,26 +39,27 @@ import {
 
 // ─── Configuration ─────────────────────────────────────────────────────────────
 const SETTLEMENT_API = {
-  BASE:          '/accounts/advance-settlements',
-  MY:            '/accounts/advance-settlements/my-settlements',
-  TEMPLATE:      '/accounts/advance-settlements/download-template',
-  OS_BALANCE:    (employeeId) => `/accounts/employees/${employeeId}/os-balance`,
-  DETAIL:        (id) => `/accounts/advance-settlements/${id}`,
-  RH_QUEUE:      '/accounts/advance-settlements/regional-head/queue',
-  RH_APPROVE:    (id) => `/accounts/advance-settlements/${id}/regional-head/approve`,
-  RH_REJECT:     (id) => `/accounts/advance-settlements/${id}/regional-head/reject`,
-  AVP_QUEUE:     '/accounts/advance-settlements/avp/queue',
-  AVP_APPROVE:   (id) => `/accounts/advance-settlements/${id}/avp/approve`,
-  AVP_REJECT:    (id) => `/accounts/advance-settlements/${id}/avp/reject`,
-  VP_QUEUE:      '/accounts/advance-settlements/vp/queue',
-  VP_APPROVE:    (id) => `/accounts/advance-settlements/${id}/vp/approve`,
-  VP_REJECT:     (id) => `/accounts/advance-settlements/${id}/vp/reject`,
-  AE_QUEUE:      '/accounts/advance-settlements/ae/queue',
-  AE_APPROVE:    (id) => `/accounts/advance-settlements/${id}/ae/approve`,
-  AE_REJECT:     (id) => `/accounts/advance-settlements/${id}/ae/reject`,
-  AM_QUEUE:      '/accounts/advance-settlements/am/queue',
-  AM_APPROVE:    (id) => `/accounts/advance-settlements/${id}/am/approve`,
-  AM_REJECT:     (id) => `/accounts/advance-settlements/${id}/am/reject`,
+  BASE:            '/accounts/advance-settlements',
+  MY:              '/accounts/advance-settlements/my-settlements',
+  TEMPLATE:        '/accounts/advance-settlements/download-template',
+  OS_BALANCE:      (employeeId) => `/accounts/employees/${employeeId}/os-balance`,
+  DETAIL:          (id) => `/accounts/advance-settlements/${id}`,
+  CLARIFICATION:   (id) => `/accounts/advance-settlements/${id}/clarification`,
+  RH_QUEUE:        '/accounts/advance-settlements/regional-head/queue',
+  RH_APPROVE:      (id) => `/accounts/advance-settlements/${id}/regional-head/approve`,
+  RH_REJECT:       (id) => `/accounts/advance-settlements/${id}/regional-head/reject`,
+  AVP_QUEUE:       '/accounts/advance-settlements/avp/queue',
+  AVP_APPROVE:     (id) => `/accounts/advance-settlements/${id}/avp/approve`,
+  AVP_REJECT:      (id) => `/accounts/advance-settlements/${id}/avp/reject`,
+  VP_QUEUE:        '/accounts/advance-settlements/vp/queue',
+  VP_APPROVE:      (id) => `/accounts/advance-settlements/${id}/vp/approve`,
+  VP_REJECT:       (id) => `/accounts/advance-settlements/${id}/vp/reject`,
+  AE_QUEUE:        '/accounts/advance-settlements/ae/queue',
+  AE_APPROVE:      (id) => `/accounts/advance-settlements/${id}/ae/approve`,
+  AE_REJECT:       (id) => `/accounts/advance-settlements/${id}/ae/reject`,
+  AM_QUEUE:        '/accounts/advance-settlements/am/queue',
+  AM_APPROVE:      (id) => `/accounts/advance-settlements/${id}/am/approve`,
+  AM_REJECT:       (id) => `/accounts/advance-settlements/${id}/am/reject`,
 }
 
 // ─── Internal Helpers ──────────────────────────────────────────────────────────
@@ -403,6 +404,58 @@ export const fetchSettlementById = async (settlementId) => {
   if (!settlement) throw new Error('Invalid settlement data received from server.')
 
   return settlement
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1F. SUBMIT CLARIFICATION
+//     POST /advance-settlements/{settlementId}/clarification
+//     Auth: Bearer JWT (employee who owns the rejected settlement)
+//     Body: { clarification: string (min 20 chars) }
+//     Response: { success, message, data: { full settlement object } }
+//
+//     Business Rules:
+//       - Only allowed when settlement status is REJECTED
+//       - Clarification text must be ≥ 20 characters
+//       - After submission, status reverts to the previous pending level (e.g. PENDING_REGIONAL_HEAD)
+// ─────────────────────────────────────────────────────────────────────────────
+export const submitClarification = async (settlementId, clarificationText) => {
+  // ── Client-side validation ─────────────────────────────────────────────────
+  if (!settlementId || typeof settlementId !== 'string' || !settlementId.trim()) {
+    throw new Error('Settlement ID is required to submit a clarification.')
+  }
+  if (!clarificationText || typeof clarificationText !== 'string' || !clarificationText.trim()) {
+    throw new Error('Clarification text cannot be empty.')
+  }
+  const trimmed = clarificationText.trim()
+  if (trimmed.length < 20) {
+    throw new Error(`Clarification must be at least 20 characters (currently ${trimmed.length}).`)
+  }
+
+  // ── API Call ───────────────────────────────────────────────────────────────
+  const res = await axiosInstance.post(
+    SETTLEMENT_API.CLARIFICATION(settlementId.trim()),
+    { clarification: trimmed }
+  )
+  const data = res.data
+
+  // ── Response Validation ────────────────────────────────────────────────────
+  if (!data) throw new Error('Empty response from server after submitting clarification.')
+  if (data.success === false) {
+    throw new Error(data.message || 'Failed to submit clarification. Please try again.')
+  }
+
+  // ── Normalize & Return ─────────────────────────────────────────────────────
+  const rawSettlement = data.data ?? data
+  const updated = normalizeSettlement(rawSettlement)
+
+  return {
+    success:      true,
+    message:      data.message || 'Clarification submitted successfully.',
+    settlementId: updated?.settlementId ?? settlementId.trim(),
+    status:       updated?.status ?? null,
+    updated,
+  }
 }
 
 

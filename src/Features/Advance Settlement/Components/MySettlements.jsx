@@ -7,6 +7,7 @@ import { toast } from 'react-toastify'
 import {
   fetchMySettlements,
   fetchOsBalance,
+  submitClarification,
   setFilters,
   resetFilters,
 } from '../../../store/slices/advanceSettlementSlice'
@@ -18,6 +19,8 @@ import {
   selectOsBalanceLoading,
   selectMySettlementsPagination,
   selectSettlementFilters,
+  selectClarificationLoading,
+  selectClarificationError,
 } from '../../../store/slices/advanceSettlementSlice'
 
 // ── Auth Selectors ────────────────────────────────────────────────────────────
@@ -25,7 +28,6 @@ import { selectEmpId } from '../../../Auth/authSlice'
 
 // ── Constants & Helpers ───────────────────────────────────────────────────────
 import { getStatusLabel, getStatusColor, SETTLEMENT_STATUS } from '../utils/settlementConstants'
-
 import RejectionReasonModal from './RejectionReasonModal'
 
 // ─── Filter Status Options ────────────────────────────────────────────────────
@@ -35,6 +37,140 @@ const STATUS_OPTIONS = [
   { label: 'Approved', value: SETTLEMENT_STATUS.APPROVED },
   { label: 'Rejected', value: SETTLEMENT_STATUS.REJECTED },
 ]
+
+// ─── Clarification Modal Config ───────────────────────────────────────────────
+const CLAR_MIN_CHARS = 20
+const CLAR_MAX_CHARS = 1000
+
+// ─── Clarification Modal Component ───────────────────────────────────────────
+const ClarificationModal = ({ isOpen, settlement, isSubmitting, onSubmit, onClose }) => {
+  const [text, setText] = useState('')
+
+  // Reset textarea each time the modal is opened for a new settlement
+  useEffect(() => {
+    if (isOpen) setText('')
+  }, [isOpen, settlement?.settlementId])
+
+  if (!isOpen || !settlement) return null
+
+  const charCount = text.trim().length
+  const isValid   = charCount >= CLAR_MIN_CHARS
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!isValid || isSubmitting) return
+    onSubmit(text)
+  }
+
+  const handleBackdropClick = (e) => {
+    // Close only if not currently submitting and click is directly on backdrop
+    if (e.target === e.currentTarget && !isSubmitting) onClose()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in">
+
+        {/* ── Header ────────────────────────────────────────────────────────── */}
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            💬 Submit Clarification
+          </h2>
+          <p className="text-amber-100 text-xs mt-0.5 font-mono tracking-wide">
+            {settlement.settlementId || settlement.id}
+          </p>
+        </div>
+
+        <div className="p-6 space-y-4">
+
+          {/* ── Rejection Details Panel ────────────────────────────────────── */}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+            <p className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-2">
+              🚫 Rejection Details
+            </p>
+            {settlement.rejectedBy && (
+              <div className="flex items-start gap-1.5 text-sm">
+                <span className="text-gray-500 font-medium shrink-0">Rejected by:</span>
+                <span className="text-gray-800 font-semibold">{settlement.rejectedBy}</span>
+              </div>
+            )}
+            <p className="text-sm text-gray-800 leading-relaxed">
+              {settlement.rejectionReason || 'No specific reason provided.'}
+            </p>
+          </div>
+
+          {/* ── Clarification Form ─────────────────────────────────────────── */}
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Your Clarification
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value.slice(0, CLAR_MAX_CHARS))}
+                disabled={isSubmitting}
+                placeholder="Provide a detailed clarification addressing the rejection reason. Be specific and include any supporting references or details..."
+                rows={5}
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition disabled:opacity-60 disabled:bg-gray-50 placeholder-gray-400"
+                autoFocus
+              />
+              {/* Character counter row */}
+              <div className="flex justify-between items-center mt-1 px-0.5">
+                <span className={`text-xs font-medium transition-colors ${
+                  charCount === 0
+                    ? 'text-gray-400'
+                    : charCount < CLAR_MIN_CHARS
+                      ? 'text-red-500'
+                      : 'text-green-600'
+                }`}>
+                  {charCount === 0
+                    ? `Minimum ${CLAR_MIN_CHARS} characters required`
+                    : charCount < CLAR_MIN_CHARS
+                      ? `${CLAR_MIN_CHARS - charCount} more character${CLAR_MIN_CHARS - charCount !== 1 ? 's' : ''} needed`
+                      : `✓ Minimum met`
+                  }
+                </span>
+                <span className={`text-xs ${charCount > CLAR_MAX_CHARS * 0.9 ? 'text-amber-600' : 'text-gray-400'}`}>
+                  {charCount}/{CLAR_MAX_CHARS}
+                </span>
+              </div>
+            </div>
+
+            {/* ── Action Buttons ─────────────────────────────────────────── */}
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="flex-1 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!isValid || isSubmitting}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Clarification'
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── FilterBar Component ──────────────────────────────────────────────────────
 const FilterBar = ({ selectedStatus, onStatusChange, selectedDate, onDateChange, loading }) => (
@@ -68,7 +204,7 @@ const FilterBar = ({ selectedStatus, onStatusChange, selectedDate, onDateChange,
 // ─── Skeleton Row ─────────────────────────────────────────────────────────────
 const SkeletonRow = () => (
   <tr className="animate-pulse">
-    {[...Array(5)].map((_, i) => (
+    {[...Array(6)].map((_, i) => (
       <td key={i} className="p-3 border">
         <div className="h-4 bg-gray-200 rounded w-full" />
       </td>
@@ -78,9 +214,7 @@ const SkeletonRow = () => (
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => (
-  <span
-    className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}
-  >
+  <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>
     {getStatusLabel(status)}
   </span>
 )
@@ -98,6 +232,7 @@ const MySettlements = () => {
   const error         = useSelector(selectMySettlementsError)
   const pagination    = useSelector(selectMySettlementsPagination)
   const filters       = useSelector(selectSettlementFilters)
+  const isClarifying  = useSelector(selectClarificationLoading)
 
   // ── Local UI State ───────────────────────────────────────────────────────────
   const [selectedReason, setSelectedReason]   = useState('')
@@ -106,7 +241,11 @@ const MySettlements = () => {
   const [localDate, setLocalDate]             = useState('')
   const [currentPage, setCurrentPage]         = useState(1)
 
-  const osBalance = osBalanceData?.osBalance ?? 0
+  // ── Clarification Modal State ─────────────────────────────────────────────
+  const [clarModalOpen, setClarModalOpen]         = useState(false)
+  const [clarSettlement, setClarSettlement]       = useState(null)
+
+  const osBalance   = osBalanceData?.osBalance ?? 0
   const rowsPerPage = 10
 
   // ─── Fetch data on mount ───────────────────────────────────────────────────
@@ -150,9 +289,52 @@ const MySettlements = () => {
   const calculateTotalAmount = (expenseItems = []) =>
     expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
+  // ─── Rejection Reason Modal Handlers ─────────────────────────────────────
   const openModal = (reason) => {
     setSelectedReason(reason || 'No reason provided.')
     setModalOpen(true)
+  }
+
+  // ─── Clarification Modal Handlers ─────────────────────────────────────────
+  const openClarificationModal = (settlement) => {
+    setClarSettlement(settlement)
+    setClarModalOpen(true)
+  }
+
+  const closeClarificationModal = () => {
+    // Prevent closing while API call is in flight
+    if (isClarifying) return
+    setClarModalOpen(false)
+    setClarSettlement(null)
+  }
+
+  const handleClarificationSubmit = async (clarificationText) => {
+    if (!clarSettlement?.settlementId && !clarSettlement?.id) {
+      toast.error('Could not identify the settlement. Please try again.')
+      return
+    }
+
+    const settlementId = clarSettlement.settlementId || clarSettlement.id
+
+    try {
+      await dispatch(
+        submitClarification({ settlementId, clarification: clarificationText })
+      ).unwrap()
+
+      toast.success('✅ Clarification submitted! Your settlement has been sent back for review.')
+      setClarModalOpen(false)
+      setClarSettlement(null)
+
+      // Refresh the settlements list to get the updated status from server
+      setTimeout(() => {
+        dispatch(fetchMySettlements({ page: currentPage, limit: rowsPerPage }))
+      }, 800)
+    } catch (err) {
+      // unwrap() throws the rejectWithValue string on failure
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to submit clarification.'
+      toast.error(`❌ ${msg}`)
+      // Do NOT close modal on error — allow user to fix and retry
+    }
   }
 
   // ─── Pagination controls ─────────────────────────────────────────────────
@@ -179,6 +361,7 @@ const MySettlements = () => {
 
   return (
     <div className="bg-white shadow-md rounded-xl pb-8 overflow-hidden">
+
       {/* Header */}
       <div className="bg-green-50 p-5 border-b border-green-100">
         <h3 className="text-2xl font-bold text-green-700">My Settlement Requests</h3>
@@ -251,10 +434,13 @@ const MySettlements = () => {
                 ? req.totalAmount
                 : calculateTotalAmount(req.expenseItems)
 
+              const isRejected      = req.status === SETTLEMENT_STATUS.REJECTED
+              const hasRejection    = !!req.rejectionReason
+
               return (
                 <tr
                   key={req.settlementId || req.id || idx}
-                  className="hover:bg-gray-50 transition"
+                  className={`hover:bg-gray-50 transition ${isRejected ? 'bg-red-50/30' : ''}`}
                 >
                   {/* Row Number */}
                   <td className="p-3 border text-gray-500 text-xs">
@@ -291,32 +477,57 @@ const MySettlements = () => {
                   {/* Status Badge */}
                   <td className="p-3 border">
                     <StatusBadge status={req.status} />
-                    {req.clarification && req.status === SETTLEMENT_STATUS.CLARIFICATION_REQUESTED && (
-                      <div className="text-xs text-amber-600 mt-1 max-w-[180px]">
-                        ℹ️ {req.clarification.substring(0, 50)}{req.clarification.length > 50 ? '...' : ''}
+                    {req.clarification && (
+                      <div className="text-xs text-amber-600 mt-1 max-w-[180px] leading-snug">
+                        ℹ️ Clarification submitted
                       </div>
                     )}
                   </td>
 
-                  {/* Action Column */}
+                  {/* ── Action Column ─────────────────────────────────────── */}
                   <td className="p-3 border">
-                    {req.rejectionReason && (
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1.5 min-w-[130px]">
+
+                      {/* Eye icon — view rejection reason */}
+                      {hasRejection && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openModal(req.rejectionReason)}
+                            className="text-blue-600 hover:text-blue-800 transition flex items-center gap-1.5"
+                            title="View Rejection Reason"
+                          >
+                            <AiOutlineEye size={18} />
+                            <span className="text-xs text-gray-500">View reason</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Submit Clarification button — only shown for REJECTED settlements */}
+                      {isRejected && (
                         <button
-                          onClick={() => openModal(req.rejectionReason)}
-                          className="text-blue-600 hover:text-blue-800 transition"
-                          title="View Rejection Reason"
+                          onClick={() => openClarificationModal(req)}
+                          disabled={isClarifying}
+                          className="flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 border border-amber-300 px-2.5 py-1.5 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
+                          title="Submit a clarification for this rejected settlement"
                         >
-                          <AiOutlineEye size={20} />
+                          {isClarifying ? (
+                            <>
+                              <span className="inline-block w-3 h-3 border-2 border-amber-400/40 border-t-amber-600 rounded-full animate-spin" />
+                              Submitting...
+                            </>
+                          ) : (
+                            <>💬 Submit Clarification</>
+                          )}
                         </button>
-                        <span className="text-xs text-gray-500">View reason</span>
-                      </div>
-                    )}
-                    {req.expenseItemsCount > 0 && (
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        {req.expenseItemsCount} item(s)
-                      </div>
-                    )}
+                      )}
+
+                      {/* Expense item count (supplementary info) */}
+                      {req.expenseItemsCount > 0 && (
+                        <div className="text-xs text-gray-400">
+                          {req.expenseItemsCount} item(s)
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -364,11 +575,20 @@ const MySettlements = () => {
         </div>
       )}
 
-      {/* Rejection Reason Modal */}
+      {/* ── Rejection Reason Modal ─────────────────────────────────────────── */}
       <RejectionReasonModal
         isOpen={modalOpen}
         reason={selectedReason}
         onClose={() => setModalOpen(false)}
+      />
+
+      {/* ── Clarification Modal ────────────────────────────────────────────── */}
+      <ClarificationModal
+        isOpen={clarModalOpen}
+        settlement={clarSettlement}
+        isSubmitting={isClarifying}
+        onSubmit={handleClarificationSubmit}
+        onClose={closeClarificationModal}
       />
     </div>
   )

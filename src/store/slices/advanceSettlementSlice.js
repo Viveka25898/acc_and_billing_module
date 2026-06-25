@@ -18,7 +18,7 @@
  * ASYNC THUNKS (all backed by advanceSettlementService.js):
  *   fetchOsBalance           | downloadTemplate
  *   submitSettlement         | fetchMySettlements
- *   fetchSettlementById      |
+ *   fetchSettlementById      | submitClarification
  *   fetchRhQueue             | approveRh   | rejectRh
  *   fetchAvpQueue            | approveAvp  | rejectAvp
  *   fetchVpQueue             | approveVp   | rejectVp
@@ -404,6 +404,41 @@ export const rejectAe = createAsyncThunk(
 )
 
 
+// ─── Employee: Submit Clarification ─────────────────────────────────────────
+/**
+ * Allows a rejected employee to provide clarification on their settlement.
+ * On success the settlement status reverts to the previous approval level.
+ * Double-submit guard prevents multiple in-flight requests.
+ */
+export const submitClarification = createAsyncThunk(
+  'advanceSettlement/submitClarification',
+  async ({ settlementId, clarification }, { rejectWithValue }) => {
+    try {
+      if (!settlementId) return rejectWithValue('Settlement ID is required.')
+      if (!clarification?.trim()) return rejectWithValue('Clarification text is required.')
+      const trimmed = clarification.trim()
+      if (trimmed.length < 20) {
+        return rejectWithValue(`Clarification must be at least 20 characters (currently ${trimmed.length}).`)
+      }
+      const result = await service.submitClarification(settlementId, clarification)
+      if (!result?.success) {
+        return rejectWithValue(result?.message || 'Failed to submit clarification.')
+      }
+      return { ...result, settlementId }
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err))
+    }
+  },
+  {
+    // Prevent double-submission if employee clicks submit twice
+    condition: (_, { getState }) => {
+      const { loading } = getState().advanceSettlement
+      if (loading.submitClarification) return false
+    },
+  }
+)
+
+
 // ─── Account Manager: Fetch Queue ────────────────────────────────────────────
 export const fetchAmQueue = createAsyncThunk(
   'advanceSettlement/fetchAmQueue',
@@ -493,26 +528,28 @@ const initialState = {
 
   // ── Per-Thunk Loading Flags ────────────────────────────────────────────────
   loading: {
-    fetchOsBalance:     false,
-    downloadTemplate:   false,
-    submit:             false,
-    fetchMySettlements: false,
-    fetchSettlementById: false,
-    fetchQueue:         false,
-    approve:            false,
-    reject:             false,
+    fetchOsBalance:       false,
+    downloadTemplate:     false,
+    submit:               false,
+    fetchMySettlements:   false,
+    fetchSettlementById:  false,
+    fetchQueue:           false,
+    approve:              false,
+    reject:               false,
+    submitClarification:  false,
   },
 
   // ── Per-Category Error Messages ────────────────────────────────────────────
   errors: {
-    fetchOsBalance:     null,
-    downloadTemplate:   null,
-    submit:             null,
-    fetchMySettlements: null,
-    fetchSettlementById: null,
-    fetchQueue:         null,
-    approve:            null,
-    reject:             null,
+    fetchOsBalance:       null,
+    downloadTemplate:     null,
+    submit:               null,
+    fetchMySettlements:   null,
+    fetchSettlementById:  null,
+    fetchQueue:           null,
+    approve:              null,
+    reject:               null,
+    submitClarification:  null,
   },
 
   // ── Active Filters ─────────────────────────────────────────────────────────
@@ -581,6 +618,31 @@ const advanceSettlementSlice = createSlice({
   },
 
   extraReducers: (builder) => {
+    // ═══════ submitClarification ══════════════════════════════════════════════
+    builder
+      .addCase(submitClarification.pending, (state) => {
+        state.loading.submitClarification = true
+        state.errors.submitClarification = null
+      })
+      .addCase(submitClarification.fulfilled, (state, action) => {
+        state.loading.submitClarification = false
+        state.errors.submitClarification = null
+        // Update the matching settlement in-place so the table reflects the new status
+        // without requiring a full re-fetch (optimistic UI update from server response)
+        const { settlementId, updated } = action.payload || {}
+        if (settlementId && updated) {
+          state.mySettlements = state.mySettlements.map((s) =>
+            s.settlementId === settlementId || s.id === settlementId
+              ? { ...s, ...updated }
+              : s
+          )
+        }
+      })
+      .addCase(submitClarification.rejected, (state, action) => {
+        state.loading.submitClarification = false
+        state.errors.submitClarification = extractErrorMessage(action.payload)
+      })
+
     // ═══════ fetchOsBalance ═══════════════════════════════════════════════════
     builder
       .addCase(fetchOsBalance.pending, (state) => {
@@ -924,12 +986,16 @@ export const selectRejectLoading         = (state) => state.advanceSettlement?.l
 export const selectTemplateLoading       = (state) => state.advanceSettlement?.loading?.downloadTemplate   || false
 
 // ── Granular error selectors ────────────────────────────────────────────────
-export const selectOsBalanceError        = (state) => state.advanceSettlement?.errors?.fetchOsBalance     || null
-export const selectSubmitError           = (state) => state.advanceSettlement?.errors?.submit             || null
-export const selectMySettlementsError    = (state) => state.advanceSettlement?.errors?.fetchMySettlements || null
-export const selectQueueError            = (state) => state.advanceSettlement?.errors?.fetchQueue         || null
-export const selectApproveError          = (state) => state.advanceSettlement?.errors?.approve            || null
-export const selectRejectError           = (state) => state.advanceSettlement?.errors?.reject             || null
+export const selectOsBalanceError         = (state) => state.advanceSettlement?.errors?.fetchOsBalance      || null
+export const selectSubmitError            = (state) => state.advanceSettlement?.errors?.submit              || null
+export const selectMySettlementsError     = (state) => state.advanceSettlement?.errors?.fetchMySettlements  || null
+export const selectQueueError             = (state) => state.advanceSettlement?.errors?.fetchQueue          || null
+export const selectApproveError           = (state) => state.advanceSettlement?.errors?.approve             || null
+export const selectRejectError            = (state) => state.advanceSettlement?.errors?.reject              || null
+export const selectClarificationError     = (state) => state.advanceSettlement?.errors?.submitClarification || null
+
+// ── Clarification loading selector ─────────────────────────────────────────
+export const selectClarificationLoading   = (state) => state.advanceSettlement?.loading?.submitClarification || false
 
 
 export default advanceSettlementSlice.reducer

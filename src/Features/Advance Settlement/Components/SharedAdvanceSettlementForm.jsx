@@ -41,14 +41,14 @@ const SharedAdvanceSettlementForm = ({
   const dispatch = useDispatch()
 
   // ── Redux State ──────────────────────────────────────────────────────────────
-  const empId       = useSelector(selectEmpId)
-  const empName     = useSelector(selectEmpName)
-  const osBalanceData   = useSelector(selectOsBalance)
-  const submitResult    = useSelector(selectSubmitResult)
+  const empId = useSelector(selectEmpId)
+  const empName = useSelector(selectEmpName)
+  const osBalanceData = useSelector(selectOsBalance)
+  const submitResult = useSelector(selectSubmitResult)
   const osBalanceLoading = useSelector(selectOsBalanceLoading)
-  const osBalanceError  = useSelector(selectOsBalanceError)
-  const isSubmitting    = useSelector(selectSubmitLoading)
-  const submitError     = useSelector(selectSubmitError)
+  const osBalanceError = useSelector(selectOsBalanceError)
+  const isSubmitting = useSelector(selectSubmitLoading)
+  const submitError = useSelector(selectSubmitError)
   const templateLoading = useSelector(selectTemplateLoading)
 
   // ── Local State (UI only) ────────────────────────────────────────────────────
@@ -108,16 +108,16 @@ const SharedAdvanceSettlementForm = ({
       const worksheet = workbook.addWorksheet('Advance Expenses')
 
       worksheet.columns = [
-        { header: 'S. No',             key: 'sno',         width: 10 },
-        { header: 'Date (DD/MM/YYYY)', key: 'date',        width: 18 },
-        { header: 'Expense Head',      key: 'expenseHead', width: 25 },
-        { header: 'Description',       key: 'description', width: 45 },
-        { header: 'Amount (₹)',        key: 'amount',      width: 15 },
-        { header: 'Remarks',           key: 'remarks',     width: 30 },
+        { header: 'S. No', key: 'sno', width: 10 },
+        { header: 'Date (DD/MM/YYYY)', key: 'date', width: 18 },
+        { header: 'Expense Head', key: 'expenseHead', width: 25 },
+        { header: 'Description', key: 'description', width: 45 },
+        { header: 'Amount (₹)', key: 'amount', width: 15 },
+        { header: 'Remarks', key: 'remarks', width: 30 },
       ]
 
-      worksheet.getRow(1).font      = { bold: true, color: { argb: 'FFFFFFFF' } }
-      worksheet.getRow(1).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0066CC' } }
+      worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0066CC' } }
       worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 
       for (let i = 1; i <= 20; i++) {
@@ -166,9 +166,9 @@ const SharedAdvanceSettlementForm = ({
       const reader = new FileReader()
       reader.onload = (e) => {
         try {
-          const data     = new Uint8Array(e.target.result)
+          const data = new Uint8Array(e.target.result)
           const workbook = XLSX.read(data, { type: 'array' })
-          const sheet    = workbook.Sheets[workbook.SheetNames[0]]
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
           const jsonData = XLSX.utils.sheet_to_json(sheet)
           const filtered = jsonData.filter(
             (row) => row['S. No'] && row['Amount (₹)'] && Number(row['Amount (₹)']) > 0
