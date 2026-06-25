@@ -1,43 +1,47 @@
-import { useEffect, useState } from 'react'
+import React from 'react'
+import { useSelector } from 'react-redux'
+import { Navigate } from 'react-router-dom'
 import ManagerReview from '../Components/ManagerReview'
-import { useNavigate } from 'react-router-dom'
+import { selectRole, selectIsAuthenticated } from '../../../Auth/authSlice'
 
+// ─── Roles allowed to access this approval page ───────────────────────────────
+const ALLOWED_ROLES = ['regional-head', 'line-manager', 'manager', 'supervisor']
+
+/**
+ * ExpenseRequestsPage
+ * Shell page for the Regional Head / Line Manager settlement approval view.
+ * Auth is handled via Redux (no localStorage reads).
+ * Role check is enforced here — unauthorized roles are redirected.
+ */
 const ExpenseRequestsPage = () => {
-  const [currentUser, setCurrentUser] = useState(null)
-  const navigate = useNavigate()
+  const role            = useSelector(selectRole)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
 
-  useEffect(() => {
-    // Get current user from localStorage
-    const user = JSON.parse(localStorage.getItem('user'))
-    const allUsers = JSON.parse(localStorage.getItem('users')) || []
-    const fullUser = allUsers.find((u) => u.username === user?.username)
+  // ── Not authenticated ────────────────────────────────────────────────────
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
 
-    if (!fullUser) {
-      // Redirect if user not found
-      navigate('/login')
-      return
-    }
+  // ── Role not in allowed list ─────────────────────────────────────────────
+  if (role && !ALLOWED_ROLES.includes(role)) {
+    return <Navigate to="/unauthorized" replace />
+  }
 
-    // Check if user has manager role
-    if (!['line-manager', 'vp-operations', 'account-executive'].includes(fullUser.role)) {
-      navigate('/unauthorized')
-      return
-    }
-
-    setCurrentUser(fullUser)
-  }, [navigate])
-
-  if (!currentUser) {
+  // ── Show loading state while role is being resolved ──────────────────────
+  if (!role) {
     return (
-      <div className="min-h-screen bg-white py-10 px-4 flex items-center justify-center">
-        Loading manager data...
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+          <p className="text-gray-500 text-sm">Loading...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white py-10 px-4">
-      <ManagerReview currentUser={currentUser} />
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <ManagerReview />
     </div>
   )
 }

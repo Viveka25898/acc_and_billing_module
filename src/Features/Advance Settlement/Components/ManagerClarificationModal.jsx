@@ -8,61 +8,112 @@ const ManagerClarificationModal = ({
   onApprove, 
   onReject 
 }) => {
-  if (!isOpen) return null;
+  if (!isOpen || !data) return null;
+
+  const settlementNo = data.settlementId || data.settlement_no || data.id || '—';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">Request Details</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <AiOutlineClose size={20} />
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-green-50 transform scale-100 transition-all duration-300">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-600 to-green-500 px-6 py-4 flex justify-between items-center text-white">
+          <div>
+            <h3 className="text-lg font-bold">Clarification Details</h3>
+            <p className="text-xs text-green-100 mt-0.5 font-mono">Settlement No: {settlementNo}</p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white focus:outline-none"
+            aria-label="Close modal"
+          >
+            <AiOutlineClose size={18} />
           </button>
         </div>
 
-        <div className="space-y-4">
+        {/* Content Body */}
+        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          
           {/* Original Rejection Details */}
           {data.rejectionHistory && (
-            <div className="border-b pb-4">
-              <h4 className="font-semibold text-red-600 mb-2">Original Rejection</h4>
-              <p><span className="font-medium">By:</span> {data.rejectionHistory.by}</p>
-              <p><span className="font-medium">Date:</span> {new Date(data.rejectionHistory.date).toLocaleString()}</p>
-              <p><span className="font-medium">Reason:</span> {data.rejectionHistory.comments || data.rejectionReason}</p>
+            <div className="bg-red-50/70 border border-red-100 rounded-xl p-4 text-sm">
+              <h4 className="font-bold text-red-700 flex items-center gap-1.5 mb-2">
+                <span>❌</span> Original Rejection
+              </h4>
+              <div className="space-y-1.5 text-gray-700">
+                <p><span className="font-semibold text-gray-600">By:</span> {data.rejectionHistory.by || 'Regional Head'}</p>
+                {data.rejectionHistory.date && (
+                  <p>
+                    <span className="font-semibold text-gray-600">Date:</span>{' '}
+                    {new Date(data.rejectionHistory.date).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+                <div className="mt-2 bg-white/80 p-2.5 rounded-lg border border-red-50 font-medium text-red-900 font-sans">
+                  {data.rejectionHistory.comments || 'No comment provided.'}
+                </div>
+              </div>
             </div>
           )}
 
           {/* Clarification Details */}
           {data.clarificationHistory && (
-            <div className="border-b pb-4">
-              <h4 className="font-semibold text-purple-600 mb-2">Clarification Submitted</h4>
-              <p><span className="font-medium">By:</span> {data.clarificationHistory.by}</p>
-              <p><span className="font-medium">Date:</span> {new Date(data.clarificationHistory.date).toLocaleString()}</p>
-              <p><span className="font-medium">Comments:</span> {data.clarificationHistory.comments}</p>
+            <div className="bg-purple-50/70 border border-purple-100 rounded-xl p-4 text-sm">
+              <h4 className="font-bold text-purple-700 flex items-center gap-1.5 mb-2">
+                <span>💬</span> Clarification Submitted
+              </h4>
+              <div className="space-y-1.5 text-gray-700">
+                <p><span className="font-semibold text-gray-600">By:</span> Employee / OE</p>
+                {data.clarificationHistory.date && (
+                  <p>
+                    <span className="font-semibold text-gray-600">Date:</span>{' '}
+                    {new Date(data.clarificationHistory.date).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+                <div className="mt-2 bg-white/80 p-2.5 rounded-lg border border-purple-50 font-medium text-purple-900 font-sans">
+                  {data.clarificationHistory.comments || 'No comments.'}
+                </div>
+              </div>
             </div>
           )}
 
           {/* Current Status */}
-          <div>
-            <h4 className="font-semibold mb-2">Current Status</h4>
-            <p>{data.status}</p>
+          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex items-center justify-between text-sm">
+            <span className="font-semibold text-gray-600">Current Status:</span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 animate-pulse">
+              {data.status || 'Pending Review'}
+            </span>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              onClick={onReject}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-            >
-              Reject Again
-            </button>
-            <button
-              onClick={onApprove}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-            >
-              Approve
-            </button>
-          </div>
         </div>
+
+        {/* Action Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+          <button
+            onClick={onReject}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition shadow-sm"
+          >
+            Reject Again
+          </button>
+          <button
+            onClick={onApprove}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition shadow-sm"
+          >
+            Approve
+          </button>
+        </div>
+
       </div>
     </div>
   );

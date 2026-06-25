@@ -55,6 +55,7 @@ export const normalizeSettlement = (raw) => {
     employeeId:            raw.employee_id            || raw.employeeId         || null,
     employeeName:          raw.employee_name          || raw.employeeName       || null,
     employeeGLCode:        raw.employee_gl_code       || raw.employeeGLCode     || null,
+    region:                raw.region                 || null,
 
     // Financial Info
     totalAmount:           Number(raw.total_amount    ?? raw.totalAmount        ?? 0),

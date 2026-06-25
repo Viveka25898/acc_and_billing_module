@@ -45,6 +45,10 @@ const SETTLEMENT_API = {
   OS_BALANCE:      (employeeId) => `/accounts/employees/${employeeId}/os-balance`,
   DETAIL:          (id) => `/accounts/advance-settlements/${id}`,
   CLARIFICATION:   (id) => `/accounts/advance-settlements/${id}/clarification`,
+  // ── Unified Endpoints (backend routes by JWT role) ──────────────────────────
+  QUEUE:           '/accounts/advance-settlements/queue',
+  WORKFLOW:        (id) => `/accounts/advance-settlements/${id}/workflow`,
+  // ── Legacy role-specific endpoints (kept for reference / fallback) ──────────
   RH_QUEUE:        '/accounts/advance-settlements/regional-head/queue',
   RH_APPROVE:      (id) => `/accounts/advance-settlements/${id}/regional-head/approve`,
   RH_REJECT:       (id) => `/accounts/advance-settlements/${id}/regional-head/reject`,
@@ -465,40 +469,47 @@ export const submitClarification = async (settlementId, clarificationText) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2A. FETCH REGIONAL HEAD QUEUE
-//     GET /advance-settlements/regional-head/queue
-//     Auth: Bearer JWT (server filters by logged-in RH's region)
+//     GET /advance-settlements/queue
+//     Auth: Bearer JWT — backend resolves approver role from token
+//     Response: { success, message, data: [...settlements], pagination? }
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchRegionalHeadQueue = async ({ page = 1, limit = 10 } = {}) => {
-  const res = await axiosInstance.get(SETTLEMENT_API.RH_QUEUE, { params: { page, limit } })
+  const res = await axiosInstance.get(SETTLEMENT_API.QUEUE, { params: { page, limit } })
   return normalizeQueueResponse(res.data, 'Regional Head')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2B. REGIONAL HEAD — APPROVE
-//     PUT /advance-settlements/{id}/regional-head/approve
-//     Body: { remarks }
+//     PATCH /advance-settlements/{id}/workflow
+//     Body: { action: "APPROVE", comments?: string }
+//     On success status → PENDING_AVP
 // ─────────────────────────────────────────────────────────────────────────────
-export const approveByRegionalHead = async ({ id, remarks = 'Approved by Regional Head' }) => {
+export const approveByRegionalHead = async ({ id, remarks = '' }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to approve.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.RH_APPROVE(id), {
-    remarks: remarks.trim() || 'Approved by Regional Head',
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:   'APPROVE',
+    comments: remarks.trim() || undefined,
   })
   return normalizeActionResponse(res.data, 'Settlement approved and forwarded to AVP Operations.')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2C. REGIONAL HEAD — REJECT
-//     PUT /advance-settlements/{id}/regional-head/reject
-//     Body: { remarks }
+//     PATCH /advance-settlements/{id}/workflow
+//     Body: { action: "REJECT", comments: string, rejection_reason: string }
+//     On success status → REJECTED
 // ─────────────────────────────────────────────────────────────────────────────
 export const rejectByRegionalHead = async ({ id, remarks }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to reject.')
   if (!remarks || !remarks.trim()) throw new Error('Rejection remarks are required.')
   if (remarks.trim().length < 5) throw new Error('Rejection remarks must be at least 5 characters.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.RH_REJECT(id), {
-    remarks: remarks.trim(),
+  const trimmedRemarks = remarks.trim()
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:           'REJECT',
+    comments:         trimmedRemarks,
+    rejection_reason: trimmedRemarks,
   })
   return normalizeActionResponse(res.data, 'Settlement rejected. Employee has been notified.')
 }
