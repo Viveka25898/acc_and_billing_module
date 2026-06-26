@@ -150,6 +150,8 @@ import ManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/M
 import ComplianceTeamAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ComplianceTeamAdvanceSettlementForm'
 import ComplianceManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ComplianceManagerAdvanceSettlementForm'
 import OperationExecutiveAdvanceSettlementForm from '../Features/Advance Settlement/Pages/OperationExecutiveAdvanceSettlementForm'
+import AVPExpenseRequestsPage from '../Features/Advance Settlement/Pages/AVPExpenseRequestsPage'
+import AVPAdvanceSettlementForm from '../Features/Advance Settlement/Pages/AVPAdvanceSettlementForm'
 import ManagerAdvanceRequestForm from '../Features/Advance Request/Pages/ManagerAdvanceRequestForm'
 import LineManagerMyRequests from '../Features/Advance Request/Pages/LineManagerMyRequests'
 import ComplianceTeamAdvanceRequestForm from '../Features/Advance Request/Pages/ComplainceTeamAdvanceRequestForm'
@@ -393,6 +395,9 @@ export const router = createBrowserRouter([
       { path: 'advance-request', element: <AVPAdvanceRequestForm /> },
       { path: 'my-requests', element: <AVPMyAdvanceRequests /> },
       { path: 'advance-approval', element: <AVPAdvanceRequestApproval /> },
+      { path: 'advance-settelment', element: <AVPExpenseRequestsPage /> },
+      { path: 'submit-advance-settlement', element: <AVPAdvanceSettlementForm /> },
+      { path: 'my-settelment-requests', element: <MySettlements /> },
     ],
   },
   // *******************************VP Operations***********************************

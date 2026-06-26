@@ -31,6 +31,8 @@ const AVPSidebar = () => {
     { to: base,                                         label: 'Dashboard' },
     { to: `${base}/advance-request`,                    label: 'Advance Request' },
     { to: `${base}/advance-approval`,                   label: 'Employee Advance Approval' },
+    { to: `${base}/advance-settelment`,                 label: 'Settlement Approvals' },
+    { to: `${base}/submit-advance-settlement`,          label: 'Submit Advance Settlement' },
   ]
 
   return (
