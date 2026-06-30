@@ -525,34 +525,38 @@ export const rejectByRegionalHead = async ({ id, remarks }) => {
 //     Auth: Bearer JWT (server filters by AVP's region scope)
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchAvpQueue = async ({ page = 1, limit = 10 } = {}) => {
-  const res = await axiosInstance.get(SETTLEMENT_API.AVP_QUEUE, { params: { page, limit } })
+  const res = await axiosInstance.get(SETTLEMENT_API.QUEUE, { params: { page, limit } })
   return normalizeQueueResponse(res.data, 'AVP Operations')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3B. AVP — APPROVE
-//     PUT /advance-settlements/{id}/avp/approve
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
 export const approveByAvp = async ({ id, remarks = 'Approved by AVP Operations' }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to approve.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.AVP_APPROVE(id), {
-    remarks: remarks.trim() || 'Approved by AVP Operations',
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:   'APPROVE',
+    comments: remarks.trim() || 'Approved by AVP Operations',
   })
   return normalizeActionResponse(res.data, 'Settlement approved and forwarded to VP Operations.')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3C. AVP — REJECT
-//     PUT /advance-settlements/{id}/avp/reject
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
 export const rejectByAvp = async ({ id, remarks }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to reject.')
   if (!remarks || !remarks.trim()) throw new Error('Rejection remarks are required.')
   if (remarks.trim().length < 5) throw new Error('Rejection remarks must be at least 5 characters.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.AVP_REJECT(id), {
-    remarks: remarks.trim(),
+  const trimmedRemarks = remarks.trim()
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:           'REJECT',
+    comments:         trimmedRemarks,
+    rejection_reason: trimmedRemarks,
   })
   return normalizeActionResponse(res.data, 'Settlement rejected. Employee has been notified.')
 }
