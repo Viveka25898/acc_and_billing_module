@@ -571,34 +571,38 @@ export const rejectByAvp = async ({ id, remarks }) => {
 //     GET /advance-settlements/vp/queue
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchVpQueue = async ({ page = 1, limit = 10 } = {}) => {
-  const res = await axiosInstance.get(SETTLEMENT_API.VP_QUEUE, { params: { page, limit } })
+  const res = await axiosInstance.get(SETTLEMENT_API.QUEUE, { params: { page, limit } })
   return normalizeQueueResponse(res.data, 'VP Operations')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4B. VP — APPROVE
-//     PUT /advance-settlements/{id}/vp/approve
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
 export const approveByVp = async ({ id, remarks = 'Approved by VP Operations' }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to approve.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.VP_APPROVE(id), {
-    remarks: remarks.trim() || 'Approved by VP Operations',
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:   'APPROVE',
+    comments: remarks.trim() || 'Approved by VP Operations',
   })
   return normalizeActionResponse(res.data, 'Settlement approved and forwarded to Account Executive.')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4C. VP — REJECT
-//     PUT /advance-settlements/{id}/vp/reject
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
 export const rejectByVp = async ({ id, remarks }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to reject.')
   if (!remarks || !remarks.trim()) throw new Error('Rejection remarks are required.')
   if (remarks.trim().length < 5) throw new Error('Rejection remarks must be at least 5 characters.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.VP_REJECT(id), {
-    remarks: remarks.trim(),
+  const trimmedRemarks = remarks.trim()
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:           'REJECT',
+    comments:         trimmedRemarks,
+    rejection_reason: trimmedRemarks,
   })
   return normalizeActionResponse(res.data, 'Settlement rejected. Employee has been notified.')
 }

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
 import { AiOutlineEye } from 'react-icons/ai'
 import ManagerClarificationModal from './ManagerClarificationModal'
+import { selectRole, selectEmpName, selectEmpId } from '../../../Auth/authSlice'
 
 // ── Redux Thunks ──────────────────────────────────────────────────────────────
 import {
@@ -46,6 +47,10 @@ const AVPReview = () => {
   const isRejecting = useSelector(selectRejectLoading)
   const pagination  = useSelector(selectQueuePagination)
 
+  const currentRole = useSelector(selectRole)
+  const currentEmpName = useSelector(selectEmpName)
+  const currentEmpId = useSelector(selectEmpId)
+
   // ── Local UI State ────────────────────────────────────────────────────────────
   const [remarks, setRemarks]               = useState('')
   const [rejectId, setRejectId]             = useState(null)   // UUID of settlement being rejected
@@ -54,6 +59,26 @@ const AVPReview = () => {
   const [currentPage, setCurrentPage]       = useState(1)
   const [selectedClarificationReq, setSelectedClarificationReq] = useState(null)
   const ITEMS_PER_PAGE = 5
+
+  const shouldShowClarification = (req) => {
+    if (!req.clarification) return false
+    if (!req.rejectedBy) {
+      return req.status === SETTLEMENT_STATUS.PENDING_AVP
+    }
+
+    const rejectedByLower = String(req.rejectedBy).toLowerCase()
+    if (currentEmpName && rejectedByLower.includes(String(currentEmpName).toLowerCase())) return true
+    if (currentEmpId && rejectedByLower.includes(String(currentEmpId).toLowerCase())) return true
+
+    if (currentRole) {
+      const normalizedRole = String(currentRole).toLowerCase().replace(/[-_]/g, ' ')
+      const normalizedRejectedBy = rejectedByLower.replace(/[-_]/g, ' ')
+      if (normalizedRejectedBy.includes(normalizedRole)) return true
+      if (currentRole === 'avp-operations' && (normalizedRejectedBy.includes('avp') || normalizedRejectedBy.includes('avp operations'))) return true
+    }
+
+    return false
+  }
 
   // ─── Load queue on mount ──────────────────────────────────────────────────
   const loadQueue = useCallback(async () => {
@@ -290,7 +315,7 @@ const AVPReview = () => {
                             <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusBadgeClass(req.status)}`}>
                               {getStatusLabel(req.status) || '—'}
                             </span>
-                            {req.clarification && (
+                            {shouldShowClarification(req) && (
                               <div className="flex items-center gap-1 mt-0.5">
                                 <span className="text-xs text-amber-600 font-medium">ℹ️ Clarification</span>
                                 <button

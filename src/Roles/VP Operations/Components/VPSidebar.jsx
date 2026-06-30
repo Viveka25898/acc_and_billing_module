@@ -28,8 +28,6 @@ const VPSidebar = () => {
     // { to: "/dashboard/vp-operations/advance-request", label: "Advance Request" },
     { to: "/dashboard/vp-operations/vp-advance-approval", label: "Employee Advance Approval" },
     { to: "/dashboard/vp-operations/advance-settlement-approval", label: "Settlement Approvals" },
-    { to: "/dashboard/vp-operations/submit-advance-settlement", label: "Submit Advance Settlement" },
-    { to: "/dashboard/vp-operations/my-settelment-requests", label: "My Settlement Requests" },
     { to: "/dashboard/vp-operations/vp-conveyance-approval", label: "Conveyance Approval" },
     { to: "/dashboard/vp-operations/reliever-approval-vp-operation-page", label: "Reliver Requests Approval" },
   ];
