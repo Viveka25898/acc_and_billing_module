@@ -144,6 +144,7 @@ import VPMyRequest from '../Features/Advance Request/Pages/VPMyRequest'
 import AEAdvanceApprovalPage from '../Features/Advance Request/Pages/AEAdvanceApprovalPage'
 import VPReview from '../Features/Advance Settlement/Pages/VPReview'
 import AEAdvanceSettlementApproval from '../Features/Advance Settlement/Pages/AEAdvanaceSettlementApprovalPage'
+import AMAdvanceSettlementApproval from '../Features/Advance Settlement/Pages/AMAdvanceSettlementApprovalPage'
 import LineManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/LineManagerAdvanceSettlementForm'
 import VPAdvanceSettlementForm from '../Features/Advance Settlement/Pages/VPAdvanceSettlementForm'
 import ManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ManagerAdvanceSettlementForm'
@@ -1060,6 +1061,10 @@ export const router = createBrowserRouter([
       {
         path: 'tds-26as-reco',
         element: <TDS26ASRecoPage />,
+      },
+      {
+        path: 'advance-settlement-requests',
+        element: <AMAdvanceSettlementApproval />,
       },
       // ************************************Master Dummy********************************************
       // Client Ledger Route
