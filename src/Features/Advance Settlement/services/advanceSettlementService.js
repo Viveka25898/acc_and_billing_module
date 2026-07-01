@@ -614,58 +614,41 @@ export const rejectByVp = async ({ id, remarks }) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5A. FETCH AE QUEUE
-//     GET /advance-settlements/ae/queue
+//     GET /advance-settlements/queue
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchAeQueue = async ({ page = 1, limit = 10 } = {}) => {
-  const res = await axiosInstance.get(SETTLEMENT_API.AE_QUEUE, { params: { page, limit } })
+  const res = await axiosInstance.get(SETTLEMENT_API.QUEUE, { params: { page, limit } })
   return normalizeQueueResponse(res.data, 'Account Executive')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5B. AE — APPROVE (Final Approval + Payment Recording)
-//     PUT /advance-settlements/{id}/ae/approve
-//     Body: { remarks, paymentMode, transactionRef, paymentDate, glEntries[] }
+// 5B. AE — APPROVE
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
-export const approveByAe = async ({
-  id,
-  remarks = 'Approved by Account Executive',
-  paymentMode = '',
-  transactionRef = '',
-  paymentDate = '',
-  glEntries = [],
-}) => {
+export const approveByAe = async ({ id, remarks = 'Approved by Account Executive' }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to approve.')
 
-  const payload = {
-    remarks:         remarks.trim() || 'Approved by Account Executive',
-    payment_mode:    paymentMode.trim()    || undefined,
-    transaction_ref: transactionRef.trim() || undefined,
-    payment_date:    paymentDate.trim()    || undefined,
-  }
-
-  // Only include gl_entries if we have any
-  if (Array.isArray(glEntries) && glEntries.length > 0) {
-    payload.gl_entries = glEntries
-  }
-
-  // Remove undefined keys (optional fields not provided)
-  Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key])
-
-  const res = await axiosInstance.put(SETTLEMENT_API.AE_APPROVE(id), payload)
-  return normalizeActionResponse(res.data, 'Settlement fully approved. GL entries posted and payment recorded.')
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:   'APPROVE',
+    comments: remarks.trim() || 'Approved by Account Executive',
+  })
+  return normalizeActionResponse(res.data, 'Settlement approved and forwarded to Account Manager.')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5C. AE — REJECT
-//     PUT /advance-settlements/{id}/ae/reject
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
 export const rejectByAe = async ({ id, remarks }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to reject.')
   if (!remarks || !remarks.trim()) throw new Error('Rejection remarks are required.')
   if (remarks.trim().length < 5) throw new Error('Rejection remarks must be at least 5 characters.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.AE_REJECT(id), {
-    remarks: remarks.trim(),
+  const trimmedRemarks = remarks.trim()
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:           'REJECT',
+    comments:         trimmedRemarks,
+    rejection_reason: trimmedRemarks,
   })
   return normalizeActionResponse(res.data, 'Settlement rejected. Employee has been notified.')
 }

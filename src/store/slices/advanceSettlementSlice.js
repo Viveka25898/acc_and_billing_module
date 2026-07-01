@@ -364,13 +364,13 @@ export const fetchAeQueue = createAsyncThunk(
   }
 )
 
-// ─── AE: Approve (Final) ──────────────────────────────────────────────────────
+// ─── AE: Approve ─────────────────────────────────────────────────────────────
 export const approveAe = createAsyncThunk(
   'advanceSettlement/approveAe',
-  async ({ id, remarks, paymentMode, transactionRef, paymentDate, glEntries }, { rejectWithValue }) => {
+  async ({ id, remarks = 'Approved by Account Executive' }, { rejectWithValue }) => {
     try {
       if (!id) return rejectWithValue('Settlement ID is required.')
-      const result = await service.approveByAe({ id, remarks, paymentMode, transactionRef, paymentDate, glEntries })
+      const result = await service.approveByAe({ id, remarks })
       return { ...result, id }
     } catch (err) {
       return rejectWithValue(extractErrorMessage(err))

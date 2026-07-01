@@ -1,541 +1,508 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react'
-import { AiOutlineEye, AiOutlineCheck, AiOutlineClose } from 'react-icons/ai'
-import * as XLSX from 'xlsx'
-import RemarkModal from '../Components/RemarkModal'
-import ManagerFilter from '../Components/ManagerFilter'
-import ManagerClarificationModal from '../Components/ManagerClarificationModal'
-import EmployeeAdvanceSettlementJV from '../Components/JVDisplay'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
-// Import accounting helper functions
+import { AiOutlineEye } from 'react-icons/ai'
+import ManagerClarificationModal from '../Components/ManagerClarificationModal'
+import { selectRole, selectEmpName, selectEmpId } from '../../../Auth/authSlice'
+
+// ── Redux Thunks ──────────────────────────────────────────────────────────────
 import {
-  processAdvanceSettlement,
-  generateEmployeeGLCode,
-  normalizeEmployeeId,
-} from '../../Master/utils/accountingHelpers'
+  fetchAeQueue,
+  approveAe,
+  rejectAe,
+} from '../../../store/slices/advanceSettlementSlice'
+
+// ── Redux Selectors ───────────────────────────────────────────────────────────
+import {
+  selectApprovalQueue,
+  selectQueueLoading,
+  selectQueueError,
+  selectApproveLoading,
+  selectRejectLoading,
+  selectQueuePagination,
+} from '../../../store/slices/advanceSettlementSlice'
+
+// ── Helpers & Constants ───────────────────────────────────────────────────────
+import { SETTLEMENT_STATUS, getStatusLabel, getStatusColor } from '../utils/settlementConstants'
+
+const getStatusBadgeClass = (status = '') => {
+  if (status === SETTLEMENT_STATUS.PENDING_AE) return 'bg-purple-100 text-purple-700 border-purple-200'
+  if (status === SETTLEMENT_STATUS.REJECTED)   return 'bg-red-100 text-red-700 border-red-200'
+  if (status === SETTLEMENT_STATUS.APPROVED)   return 'bg-green-100 text-green-700 border-green-200'
+  return 'bg-blue-100 text-blue-700 border-blue-200'
+}
+
+const STATUS_ORDER = {
+  [SETTLEMENT_STATUS.PENDING_AE]: 1,
+}
 
 const AEAdvanceSettlementApprovalPage = () => {
-  const [currentUser, setCurrentUser] = useState(null)
-  const [settlements, setSettlements] = useState([])
-  const [remarkInput, setRemarkInput] = useState('')
-  const [selectedRejectId, setSelectedRejectId] = useState(null)
-  const [clarificationData, setClarificationData] = useState(null)
-  const [filter, setFilter] = useState({
-    employee: '',
-    status: 'All',
-    date: '',
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-  const rowsPerPage = 5
-  const [showJVFor, setShowJVFor] = useState(null)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const dispatch = useDispatch()
 
-  // Get current user from localStorage
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'))
-    const allUsers = JSON.parse(localStorage.getItem('users')) || []
-    const fullUser = allUsers.find((u) => u.username === user?.username)
-    setCurrentUser(fullUser)
-  }, [])
+  // ── Redux State ──────────────────────────────────────────────────────────────
+  const queue       = useSelector(selectApprovalQueue)
+  const loading     = useSelector(selectQueueLoading)
+  const queueError  = useSelector(selectQueueError)
+  const isApproving = useSelector(selectApproveLoading)
+  const isRejecting = useSelector(selectRejectLoading)
+  const pagination  = useSelector(selectQueuePagination)
 
-  useEffect(() => {
-    if (currentUser) {
-      const storedSettlements = JSON.parse(localStorage.getItem('settlements')) || []
+  const currentRole = useSelector(selectRole)
+  const currentEmpName = useSelector(selectEmpName)
+  const currentEmpId = useSelector(selectEmpId)
 
-      // Filter settlements for Account Executive:
-      // 1. Settlements pending AE approval
-      // 2. Clarification submissions at AE level
-      const aeRequests = storedSettlements.filter((settlement) => {
-        const isAssignedToAE = settlement.assignedTo === currentUser.username
-        const isClarificationAtAELevel =
-          settlement.status.includes('Clarification Submitted') &&
-          settlement.currentLevel === 'account-executive'
-        const isPendingAEApproval = settlement.status.includes('Pending Account Executive Approval')
+  // ── Local UI State ────────────────────────────────────────────────────────────
+  const [remarks, setRemarks]               = useState('')
+  const [rejectId, setRejectId]             = useState(null)   // UUID of settlement being rejected
+  const [approvingId, setApprovingId]       = useState(null)   // UUID for per-row spinner
+  const [filters, setFilters]               = useState({ employee: '', status: 'All', date: '' })
+  const [currentPage, setCurrentPage]       = useState(1)
+  const [selectedClarificationReq, setSelectedClarificationReq] = useState(null)
+  const ITEMS_PER_PAGE = 5
 
-        return isAssignedToAE || isClarificationAtAELevel || isPendingAEApproval
-      })
-
-      setSettlements(aeRequests)
-    }
-  }, [currentUser])
-
-  // ✅ Function to open Excel file as HTML in new tab
-  const viewExcelFile = (excelFile) => {
-    if (!excelFile || !excelFile.data) {
-      alert('Excel file not found')
-      return
+  const shouldShowClarification = (req) => {
+    if (!req.clarification) return false
+    if (!req.rejectedBy) {
+      return req.status === SETTLEMENT_STATUS.PENDING_AE
     }
 
-    try {
-      const base64Data = excelFile.data.split(',')[1]
-      const byteCharacters = atob(base64Data)
-      const byteNumbers = new Array(byteCharacters.length)
+    const rejectedByLower = String(req.rejectedBy).toLowerCase()
+    if (currentEmpName && rejectedByLower.includes(String(currentEmpName).toLowerCase())) return true
+    if (currentEmpId && rejectedByLower.includes(String(currentEmpId).toLowerCase())) return true
 
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i)
-      }
-
-      const byteArray = new Uint8Array(byteNumbers)
-      const workbook = XLSX.read(byteArray, { type: 'array' })
-      const firstSheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[firstSheetName]
-      const html = XLSX.utils.sheet_to_html(worksheet, {
-        header:
-          '<style>table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background-color:#4CAF50;color:white;font-weight:bold;}tr:nth-child(even){background-color:#f2f2f2;}</style>',
-        footer: '',
-      })
-
-      const newWindow = window.open('', '_blank')
-      newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${excelFile.name || 'Settlement Expenses'}</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              padding: 20px;
-              background-color: #f5f5f5;
-            }
-            .container {
-              background-color: white;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-            h1 {
-              color: #333;
-              border-bottom: 2px solid #4CAF50;
-              padding-bottom: 10px;
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-              margin-top: 20px;
-              font-size: 14px;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 12px;
-              text-align: left;
-            }
-            th {
-              background-color: #4CAF50;
-              color: white;
-              font-weight: bold;
-            }
-            tr:nth-child(even) {
-              background-color: #f9f9f9;
-            }
-            tr:hover {
-              background-color: #f5f5f5;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>📊 ${excelFile.name || 'Settlement Expenses'}</h1>
-            ${html}
-          </div>
-        </body>
-        </html>
-      `)
-      newWindow.document.close()
-    } catch (error) {
-      console.error('Error opening Excel file:', error)
-      alert('Failed to open Excel file')
+    if (currentRole) {
+      const normalizedRole = String(currentRole).toLowerCase().replace(/[-_]/g, ' ')
+      const normalizedRejectedBy = rejectedByLower.replace(/[-_]/g, ' ')
+      if (normalizedRejectedBy.includes(normalizedRole)) return true
+      if (currentRole === 'ae' && (normalizedRejectedBy.includes('ae') || normalizedRejectedBy.includes('account executive'))) return true
     }
+
+    return false
   }
 
-  // ✅ Function to view/download attachment
-  const viewAttachment = (attachment) => {
-    if (!attachment || !attachment.data) {
-      alert('Attachment not found')
-      return
-    }
-
+  // ─── Load queue on mount ──────────────────────────────────────────────────
+  const loadQueue = useCallback(async () => {
     try {
-      if (attachment.type === 'application/pdf') {
-        const pdfWindow = window.open('')
-        pdfWindow.document.write(
-          `<iframe width='100%' height='100%' src='${attachment.data}'></iframe>`
-        )
-      } else {
-        const base64Data = attachment.data.split(',')[1]
-        const byteCharacters = atob(base64Data)
-        const byteNumbers = new Array(byteCharacters.length)
-
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i)
-        }
-
-        const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], { type: attachment.type })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = attachment.name
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-      }
-    } catch (error) {
-      console.error('Error opening attachment:', error)
-      alert('Failed to open attachment')
+      await dispatch(fetchAeQueue({ page: currentPage, limit: ITEMS_PER_PAGE })).unwrap()
+    } catch (err) {
+      toast.error(`❌ Failed to load AE approval queue: ${typeof err === 'string' ? err : err?.message || 'Unknown error'}`)
     }
-  }
+  }, [dispatch, currentPage])
 
+  useEffect(() => { loadQueue() }, [loadQueue])
+
+  // Toast Redux-level errors
+  useEffect(() => { if (queueError) toast.error(`❌ ${queueError}`) }, [queueError])
+
+  // ─── Approve ─────────────────────────────────────────────────────────────
   const handleApprove = async (id) => {
-    if (!currentUser) return
-
-    setIsProcessing(true)
-
     try {
-      const settlement = settlements.find((s) => s.id === id)
-      if (!settlement) {
-        toast.error('Settlement not found')
-        return
-      }
-
-      // Process accounting FIRST
-      const accountingResult = await processAdvanceSettlement(settlement)
-
-      if (!accountingResult.success) {
-        throw new Error(accountingResult.message)
-      }
-
-      // Update settlement with accounting data
-      const updated = settlements.map((s) => {
-        if (s.id === id) {
-          return {
-            ...s,
-            status: 'Approved by Account Executive',
-            currentLevel: 'completed',
-            assignedTo: null,
-            rejectionReason: null,
-            jvEntry: accountingResult.jvData,
-            voucherNo: accountingResult.voucherNo,
-            transactionId: accountingResult.transactionId,
-            newOSBalance: accountingResult.newOSBalance,
-            history: [
-              ...s.history,
-              {
-                action: s.status.includes('Clarification')
-                  ? 'approved-after-clarification'
-                  : 'approved',
-                by: currentUser.username,
-                date: new Date().toISOString(),
-                comments: `Automatic JV entry passed - ${accountingResult.voucherNo}`,
-              },
-            ],
-          }
-        }
-        return s
-      })
-
-      // Update localStorage
-      updateSettlements(updated)
-
-      // Show JV modal
-      const approvedRequest = updated.find((req) => req.id === id)
-      setShowJVFor(approvedRequest)
-      setClarificationData(null)
-
-      toast.success(`✅ Automatic Settlement Entry Passed - ${accountingResult.voucherNo}`)
-    } catch (error) {
-      console.error('❌ Settlement approval failed:', error)
-      toast.error(`Settlement failed: ${error.message}`)
+      if (!id) { toast.error('❌ Invalid settlement. Please refresh.'); return }
+      setApprovingId(id)
+      await dispatch(approveAe({ id, remarks: 'Approved by Account Executive' })).unwrap()
+      toast.success('✅ Settlement approved — forwarded to Account Manager.')
+      loadQueue()
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Approval failed. Please try again.'
+      toast.error(`❌ ${msg}`)
     } finally {
-      setIsProcessing(false)
+      setApprovingId(null)
     }
   }
 
-  const handleReject = (id) => {
-    if (!remarkInput.trim()) return alert('Please enter a rejection reason.')
-    if (!currentUser) return
+  // ─── Reject ───────────────────────────────────────────────────────────────
+  const handleReject = async () => {
+    try {
+      if (!rejectId) { toast.error('❌ Invalid settlement. Please refresh.'); return }
+      if (!remarks.trim()) { toast.error('❌ Please provide rejection remarks.'); return }
+      if (remarks.trim().length < 5) { toast.error('❌ Remarks must be at least 5 characters.'); return }
 
-    const updated = settlements.map((settlement) => {
-      if (settlement.id === id) {
-        const isClarification = settlement.status.includes('Clarification')
-        const status = isClarification
-          ? 'Rejected After Clarification by Account Executive'
-          : 'Rejected by Account Executive'
+      await dispatch(rejectAe({ id: rejectId, remarks: remarks.trim() })).unwrap()
 
-        return {
-          ...settlement,
-          status,
-          rejectionReason: remarkInput,
-          history: [
-            ...settlement.history,
-            {
-              action: isClarification ? 'rejected-after-clarification' : 'rejected',
-              by: currentUser.username,
-              date: new Date().toISOString(),
-              comments: remarkInput,
-            },
-          ],
-        }
-      }
-      return settlement
-    })
-
-    updateSettlements(updated)
-    setSelectedRejectId(null)
-    setRemarkInput('')
-    toast.error('Settlement Rejected')
+      toast.success('✅ Settlement rejected — employee will be notified.')
+      setRemarks('')
+      setRejectId(null)
+      loadQueue()
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Rejection failed. Please try again.'
+      toast.error(`❌ ${msg}`)
+    }
   }
 
-  const updateSettlements = (updatedSettlements) => {
-    setSettlements(updatedSettlements)
-    const allSettlements = JSON.parse(localStorage.getItem('settlements')) || []
-    const updatedAll = allSettlements.map((settlement) => {
-      const updated = updatedSettlements.find((s) => s.id === settlement.id)
-      return updated || settlement
+  const isActionAllowed = (s) => s.status === SETTLEMENT_STATUS.PENDING_AE
+
+  // ─── Client-side filtering ────────────────────────────────────────────────
+  const filteredQueue = queue
+    .filter((s) => {
+      const empSearch = (filters.employee || '').toLowerCase()
+      const matchesEmployee = !empSearch
+        || String(s.employeeId ?? '').includes(empSearch)
+        || (s.region ?? '').toLowerCase().includes(empSearch)
+
+      const matchesStatus =
+        filters.status === 'All' ||
+        (filters.status === 'Pending'  && getStatusLabel(s.status).toLowerCase().includes('pending')) ||
+        (filters.status === 'Approved' && s.status === SETTLEMENT_STATUS.APPROVED) ||
+        (filters.status === 'Rejected' && s.status === SETTLEMENT_STATUS.REJECTED)
+
+      const matchesDate =
+        !filters.date ||
+        (s.submittedAt && new Date(s.submittedAt).toISOString().split('T')[0] === filters.date)
+
+      return matchesEmployee && matchesStatus && matchesDate
     })
-    localStorage.setItem('settlements', JSON.stringify(updatedAll))
-  }
+    .sort((a, b) => (STATUS_ORDER[a.status] || 99) - (STATUS_ORDER[b.status] || 99))
 
-  const filtered = settlements.filter((settlement) => {
-    const matchesName = settlement.employeeName
-      .toLowerCase()
-      .includes(filter.employee.toLowerCase())
-    const matchesStatus =
-      filter.status === 'All' ||
-      settlement.status.toLowerCase().includes(filter.status.toLowerCase())
-    const matchesDate =
-      !filter.date || new Date(settlement.submittedAt).toISOString().split('T')[0] === filter.date
-    return matchesName && matchesStatus && matchesDate
-  })
-
-  const sortedRequests = filtered.sort((a, b) => {
-    if (a.status.includes('Pending') && !b.status.includes('Pending')) return -1
-    if (!a.status.includes('Pending') && b.status.includes('Pending')) return 1
-    return new Date(b.submittedAt) - new Date(a.submittedAt)
-  })
-
-  const paginatedRequests = sortedRequests.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
+  const totalPages      = Math.ceil(filteredQueue.length / ITEMS_PER_PAGE) || 1
+  const paginatedQueue  = filteredQueue.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   )
 
-  const calculateTotalAmount = (expenseItems) => {
-    return expenseItems.reduce((sum, item) => {
-      const amount = Number(item['Amount (₹)']) || 0
-      return sum + amount
-    }, 0)
-  }
-
-  const getStatusBadgeClass = (status) => {
-    if (status.includes('Rejected')) return 'bg-red-100 text-red-800'
-    if (status.includes('Approved')) return 'bg-green-100 text-green-800'
-    if (status.includes('Clarification')) return 'bg-purple-100 text-purple-800'
-    return 'bg-yellow-100 text-yellow-800'
-  }
-
-  const shouldShowActions = (settlement) => {
-    return (
-      settlement.status.includes('Pending Account Executive Approval') ||
-      settlement.status.includes('Clarification Submitted')
-    )
-  }
-
-  if (!currentUser) {
-    return <div className="text-center p-8">Loading...</div>
-  }
-
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-white shadow-md rounded-md">
-      <h2 className="text-2xl font-bold mb-6 text-green-600">
-        Account Executive Review - {currentUser.username}
-      </h2>
+    <div className="px-4 py-6">
+      <div className="max-w-7xl mx-auto">
 
-      {/* Processing Overlay */}
-      {isProcessing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-            <p className="text-gray-700 font-medium">Processing settlement...</p>
-            <p className="text-sm text-gray-500">Please wait, posting accounting entries</p>
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">
+            ✅ Advance Settlements – Account Executive Approval
+          </h1>
+          <p className="text-green-100 text-sm mt-0.5">
+            Review and approve / reject settlement requests for your queue
+          </p>
+        </div>
+
+        {/* ── Filters ────────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-xl border border-green-100 shadow-sm px-4 py-3 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+
+            {/* Employee ID / Region search */}
+            <div className="w-full sm:w-1/3">
+              <label className="block mb-1 text-sm font-semibold text-gray-700">
+                Employee ID / Region
+              </label>
+              <input
+                type="text"
+                value={filters.employee}
+                onChange={(e) => { setFilters((f) => ({ ...f, employee: e.target.value })); setCurrentPage(1) }}
+                placeholder="Search by employee ID or region"
+                className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+
+            {/* Status filter */}
+            <div className="w-full sm:w-1/3">
+              <label className="block mb-1 text-sm font-semibold text-gray-700">Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => { setFilters((f) => ({ ...f, status: e.target.value })); setCurrentPage(1) }}
+                className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+
+            {/* Date filter */}
+            <div className="w-full sm:w-1/3">
+              <label className="block mb-1 text-sm font-semibold text-gray-700">
+                Submission Date
+              </label>
+              <input
+                type="date"
+                value={filters.date}
+                onChange={(e) => { setFilters((f) => ({ ...f, date: e.target.value })); setCurrentPage(1) }}
+                className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Loading spinner ──────────────────────────────────────────────── */}
+        {loading && (
+          <div className="flex justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+          </div>
+        )}
+
+        {/* ── Empty state ──────────────────────────────────────────────────── */}
+        {!loading && filteredQueue.length === 0 && (
+          <div className="bg-white rounded-xl border border-green-100 shadow-sm py-16 text-center">
+            <p className="text-4xl mb-3">📭</p>
+            <p className="text-gray-500 font-medium">No settlement requests found.</p>
+            <p className="text-sm text-gray-400 mt-1">
+              {filters.employee || filters.status !== 'All' || filters.date
+                ? 'Try changing your filters.'
+                : 'Settlement requests pending your approval will appear here.'}
+            </p>
+          </div>
+        )}
+
+        {/* ── Table ────────────────────────────────────────────────────────── */}
+        {!loading && paginatedQueue.length > 0 && (
+          <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+
+                <thead>
+                  <tr className="bg-green-600 text-white text-left">
+                    <th className="px-4 py-3 font-semibold whitespace-nowrap">#</th>
+                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Employee ID</th>
+                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Region</th>
+                    <th className="px-4 py-3 font-semibold">Date</th>
+                    <th className="px-4 py-3 font-semibold">Excel File</th>
+                    <th className="px-4 py-3 font-semibold">Attachments</th>
+                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Amount</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Remarks</th>
+                    <th className="px-4 py-3 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-green-50">
+                  {paginatedQueue.map((req, index) => {
+                    const actionable    = isActionAllowed(req)
+                    const isThisApproving = approvingId === req.id
+                    const dateStr = req.submittedAt
+                      ? new Date(req.submittedAt).toLocaleDateString('en-IN', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                        })
+                      : null
+
+                    return (
+                      <tr key={req.id || req.settlementId} className="hover:bg-green-50 transition-colors">
+
+                        {/* # */}
+                        <td className="px-4 py-3 text-gray-600 font-medium">
+                          {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                        </td>
+
+                        {/* Employee ID */}
+                        <td className="px-4 py-3 text-gray-800 font-medium">
+                          {req.employeeId || '—'}
+                        </td>
+
+                        {/* Region */}
+                        <td className="px-4 py-3 text-gray-700">
+                          {req.region || '—'}
+                        </td>
+
+                        {/* Date */}
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {dateStr || '—'}
+                        </td>
+
+                        {/* Excel File */}
+                        <td className="px-4 py-3 text-gray-400">—</td>
+
+                        {/* Attachments */}
+                        <td className="px-4 py-3 text-gray-400">—</td>
+
+                        {/* Amount */}
+                        <td className="px-4 py-3 font-semibold text-green-700 whitespace-nowrap">
+                          {req.totalAmount != null
+                            ? `₹${Number(req.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                            : '—'
+                          }
+                        </td>
+
+                        {/* Status badge */}
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusBadgeClass(req.status)}`}>
+                              {getStatusLabel(req.status) || '—'}
+                            </span>
+                            {shouldShowClarification(req) && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-xs text-amber-600 font-medium">Clarification</span>
+                                <button
+                                  onClick={() => setSelectedClarificationReq(req)}
+                                  className="text-green-600 hover:text-green-800 transition p-0.5 rounded hover:bg-green-100/50 flex items-center justify-center"
+                                  title="View Clarification & Rejection Details"
+                                >
+                                  <AiOutlineEye size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Remarks */}
+                        <td className="px-4 py-3 max-w-[160px]">
+                          {req.rejectionReason
+                            ? (
+                              <span
+                                className="text-red-600 text-xs leading-snug line-clamp-2"
+                                title={req.rejectionReason}
+                              >
+                                {req.rejectionReason}
+                              </span>
+                            )
+                            : <span className="text-gray-400">—</span>
+                          }
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2 flex-wrap">
+
+                            {/* Approve */}
+                            <button
+                              disabled={!actionable || isThisApproving || isApproving}
+                              onClick={() => handleApprove(req.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition min-w-[70px] flex items-center justify-center gap-1 ${
+                                actionable && !isThisApproving && !isApproving
+                                  ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              {isThisApproving ? (
+                                <>
+                                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                  </svg>
+                                  ...
+                                </>
+                              ) : 'Approve'}
+                            </button>
+
+                            {/* Reject */}
+                            <button
+                              disabled={!actionable || isRejecting}
+                              onClick={() => { setRejectId(req.id); setRemarks('') }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition min-w-[60px] ${
+                                actionable && !isRejecting
+                                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Pagination ── */}
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-2 px-4 py-4 border-t border-green-100 flex-wrap">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  ‹ Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                     key={page}
+                     onClick={() => setCurrentPage(page)}
+                     className={`w-8 h-8 rounded-full text-sm font-semibold transition ${
+                       page === currentPage
+                         ? 'bg-green-600 text-white shadow'
+                         : 'bg-white text-green-700 border border-green-300 hover:bg-green-50'
+                     }`}
+                  >
+                     {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  Next ›
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Reject Modal ─────── */}
+      {rejectId !== null && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-1">❌ Rejection Remarks</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Provide a clear reason for rejecting this settlement.
+            </p>
+            <textarea
+              className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none mb-4"
+              rows="3"
+              placeholder="Enter reason for rejection (min. 5 characters)..."
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setRejectId(null); setRemarks('') }}
+                disabled={isRejecting}
+                className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={isRejecting || remarks.trim().length < 5}
+                className="px-5 py-2 rounded-lg text-sm bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {isRejecting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Rejecting...
+                  </>
+                ) : 'Confirm Reject'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <ManagerFilter filter={filter} setFilter={setFilter} />
-        <table className="min-w-full border text-sm">
-          <thead className="bg-gray-100 text-left">
-            <tr>
-              <th className="p-3 border">#</th>
-              <th className="p-3 border">Employee</th>
-              <th className="p-3 border">Date</th>
-              <th className="p-3 border">Excel File</th>
-              <th className="p-3 border">Attachments</th>
-              <th className="p-3 border">Amount</th>
-              <th className="p-3 border">O/S Before</th>
-              <th className="p-3 border">Status</th>
-              <th className="p-3 border">Remarks</th>
-              <th className="p-3 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedRequests.map((req, index) => (
-              <tr key={req.id} className="border">
-                <td className="p-3 border">{(currentPage - 1) * rowsPerPage + index + 1}</td>
-                <td className="p-3 border">{req.employeeName}</td>
-                <td className="p-3 border">{new Date(req.submittedAt).toLocaleDateString()}</td>
-
-                {/* ✅ Excel File Column */}
-                <td className="p-3 border">
-                  {req.excelFile ? (
-                    <button
-                      onClick={() => viewExcelFile(req.excelFile)}
-                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
-                      title="Open Excel File in New Tab"
-                    >
-                      <AiOutlineEye size={18} />
-                      <span className="underline">{req.excelFile.name || 'Excel File'}</span>
-                    </button>
-                  ) : (
-                    <span className="text-gray-400">No file</span>
-                  )}
-                </td>
-
-                {/* ✅ Attachments Column */}
-                <td className="p-3 border">
-                  <div className="space-y-1">
-                    {req.attachments && req.attachments.length > 0 ? (
-                      req.attachments.map((attachment, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => viewAttachment(attachment)}
-                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 w-full text-left"
-                          title={`View ${attachment.name}`}
-                        >
-                          <AiOutlineEye size={16} />
-                          <span className="underline text-sm truncate">
-                            {attachment.name || `Attachment ${idx + 1}`}
-                          </span>
-                        </button>
-                      ))
-                    ) : (
-                      <span className="text-gray-400">No attachments</span>
-                    )}
-                  </div>
-                </td>
-
-                <td className="p-3 border">₹{calculateTotalAmount(req.expenseItems).toFixed(2)}</td>
-                <td className="p-3 border">₹{(req.osBalanceBefore || 0).toFixed(2)}</td>
-                <td className="p-3 border">
-                  <span className={`px-2 py-1 rounded text-xs ${getStatusBadgeClass(req.status)}`}>
-                    {req.status}
-                  </span>
-                  {req.rejectionReason && (
-                    <AiOutlineEye
-                      className="inline ml-2 text-blue-600 cursor-pointer"
-                      onClick={() => setClarificationData(req)}
-                      title="View Details"
-                    />
-                  )}
-                </td>
-                <td className="p-3 border text-sm">{req.rejectionReason || '-'}</td>
-                <td className="p-3 border">
-                  {shouldShowActions(req) && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleApprove(req.id)}
-                        disabled={isProcessing}
-                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded text-xs disabled:opacity-50"
-                        title="Approve"
-                      >
-                        <AiOutlineCheck size={14} />
-                        {isProcessing ? 'Processing...' : 'Approve'}
-                      </button>
-                      <button
-                        onClick={() => setSelectedRejectId(req.id)}
-                        disabled={isProcessing}
-                        className="flex items-center gap-1 bg-red-600 text-white px-3 py-1 rounded text-xs disabled:opacity-50"
-                        title="Reject"
-                      >
-                        <AiOutlineClose size={14} /> Reject
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {paginatedRequests.length === 0 && (
-          <div className="text-center p-8 text-gray-500">No settlements found for review.</div>
-        )}
-
-        {filtered.length > rowsPerPage && (
-          <div className="flex justify-end items-center mt-4 gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span>
-              Page {currentPage} of {Math.ceil(filtered.length / rowsPerPage)}
-            </span>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) =>
-                  Math.min(prev + 1, Math.ceil(filtered.length / rowsPerPage))
-                )
-              }
-              disabled={currentPage === Math.ceil(filtered.length / rowsPerPage)}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        <RemarkModal
-          isOpen={selectedRejectId !== null}
-          onClose={() => {
-            setSelectedRejectId(null)
-            setRemarkInput('')
-          }}
-          onSubmit={() => handleReject(selectedRejectId)}
-          remark={remarkInput}
-          setRemark={setRemarkInput}
-          title="Enter Rejection Reason"
-        />
-
-        <ManagerClarificationModal
-          isOpen={!!clarificationData}
-          onClose={() => setClarificationData(null)}
-          data={{
-            ...clarificationData,
-            rejectionHistory: clarificationData?.history?.find(
-              (h) => h.action.includes('rejected') && !h.action.includes('after-clarification')
-            ),
-            clarificationHistory: clarificationData?.history?.find((h) =>
-              h.action.includes('clarification')
-            ),
-          }}
-          onApprove={() => handleApprove(clarificationData.id)}
-          onReject={() => {
-            setSelectedRejectId(clarificationData.id)
-            setClarificationData(null)
-          }}
-        />
-
-        {showJVFor && (
-          <EmployeeAdvanceSettlementJV
-            data={showJVFor.jvEntry}
-            onClose={() => setShowJVFor(null)}
-          />
-        )}
-      </div>
+      {/* ── Clarification Modal ────────────────────────────────────────────── */}
+      <ManagerClarificationModal
+        isOpen={selectedClarificationReq !== null}
+        onClose={() => setSelectedClarificationReq(null)}
+        data={selectedClarificationReq ? {
+          rejectionHistory: selectedClarificationReq.rejectionReason ? {
+            by: selectedClarificationReq.rejectedBy || 'Account Executive',
+            date: selectedClarificationReq.updatedAt || selectedClarificationReq.submittedAt,
+            comments: selectedClarificationReq.rejectionReason
+          } : null,
+          clarificationHistory: selectedClarificationReq.clarification ? {
+            by: 'Employee/OE',
+            date: selectedClarificationReq.clarificationAt || selectedClarificationReq.updatedAt,
+            comments: selectedClarificationReq.clarification
+          } : null,
+          status: getStatusLabel(selectedClarificationReq.status),
+          ...selectedClarificationReq
+        } : null}
+        onApprove={() => {
+          if (selectedClarificationReq) {
+            handleApprove(selectedClarificationReq.id)
+            setSelectedClarificationReq(null)
+          }
+        }}
+        onReject={() => {
+          if (selectedClarificationReq) {
+            setRejectId(selectedClarificationReq.id)
+            setRemarks('')
+            setSelectedClarificationReq(null)
+          }
+        }}
+      />
     </div>
   )
 }
