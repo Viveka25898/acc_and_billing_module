@@ -8,15 +8,28 @@ import { syncAllLedgerBalances } from '../Services/LedgerBalancesLocalStorageSer
 // Add: Import reports ledger balances saver so reportsLedgersBalances is always updated
 import { saveAllReportsLedgersBalances } from '../Services/ReportsLedgerBalancesService'
 
-const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick }) => {
+const AccountsTable = ({
+  accounts,
+  searchTerm,
+  selectedFilter,
+  onAccountClick,
+  loadingStates = {},
+  expandedAccounts = [],
+  onExpandAccount,
+}) => {
   const navigate = useNavigate()
-  const [expandedAccounts, setExpandedAccounts] = useState(new Set())
   const [balances, setBalances] = useState({})
   const [balancesLoading, setBalancesLoading] = useState(true)
 
-  // Function to get balance for a specific account from localStorage
+  // Function to get balance for a specific account from API/localStorage
   const getAccountBalance = (accountCode) => {
     try {
+      // First check direct API balance
+      const matchedAccount = accounts.find((acc) => acc.code === accountCode)
+      if (matchedAccount && matchedAccount.balance !== undefined && matchedAccount.balance !== null) {
+        return Number(matchedAccount.balance)
+      }
+
       // Check Client Ledgers (D-prefix accounts)
       if (accountCode.startsWith('D')) {
         // First check via LedgerBalanceService (uses ledgerBalances from A3001BalanceSync)
@@ -31,7 +44,6 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
         const clientLedgers = JSON.parse(localStorage.getItem('clientLedgers') || '{}')
         const ledger = clientLedgers[accountCode]
         if (ledger && ledger.ledgerDetails) {
-          // Try different balance field names
           const balance =
             ledger.ledgerDetails.currentOutstanding || ledger.ledgerDetails.closingBalance || '₹0'
           return parseFloat(balance.replace(/[₹,]/g, ''))
@@ -170,6 +182,12 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
   // Recursive function to calculate total balance for a folder (sum of all child ledgers)
   const calculateFolderBalance = (parentCode) => {
     try {
+      // First check if direct API balance exists for parent
+      const matchedAccount = accounts.find((acc) => acc.code === parentCode)
+      if (matchedAccount && matchedAccount.balance !== undefined && matchedAccount.balance !== null) {
+        return Number(matchedAccount.balance)
+      }
+
       let total = 0
 
       // Find all children of this parent
@@ -256,13 +274,14 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
   // Toggle expansion for an account
   const toggleExpand = (accountCode, e) => {
     e.stopPropagation()
-    const newExpanded = new Set(expandedAccounts)
-    if (newExpanded.has(accountCode)) {
-      newExpanded.delete(accountCode)
-    } else {
-      newExpanded.add(accountCode)
+    if (onExpandAccount) {
+      onExpandAccount(accountCode)
     }
-    setExpandedAccounts(newExpanded)
+  }
+
+  // Check if account has children loaded locally
+  const hasChildren = (accountCode) => {
+    return accounts.some((acc) => acc.parentCode === accountCode)
   }
 
   // Function to sort accounts hierarchically
@@ -293,10 +312,40 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
       flattened.push({ ...node, level })
 
       // Only show children if this node is expanded
-      if (expandedAccounts.has(node.code)) {
-        node.children
-          .sort((a, b) => a.code.localeCompare(b.code))
-          .forEach((child) => flatten(child, level + 1))
+      if (expandedAccounts.includes(node.code)) {
+        const stateForNode = loadingStates[node.code]
+        if (stateForNode === 'loading') {
+          flattened.push({
+            id: `loading-${node.code}`,
+            code: `loading-${node.code}`,
+            name: `Loading accounts under ${node.code}...`,
+            type: 'LOADING',
+            parentCode: node.code,
+            level: level + 1,
+          })
+        } else if (stateForNode === 'failed') {
+          flattened.push({
+            id: `failed-${node.code}`,
+            code: `failed-${node.code}`,
+            name: `Failed to load accounts. Click to retry.`,
+            type: 'FAILED',
+            parentCode: node.code,
+            level: level + 1,
+          })
+        } else if (stateForNode === 'succeeded' && node.children.length === 0) {
+          flattened.push({
+            id: `empty-${node.code}`,
+            code: `empty-${node.code}`,
+            name: `No accounts found under this level`,
+            type: 'EMPTY',
+            parentCode: node.code,
+            level: level + 1,
+          })
+        } else {
+          node.children
+            .sort((a, b) => a.code.localeCompare(b.code))
+            .forEach((child) => flatten(child, level + 1))
+        }
       }
     }
 
@@ -384,13 +433,16 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
     }
   }
 
-  // Check if account has children
-  const hasChildren = (accountCode) => {
-    return accounts.some((acc) => acc.parentCode === accountCode)
-  }
+
 
   // Handle row click - opens modal for ALL types (including ACCOUNT)
   const handleRowClick = (account) => {
+    if (['LOADING', 'EMPTY', 'FAILED'].includes(account.type)) {
+      if (account.type === 'FAILED' && onExpandAccount) {
+        onExpandAccount(account.parentCode)
+      }
+      return
+    }
     // Open details/edit modal for all account types
     if (onAccountClick) {
       onAccountClick(account)
@@ -1066,102 +1118,145 @@ const AccountsTable = ({ accounts, searchTerm, selectedFilter, onAccountClick })
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredAccounts.length > 0 ? (
-              filteredAccounts.map((account, index) => (
-                <tr
-                  key={account.id || index}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${account.type === 'ROOT' ? 'bg-blue-50' : ''
-                    } ${account.type === 'ACCOUNT' ? 'hover:bg-indigo-50' : ''}`}
-                  onClick={() => handleRowClick(account)}
-                >
-                  <td className="py-3 px-6 text-sm">
-                    <div className="flex items-center gap-2">
-                      {/* Expand/Collapse Arrow - Only for accounts with children */}
-                      {account.type !== 'ACCOUNT' && hasChildren(account.code) && (
-                        <button
-                          onClick={(e) => toggleExpand(account.code, e)}
-                          className="text-gray-600 hover:text-gray-900 focus:outline-none"
-                        >
-                          {expandedAccounts.has(account.code) ? (
-                            <FiChevronDown className="w-4 h-4" />
-                          ) : (
-                            <FiChevronRight className="w-4 h-4" />
-                          )}
-                        </button>
-                      )}
-                      {/* Placeholder for alignment when no arrow */}
-                      {(account.type === 'ACCOUNT' || !hasChildren(account.code)) && (
-                        <div className="w-4"></div>
-                      )}
-                      <span className="font-mono text-gray-900">{account.code}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-6 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span
-                        style={{ marginLeft: `${account.level * 20}px` }}
-                        className="flex items-center gap-2"
-                      >
-                        <span className="text-lg">{getTypeIcon(account.type)}</span>
-                        <span
-                          className={`text-gray-900 ${account.type === 'ROOT'
-                              ? 'font-bold text-blue-900'
-                              : account.type === 'FOLDER'
-                                ? 'font-medium'
-                                : account.type === 'SUB_FOLDER'
-                                  ? 'font-medium text-amber-700'
-                                  : account.type === 'ACCOUNT_SUBCATEGORY'
-                                    ? 'font-medium text-pink-700'
-                                    : account.type === 'ACCOUNT_TYPE'
-                                      ? 'font-medium text-purple-700'
-                                      : ''
-                            }`}
-                        >
-                          {account.name}
-                        </span>
-                        {account.type === 'ACCOUNT' && (
+              filteredAccounts.map((account, index) => {
+                if (account.type === 'LOADING') {
+                  return (
+                    <tr key={account.id} className="bg-gray-50/50">
+                      <td colSpan="5" className="py-3 px-6 text-sm text-gray-500 italic">
+                        <div className="flex items-center gap-2" style={{ marginLeft: `${account.level * 20}px` }}>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></div>
+                          <span>Loading accounts...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                }
+
+                if (account.type === 'EMPTY') {
+                  return (
+                    <tr key={account.id} className="bg-gray-50/50">
+                      <td colSpan="5" className="py-3 px-6 text-sm text-gray-400 italic">
+                        <div className="flex items-center gap-2" style={{ marginLeft: `${account.level * 20}px` }}>
+                          <span>📂 No accounts under this level</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                }
+
+                if (account.type === 'FAILED') {
+                  return (
+                    <tr
+                      key={account.id}
+                      className="bg-red-50/40 hover:bg-red-50/80 cursor-pointer"
+                      onClick={() => onExpandAccount && onExpandAccount(account.parentCode)}
+                    >
+                      <td colSpan="5" className="py-3 px-6 text-sm text-red-600 font-medium">
+                        <div className="flex items-center gap-2" style={{ marginLeft: `${account.level * 20}px` }}>
+                          <span>⚠️ Failed to load. Click to retry.</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                }
+
+                return (
+                  <tr
+                    key={account.id || index}
+                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${account.type === 'ROOT' ? 'bg-blue-50' : ''
+                      } ${account.type === 'ACCOUNT' ? 'hover:bg-indigo-50' : ''}`}
+                    onClick={() => handleRowClick(account)}
+                  >
+                    <td className="py-3 px-6 text-sm">
+                      <div className="flex items-center gap-2">
+                        {/* Expand/Collapse Arrow - Only for accounts with children or lazy-loading chevrons */}
+                        {account.type !== 'ACCOUNT' && (account.hasChildren !== false || hasChildren(account.code)) && (
                           <button
-                            onClick={(e) => handleViewLedgerClick(account, e)}
-                            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline ml-2 transition-colors"
+                            onClick={(e) => toggleExpand(account.code, e)}
+                            className="text-gray-600 hover:text-gray-900 focus:outline-none flex items-center justify-center"
                           >
-                            → View Ledger
+                            {expandedAccounts.includes(account.code) ? (
+                              <FiChevronDown className="w-4 h-4" />
+                            ) : (
+                              <FiChevronRight className="w-4 h-4" />
+                            )}
                           </button>
                         )}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-6 text-sm">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-md border ${getTypeColor(
-                        account.type
-                      )}`}
-                    >
-                      {account.type.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="py-3 px-6 text-sm">
-                    <span className="text-gray-600 text-xs">{account.parentAccount || 'None'}</span>
-                  </td>
-                  <td className="py-3 px-6 text-sm text-right">
-                    {balancesLoading ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                        <span className="text-gray-400 text-xs">Loading...</span>
+                        {/* Placeholder for alignment when no arrow */}
+                        {(account.type === 'ACCOUNT' || (account.hasChildren === false && !hasChildren(account.code))) && (
+                          <div className="w-4"></div>
+                        )}
+                        <span className="font-mono text-gray-900">{account.code}</span>
                       </div>
-                    ) : (
+                    </td>
+                    <td className="py-3 px-6 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span
+                          style={{ marginLeft: `${account.level * 20}px` }}
+                          className="flex items-center gap-2"
+                        >
+                          <span className="text-lg">{getTypeIcon(account.type)}</span>
+                          <span
+                            className={`text-gray-900 ${account.type === 'ROOT'
+                                ? 'font-bold text-blue-900'
+                                : account.type === 'FOLDER'
+                                  ? 'font-medium'
+                                  : account.type === 'SUB_FOLDER'
+                                    ? 'font-medium text-amber-700'
+                                    : account.type === 'ACCOUNT_SUBCATEGORY'
+                                      ? 'font-medium text-pink-700'
+                                      : account.type === 'ACCOUNT_TYPE'
+                                        ? 'font-medium text-purple-700'
+                                        : ''
+                              }`}
+                          >
+                            {account.name}
+                          </span>
+                          {account.type === 'ACCOUNT' && (
+                            <button
+                              onClick={(e) => handleViewLedgerClick(account, e)}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline ml-2 transition-colors"
+                            >
+                              → View Ledger
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-6 text-sm">
                       <span
-                        className={`font-mono font-medium ${balances[account.code] > 0
-                            ? 'text-green-700'
-                            : balances[account.code] < 0
-                              ? 'text-red-700'
-                              : 'text-gray-600'
-                          }`}
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-md border ${getTypeColor(
+                          account.type
+                        )}`}
                       >
-                        {formatBalance(balances[account.code])}
+                        {account.type.replace('_', ' ')}
                       </span>
-                    )}
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className="py-3 px-6 text-sm">
+                      <span className="text-gray-600 text-xs">{account.parentAccount || 'None'}</span>
+                    </td>
+                    <td className="py-3 px-6 text-sm text-right">
+                      {balancesLoading ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                          <span className="text-gray-400 text-xs">Loading...</span>
+                        </div>
+                      ) : (
+                        <span
+                          className={`font-mono font-medium ${balances[account.code] > 0
+                              ? 'text-green-700'
+                              : balances[account.code] < 0
+                                ? 'text-red-700'
+                                : 'text-gray-600'
+                            }`}
+                        >
+                          {formatBalance(balances[account.code])}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })
             ) : (
               <tr>
                 <td colSpan="5" className="py-8 px-6 text-center text-gray-500">

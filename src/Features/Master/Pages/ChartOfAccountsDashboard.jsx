@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Header from '../Components/Header'
 import StatsCards from '../Components/StatsCard'
 import SearchAndFilter from '../Components/SearchAndFilter'
@@ -6,33 +7,46 @@ import AccountsTable from '../Components/AccountsTable'
 import AddAccountModal from '../Components/AddAccountModal'
 import EditAccountModal from '../Components/EditAccountModal'
 import AccountDetailsModal from '../Components/AccountDetailsModal'
-// Add: Import A3001 auto-sync utility
+
+// Redux Thunks & Selectors
+import {
+  fetchAccountsByParent,
+  toggleExpandAccount,
+  addAccount,
+  updateAccount,
+  deleteAccount,
+  selectAccounts,
+  selectLoadingStates,
+  selectExpandedAccounts,
+  selectErrors,
+} from '../../../store/slices/chartOfAccountsSlice'
+
+// Import A3001 auto-sync utility
 import {
   autoSyncA3001OnTransactionChange,
   updateA3001ClosingBalance,
 } from '../Services/A3001BalanceSync'
-// Add: Import Liability balance sync utility
+// Import Liability balance sync utility
 import {
   autoSyncLiabilityOnTransactionChange,
   updateLiabilityClosingBalance,
 } from '../Services/LiabilityBalanceSync'
-// Add: Import Expense balance sync utility
+// Import Expense balance sync utility
 import {
   autoSyncExpenseOnTransactionChange,
   updateExpenseClosingBalance,
 } from '../Services/ExpenseBalanceSync'
 
 const ChartOfAccountsDashboard = () => {
-  // Auto-sync A3, Liability, and Expense closing balances on transaction changes
-  useEffect(() => {
-    autoSyncA3001OnTransactionChange()
-    updateA3001ClosingBalance()
-    autoSyncLiabilityOnTransactionChange()
-    updateLiabilityClosingBalance()
-    autoSyncExpenseOnTransactionChange()
-    updateExpenseClosingBalance()
-  }, [])
-  const [accounts, setAccounts] = useState([])
+  const dispatch = useDispatch()
+
+  // Selectors from Redux state
+  const accounts = useSelector(selectAccounts)
+  const loadingStates = useSelector(selectLoadingStates)
+  const expandedAccountsList = useSelector(selectExpandedAccounts)
+  const coaErrors = useSelector(selectErrors)
+
+  // Local UI State
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -41,86 +55,24 @@ const ChartOfAccountsDashboard = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState(null)
 
-  // Initialize with hierarchical structure from your Excel sheet
-  const initializeAccounts = () => {
-    const initialAccounts = [
-      // ROOT LEVEL
-      {
-        id: '1',
-        code: 'A',
-        name: 'ASSETS',
-        type: 'ROOT',
-        parentAccount: null,
-        parentCode: null,
-      },
-      {
-        id: '2',
-        code: 'L',
-        name: 'SOURCES OF FUNDS',
-        type: 'ROOT',
-        parentAccount: null,
-        parentCode: null,
-      },
-      {
-        id: '3',
-        code: 'R',
-        name: 'INCOME',
-        type: 'ROOT',
-        parentAccount: null,
-        parentCode: null,
-      },
-      {
-        id: '4',
-        code: 'X',
-        name: 'EXPENSES',
-        type: 'ROOT',
-        parentAccount: null,
-        parentCode: null,
-      },
-    ]
-
-    return initialAccounts
-  }
-
-  // Save accounts to localStorage
-  const saveToLocalStorage = (accountsData) => {
-    try {
-      localStorage.setItem('chartOfAccounts', JSON.stringify(accountsData))
-    } catch (error) {
-      console.error('Error saving to localStorage:', error)
-    }
-  }
-
-  // Load accounts from localStorage on component mount
+  // Auto-sync closing balances on transaction changes
   useEffect(() => {
-    try {
-      const savedAccounts = localStorage.getItem('chartOfAccounts')
-      if (savedAccounts) {
-        const parsedAccounts = JSON.parse(savedAccounts)
-        // Check if we have the new hierarchical structure
-        if (parsedAccounts.length > 0 && parsedAccounts[0].type === 'ROOT') {
-          setAccounts(parsedAccounts)
-        } else {
-          // Initialize with new structure if old data exists
-          const newAccounts = initializeAccounts()
-          setAccounts(newAccounts)
-          saveToLocalStorage(newAccounts)
-        }
-      } else {
-        // Initialize with hierarchical structure
-        const newAccounts = initializeAccounts()
-        setAccounts(newAccounts)
-        saveToLocalStorage(newAccounts)
-      }
-    } catch (error) {
-      console.error('Error loading from localStorage:', error)
-      // Initialize with default data if localStorage fails
-      const newAccounts = initializeAccounts()
-      setAccounts(newAccounts)
-    }
+    autoSyncA3001OnTransactionChange()
+    updateA3001ClosingBalance()
+    autoSyncLiabilityOnTransactionChange()
+    updateLiabilityClosingBalance()
+    autoSyncExpenseOnTransactionChange()
+    updateExpenseClosingBalance()
   }, [])
 
-  // Function to get all children of an account (recursive)
+  // Load root level accounts on mount if not already loaded
+  useEffect(() => {
+    if (!loadingStates['']) {
+      dispatch(fetchAccountsByParent({ parentCode: '' }))
+    }
+  }, [dispatch, loadingStates])
+
+  // Function to get all children of an account (recursive) — kept for delete logic
   const getAllChildren = (parentCode, accountsList = accounts) => {
     const directChildren = accountsList.filter((acc) => acc.parentCode === parentCode)
     let allChildren = [...directChildren]
@@ -137,16 +89,23 @@ const ChartOfAccountsDashboard = () => {
       ...newAccount,
       id: Date.now().toString(),
     }
-    const updatedAccounts = [...accounts, accountWithId]
-    setAccounts(updatedAccounts)
-    saveToLocalStorage(updatedAccounts)
+    dispatch(addAccount(accountWithId))
+
+    // Save to localStorage for backward compatibility with other features
+    try {
+      const savedAccounts = localStorage.getItem('chartOfAccounts')
+      const currentList = savedAccounts ? JSON.parse(savedAccounts) : []
+      localStorage.setItem('chartOfAccounts', JSON.stringify([...currentList, accountWithId]))
+    } catch (e) {
+      console.warn('Failed to update local storage copy of chartOfAccounts', e)
+    }
   }
 
   const handleAccountClick = (account) => {
-    // Open details modal for all account types (including ACCOUNT)
     setSelectedAccount(account)
     setIsDetailsModalOpen(true)
   }
+
   const handleEditFromDetails = (account) => {
     setEditingAccount(account)
     setIsEditModalOpen(true)
@@ -170,10 +129,17 @@ const ChartOfAccountsDashboard = () => {
     const childrenToDelete = getAllChildren(accountToDelete.code)
     const idsToDelete = [accountId, ...childrenToDelete.map((child) => child.id)]
 
-    // Filter out the account and all its children
-    const updatedAccounts = accounts.filter((account) => !idsToDelete.includes(account.id))
-    setAccounts(updatedAccounts)
-    saveToLocalStorage(updatedAccounts)
+    dispatch(deleteAccount(idsToDelete))
+
+    // Save to localStorage for backward compatibility
+    try {
+      const savedAccounts = localStorage.getItem('chartOfAccounts')
+      const currentList = savedAccounts ? JSON.parse(savedAccounts) : []
+      const updatedList = currentList.filter((a) => !idsToDelete.includes(a.id))
+      localStorage.setItem('chartOfAccounts', JSON.stringify(updatedList))
+    } catch (e) {
+      console.warn('Failed to update local storage copy of chartOfAccounts during delete', e)
+    }
 
     // Close details modal if open
     if (isDetailsModalOpen) {
@@ -183,11 +149,17 @@ const ChartOfAccountsDashboard = () => {
   }
 
   const handleUpdateAccount = (updatedAccount) => {
-    const updatedAccounts = accounts.map((account) =>
-      account.id === updatedAccount.id ? updatedAccount : account
-    )
-    setAccounts(updatedAccounts)
-    saveToLocalStorage(updatedAccounts)
+    dispatch(updateAccount(updatedAccount))
+
+    // Save to localStorage for backward compatibility
+    try {
+      const savedAccounts = localStorage.getItem('chartOfAccounts')
+      const currentList = savedAccounts ? JSON.parse(savedAccounts) : []
+      const updatedList = currentList.map((a) => (a.id === updatedAccount.id ? updatedAccount : a))
+      localStorage.setItem('chartOfAccounts', JSON.stringify(updatedList))
+    } catch (e) {
+      console.warn('Failed to update local storage copy of chartOfAccounts during update', e)
+    }
   }
 
   const openAddModal = () => {
@@ -213,6 +185,19 @@ const ChartOfAccountsDashboard = () => {
       <div className="max-w-7xl mx-auto">
         <Header onAddAccount={openAddModal} />
         <StatsCards accounts={accounts} />
+        
+        {coaErrors[''] && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md flex items-center justify-between">
+            <span className="text-sm">⚠️ {coaErrors['']}</span>
+            <button
+              onClick={() => dispatch(fetchAccountsByParent({ parentCode: '' }))}
+              className="text-xs font-semibold underline hover:text-red-900"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         <SearchAndFilter
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -224,6 +209,15 @@ const ChartOfAccountsDashboard = () => {
           searchTerm={searchTerm}
           selectedFilter={selectedFilter}
           onAccountClick={handleAccountClick}
+          loadingStates={loadingStates}
+          expandedAccounts={expandedAccountsList}
+          onExpandAccount={(code) => {
+            dispatch(toggleExpandAccount(code))
+            // Lazy load from API if never requested before
+            if (!loadingStates[code]) {
+              dispatch(fetchAccountsByParent({ parentCode: code }))
+            }
+          }}
         />
 
         <AddAccountModal

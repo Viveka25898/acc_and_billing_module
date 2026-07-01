@@ -4,12 +4,14 @@ import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './Auth/authSlice'
 import advanceRequestReducer from './store/slices/advanceRequestSlice'
 import advanceSettlementReducer from './store/slices/advanceSettlementSlice'
+import chartOfAccountsReducer from './store/slices/chartOfAccountsSlice'
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
     advanceRequest: advanceRequestReducer,
     advanceSettlement: advanceSettlementReducer,
+    chartOfAccounts: chartOfAccountsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

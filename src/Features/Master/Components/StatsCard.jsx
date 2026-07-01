@@ -1,8 +1,8 @@
 const StatsCards = ({ accounts }) => {
   const totalAccounts = accounts.length;
-  const rootAccounts = accounts.filter(acc => acc.type === 'ROOT').length;
-  const folderAccounts = accounts.filter(acc => acc.type === 'FOLDER').length;
-  const accountsCount = accounts.filter(acc => acc.type === 'Account').length;
+  const rootAccounts = accounts.filter(acc => acc.type?.toUpperCase() === 'ROOT').length;
+  const folderAccounts = accounts.filter(acc => acc.type?.toUpperCase() === 'FOLDER').length;
+  const accountsCount = accounts.filter(acc => acc.type?.toUpperCase() === 'ACCOUNT').length;
 
   const stats = [
     { label: 'Total Accounts', value: totalAccounts, color: 'text-blue-600' },
