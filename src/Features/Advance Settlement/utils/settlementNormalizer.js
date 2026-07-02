@@ -22,15 +22,16 @@ export const normalizeSettlement = (raw) => {
   // ── Normalize Expense Items ────────────────────────────────────────────────
   // Backend: { expense_type, expense_date, amount, remarks }
   // UI needs: { expenseHead, date, amount, remarks, glCode }
-  const expenseItems = Array.isArray(raw.expense_items)
-    ? raw.expense_items.map((item) => ({
-        expenseHead:    item['Expense Head']   || item.expense_head   || item.expense_type  || '',
-        date:           item['Date (DD/MM/YYYY)'] || item.expense_date || item.date || '',
-        amount:         Number(item['Amount (₹)'] ?? item.amount ?? 0),
-        description:    item['Description']    || item.description   || '',
+  const expenseItemsRaw = raw.expense_items || raw.expenseItems
+  const expenseItems = Array.isArray(expenseItemsRaw)
+    ? expenseItemsRaw.map((item) => ({
+        expenseHead:    item['Expense Head']   || item.expenseHead    || item.expense_head   || item.expense_type  || '',
+        date:           item['Date (DD/MM/YYYY)'] || item.Date || item.date || item.expense_date || '',
+        amount:         Number(item['Amount (₹)'] ?? item.amount ?? item.Amount ?? 0),
+        description:    item['Description']    || item.description    || '',
         remarks:        item['Remarks']        || item.remarks        || '',
-        glCode:         item.gl_code           || item.glCode         || '',
-        sno:            item['S. No']          || item.sno            || '',
+        glCode:         item.glCode            || item.gl_code        || '',
+        sno:            item['S. No']          || item.sno            || item.sNo           || '',
       }))
     : []
 

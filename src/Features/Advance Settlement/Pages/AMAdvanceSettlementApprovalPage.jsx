@@ -30,14 +30,30 @@ import { fetchSettlementById, fetchJvDetails } from '../services/advanceSettleme
 import { SETTLEMENT_STATUS, getStatusLabel } from '../utils/settlementConstants'
 
 const getStatusBadgeClass = (status = '') => {
-  if (status === SETTLEMENT_STATUS.PENDING_AM) return 'bg-indigo-100 text-indigo-700 border-indigo-200'
-  if (status === SETTLEMENT_STATUS.REJECTED)   return 'bg-red-100 text-red-700 border-red-200'
-  if (status === SETTLEMENT_STATUS.APPROVED)   return 'bg-green-100 text-green-700 border-green-200'
-  return 'bg-blue-100 text-blue-700 border-blue-200'
+  const statusUpper = String(status).toUpperCase()
+  if (
+    statusUpper === 'PENDING_AM' ||
+    statusUpper.includes('ACCOUNT MANAGER')
+  ) {
+    return 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+  }
+  if (statusUpper === 'REJECTED') return 'bg-red-100 text-red-700 border border-red-200'
+  if (statusUpper === 'APPROVED') return 'bg-green-100 text-green-700 border border-green-200'
+  return 'bg-blue-100 text-blue-700 border border-blue-200'
 }
 
 const STATUS_ORDER = {
   [SETTLEMENT_STATUS.PENDING_AM]: 1,
+}
+
+const downloadBase64File = (base64Data, fileName) => {
+  if (!base64Data) return
+  const link = document.createElement('a')
+  link.href = base64Data
+  link.download = fileName || 'download'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const constructJvData = (settlement, voucherNo, transactionId, costCenterId) => {
@@ -235,7 +251,14 @@ const AMAdvanceSettlementApprovalPage = () => {
     }
   }
 
-  const isActionAllowed = (s) => s.status === SETTLEMENT_STATUS.PENDING_AM
+  const isActionAllowed = (s) => {
+    if (!s || !s.status) return false
+    const statusUpper = String(s.status).toUpperCase()
+    return (
+      statusUpper === 'PENDING_AM' ||
+      statusUpper.includes('ACCOUNT MANAGER')
+    )
+  }
 
   // ─── Client-side filtering ────────────────────────────────────────────────
   const filteredQueue = queue
@@ -257,13 +280,17 @@ const AMAdvanceSettlementApprovalPage = () => {
 
       return matchesEmployee && matchesStatus && matchesDate
     })
-    .sort((a, b) => (STATUS_ORDER[a.status] || 99) - (STATUS_ORDER[b.status] || 99))
+    .sort((a, b) => {
+      const getPriority = (status) => {
+        const u = String(status || '').toUpperCase()
+        if (u.includes('PENDING')) return 1
+        return 99
+      }
+      return getPriority(a.status) - getPriority(b.status)
+    })
 
-  const totalPages      = Math.ceil(filteredQueue.length / ITEMS_PER_PAGE) || 1
-  const paginatedQueue  = filteredQueue.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  )
+  const totalPages      = pagination?.totalPages || 1
+  const paginatedQueue  = filteredQueue
 
   return (
     <div className="px-4 py-6">
@@ -358,7 +385,6 @@ const AMAdvanceSettlementApprovalPage = () => {
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">#</th>
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">Employee ID</th>
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">Employee Name</th>
-                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Region</th>
                     <th className="px-4 py-3 font-semibold">Date</th>
                     <th className="px-4 py-3 font-semibold">Excel File</th>
                     <th className="px-4 py-3 font-semibold">Attachments</th>
@@ -397,21 +423,45 @@ const AMAdvanceSettlementApprovalPage = () => {
                           {req.employeeName || '—'}
                         </td>
 
-                        {/* Region */}
-                        <td className="px-4 py-3 text-gray-700">
-                          {req.region || '—'}
-                        </td>
-
                         {/* Date */}
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                           {dateStr || '—'}
                         </td>
 
                         {/* Excel File */}
-                        <td className="px-4 py-3 text-gray-400">—</td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {req.excelFile?.data ? (
+                            <button
+                              onClick={() => downloadBase64File(req.excelFile.data, req.excelFile.name)}
+                              className="text-green-600 hover:text-green-800 hover:underline font-semibold text-xs text-left line-clamp-1 cursor-pointer"
+                              title={req.excelFile.name}
+                            >
+                              📎 {req.excelFile.name}
+                            </button>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
 
                         {/* Attachments */}
-                        <td className="px-4 py-3 text-gray-400">—</td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {Array.isArray(req.attachments) && req.attachments.length > 0 ? (
+                            <div className="flex flex-col gap-1 max-w-[150px]">
+                              {req.attachments.map((file, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => downloadBase64File(file.data, file.name)}
+                                  className="text-green-600 hover:text-green-800 hover:underline font-semibold text-xs text-left line-clamp-1 cursor-pointer"
+                                  title={file.name}
+                                >
+                                  📎 {file.name}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
 
                         {/* Amount */}
                         <td className="px-4 py-3 font-semibold text-green-700 whitespace-nowrap">

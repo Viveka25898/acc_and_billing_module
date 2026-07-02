@@ -28,7 +28,7 @@ const LineManagerDashboardLayout = () => {
       </div>
 
       {/* Main Content Wrapper */}
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Navbar (Below Sidebar, but Fixed at Top) */}
         <LineManagerNavbar />
 
