@@ -1,34 +1,38 @@
 import React from 'react'
 
 export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
-  // Use the actual data passed from accounting processing
-  const header = data.header || {
-    company: 'Ismart',
-    voucherNo: 'JV-0000',
-    financialYear:
-      new Date().getFullYear() + '-' + (new Date().getFullYear() + 1).toString().slice(-2),
-    date: new Date().toISOString().split('T')[0],
-    reference: 'N/A',
-    preparedBy: 'System',
-  }
+  // Extract header with strict fallbacks to '-'
+  const header = data.header || {}
+  const company = header.company || '-'
+  const voucherNo = header.voucherNo || '-'
+  const date = header.date || '-'
+  const financialYear = header.financialYear || '-'
+  const reference = header.reference || '-'
 
   const lines = data.entries || []
-  const narration = data.narration || 'No narration provided'
-  const approvals = data.approvals || {
-    preparer: 'System',
-    reviewer: 'Pending',
-    approver: 'Pending',
-    date: new Date().toISOString().split('T')[0],
-  }
+  const narration = data.narration || '-'
+  
+  const approvals = data.approvals || {}
+  const preparer = approvals.preparer || '-'
+  const reviewer = approvals.reviewer || '-'
+  const approver = approvals.approver || '-'
 
-  // Calculate totals if not provided
+  // Calculate totals strictly from line items
   const totals = data.totals || {
-    debit: lines.reduce((sum, line) => sum + (line.debit || 0), 0),
-    credit: lines.reduce((sum, line) => sum + (line.credit || 0), 0),
+    debit: lines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0),
+    credit: lines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0),
   }
 
-  // Get employee details for display
   const employeeInfo = data.employeeInfo || {}
+  const employeeName = employeeInfo.employeeName || '-'
+  const employeeId = employeeInfo.employeeId || '-'
+
+  const balanceInfo = data.balanceInfo || {}
+
+  const formatCurrency = (val) => {
+    if (val === null || val === undefined || isNaN(Number(val))) return '-'
+    return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -51,31 +55,31 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <p className="text-sm text-gray-500">Company</p>
-              <p className="font-medium">{header.company}</p>
+              <p className="font-medium text-gray-800">{company}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Voucher No.</p>
-              <p className="font-medium">{header.voucherNo}</p>
+              <p className="font-medium text-gray-800">{voucherNo}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Date</p>
-              <p className="font-medium">{header.date}</p>
+              <p className="font-medium text-gray-800">{date}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Financial Year</p>
-              <p className="font-medium">{header.financialYear}</p>
+              <p className="font-medium text-gray-800">{financialYear}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Employee</p>
-              <p className="font-medium">{employeeInfo.employeeName || 'N/A'}</p>
+              <p className="font-medium text-gray-800">{employeeName}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Employee ID</p>
-              <p className="font-medium">{employeeInfo.employeeId || 'N/A'}</p>
+              <p className="font-medium text-gray-800">{employeeId}</p>
             </div>
             <div className="md:col-span-2">
               <p className="text-sm text-gray-500">Reference</p>
-              <p className="font-medium">{header.reference}</p>
+              <p className="font-medium text-gray-800">{reference}</p>
             </div>
           </div>
 
@@ -99,29 +103,38 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                {lines.map((line, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 border text-sm">{line.particulars || 'N/A'}</td>
-                    <td className="px-4 py-2 border text-sm font-mono">
-                      {line.glCode || line.gl || 'N/A'}
-                    </td>
-                    <td className="px-4 py-2 border text-right text-sm">
-                      {line.debit ? `₹${line.debit.toLocaleString('en-IN')}` : '-'}
-                    </td>
-                    <td className="px-4 py-2 border text-right text-sm">
-                      {line.credit ? `₹${line.credit.toLocaleString('en-IN')}` : '-'}
-                    </td>
+                {lines.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 border text-center text-gray-400 text-sm font-medium">-</td>
+                    <td className="px-4 py-3 border text-center text-gray-400 text-sm font-medium">-</td>
+                    <td className="px-4 py-3 border text-center text-gray-400 text-sm font-medium">-</td>
+                    <td className="px-4 py-3 border text-center text-gray-400 text-sm font-medium">-</td>
                   </tr>
-                ))}
+                ) : (
+                  lines.map((line, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 border text-sm text-gray-800">{line.particulars || '-'}</td>
+                      <td className="px-4 py-2 border text-sm font-mono text-gray-700">
+                        {line.glCode || line.gl || '-'}
+                      </td>
+                      <td className="px-4 py-2 border text-right text-sm text-gray-800">
+                        {line.debit ? `₹${Number(line.debit).toLocaleString('en-IN')}` : '-'}
+                      </td>
+                      <td className="px-4 py-2 border text-right text-sm text-gray-800">
+                        {line.credit ? `₹${Number(line.credit).toLocaleString('en-IN')}` : '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
                 <tr className="bg-gray-100 font-medium">
-                  <td colSpan={2} className="px-4 py-2 border text-right text-sm">
+                  <td colSpan={2} className="px-4 py-2 border text-right text-sm text-gray-800">
                     Total
                   </td>
-                  <td className="px-4 py-2 border text-right text-sm">
-                    ₹{totals.debit.toLocaleString('en-IN')}
+                  <td className="px-4 py-2 border text-right text-sm text-gray-800">
+                    {lines.length > 0 ? `₹${totals.debit.toLocaleString('en-IN')}` : '-'}
                   </td>
-                  <td className="px-4 py-2 border text-right text-sm">
-                    ₹{totals.credit.toLocaleString('en-IN')}
+                  <td className="px-4 py-2 border text-right text-sm text-gray-800">
+                    {lines.length > 0 ? `₹${totals.credit.toLocaleString('en-IN')}` : '-'}
                   </td>
                 </tr>
               </tbody>
@@ -129,31 +142,29 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
           </div>
 
           {/* Balance Information */}
-          {data.balanceInfo && (
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-medium text-blue-800 mb-2">Balance Impact</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-blue-600">O/S Balance Before</p>
-                  <p className="font-medium">
-                    ₹{(data.balanceInfo.osBalanceBefore || 0).toLocaleString('en-IN')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-blue-600">Settlement Amount</p>
-                  <p className="font-medium">
-                    ₹{(data.balanceInfo.settlementAmount || 0).toLocaleString('en-IN')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-blue-600">O/S Balance After</p>
-                  <p className="font-medium">
-                    ₹{(data.balanceInfo.osBalanceAfter || 0).toLocaleString('en-IN')}
-                  </p>
-                </div>
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h3 className="font-medium text-blue-800 mb-2">Balance Impact</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-blue-600">O/S Balance Before</p>
+                <p className="font-medium text-gray-800">
+                  {formatCurrency(balanceInfo.osBalanceBefore)}
+                </p>
+              </div>
+              <div>
+                <p className="text-blue-600">Settlement Amount</p>
+                <p className="font-medium text-gray-800">
+                  {formatCurrency(balanceInfo.settlementAmount)}
+                </p>
+              </div>
+              <div>
+                <p className="text-blue-600">O/S Balance After</p>
+                <p className="font-medium text-gray-800">
+                  {formatCurrency(balanceInfo.osBalanceAfter)}
+                </p>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Narration */}
           <div className="mb-6">
@@ -165,15 +176,15 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-gray-500">Preparer</p>
-              <p className="font-medium">{approvals.preparer}</p>
+              <p className="font-medium text-gray-800">{preparer}</p>
             </div>
             <div>
               <p className="text-gray-500">Reviewer</p>
-              <p className="font-medium">{approvals.reviewer}</p>
+              <p className="font-medium text-gray-800">{reviewer}</p>
             </div>
             <div>
               <p className="text-gray-500">Approver</p>
-              <p className="font-medium">{approvals.approver}</p>
+              <p className="font-medium text-gray-800">{approver}</p>
             </div>
           </div>
         </div>

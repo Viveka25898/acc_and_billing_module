@@ -62,6 +62,11 @@ export const normalizeSettlement = (raw) => {
     osBalanceBefore:       Number(raw.outstanding_balance_before ?? raw.osBalanceBefore ?? 0),
     osBalanceAfter:        Number(raw.outstanding_balance_after  ?? raw.osBalanceAfter  ?? 0),
 
+    // JV & Posting Info (added for Account Manager final approval)
+    voucherNo:             raw.voucher_no             || raw.voucherNo          || null,
+    ledgerTransactionId:   raw.ledger_transaction_id  || raw.ledgerTransactionId || null,
+    costCenterId:          raw.cost_center_id         || raw.costCenterId        || null,
+
     // Status
     status:                raw.status                 || null,
 

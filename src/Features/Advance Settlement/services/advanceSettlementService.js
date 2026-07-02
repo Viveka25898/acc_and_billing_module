@@ -45,6 +45,7 @@ const SETTLEMENT_API = {
   OS_BALANCE:      (employeeId) => `/accounts/employees/${employeeId}/os-balance`,
   DETAIL:          (id) => `/accounts/advance-settlements/${id}`,
   CLARIFICATION:   (id) => `/accounts/advance-settlements/${id}/clarification`,
+  JV_DETAILS:      (id) => `/accounts/advance-settlements/${id}/jv-details`,
   // ── Unified Endpoints (backend routes by JWT role) ──────────────────────────
   QUEUE:           '/accounts/advance-settlements/queue',
   WORKFLOW:        (id) => `/accounts/advance-settlements/${id}/workflow`,
@@ -660,37 +661,52 @@ export const rejectByAe = async ({ id, remarks }) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6A. FETCH AM QUEUE
-//     GET /advance-settlements/am/queue
+//     GET /advance-settlements/queue
 // ─────────────────────────────────────────────────────────────────────────────
 export const fetchAmQueue = async ({ page = 1, limit = 10 } = {}) => {
-  const res = await axiosInstance.get(SETTLEMENT_API.AM_QUEUE, { params: { page, limit } })
+  const res = await axiosInstance.get(SETTLEMENT_API.QUEUE, { params: { page, limit } })
   return normalizeQueueResponse(res.data, 'Account Manager')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6B. AM — APPROVE
-//     PUT /advance-settlements/{id}/am/approve
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
 export const approveByAm = async ({ id, remarks = 'Approved by Account Manager' }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to approve.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.AM_APPROVE(id), {
-    remarks: remarks.trim() || 'Approved by Account Manager',
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:   'APPROVE',
+    comments: remarks.trim() || 'Approved by Account Manager',
   })
-  return normalizeActionResponse(res.data, 'Settlement approved and forwarded to Account Executive.')
+  return normalizeActionResponse(res.data, 'Settlement approved and journal entries posted.')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6C. AM — REJECT
-//     PUT /advance-settlements/{id}/am/reject
+//     PATCH /advance-settlements/{id}/workflow
 // ─────────────────────────────────────────────────────────────────────────────
 export const rejectByAm = async ({ id, remarks }) => {
   if (!id || !String(id).trim()) throw new Error('Settlement ID is required to reject.')
   if (!remarks || !remarks.trim()) throw new Error('Rejection remarks are required.')
   if (remarks.trim().length < 5) throw new Error('Rejection remarks must be at least 5 characters.')
 
-  const res = await axiosInstance.put(SETTLEMENT_API.AM_REJECT(id), {
-    remarks: remarks.trim(),
+  const trimmedRemarks = remarks.trim()
+  const res = await axiosInstance.patch(SETTLEMENT_API.WORKFLOW(id), {
+    action:           'REJECT',
+    comments:         trimmedRemarks,
+    rejection_reason: trimmedRemarks,
   })
   return normalizeActionResponse(res.data, 'Settlement rejected. Employee has been notified.')
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6D. FETCH JV DETAILS
+//     GET /advance-settlements/{id}/jv-details
+// ─────────────────────────────────────────────────────────────────────────────
+export const fetchJvDetails = async (id) => {
+  if (!id || !String(id).trim()) throw new Error('Settlement ID is required to fetch JV details.')
+
+  const res = await axiosInstance.get(SETTLEMENT_API.JV_DETAILS(id))
+  return res.data
 }

@@ -1,20 +1,33 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { toast } from 'react-toastify'
 import { AiOutlineEye } from 'react-icons/ai'
 import ManagerClarificationModal from '../Components/ManagerClarificationModal'
+import EmployeeAdvanceSettlementJV from '../Components/JVDisplay'
+import { selectRole, selectEmpName, selectEmpId } from '../../../Auth/authSlice'
+
+// ── Redux Thunks ──────────────────────────────────────────────────────────────
+import {
+  fetchAmQueue,
+  approveAm,
+  rejectAm,
+} from '../../../store/slices/advanceSettlementSlice'
+
+// ── Redux Selectors ───────────────────────────────────────────────────────────
+import {
+  selectApprovalQueue,
+  selectQueueLoading,
+  selectQueueError,
+  selectApproveLoading,
+  selectRejectLoading,
+  selectQueuePagination,
+} from '../../../store/slices/advanceSettlementSlice'
+
+// ── Services ──────────────────────────────────────────────────────────────────
+import { fetchSettlementById, fetchJvDetails } from '../services/advanceSettlementService'
 
 // ── Helpers & Constants ───────────────────────────────────────────────────────
-const SETTLEMENT_STATUS = {
-  PENDING_AM: 'PENDING_AM',
-  APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
-}
-
-const getStatusLabel = (status) => {
-  if (status === SETTLEMENT_STATUS.PENDING_AM) return 'Pending Account Manager Approval'
-  if (status === SETTLEMENT_STATUS.APPROVED) return 'Approved'
-  if (status === SETTLEMENT_STATUS.REJECTED) return 'Rejected'
-  return status
-}
+import { SETTLEMENT_STATUS, getStatusLabel } from '../utils/settlementConstants'
 
 const getStatusBadgeClass = (status = '') => {
   if (status === SETTLEMENT_STATUS.PENDING_AM) return 'bg-indigo-100 text-indigo-700 border-indigo-200'
@@ -27,109 +40,198 @@ const STATUS_ORDER = {
   [SETTLEMENT_STATUS.PENDING_AM]: 1,
 }
 
-// ── Mock Data ─────────────────────────────────────────────────────────────────
-const MOCK_SETTLEMENTS = [
-  {
-    id: 'd6a041e7-4573-4279-b860-9d9eea392f8a',
-    settlementNo: 'SET-20260701042427469163',
-    status: 'PENDING_AM',
-    employeeId: 79,
-    region: 'NORTH',
-    outstandingBalanceBefore: 1500.00,
-    totalAmount: 900.00,
-    submittedAt: '2026-07-01T04:24:27.469Z',
-    rejectionReason: null,
-    clarification: null,
-  },
-  {
-    id: 'df6ca6ab-dc3f-42e2-af7f-a36a9ff876e1',
-    settlementNo: 'SET-20260701042425685253',
-    status: 'PENDING_AM',
-    employeeId: 104,
-    region: 'WEST',
-    outstandingBalanceBefore: 0.00,
-    totalAmount: 1250.00,
-    submittedAt: '2026-07-01T04:24:25.685Z',
-    rejectionReason: null,
-    clarification: 'Verified original bills attached.',
-    rejectedBy: 'Account Executive',
-    clarificationAt: '2026-07-01T04:30:12.000Z',
-    updatedAt: '2026-07-01T04:35:10.000Z'
-  },
-  {
-    id: '0222aa96-d70b-4e83-a8a7-55cc969af31d',
-    settlementNo: 'SET-20260701042423346192',
-    status: 'PENDING_AM',
-    employeeId: 112,
-    region: 'SOUTH',
-    outstandingBalanceBefore: 500.00,
-    totalAmount: 450.00,
-    submittedAt: '2026-07-01T04:24:23.346Z',
-    rejectionReason: null,
-    clarification: null,
+const constructJvData = (settlement, voucherNo, transactionId, costCenterId) => {
+  // Do not add any entries on the frontend since they do not come from the backend.
+  const entries = []
+
+  const dateStr = settlement.approvedAt || settlement.submittedAt || settlement.updatedAt || null
+  const formattedDate = dateStr
+    ? new Date(dateStr).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+      })
+    : null
+
+  return {
+    header: {
+      company: null, // Not returned by backend -> will show '-'
+      voucherNo: voucherNo || null,
+      financialYear: null, // Not returned by backend -> will show '-'
+      date: formattedDate,
+      reference: settlement.settlementId || settlement.settlementNo || null,
+    },
+    entries,
+    narration: voucherNo 
+      ? `Advance settlement processed. Voucher No: ${voucherNo}. Transaction ID: ${transactionId || 'N/A'}. Cost Center ID: ${costCenterId || 'N/A'}`
+      : null,
+    approvals: {
+      preparer: null, // Not returned by backend -> will show '-'
+      reviewer: null, // Not returned by backend -> will show '-'
+      approver: null, // Not returned by backend -> will show '-'
+      date: formattedDate,
+    },
+    totals: {
+      debit: 0,
+      credit: 0,
+    },
+    balanceInfo: {
+      osBalanceBefore: settlement.osBalanceBefore !== undefined ? Number(settlement.osBalanceBefore) : null,
+      settlementAmount: settlement.totalAmount !== undefined ? Number(settlement.totalAmount) : null,
+      osBalanceAfter: settlement.osBalanceAfter !== undefined ? Number(settlement.osBalanceAfter) : null,
+    },
+    employeeInfo: {
+      employeeName: settlement.employeeName || null,
+      employeeId: settlement.employeeId || null,
+    },
   }
-]
+}
 
 const AMAdvanceSettlementApprovalPage = () => {
-  // ── Local Mock UI States ────────────────────────────────────────────────────
-  const [queue, setQueue] = useState(MOCK_SETTLEMENTS)
-  const [loading, setLoading] = useState(false)
-  const [remarks, setRemarks] = useState('')
-  const [rejectId, setRejectId] = useState(null)
-  const [approvingId, setApprovingId] = useState(null)
-  const [filters, setFilters] = useState({ employee: '', status: 'All', date: '' })
-  const [currentPage, setCurrentPage] = useState(1)
+  const dispatch = useDispatch()
+
+  // ── Redux State ──────────────────────────────────────────────────────────────
+  const queue       = useSelector(selectApprovalQueue)
+  const loading     = useSelector(selectQueueLoading)
+  const queueError  = useSelector(selectQueueError)
+  const isApproving = useSelector(selectApproveLoading)
+  const isRejecting = useSelector(selectRejectLoading)
+  const pagination  = useSelector(selectQueuePagination)
+
+  const currentRole = useSelector(selectRole)
+  const currentEmpName = useSelector(selectEmpName)
+  const currentEmpId = useSelector(selectEmpId)
+
+  // ── Local UI State ────────────────────────────────────────────────────────────
+  const [remarks, setRemarks]               = useState('')
+  const [rejectId, setRejectId]             = useState(null)   // UUID of settlement being rejected
+  const [approvingId, setApprovingId]       = useState(null)   // UUID for per-row spinner
+  const [filters, setFilters]               = useState({ employee: '', status: 'All', date: '' })
+  const [currentPage, setCurrentPage]       = useState(1)
   const [selectedClarificationReq, setSelectedClarificationReq] = useState(null)
+  const [selectedJvData, setSelectedJvData] = useState(null)
+  const [postApprovalLoading, setPostApprovalLoading] = useState(false)
   const ITEMS_PER_PAGE = 5
 
   const shouldShowClarification = (req) => {
-    return !!req.clarification
+    if (!req.clarification) return false
+    if (!req.rejectedBy) {
+      return req.status === SETTLEMENT_STATUS.PENDING_AM
+    }
+
+    const rejectedByLower = String(req.rejectedBy).toLowerCase()
+    if (currentEmpName && rejectedByLower.includes(String(currentEmpName).toLowerCase())) return true
+    if (currentEmpId && rejectedByLower.includes(String(currentEmpId).toLowerCase())) return true
+
+    if (currentRole) {
+      const normalizedRole = String(currentRole).toLowerCase().replace(/[-_]/g, ' ')
+      const normalizedRejectedBy = rejectedByLower.replace(/[-_]/g, ' ')
+      if (normalizedRejectedBy.includes(normalizedRole)) return true
+      if (currentRole === 'account-manager' && (normalizedRejectedBy.includes('manager') || normalizedRejectedBy.includes('account manager'))) return true
+    }
+
+    return false
   }
 
-  // ─── Approve Handler (Mock) ────────────────────────────────────────────────
+  // ─── Load queue on mount ──────────────────────────────────────────────────
+  const loadQueue = useCallback(async () => {
+    try {
+      await dispatch(fetchAmQueue({ page: currentPage, limit: ITEMS_PER_PAGE })).unwrap()
+    } catch (err) {
+      toast.error(`❌ Failed to load AM approval queue: ${typeof err === 'string' ? err : err?.message || 'Unknown error'}`)
+    }
+  }, [dispatch, currentPage])
+
+  useEffect(() => { loadQueue() }, [loadQueue])
+
+  // Toast Redux-level errors
+  useEffect(() => { if (queueError) toast.error(`❌ ${queueError}`) }, [queueError])
+
+  // ─── Approve ─────────────────────────────────────────────────────────────
   const handleApprove = async (id) => {
     try {
       setApprovingId(id)
-      setLoading(true)
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      setPostApprovalLoading(true)
+
+      // 1. Dispatch the approval API call to transition workflow status
+      const actionResult = await dispatch(approveAm({ id, remarks: 'Approved by Account Manager' })).unwrap()
+      toast.success('✅ Settlement approved and journal entries posted.')
+
+      // Retrieve the canonical settlement number (SET-...) from the queue item
+      const queueItem = queue.find(q => q.id === id) || {}
+      const settlementId = queueItem.settlementId || queueItem.settlementNo || id
+
+      // 2. Fetch the full details of this settlement to get expenseItems and employee GL code
+      let detailedSettlement = null
+      try {
+        detailedSettlement = await fetchSettlementById(settlementId)
+      } catch (err) {
+        console.warn(`Failed to fetch settlement by settlementNo (${settlementId}), trying by UUID (${id})...`, err)
+        try {
+          detailedSettlement = await fetchSettlementById(id)
+        } catch (uuidErr) {
+          console.error('Failed to fetch settlement details by both keys:', uuidErr)
+        }
+      }
+
+      // 3. Fetch the JV transaction details (voucher_no, ledger_transaction_id, cost_center_id)
+      let jvDetails = null
+      try {
+        jvDetails = await fetchJvDetails(settlementId)
+      } catch (err) {
+        console.warn(`Failed to fetch JV details by settlementNo (${settlementId}), trying by UUID (${id})...`, err)
+        try {
+          jvDetails = await fetchJvDetails(id)
+        } catch (uuidErr) {
+          console.error('Failed to fetch JV details by both keys:', uuidErr)
+        }
+      }
+
+      // 4. Construct the JV entries and header data for the modal display
+      // Fallback: If detail fetch failed, use actionResult or the queue item
+      console.log('[AM Approval] detailedSettlement:', detailedSettlement)
+      console.log('[AM Approval] actionResult:', actionResult)
+      console.log('[AM Approval] queueItem:', queueItem)
+      console.log('[AM Approval] jvDetails:', jvDetails)
+
+      const settlementObj = detailedSettlement || actionResult?.updated || queueItem || {}
       
-      // Update local state queue
-      setQueue((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, status: SETTLEMENT_STATUS.APPROVED } : s))
-      )
+      const voucherNo = jvDetails?.data?.voucher_no || actionResult?.updated?.voucherNo || settlementObj.voucherNo || 'N/A'
+      const transactionId = jvDetails?.data?.ledger_transaction_id || actionResult?.updated?.ledgerTransactionId || settlementObj.ledgerTransactionId || 'N/A'
+      const costCenterId = jvDetails?.data?.cost_center_id || actionResult?.updated?.costCenterId || settlementObj.costCenterId || 'N/A'
+
+      const jvDisplayPayload = constructJvData(settlementObj, voucherNo, transactionId, costCenterId)
+      console.log('[AM Approval] constructed jvDisplayPayload:', jvDisplayPayload)
       
-      alert(`✅ Settlement approved successfully! (Forwarded for GL Processing)`)
+      setSelectedJvData(jvDisplayPayload)
+      console.log('[AM Approval] setSelectedJvData called!')
+
+      // 5. Reload the queue
+      loadQueue()
+
     } catch (err) {
-      console.error(err)
+      const msg = typeof err === 'string' ? err : err?.message || 'Approval failed. Please try again.'
+      toast.error(`❌ ${msg}`)
     } finally {
       setApprovingId(null)
-      setLoading(false)
+      setPostApprovalLoading(false)
     }
   }
 
-  // ─── Reject Handler (Mock) ─────────────────────────────────────────────────
+  // ─── Reject ───────────────────────────────────────────────────────────────
   const handleReject = async () => {
     try {
-      setLoading(true)
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      if (!rejectId) { toast.error('❌ Invalid settlement. Please refresh.'); return }
+      if (!remarks.trim()) { toast.error('❌ Please provide rejection remarks.'); return }
+      if (remarks.trim().length < 5) { toast.error('❌ Remarks must be at least 5 characters.'); return }
 
-      setQueue((prev) =>
-        prev.map((s) =>
-          s.id === rejectId
-            ? { ...s, status: SETTLEMENT_STATUS.REJECTED, rejectionReason: remarks }
-            : s
-        )
-      )
+      await dispatch(rejectAm({ id: rejectId, remarks: remarks.trim() })).unwrap()
 
-      alert('✅ Settlement rejected. Employee will be notified.')
+      toast.success('✅ Settlement rejected — employee will be notified.')
       setRemarks('')
       setRejectId(null)
+      loadQueue()
     } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
+      const msg = typeof err === 'string' ? err : err?.message || 'Rejection failed. Please try again.'
+      toast.error(`❌ ${msg}`)
     }
   }
 
@@ -173,7 +275,7 @@ const AMAdvanceSettlementApprovalPage = () => {
             ✅ Advance Settlements – Account Manager Approval
           </h1>
           <p className="text-green-100 text-sm mt-0.5">
-            Review and approve / reject settlement requests for your queue (Mock UI)
+            Review and approve / reject settlement requests for your queue
           </p>
         </div>
 
@@ -225,13 +327,28 @@ const AMAdvanceSettlementApprovalPage = () => {
           </div>
         </div>
 
-        {/* ── Table ────────────────────────────────────────────────────────── */}
-        {filteredQueue.length === 0 ? (
+        {/* ── Loading spinner ──────────────────────────────────────────────── */}
+        {(loading || postApprovalLoading) && (
+          <div className="flex justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+          </div>
+        )}
+
+        {/* ── Empty state ──────────────────────────────────────────────────── */}
+        {!(loading || postApprovalLoading) && filteredQueue.length === 0 && (
           <div className="bg-white rounded-xl border border-green-100 shadow-sm py-16 text-center">
             <p className="text-4xl mb-3">📭</p>
             <p className="text-gray-500 font-medium">No settlement requests found.</p>
+            <p className="text-sm text-gray-400 mt-1">
+              {filters.employee || filters.status !== 'All' || filters.date
+                ? 'Try changing your filters.'
+                : 'Settlement requests pending your approval will appear here.'}
+            </p>
           </div>
-        ) : (
+        )}
+
+        {/* ── Table ────────────────────────────────────────────────────────── */}
+        {!(loading || postApprovalLoading) && paginatedQueue.length > 0 && (
           <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -240,6 +357,7 @@ const AMAdvanceSettlementApprovalPage = () => {
                   <tr className="bg-green-600 text-white text-left">
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">#</th>
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">Employee ID</th>
+                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Employee Name</th>
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">Region</th>
                     <th className="px-4 py-3 font-semibold">Date</th>
                     <th className="px-4 py-3 font-semibold">Excel File</th>
@@ -272,6 +390,11 @@ const AMAdvanceSettlementApprovalPage = () => {
                         {/* Employee ID */}
                         <td className="px-4 py-3 text-gray-800 font-medium">
                           {req.employeeId || '—'}
+                        </td>
+
+                        {/* Employee Name */}
+                        <td className="px-4 py-3 text-gray-800">
+                          {req.employeeName || '—'}
                         </td>
 
                         {/* Region */}
@@ -340,23 +463,31 @@ const AMAdvanceSettlementApprovalPage = () => {
 
                             {/* Approve */}
                             <button
-                              disabled={!actionable || isThisApproving}
+                              disabled={!actionable || isThisApproving || isApproving}
                               onClick={() => handleApprove(req.id)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition min-w-[70px] flex items-center justify-center gap-1 ${
-                                actionable && !isThisApproving
+                                actionable && !isThisApproving && !isApproving
                                   ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
                                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              {isThisApproving ? '...' : 'Approve'}
+                              {isThisApproving ? (
+                                <>
+                                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                  </svg>
+                                  ...
+                                </>
+                              ) : 'Approve'}
                             </button>
 
                             {/* Reject */}
                             <button
-                              disabled={!actionable}
+                              disabled={!actionable || isRejecting}
                               onClick={() => { setRejectId(req.id); setRemarks('') }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition min-w-[60px] ${
-                                actionable
+                                actionable && !isRejecting
                                   ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
                                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
@@ -427,16 +558,25 @@ const AMAdvanceSettlementApprovalPage = () => {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setRejectId(null); setRemarks('') }}
-                className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                disabled={isRejecting}
+                className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleReject}
-                disabled={remarks.trim().length < 5}
-                className="px-5 py-2 rounded-lg text-sm bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50"
+                disabled={isRejecting || remarks.trim().length < 5}
+                className="px-5 py-2 rounded-lg text-sm bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
               >
-                Confirm Reject
+                {isRejecting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Rejecting...
+                  </>
+                ) : 'Confirm Reject'}
               </button>
             </div>
           </div>
@@ -475,6 +615,14 @@ const AMAdvanceSettlementApprovalPage = () => {
           }
         }}
       />
+
+      {/* ── JV Details Modal ─────────────────────────────────────────────── */}
+      {selectedJvData !== null && (
+        <EmployeeAdvanceSettlementJV
+          data={selectedJvData}
+          onClose={() => setSelectedJvData(null)}
+        />
+      )}
     </div>
   )
 }
