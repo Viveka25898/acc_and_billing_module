@@ -23,12 +23,28 @@ export const fetchAccountsByParent = createAsyncThunk(
   }
 )
 
+// ─── Thunk: Fetch Accounts Summary ───────────────────────────────────────────
+export const fetchAccountsSummary = createAsyncThunk(
+  'chartOfAccounts/fetchAccountsSummary',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchAccountsSummary()
+      return data
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to fetch accounts summary.')
+    }
+  }
+)
+
 const initialState = {
   accounts: [],
   loadingStates: {},      // { [parentCode]: 'idle' | 'loading' | 'succeeded' | 'failed' }
   errors: {},             // { [parentCode]: string | null }
   expandedAccounts: [],   // Array of expanded account codes
   pagination: {},         // { [parentCode]: paginationInfo }
+  summary: null,
+  summaryLoading: false,
+  summaryError: null,
 }
 
 const chartOfAccountsSlice = createSlice({
@@ -61,6 +77,9 @@ const chartOfAccountsSlice = createSlice({
       state.errors = {}
       state.expandedAccounts = []
       state.pagination = {}
+      state.summary = null
+      state.summaryLoading = false
+      state.summaryError = null
     }
   },
   extraReducers: (builder) => {
@@ -90,6 +109,19 @@ const chartOfAccountsSlice = createSlice({
         state.loadingStates[parentCode] = 'failed'
         state.errors[parentCode] = action.payload || 'An error occurred.'
       })
+      // ─── fetchAccountsSummary ───
+      .addCase(fetchAccountsSummary.pending, (state) => {
+        state.summaryLoading = true
+        state.summaryError = null
+      })
+      .addCase(fetchAccountsSummary.fulfilled, (state, action) => {
+        state.summaryLoading = false
+        state.summary = action.payload
+      })
+      .addCase(fetchAccountsSummary.rejected, (state, action) => {
+        state.summaryLoading = false
+        state.summaryError = action.payload || 'An error occurred.'
+      })
   }
 })
 
@@ -101,5 +133,8 @@ export const selectLoadingStates = (state) => state.chartOfAccounts.loadingState
 export const selectErrors = (state) => state.chartOfAccounts.errors
 export const selectExpandedAccounts = (state) => state.chartOfAccounts.expandedAccounts
 export const selectCOAPagination = (state) => state.chartOfAccounts.pagination
+export const selectAccountsSummary = (state) => state.chartOfAccounts.summary
+export const selectSummaryLoading = (state) => state.chartOfAccounts.summaryLoading
+export const selectSummaryError = (state) => state.chartOfAccounts.summaryError
 
 export default chartOfAccountsSlice.reducer

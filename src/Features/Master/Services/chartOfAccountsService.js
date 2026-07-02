@@ -34,3 +34,14 @@ export const fetchAccountsByParentCode = async ({ parentCode = '', page = 1, lim
   // The API returns response structure like: { success: true, results: { items: [], ... } }
   return res.data?.results || res.data || {}
 }
+
+/**
+ * Fetches chart of accounts summary statistics.
+ * Endpoint: GET /accounts/summary
+ *
+ * @returns {Promise<Object>} API response payload
+ */
+export const fetchAccountsSummary = async () => {
+  const res = await axiosInstance.get(`${BASE_URL}/summary`)
+  return res.data?.results || res.data || {}
+}

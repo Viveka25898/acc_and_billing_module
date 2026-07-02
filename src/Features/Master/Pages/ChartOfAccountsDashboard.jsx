@@ -11,6 +11,7 @@ import AccountDetailsModal from '../Components/AccountDetailsModal'
 // Redux Thunks & Selectors
 import {
   fetchAccountsByParent,
+  fetchAccountsSummary,
   toggleExpandAccount,
   addAccount,
   updateAccount,
@@ -19,6 +20,9 @@ import {
   selectLoadingStates,
   selectExpandedAccounts,
   selectErrors,
+  selectAccountsSummary,
+  selectSummaryLoading,
+  selectSummaryError,
 } from '../../../store/slices/chartOfAccountsSlice'
 
 // Import A3001 auto-sync utility
@@ -45,6 +49,9 @@ const ChartOfAccountsDashboard = () => {
   const loadingStates = useSelector(selectLoadingStates)
   const expandedAccountsList = useSelector(selectExpandedAccounts)
   const coaErrors = useSelector(selectErrors)
+  const summary = useSelector(selectAccountsSummary)
+  const summaryLoading = useSelector(selectSummaryLoading)
+  const summaryError = useSelector(selectSummaryError)
 
   // Local UI State
   const [searchTerm, setSearchTerm] = useState('')
@@ -65,12 +72,13 @@ const ChartOfAccountsDashboard = () => {
     updateExpenseClosingBalance()
   }, [])
 
-  // Load root level accounts on mount if not already loaded
+  // Load root level accounts and summary on mount
   useEffect(() => {
+    dispatch(fetchAccountsSummary())
     if (!loadingStates['']) {
       dispatch(fetchAccountsByParent({ parentCode: '' }))
     }
-  }, [dispatch, loadingStates])
+  }, [dispatch])
 
   // Function to get all children of an account (recursive) — kept for delete logic
   const getAllChildren = (parentCode, accountsList = accounts) => {
@@ -184,7 +192,7 @@ const ChartOfAccountsDashboard = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <Header onAddAccount={openAddModal} />
-        <StatsCards accounts={accounts} />
+        <StatsCards summary={summary} loading={summaryLoading} error={summaryError} />
         
         {coaErrors[''] && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md flex items-center justify-between">
