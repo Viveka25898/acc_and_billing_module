@@ -36,6 +36,19 @@ export const fetchAccountsSummary = createAsyncThunk(
   }
 )
 
+// ─── Thunk: Create New Account ───────────────────────────────────────────────
+export const createNewAccount = createAsyncThunk(
+  'chartOfAccounts/createNewAccount',
+  async (accountData, { rejectWithValue }) => {
+    try {
+      const data = await service.createAccount(accountData)
+      return data
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to create new account.')
+    }
+  }
+)
+
 const initialState = {
   accounts: [],
   loadingStates: {},      // { [parentCode]: 'idle' | 'loading' | 'succeeded' | 'failed' }
@@ -45,6 +58,8 @@ const initialState = {
   summary: null,
   summaryLoading: false,
   summaryError: null,
+  createLoading: false,
+  createError: null,
 }
 
 const chartOfAccountsSlice = createSlice({
@@ -122,6 +137,21 @@ const chartOfAccountsSlice = createSlice({
         state.summaryLoading = false
         state.summaryError = action.payload || 'An error occurred.'
       })
+      // ─── createNewAccount ───
+      .addCase(createNewAccount.pending, (state) => {
+        state.createLoading = true
+        state.createError = null
+      })
+      .addCase(createNewAccount.fulfilled, (state, action) => {
+        state.createLoading = false
+        if (action.payload) {
+          state.accounts.push(action.payload)
+        }
+      })
+      .addCase(createNewAccount.rejected, (state, action) => {
+        state.createLoading = false
+        state.createError = action.payload || 'An error occurred.'
+      })
   }
 })
 
@@ -136,5 +166,7 @@ export const selectCOAPagination = (state) => state.chartOfAccounts.pagination
 export const selectAccountsSummary = (state) => state.chartOfAccounts.summary
 export const selectSummaryLoading = (state) => state.chartOfAccounts.summaryLoading
 export const selectSummaryError = (state) => state.chartOfAccounts.summaryError
+export const selectCreateLoading = (state) => state.chartOfAccounts.createLoading
+export const selectCreateError = (state) => state.chartOfAccounts.createError
 
 export default chartOfAccountsSlice.reducer

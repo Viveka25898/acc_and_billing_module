@@ -45,3 +45,50 @@ export const fetchAccountsSummary = async () => {
   const res = await axiosInstance.get(`${BASE_URL}/summary`)
   return res.data?.results || res.data || {}
 }
+
+/**
+ * Fetches available account types from the backend.
+ * Endpoint: GET /account-master/accounts/types
+ */
+export const fetchAccountTypes = async () => {
+  const res = await axiosInstance.get(`${BASE_URL}/types`)
+  return res.data?.results || res.data || []
+}
+
+/**
+ * Previews the generated code for a new account.
+ * Endpoint: GET /account-master/accounts/generate-code
+ */
+export const generateAccountCode = async (parentCode, type) => {
+  const params = { type }
+  if (parentCode) {
+    params.parentCode = parentCode
+  }
+  const res = await axiosInstance.get(`${BASE_URL}/generate-code`, { params })
+  return res.data?.results || res.data || {}
+}
+
+/**
+ * Creates a new account category or ledger in the backend.
+ * Endpoint: POST /account-master/accounts
+ */
+export const createAccount = async (accountData) => {
+  const res = await axiosInstance.post(BASE_URL, accountData)
+  return res.data?.results || res.data || {}
+}
+
+/**
+ * Fetches all accounts (without parentCode filtering) with a large limit.
+ * Endpoint: GET /account-master/accounts
+ */
+export const fetchAllAccounts = async ({ page = 1, limit = 200 } = {}) => {
+  const params = {
+    page,
+    limit,
+    includeInactive: false,
+    sortBy: 'code',
+    sortOrder: 'asc'
+  }
+  const res = await axiosInstance.get(BASE_URL, { params })
+  return res.data?.results || res.data || {}
+}

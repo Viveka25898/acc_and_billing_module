@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { toast } from 'react-toastify'
 import Header from '../Components/Header'
 import StatsCards from '../Components/StatsCard'
 import SearchAndFilter from '../Components/SearchAndFilter'
@@ -12,6 +13,7 @@ import AccountDetailsModal from '../Components/AccountDetailsModal'
 import {
   fetchAccountsByParent,
   fetchAccountsSummary,
+  createNewAccount,
   toggleExpandAccount,
   addAccount,
   updateAccount,
@@ -92,20 +94,15 @@ const ChartOfAccountsDashboard = () => {
     return allChildren
   }
 
-  const handleAddAccount = (newAccount) => {
-    const accountWithId = {
-      ...newAccount,
-      id: Date.now().toString(),
-    }
-    dispatch(addAccount(accountWithId))
-
-    // Save to localStorage for backward compatibility with other features
+  const handleAddAccount = async (newAccount) => {
     try {
-      const savedAccounts = localStorage.getItem('chartOfAccounts')
-      const currentList = savedAccounts ? JSON.parse(savedAccounts) : []
-      localStorage.setItem('chartOfAccounts', JSON.stringify([...currentList, accountWithId]))
-    } catch (e) {
-      console.warn('Failed to update local storage copy of chartOfAccounts', e)
+      await dispatch(createNewAccount(newAccount)).unwrap()
+      toast.success('Account created successfully! 🚀')
+      // Refresh summary stats and table level
+      dispatch(fetchAccountsSummary())
+      dispatch(fetchAccountsByParent({ parentCode: newAccount.parentCode || '' }))
+    } catch (err) {
+      toast.error(`Failed to create account: ${err || 'Unknown error'}`)
     }
   }
 
