@@ -14,6 +14,8 @@ import {
   fetchAccountsByParent,
   fetchAccountsSummary,
   createNewAccount,
+  updateAccountDetails,
+  deleteAccountById,
   toggleExpandAccount,
   addAccount,
   updateAccount,
@@ -117,7 +119,7 @@ const ChartOfAccountsDashboard = () => {
     setIsDetailsModalOpen(false)
   }
 
-  const handleDeleteAccount = (accountId) => {
+  const handleDeleteAccount = async (accountId) => {
     const accountToDelete = accounts.find((acc) => acc.id === accountId)
     if (!accountToDelete) return
 
@@ -130,20 +132,12 @@ const ChartOfAccountsDashboard = () => {
     const confirmed = window.confirm(confirmMessage)
     if (!confirmed) return
 
-    // Get all children that need to be deleted
-    const childrenToDelete = getAllChildren(accountToDelete.code)
-    const idsToDelete = [accountId, ...childrenToDelete.map((child) => child.id)]
-
-    dispatch(deleteAccount(idsToDelete))
-
-    // Save to localStorage for backward compatibility
     try {
-      const savedAccounts = localStorage.getItem('chartOfAccounts')
-      const currentList = savedAccounts ? JSON.parse(savedAccounts) : []
-      const updatedList = currentList.filter((a) => !idsToDelete.includes(a.id))
-      localStorage.setItem('chartOfAccounts', JSON.stringify(updatedList))
-    } catch (e) {
-      console.warn('Failed to update local storage copy of chartOfAccounts during delete', e)
+      await dispatch(deleteAccountById(accountId)).unwrap()
+      toast.success('Account successfully deleted! 🗑️')
+      dispatch(fetchAccountsSummary())
+    } catch (err) {
+      toast.error(`Failed to delete account: ${err || 'Unknown error'}`)
     }
 
     // Close details modal if open
@@ -153,17 +147,13 @@ const ChartOfAccountsDashboard = () => {
     }
   }
 
-  const handleUpdateAccount = (updatedAccount) => {
-    dispatch(updateAccount(updatedAccount))
-
-    // Save to localStorage for backward compatibility
+  const handleUpdateAccount = async (payload) => {
     try {
-      const savedAccounts = localStorage.getItem('chartOfAccounts')
-      const currentList = savedAccounts ? JSON.parse(savedAccounts) : []
-      const updatedList = currentList.map((a) => (a.id === updatedAccount.id ? updatedAccount : a))
-      localStorage.setItem('chartOfAccounts', JSON.stringify(updatedList))
-    } catch (e) {
-      console.warn('Failed to update local storage copy of chartOfAccounts during update', e)
+      await dispatch(updateAccountDetails(payload)).unwrap()
+      toast.success('Account successfully updated! ✏️')
+      dispatch(fetchAccountsSummary())
+    } catch (err) {
+      toast.error(`Failed to update account: ${err || 'Unknown error'}`)
     }
   }
 

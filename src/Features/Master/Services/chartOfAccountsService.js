@@ -92,3 +92,21 @@ export const fetchAllAccounts = async ({ page = 1, limit = 200 } = {}) => {
   const res = await axiosInstance.get(BASE_URL, { params })
   return res.data?.results || res.data || {}
 }
+
+/**
+ * Updates an existing account's editable details.
+ * Endpoint: PUT /account-master/accounts/{id}
+ */
+export const updateAccount = async (id, updateData) => {
+  const res = await axiosInstance.put(`${BASE_URL}/${id}`, updateData)
+  return res.data?.results || res.data || {}
+}
+
+/**
+ * Deletes an account category or ledger.
+ * Endpoint: DELETE /account-master/accounts/{id}
+ */
+export const deleteAccount = async (id) => {
+  const res = await axiosInstance.delete(`${BASE_URL}/${id}`)
+  return res.data?.results || res.data || {}
+}

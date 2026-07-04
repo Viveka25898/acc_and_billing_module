@@ -49,6 +49,32 @@ export const createNewAccount = createAsyncThunk(
   }
 )
 
+// ─── Thunk: Update Account Details ───────────────────────────────────────────
+export const updateAccountDetails = createAsyncThunk(
+  'chartOfAccounts/updateAccountDetails',
+  async ({ id, name }, { rejectWithValue }) => {
+    try {
+      const data = await service.updateAccount(id, { name })
+      return data
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to update account details.')
+    }
+  }
+)
+
+// ─── Thunk: Delete Account ───────────────────────────────────────────────────
+export const deleteAccountById = createAsyncThunk(
+  'chartOfAccounts/deleteAccountById',
+  async (id, { rejectWithValue }) => {
+    try {
+      await service.deleteAccount(id)
+      return id
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to delete account.')
+    }
+  }
+)
+
 const initialState = {
   accounts: [],
   loadingStates: {},      // { [parentCode]: 'idle' | 'loading' | 'succeeded' | 'failed' }
@@ -60,6 +86,10 @@ const initialState = {
   summaryError: null,
   createLoading: false,
   createError: null,
+  editLoading: false,
+  editError: null,
+  deleteLoading: false,
+  deleteError: null,
 }
 
 const chartOfAccountsSlice = createSlice({
@@ -152,6 +182,44 @@ const chartOfAccountsSlice = createSlice({
         state.createLoading = false
         state.createError = action.payload || 'An error occurred.'
       })
+      // ─── updateAccountDetails ───
+      .addCase(updateAccountDetails.pending, (state) => {
+        state.editLoading = true
+        state.editError = null
+      })
+      .addCase(updateAccountDetails.fulfilled, (state, action) => {
+        state.editLoading = false
+        if (action.payload) {
+          const updated = action.payload
+          state.accounts = state.accounts.map(acc => acc.id === updated.id ? updated : acc)
+        }
+      })
+      .addCase(updateAccountDetails.rejected, (state, action) => {
+        state.editLoading = false
+        state.editError = action.payload || 'An error occurred.'
+      })
+      // ─── deleteAccountById ───
+      .addCase(deleteAccountById.pending, (state) => {
+        state.deleteLoading = true
+        state.deleteError = null
+      })
+      .addCase(deleteAccountById.fulfilled, (state, action) => {
+        state.deleteLoading = false
+        const deletedId = action.payload
+        const accountToDelete = state.accounts.find(acc => acc.id === deletedId)
+        if (accountToDelete) {
+          const codePrefix = accountToDelete.code
+          state.accounts = state.accounts.filter(
+            acc => acc.id !== deletedId && !String(acc.code || '').startsWith(codePrefix)
+          )
+        } else {
+          state.accounts = state.accounts.filter(acc => acc.id !== deletedId)
+        }
+      })
+      .addCase(deleteAccountById.rejected, (state, action) => {
+        state.deleteLoading = false
+        state.deleteError = action.payload || 'An error occurred.'
+      })
   }
 })
 
@@ -168,5 +236,9 @@ export const selectSummaryLoading = (state) => state.chartOfAccounts.summaryLoad
 export const selectSummaryError = (state) => state.chartOfAccounts.summaryError
 export const selectCreateLoading = (state) => state.chartOfAccounts.createLoading
 export const selectCreateError = (state) => state.chartOfAccounts.createError
+export const selectEditLoading = (state) => state.chartOfAccounts.editLoading
+export const selectEditError = (state) => state.chartOfAccounts.editError
+export const selectDeleteLoading = (state) => state.chartOfAccounts.deleteLoading
+export const selectDeleteError = (state) => state.chartOfAccounts.deleteError
 
 export default chartOfAccountsSlice.reducer
