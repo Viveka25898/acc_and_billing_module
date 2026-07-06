@@ -1,16 +1,20 @@
-// src/components/BankLedger/FilterSection.jsx
 import React, { useState } from 'react'
 
-const FilterSection = () => {
+const FilterSection = ({ onApply }) => {
   const [filters, setFilters] = useState({
-    fromDate: '2024-04-01',
-    toDate: '2024-07-30',
+    fromDate: '',
+    toDate: '',
     transactionType: 'All Transactions',
-    reconciliationStatus: 'All',
   })
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleApplyClick = () => {
+    if (onApply) {
+      onApply(filters)
+    }
   }
 
   return (
@@ -46,15 +50,14 @@ const FilterSection = () => {
             <option>All Transactions</option>
             <option>Receipts Only</option>
             <option>Payments Only</option>
-            <option>Vendor Payments</option>
-            <option>Employee Advances</option>
-            <option>Salary</option>
-            <option>Statutory</option>
           </select>
         </div>
 
         <div className="flex gap-2">
-          <button className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors">
+          <button
+            onClick={handleApplyClick}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
+          >
             Apply Filter
           </button>
         </div>

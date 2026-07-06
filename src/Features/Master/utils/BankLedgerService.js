@@ -1,291 +1,56 @@
-// services/bankLedgerService.js
+import axiosInstance from '../../../api/axiosInstance'
 
 export class BankLedgerService {
-
   /**
    * Get bank account details for header
+   * Endpoint: GET /ledger/bank/{bankCode}/header
+   *
+   * @param {string} bankCode - Bank GL account code
+   * @returns {Promise<Object>} Bank metadata details
    */
-  static getBankAccountDetails(bankCode) {
+  static async getBankAccountDetails(bankCode) {
     try {
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      const bankAccount = chartOfAccounts.find(acc => acc.code === bankCode);
-
-      if (!bankAccount) {
-        return null;
-      }
-
-      // Updated bank details with your actual bank codes
-      const bankDetails = {
-        'A3004001001': {
-          bankName: 'HDFC Bank',
-          accountNumber: '50100123456789',
-          ifscCode: 'HDFC0001234',
-          branch: 'Mumbai - Andheri East',
-          accountType: 'Current Account'
-        },
-        'A3004001002': {
-          bankName: 'Punjab Bank',
-          accountNumber: '12345678901234',
-          ifscCode: 'PUNB0123456',
-          branch: 'Delhi - Connaught Place',
-          accountType: 'Current Account'
-        },
-        'A300403': {
-          bankName: 'Selected Bank',
-          accountNumber: '98765432109876',
-          ifscCode: 'SBIN0001234',
-          branch: 'Corporate Branch',
-          accountType: 'Current Account'
-        }
-      };
-
-      const details = bankDetails[bankCode] || {
-        bankName: bankAccount.name || 'Bank Account',
-        accountNumber: 'N/A',
-        ifscCode: 'N/A',
-        branch: 'N/A',
-        accountType: 'Current Account'
-      };
-
-      return {
-        glAccountCode: bankCode,
-        accountName: bankAccount.name,
-        ...details,
-        financialYear: '2024-25'
-      };
-
+      const res = await axiosInstance.get(`/account-master/ledger/bank/${bankCode}/header`)
+      return res.data?.results || res.data || null
     } catch (error) {
-      console.error('Error getting bank account details:', error);
-      return null;
+      console.error(`❌ Error in getBankAccountDetails for ${bankCode}:`, error)
+      throw error
     }
   }
 
   /**
-   * Get all transactions for a bank account
+   * Get paginated and filtered transactions for a bank account
+   * Endpoint: GET /ledger/bank/{bankCode}/entries
+   *
+   * @param {string} bankCode - Bank GL account code
+   * @param {Object} params - Query filters (page, limit, fromDate, toDate, status)
+   * @returns {Promise<Object>} List of entries and pagination metadata
    */
-  /**
- * Get all transactions for a bank account
- */
-  static getBankTransactions(bankCode) {
+  static async getBankTransactions(bankCode, params = {}) {
     try {
-      const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      const users = JSON.parse(localStorage.getItem('users')) || [];
-
-      console.log(`🏦 Loading bank transactions for: ${bankCode}`);
-      console.log(`📋 Total transactions in system: ${transactions.length}`);
-
-      // Filter transactions that involve this bank account - WITH SAFETY CHECK
-      const bankTransactions = transactions.filter(txn => {
-        // Check if txn.entries exists and is an array
-        if (!txn.entries || !Array.isArray(txn.entries)) {
-          console.warn('⚠️ Transaction missing entries array:', txn.id);
-          return false;
-        }
-        return txn.entries.some(entry => entry.glCode === bankCode);
-      });
-
-      console.log(`✅ Found ${bankTransactions.length} bank transactions for ${bankCode}`);
-
-      // Convert to bank ledger format
-      const ledgerEntries = [];
-      let runningBalance = 500000; // Opening balance
-
-      bankTransactions.forEach(txn => {
-        const bankEntry = txn.entries.find(entry => entry.glCode === bankCode);
-        const otherEntry = txn.entries.find(entry => entry.glCode !== bankCode);
-
-        if (bankEntry) {
-          const debit = bankEntry.debit || 0;
-          const credit = bankEntry.credit || 0;
-
-          // Calculate running balance (for banks, credit decreases balance, debit increases)
-          runningBalance += debit - credit;
-          const balanceType = runningBalance >= 0 ? 'DR' : 'CR';
-
-          // Get counterparty info
-          const counterparty = this.getCounterpartyInfo(otherEntry, chartOfAccounts, users);
-
-          // Determine transaction type
-          const entryType = credit > 0 ? 'payment' : 'receipt';
-          const transactionType = this.getTransactionType(otherEntry);
-
-          ledgerEntries.push({
-            date: this.formatDate(txn.date),
-            voucherNo: txn.voucherNo,
-            entryType: entryType,
-            debit: debit > 0 ? this.formatAmount(debit) : '-',
-            credit: credit > 0 ? this.formatAmount(credit) : '-',
-            balance: this.formatAmount(Math.abs(runningBalance)) + ' ' + balanceType,
-            narration: bankEntry.narration || txn.narration || 'Bank Transaction',
-            refNo: txn.advanceRequestId || txn.conveyanceClaimId || txn.id,
-            counterparty: counterparty.name,
-            type: transactionType,
-            approvedBy: txn.approvedBy || 'System',
-            instrument: 'NEFT - ' + txn.voucherNo,
-            valueDate: this.formatDate(txn.date),
-            tdsDetails: this.getTDSDetails(otherEntry),
-            status: 'posted',
-            costCenter: bankEntry.costCenter || txn.costCenter || 'Head Office',
-            customer: txn.customer || txn.clientName || '-',
-            site: bankEntry.site || txn.site || '-',
-            state: txn.state || '-',
-            city: txn.city || '-',
-            branch: txn.branch || '-',
-            rowClass: entryType === 'payment' ? 'bg-red-50' : 'bg-green-50'
-          });
-        }
-      });
-
-      // Add opening balance as first entry
-      ledgerEntries.unshift({
-        date: '01-Apr-24',
-        voucherNo: 'OB-2024',
-        entryType: 'opening',
-        debit: '5,00,000.00',
-        credit: '-',
-        balance: '5,00,000.00 DR',
-        narration: 'Opening Balance B/F FY 2024-25',
-        refNo: '-',
-        counterparty: '-',
-        type: 'opening_type',
-        approvedBy: '-',
-        instrument: '-',
-        valueDate: '01-Apr-24',
-        tdsDetails: '-',
-        status: 'posted',
-        costCenter: 'Head Office',
-        recon: 'reconciled',
-        rowClass: 'bg-orange-50'
-      });
-
-      return ledgerEntries;
-
+      const res = await axiosInstance.get(`/account-master/ledger/bank/${bankCode}/entries`, { params })
+      return res.data?.results || res.data || { entries: [], pagination: {} }
     } catch (error) {
-      console.error('❌ Error getting bank transactions:', error);
-      return [];
+      console.error(`❌ Error in getBankTransactions for ${bankCode}:`, error)
+      throw error
     }
   }
 
   /**
-   * Get counterparty information
+   * Get total receipts, total payments and closing balance summary
+   * Endpoint: GET /ledger/bank/{bankCode}/footer
+   *
+   * @param {string} bankCode - Bank GL account code
+   * @param {Object} params - Date filters (fromDate, toDate)
+   * @returns {Promise<Object>} Receipts, payments and balance totals
    */
-  static getCounterpartyInfo(entry, chartOfAccounts, users) {
-    if (!entry) return { name: 'N/A', type: 'Unknown' };
-
-    // Employee account
-    if (entry.glCode && entry.glCode.startsWith('A3002-EMP-')) {
-      const empId = entry.glCode.replace('A3002-EMP-', '');
-      const employee = users.find(u => u.empId === empId);
-      return {
-        name: employee?.fullName || `EMP-${empId}`,
-        type: 'advance'
-      };
-    }
-
-    // Vendor account
-    if (entry.glCode && entry.glCode.startsWith('L2005')) {
-      const vendor = chartOfAccounts.find(acc => acc.code === entry.glCode);
-      return {
-        name: vendor?.name || 'Vendor',
-        type: 'vendor'
-      };
-    }
-
-    // Other accounts
-    const account = chartOfAccounts.find(acc => acc.code === entry.glCode);
-    return {
-      name: account?.name || entry.glName || 'Account',
-      type: 'other'
-    };
-  }
-
-  /**
-   * Determine transaction type
-   */
-  static getTransactionType(entry) {
-    if (!entry) return 'other';
-
-    if (entry.glCode && entry.glCode.startsWith('A3002-EMP-')) {
-      return 'advance';
-    }
-
-    if (entry.glCode && entry.glCode.startsWith('L2005')) {
-      return 'vendor';
-    }
-
-    return 'other';
-  }
-
-  /**
-   * Get TDS details if applicable
-   */
-  static getTDSDetails(entry) {
-    // You can enhance this to calculate actual TDS based on transaction rules
-    if (entry && entry.glCode && entry.glCode.startsWith('L2005')) {
-      return 'TDS 194C Applicable';
-    }
-    return '-';
-  }
-
-  /**
-   * Format date for display
-   */
-  static formatDate(dateString) {
+  static async getBankSummary(bankCode, params = {}) {
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: '2-digit'
-      }).replace(/-/g, '-');
-    } catch {
-      return dateString;
+      const res = await axiosInstance.get(`/account-master/ledger/bank/${bankCode}/footer`, { params })
+      return res.data?.results || res.data || null
+    } catch (error) {
+      console.error(`❌ Error in getBankSummary for ${bankCode}:`, error)
+      throw error
     }
-  }
-
-  /**
-   * Format amount for display
-   */
-  static formatAmount(amount) {
-    return new Intl.NumberFormat('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  }
-
-  /**
-   * Get summary statistics
-   */
-  static getBankSummary(transactions) {
-    let totalDebit = 0;
-    let totalCredit = 0;
-    let closingBalance = 0;
-    let balanceType = 'DR';
-
-    transactions.forEach(txn => {
-      if (txn.entryType !== 'opening') {
-        const debit = txn.debit !== '-' ? parseFloat(txn.debit.replace(/,/g, '')) : 0;
-        const credit = txn.credit !== '-' ? parseFloat(txn.credit.replace(/,/g, '')) : 0;
-
-        totalDebit += debit;
-        totalCredit += credit;
-      }
-    });
-
-    // Calculate closing balance from last transaction
-    if (transactions.length > 0) {
-      const lastTxn = transactions[transactions.length - 1];
-      const balanceParts = lastTxn.balance.split(' ');
-      closingBalance = parseFloat(balanceParts[0].replace(/,/g, ''));
-      balanceType = balanceParts[1];
-    }
-
-    return {
-      totalReceipts: totalDebit,
-      totalPayments: totalCredit,
-      closingBalance: closingBalance,
-      balanceType: balanceType
-    };
   }
 }

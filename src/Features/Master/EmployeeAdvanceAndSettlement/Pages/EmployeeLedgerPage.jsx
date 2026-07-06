@@ -4,114 +4,139 @@ import EmployeeHeader from '../Components/EmployeeHeader'
 import FilterSection from '../Components/FilterSection'
 import LedgerTable from '../Components/LedgerTable'
 import FooterSummary from '../Components/FooterSummary'
-import { LedgerService } from '../../utils/ledgerService'
+import { EmployeeLedgerService } from '../../utils/employeeLedgerService'
 
 const EmployeeLedgerPage = () => {
   const { accountCode } = useParams()
   const navigate = useNavigate()
 
   const [filters, setFilters] = useState({
-    fromDate: '2024-04-01',
-    toDate: '2026-03-31', // Changed to 2026 to include all 2025 transactions
+    fromDate: '',
+    toDate: '',
     entryType: '',
     status: '',
-    searchText: '',
   })
 
   const [accountData, setAccountData] = useState(null)
   const [ledgerEntries, setLedgerEntries] = useState([])
-  const [filteredEntries, setFilteredEntries] = useState([])
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    loadLedgerData()
-  }, [accountCode])
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    totalItems: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  })
 
-  useEffect(() => {
-    console.log('🔄 Applying filters...')
-    console.log('📊 Ledger Entries:', ledgerEntries.length)
-    console.log('🔍 Filters:', filters)
-    applyFilters()
-  }, [ledgerEntries, filters])
+  const [page, setPage] = useState(1)
 
-  const loadLedgerData = () => {
+  const loadLedgerData = async (targetPage = page, activeFilters = filters) => {
     try {
       setLoading(true)
       setError(null)
 
-      console.log(`🔄 Loading ledger for account: ${accountCode}`)
+      console.log(`🔄 Loading backend ledger for account: ${accountCode}, page: ${targetPage}`)
 
-      const details = LedgerService.getAccountDetails(accountCode)
+      // Prepare entries parameters
+      const entriesParams = {
+        page: targetPage,
+        limit: 20,
+      }
+      const footerParams = {}
 
-      if (!details) {
-        setError(`Account ${accountCode} not found`)
-        setLoading(false)
-        return
+      if (activeFilters.fromDate) {
+        entriesParams.fromDate = activeFilters.fromDate
+        footerParams.fromDate = activeFilters.fromDate
+      }
+      if (activeFilters.toDate) {
+        entriesParams.toDate = activeFilters.toDate
+        footerParams.toDate = activeFilters.toDate
+      }
+      if (activeFilters.entryType) {
+        entriesParams.entryType = activeFilters.entryType.toUpperCase()
+      }
+      if (activeFilters.status) {
+        entriesParams.status = activeFilters.status.toUpperCase()
       }
 
-      setAccountData(details)
 
-      const entries = LedgerService.getLedgerEntries(accountCode)
-      console.log('📦 Raw entries from service:', entries)
-      setLedgerEntries(entries)
+      // 1. Fetch Header (Catch 500 error gracefully and fallback to dashes)
+      let headerData = null
+      try {
+        headerData = await EmployeeLedgerService.getEmployeeHeader(accountCode)
+      } catch (headerErr) {
+        console.warn('⚠️ Header API failed (expected 500), using fallback empty values:', headerErr)
+        headerData = {
+          employeeId: '-',
+          employeeName: '-',
+          department: '-',
+          reportingManager: '-',
+          glAccountCode: accountCode,
+          accountName: '-',
+          financialYear: '-',
+          period: '-',
+          openingBalance: {
+            amount: 0,
+            date: '-',
+            type: 'DR'
+          }
+        }
+      }
+      setAccountData(headerData)
 
-      console.log(`✅ Loaded ${entries.length} entries for ${accountCode}`)
-    } catch (error) {
-      console.error('❌ Error loading ledger data:', error)
-      setError('Failed to load ledger data')
+      // 2. Fetch Entries and Footer in parallel
+      const [entriesRes, summaryRes] = await Promise.all([
+        EmployeeLedgerService.getEmployeeEntries(accountCode, entriesParams),
+        EmployeeLedgerService.getEmployeeSummary(accountCode, footerParams)
+      ])
+
+      setLedgerEntries(entriesRes?.entries || [])
+      setSummary(summaryRes)
+      
+      if (entriesRes?.pagination) {
+        setPagination(entriesRes.pagination)
+      }
+    } catch (err) {
+      console.error('❌ Error loading ledger data:', err)
+      setError(err.message || 'Failed to load ledger data')
     } finally {
       setLoading(false)
     }
   }
 
-  const applyFilters = () => {
-    try {
-      let filtered = [...ledgerEntries]
-      console.log('🔢 Starting with entries:', filtered.length)
-
-      // Filter by date range
-      if (filters.fromDate || filters.toDate) {
-        const beforeFilter = filtered.length
-        filtered = LedgerService.filterByDateRange(filtered, filters.fromDate, filters.toDate)
-        console.log(`📅 After date filter: ${beforeFilter} → ${filtered.length}`)
-      }
-
-      // Filter by entry type
-      if (filters.entryType) {
-        const beforeFilter = filtered.length
-        filtered = LedgerService.filterByEntryType(filtered, filters.entryType)
-        console.log(`📝 After type filter: ${beforeFilter} → ${filtered.length}`)
-      }
-
-      // Search filter
-      if (filters.searchText) {
-        const beforeFilter = filtered.length
-        filtered = LedgerService.searchEntries(filtered, filters.searchText)
-        console.log(`🔍 After search filter: ${beforeFilter} → ${filtered.length}`)
-      }
-
-      console.log('✅ Final filtered entries:', filtered.length)
-      console.log('📋 Sample filtered entry:', filtered[0])
-      setFilteredEntries(filtered)
-    } catch (error) {
-      console.error('❌ Error applying filters:', error)
-      setFilteredEntries(ledgerEntries)
+  // Reload when the accountCode changes
+  useEffect(() => {
+    setPage(1)
+    const resetFilters = {
+      fromDate: '',
+      toDate: '',
+      entryType: '',
+      status: '',
     }
+    setFilters(resetFilters)
+    loadLedgerData(1, resetFilters)
+  }, [accountCode])
+
+  const handleApplyFilters = (newFilters) => {
+    setFilters(newFilters)
+    setPage(1)
+    loadLedgerData(1, newFilters)
+  }
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage)
+    loadLedgerData(newPage, filters)
   }
 
   const handleRefresh = () => {
-    loadLedgerData()
+    loadLedgerData(page, filters)
   }
 
-  // 🐛 DEBUG: Log state changes
-  useEffect(() => {
-    console.log('🔔 State Update:')
-    console.log('   - ledgerEntries:', ledgerEntries.length)
-    console.log('   - filteredEntries:', filteredEntries.length)
-  }, [ledgerEntries, filteredEntries])
-
-  if (loading) {
+  if (loading && !accountData) {
     return (
       <div className="w-full min-h-screen bg-gray-100 p-2 md:p-4 flex items-center justify-center">
         <div className="text-center">
@@ -122,37 +147,16 @@ const EmployeeLedgerPage = () => {
     )
   }
 
-  if (error || !accountData) {
-    return (
-      <div className="w-full min-h-screen bg-gray-100 p-2 md:p-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="bg-white rounded-lg p-8 shadow-lg max-w-md">
-            <div className="text-red-600 text-5xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-red-600 mb-2">Account Not Found</h2>
-            <p className="text-gray-600 mb-4">
-              {error || `The account ${accountCode} does not exist in the system.`}
-            </p>
-            <button
-              onClick={() => navigate(-1)}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Go Back
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="w-full min-h-screen bg-gray-100 p-2 md:p-4">
       <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
         <EmployeeHeader data={accountData} />
-        <FilterSection filters={filters} setFilters={setFilters} />
+        
+        <FilterSection filters={filters} setFilters={setFilters} onApply={handleApplyFilters} />
 
         <div className="px-3 md:px-5 py-2 bg-gray-50 border-b flex justify-between items-center">
           <div className="text-sm text-gray-600">
-            Showing {filteredEntries.length} of {ledgerEntries.length} transactions
+            Showing Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> ({pagination.totalItems} entries)
           </div>
           <button
             onClick={handleRefresh}
@@ -162,61 +166,59 @@ const EmployeeLedgerPage = () => {
           </button>
         </div>
 
-        <div className="p-3 md:p-5">
-          {/* 🐛 Show raw data if no entries */}
-          {filteredEntries.length === 0 && ledgerEntries.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded p-4 mb-4">
-              <p className="text-red-800 font-semibold">⚠️ Entries exist but filtered out!</p>
-              <p className="text-sm text-red-600 mt-2">
-                You have {ledgerEntries.length} entries but filters are hiding them.
-              </p>
-              <button
-                onClick={() => {
-                  console.log('🔍 All Entries:', ledgerEntries)
-                  console.log('🔍 Current Filters:', filters)
-                }}
-                className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm"
-              >
-                Debug in Console
-              </button>
-            </div>
-          )}
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 text-sm border-b border-red-200">
+            ⚠️ {error}
+          </div>
+        )}
 
-          {filteredEntries.length > 0 ? (
-            <>
-              <LedgerTable entries={filteredEntries} />
-            </>
-          ) : ledgerEntries.length > 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p className="text-lg font-medium">No transactions match your filters</p>
-              <p className="text-sm mt-2">Try adjusting your filter criteria</p>
-              <button
-                onClick={() =>
-                  setFilters({
-                    fromDate: '2024-04-01',
-                    toDate: '2026-03-31',
-                    entryType: '',
-                    status: '',
-                    searchText: '',
-                  })
-                }
-                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Reset Filters
-              </button>
+        <div className="p-3 md:p-5 bg-white">
+          {loading ? (
+            <div className="text-center py-12 text-gray-500">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <span>Refreshing transaction list...</span>
             </div>
+          ) : ledgerEntries.length > 0 ? (
+            <>
+              <LedgerTable entries={ledgerEntries} />
+              
+              {/* Pagination Controls */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="px-6 py-4 flex items-center justify-between border-t border-slate-100 bg-white">
+                  <span className="text-sm text-slate-500">
+                    Showing Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> ({pagination.totalItems} entries)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={!pagination.hasPreviousPage}
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={!pagination.hasNextPage}
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-12 text-gray-500">
               <div className="text-6xl mb-4">📊</div>
               <p className="text-lg font-medium">No transactions found for this account</p>
               <p className="text-sm mt-2">
-                Transactions will appear here when advances are approved.
+                Transactions will appear here when advances or settlements are posted.
               </p>
             </div>
           )}
         </div>
 
-        {filteredEntries.length > 0 && <FooterSummary entries={filteredEntries} />}
+        {summary && <FooterSummary summary={summary} />}
       </div>
     </div>
   )

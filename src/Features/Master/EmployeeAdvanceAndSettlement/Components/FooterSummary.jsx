@@ -1,10 +1,18 @@
 import React from 'react';
 
-const FooterSummary = ({ entries }) => {
-  const totalDebit = entries.reduce((sum, entry) => sum + (entry.debit || 0), 0);
-  const totalCredit = entries.reduce((sum, entry) => sum + (entry.credit || 0), 0);
-  const closingBalance = entries[entries.length - 1]?.balance || 0;
-  const balanceType = entries[entries.length - 1]?.balanceType || 'DR';
+const FooterSummary = ({ summary }) => {
+  if (!summary) return null;
+
+  const parseVal = (val) => {
+    if (val === undefined || val === null || val === 'N/A' || val === '-') return 0
+    const num = typeof val === 'string' ? parseFloat(val) : val
+    return isNaN(num) ? 0 : num
+  }
+
+  const totalDebit = parseVal(summary.totalDebit)
+  const totalCredit = parseVal(summary.totalCredit)
+  const closingBalance = parseVal(summary.closingBalance)
+  const balanceType = summary.closingBalanceType || summary.balanceType || 'DR'
 
   const formatAmount = (amount) => {
     return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
