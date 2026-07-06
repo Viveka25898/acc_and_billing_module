@@ -1,16 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiFilter } from "react-icons/fi";
 
-const FilterSection = ({ filters, setFilters }) => {
+const FilterSection = ({ filters, setFilters, onApply }) => {
+  const [localFilters, setLocalFilters] = useState(filters)
+
+  // Sync with parent filters if they are reset/changed from outside
+  useEffect(() => {
+    setLocalFilters(filters)
+  }, [filters])
+
+  const handleFilterChange = (key, value) => {
+    setLocalFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleApplyClick = (e) => {
+    e.preventDefault()
+    setFilters(localFilters)
+    if (onApply) {
+      onApply(localFilters)
+    }
+  }
+
+  const handleClearClick = (e) => {
+    e.preventDefault()
+    const cleared = {
+      fromDate: '',
+      toDate: '',
+      entryType: '',
+      status: '',
+      searchText: '',
+    }
+    setLocalFilters(cleared)
+    setFilters(cleared)
+    if (onApply) {
+      onApply(cleared)
+    }
+  }
+
   return (
     <div className="bg-gray-50 border-b border-gray-200 p-3 md:p-4">
-      <div className="flex flex-wrap gap-3 items-end">
+      <form onSubmit={handleApplyClick} className="flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-[150px] max-w-[200px]">
           <label className="block text-[11px] text-gray-600 mb-1">From Date</label>
           <input
             type="date"
-            value={filters.fromDate}
-            onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })}
+            value={localFilters.fromDate || ''}
+            onChange={(e) => handleFilterChange('fromDate', e.target.value)}
             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
@@ -19,8 +54,8 @@ const FilterSection = ({ filters, setFilters }) => {
           <label className="block text-[11px] text-gray-600 mb-1">To Date</label>
           <input
             type="date"
-            value={filters.toDate}
-            onChange={(e) => setFilters({ ...filters, toDate: e.target.value })}
+            value={localFilters.toDate || ''}
+            onChange={(e) => handleFilterChange('toDate', e.target.value)}
             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
@@ -28,8 +63,8 @@ const FilterSection = ({ filters, setFilters }) => {
         <div className="flex-1 min-w-[150px] max-w-[200px]">
           <label className="block text-[11px] text-gray-600 mb-1">Entry Type</label>
           <select
-            value={filters.entryType}
-            onChange={(e) => setFilters({ ...filters, entryType: e.target.value })}
+            value={localFilters.entryType || ''}
+            onChange={(e) => handleFilterChange('entryType', e.target.value)}
             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="">All</option>
@@ -42,8 +77,8 @@ const FilterSection = ({ filters, setFilters }) => {
         <div className="flex-1 min-w-[150px] max-w-[200px]">
           <label className="block text-[11px] text-gray-600 mb-1">Status</label>
           <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            value={localFilters.status || ''}
+            onChange={(e) => handleFilterChange('status', e.target.value)}
             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="">All</option>
@@ -52,12 +87,25 @@ const FilterSection = ({ filters, setFilters }) => {
             <option value="approved">Approved</option>
           </select>
         </div>
-        
-        <button className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors flex items-center gap-1.5">
-          <FiFilter size={14} />
-          Apply Filter
-        </button>
-      </div>
+
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors flex items-center gap-1.5 h-[32px]"
+          >
+            <FiFilter size={14} />
+            Apply Filter
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleClearClick}
+            className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300 transition-colors h-[32px]"
+          >
+            Clear Filter
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
