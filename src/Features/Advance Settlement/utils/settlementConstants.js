@@ -91,6 +91,10 @@ export const getStatusLabel = (status) => {
  */
 export const getStatusColor = (status) => {
   if (!status) return 'bg-gray-100 text-gray-800 border-gray-200'
+  const normalized = String(status).toUpperCase()
+  if (normalized.startsWith('REJECTED')) {
+    return 'bg-red-100 text-red-800 border-red-200'
+  }
   return STATUS_COLORS[status] || 'bg-gray-100 text-gray-800 border-gray-200'
 }
 

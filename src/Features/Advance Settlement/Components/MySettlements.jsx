@@ -272,11 +272,13 @@ const MySettlements = () => {
     applyFilters()
   }, [applyFilters])
 
+  // Helper to determine status category
+  const isStatusApproved = (status) => String(status || '').toUpperCase() === 'APPROVED'
+  const isStatusRejected = (status) => String(status || '').toUpperCase().startsWith('REJECTED')
+
   // ─── Client-side filtering for 'Pending' pseudo-filter ────────────────────
   const filteredSettlements = localStatus === 'PENDING'
-    ? settlements.filter((s) =>
-        s.status !== SETTLEMENT_STATUS.APPROVED && s.status !== SETTLEMENT_STATUS.REJECTED
-      )
+    ? settlements.filter((s) => !isStatusApproved(s.status) && !isStatusRejected(s.status))
     : localDate
       ? settlements.filter((s) => {
           if (!s.submittedAt) return false
@@ -434,7 +436,7 @@ const MySettlements = () => {
                 ? req.totalAmount
                 : calculateTotalAmount(req.expenseItems)
 
-              const isRejected      = req.status === SETTLEMENT_STATUS.REJECTED
+              const isRejected      = req.status === SETTLEMENT_STATUS.REJECTED || String(req.status || '').toLowerCase().startsWith('rejected') || req.canProvideClarification === true
               const hasRejection    = !!req.rejectionReason
 
               return (
