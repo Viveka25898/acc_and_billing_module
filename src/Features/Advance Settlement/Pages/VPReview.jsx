@@ -77,23 +77,9 @@ const VPReview = () => {
   const ITEMS_PER_PAGE = 5
 
   const shouldShowClarification = (req) => {
-    if (!req.clarification) return false
-    if (!req.rejectedBy) {
-      return req.status === SETTLEMENT_STATUS.PENDING_VP
-    }
-
-    const rejectedByLower = String(req.rejectedBy).toLowerCase()
-    if (currentEmpName && rejectedByLower.includes(String(currentEmpName).toLowerCase())) return true
-    if (currentEmpId && rejectedByLower.includes(String(currentEmpId).toLowerCase())) return true
-
-    if (currentRole) {
-      const normalizedRole = String(currentRole).toLowerCase().replace(/[-_]/g, ' ')
-      const normalizedRejectedBy = rejectedByLower.replace(/[-_]/g, ' ')
-      if (normalizedRejectedBy.includes(normalizedRole)) return true
-      if (currentRole === 'vp-operations' && (normalizedRejectedBy.includes('vp') || normalizedRejectedBy.includes('vp operations'))) return true
-    }
-
-    return false
+    if (!req || !req.status) return false
+    const statusUpper = String(req.status).toUpperCase()
+    return statusUpper === 'CLARIFICATION SUBMITTED' || statusUpper === 'CLARIFICATION_SUBMITTED'
   }
 
   // ─── Load queue on mount ──────────────────────────────────────────────────
@@ -150,7 +136,9 @@ const VPReview = () => {
     const statusUpper = String(s.status).toUpperCase()
     return (
       statusUpper === 'PENDING_VP' ||
-      statusUpper === 'PENDING VP APPROVAL'
+      statusUpper === 'PENDING VP APPROVAL' ||
+      statusUpper === 'CLARIFICATION SUBMITTED' ||
+      statusUpper === 'CLARIFICATION_SUBMITTED'
     )
   }
 
@@ -531,20 +519,33 @@ const VPReview = () => {
       <ManagerClarificationModal
         isOpen={selectedClarificationReq !== null}
         onClose={() => setSelectedClarificationReq(null)}
-        data={selectedClarificationReq ? {
-          rejectionHistory: selectedClarificationReq.rejectionReason ? {
-            by: selectedClarificationReq.rejectedBy || 'VP Operations',
-            date: selectedClarificationReq.updatedAt || selectedClarificationReq.submittedAt,
-            comments: selectedClarificationReq.rejectionReason
-          } : null,
-          clarificationHistory: selectedClarificationReq.clarification ? {
-            by: 'Employee/OE',
-            date: selectedClarificationReq.clarificationAt || selectedClarificationReq.updatedAt,
-            comments: selectedClarificationReq.clarification
-          } : null,
-          status: getStatusLabel(selectedClarificationReq.status),
-          ...selectedClarificationReq
-        } : null}
+        data={(() => {
+          if (!selectedClarificationReq) return null
+
+          const rejectHistoryItem = [...(selectedClarificationReq.history || [])].reverse().find(h => h.action === 'rejected')
+          const rejectionComments = rejectHistoryItem?.comments || selectedClarificationReq.rejectionReason
+          const rejectedBy = rejectHistoryItem?.by || selectedClarificationReq.rejectedBy || 'VP Operations'
+          const rejectionDate = rejectHistoryItem?.date || selectedClarificationReq.updatedAt || selectedClarificationReq.submittedAt
+
+          const clarHistoryItem = [...(selectedClarificationReq.history || [])].reverse().find(h => h.action === 'clarification')
+          const clarificationComments = clarHistoryItem?.comments || selectedClarificationReq.clarification
+          const clarificationDate = clarHistoryItem?.date || selectedClarificationReq.clarificationAt || selectedClarificationReq.updatedAt
+
+          return {
+            rejectionHistory: rejectionComments ? {
+              by: rejectedBy,
+              date: rejectionDate,
+              comments: rejectionComments
+            } : null,
+            clarificationHistory: clarificationComments ? {
+              by: 'Employee/OE',
+              date: clarificationDate,
+              comments: clarificationComments
+            } : null,
+            status: getStatusLabel(selectedClarificationReq.status),
+            ...selectedClarificationReq
+          }
+        })()}
         onApprove={() => {
           if (selectedClarificationReq) {
             handleApprove(selectedClarificationReq.id)

@@ -1,37 +1,66 @@
 import React from 'react'
 
 export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
-  // Extract header with strict fallbacks to '-'
-  const header = data.header || {}
-  const company = header.company || '-'
-  const voucherNo = header.voucherNo || '-'
-  const date = header.date || '-'
-  const financialYear = header.financialYear || '-'
-  const reference = header.reference || '-'
+  // Support both backend REST structure and old mock object structure
+  const company = data.company || data.header?.company || 'iSmart Accounts'
+  const voucherNo = data.voucherNo || data.header?.voucherNo || '-'
+  const date = data.jvDate || data.date || data.header?.date || '-'
+  const financialYear = data.financialYear || data.header?.financialYear || 'FY 2026-27'
+  const reference = data.settlementId || data.header?.reference || '-'
 
-  const lines = data.entries || []
+  const employeeName = data.employeeName || data.employeeInfo?.employeeName || '-'
+  const employeeId = data.employeeId || data.employeeInfo?.employeeId || '-'
+  
   const narration = data.narration || '-'
   
-  const approvals = data.approvals || {}
-  const preparer = approvals.preparer || '-'
-  const reviewer = approvals.reviewer || '-'
-  const approver = approvals.approver || '-'
+  const preparer = data.preparer || data.approvals?.preparer || 'System'
+  const reviewer = data.reviewer || data.approvals?.reviewer || 'Regional Head'
+  const approver = data.approvedBy || data.approver || data.approvals?.approver || 'Account Manager'
 
-  // Calculate totals strictly from line items
-  const totals = data.totals || {
-    debit: lines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0),
-    credit: lines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0),
+  // Map entries dynamically
+  const rawLines = data.entries || []
+  const lines = rawLines.map(line => {
+    const particulars = line.glName || line.particulars || line.description || '-'
+    const glCode = line.glCode || line.gl || '-'
+    
+    // Convert '0' or 0 to null so they display as empty cells
+    const rawDebit = line.debitAmount !== undefined ? line.debitAmount : line.debit
+    const debit = (parseFloat(rawDebit) === 0 || rawDebit === '0') ? null : rawDebit
+    
+    const rawCredit = line.creditAmount !== undefined ? line.creditAmount : line.credit
+    const credit = (parseFloat(rawCredit) === 0 || rawCredit === '0') ? null : rawCredit
+
+    return { particulars, glCode, debit, credit }
+  })
+
+  // Calculate or extract totals
+  let debitTotal = 0
+  let creditTotal = 0
+
+  if (data.totals?.totalDebit !== undefined && data.totals?.totalDebit !== null) {
+    debitTotal = parseFloat(data.totals.totalDebit)
+  } else if (data.totals?.debit !== undefined && data.totals?.debit !== null) {
+    debitTotal = parseFloat(data.totals.debit)
+  } else {
+    debitTotal = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0)
   }
 
-  const employeeInfo = data.employeeInfo || {}
-  const employeeName = employeeInfo.employeeName || '-'
-  const employeeId = employeeInfo.employeeId || '-'
+  if (data.totals?.totalCredit !== undefined && data.totals?.totalCredit !== null) {
+    creditTotal = parseFloat(data.totals.totalCredit)
+  } else if (data.totals?.credit !== undefined && data.totals?.credit !== null) {
+    creditTotal = parseFloat(data.totals.credit)
+  } else {
+    creditTotal = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0)
+  }
 
-  const balanceInfo = data.balanceInfo || {}
+  // Map balance impact details
+  const osBalanceBefore = data.previousOSBalance ?? data.balanceInfo?.osBalanceBefore ?? null
+  const settlementAmount = data.totalAmount ?? data.balanceInfo?.settlementAmount ?? null
+  const osBalanceAfter = data.newOSBalance ?? data.balanceInfo?.osBalanceAfter ?? null
 
   const formatCurrency = (val) => {
     if (val === null || val === undefined || isNaN(Number(val))) return '-'
-    return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
+    return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   return (
@@ -42,7 +71,7 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
           <h2 className="text-xl font-semibold">Journal Voucher - Advance Settlement</h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-indigo-200 text-2xl"
+            className="text-white hover:text-green-200 text-2xl"
             aria-label="Close"
           >
             &times;
@@ -78,7 +107,7 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
               <p className="font-medium text-gray-800">{employeeId}</p>
             </div>
             <div className="md:col-span-2">
-              <p className="text-sm text-gray-500">Reference</p>
+              <p className="text-sm text-gray-500">Reference / Settlement ID</p>
               <p className="font-medium text-gray-800">{reference}</p>
             </div>
           </div>
@@ -113,15 +142,15 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
                 ) : (
                   lines.map((line, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 border text-sm text-gray-800">{line.particulars || '-'}</td>
+                      <td className="px-4 py-2 border text-sm text-gray-800">{line.particulars}</td>
                       <td className="px-4 py-2 border text-sm font-mono text-gray-700">
-                        {line.glCode || line.gl || '-'}
+                        {line.glCode}
                       </td>
-                      <td className="px-4 py-2 border text-right text-sm text-gray-800">
-                        {line.debit ? `₹${Number(line.debit).toLocaleString('en-IN')}` : '-'}
+                      <td className="px-4 py-2 border text-right text-sm text-gray-800 font-mono">
+                        {line.debit ? `₹${parseFloat(line.debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                       </td>
-                      <td className="px-4 py-2 border text-right text-sm text-gray-800">
-                        {line.credit ? `₹${Number(line.credit).toLocaleString('en-IN')}` : '-'}
+                      <td className="px-4 py-2 border text-right text-sm text-gray-800 font-mono">
+                        {line.credit ? `₹${parseFloat(line.credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                       </td>
                     </tr>
                   ))
@@ -130,11 +159,11 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
                   <td colSpan={2} className="px-4 py-2 border text-right text-sm text-gray-800">
                     Total
                   </td>
-                  <td className="px-4 py-2 border text-right text-sm text-gray-800">
-                    {lines.length > 0 ? `₹${totals.debit.toLocaleString('en-IN')}` : '-'}
+                  <td className="px-4 py-2 border text-right text-sm text-gray-800 font-mono">
+                    ₹{debitTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="px-4 py-2 border text-right text-sm text-gray-800">
-                    {lines.length > 0 ? `₹${totals.credit.toLocaleString('en-IN')}` : '-'}
+                  <td className="px-4 py-2 border text-right text-sm text-gray-800 font-mono">
+                    ₹{creditTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tbody>
@@ -148,19 +177,19 @@ export default function EmployeeAdvanceSettlementJV({ data = {}, onClose }) {
               <div>
                 <p className="text-blue-600">O/S Balance Before</p>
                 <p className="font-medium text-gray-800">
-                  {formatCurrency(balanceInfo.osBalanceBefore)}
+                  {formatCurrency(osBalanceBefore)}
                 </p>
               </div>
               <div>
                 <p className="text-blue-600">Settlement Amount</p>
                 <p className="font-medium text-gray-800">
-                  {formatCurrency(balanceInfo.settlementAmount)}
+                  {formatCurrency(settlementAmount)}
                 </p>
               </div>
               <div>
                 <p className="text-blue-600">O/S Balance After</p>
                 <p className="font-medium text-gray-800">
-                  {formatCurrency(balanceInfo.osBalanceAfter)}
+                  {formatCurrency(osBalanceAfter)}
                 </p>
               </div>
             </div>
