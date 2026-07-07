@@ -1140,15 +1140,15 @@ export const router = createBrowserRouter([
         element: <BankLedgerPage />,
       },
       {
-        path: 'travel-expense-ledger',
+        path: 'travel-expense-ledger/:accountCode?',
         element: <TravelExpenseLedgerPage />,
       },
       {
-        path: 'food-refreshment-ledger',
+        path: 'food-refreshment-ledger/:accountCode?',
         element: <FoodRefreshmentLedgerPage />,
       },
       {
-        path: 'office-supplies-ledger',
+        path: 'office-supplies-ledger/:accountCode?',
         element: <OfficeSuppliesLedgerPage />,
       },
       {

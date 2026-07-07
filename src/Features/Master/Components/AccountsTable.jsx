@@ -909,14 +909,14 @@ const AccountsTable = ({
         console.log('✅ Navigating to Bank Ledger')
         navigate(`/dashboard/account-manager/bank-ledger/${account.code}`)
       } else if (isTravelExpenseAccount) {
-        console.log('✅ Navigating to Travel Expense Ledger')
-        navigate(`/dashboard/account-manager/travel-expense-ledger`)
+        console.log('✅ Navigating to Travel Expense Ledger:', account.code)
+        navigate(`/dashboard/account-manager/travel-expense-ledger/${account.code}`)
       } else if (isFoodRefreshmentAccount) {
-        console.log('✅ Navigating to Food & Refreshment Ledger')
-        navigate(`/dashboard/account-manager/food-refreshment-ledger`)
+        console.log('✅ Navigating to Food & Refreshment Ledger:', account.code)
+        navigate(`/dashboard/account-manager/food-refreshment-ledger/${account.code}`)
       } else if (isOfficeSuppliesAccount) {
-        console.log('✅ Navigating to Office Supplies Ledger')
-        navigate(`/dashboard/account-manager/office-supplies-ledger`)
+        console.log('✅ Navigating to Office Supplies Ledger:', account.code)
+        navigate(`/dashboard/account-manager/office-supplies-ledger/${account.code}`)
       } else if (isRentExpenseAccount) {
         console.log('✅ Navigating to Rent Expense Ledger')
         navigate(`/dashboard/account-manager/rent-expense-account`)
