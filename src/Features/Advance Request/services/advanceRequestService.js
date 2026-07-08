@@ -831,15 +831,8 @@ export const fetchPaymentEntry = async (id) => {
 // 16. AE — DOWNLOAD PAYMENT FILE (EXCEL)
 //     POST /accounts/advances/download-payment-file
 // ─────────────────────────────────────────────────────────────────────────────
-export const downloadPaymentFile = async (requestIds) => {
-  const payload = {}
-  if (requestIds && Array.isArray(requestIds)) {
-    payload.request_ids = requestIds
-  } else {
-    payload.request_ids = []
-  }
-
-  const res = await axiosInstance.post('/accounts/advances/download-payment-file', payload, {
+export const downloadPaymentFile = async () => {
+  const res = await axiosInstance.post('/accounts/advances/download-payment-file', {}, {
     responseType: 'blob'
   })
 

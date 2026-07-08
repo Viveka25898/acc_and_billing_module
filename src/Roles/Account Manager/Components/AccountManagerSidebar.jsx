@@ -32,10 +32,10 @@ const AccountManagerSidebar = () => {
           </li>
           <hr className="border-white mx-4" />
 
-          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+          {/* <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/account-manager/invoice-review">Invoice Approval</NavLink>
           </li>
-          <hr className="border-white mx-4" />
+          <hr className="border-white mx-4" /> */}
 
           <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/account-manager/advance-settlement-requests">Advance Settlement Approval</NavLink>
@@ -47,7 +47,7 @@ const AccountManagerSidebar = () => {
           </li>
           <hr className="border-white mx-4" />
 
-          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+          {/* <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/account-manager/reports">Reports</NavLink>
           </li>
           <hr className="border-white mx-4" />
@@ -55,7 +55,7 @@ const AccountManagerSidebar = () => {
           <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/account-manager/tds-26as-reco">TDS 26 AS Reco</NavLink>
           </li>
-          <hr className="border-white mx-4" />
+          <hr className="border-white mx-4" /> */}
         </ul>
       </div>
     </>

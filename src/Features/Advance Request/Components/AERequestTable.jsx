@@ -5,6 +5,7 @@ import RejectModal from './RejectModal';
 import { FaEye } from 'react-icons/fa';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { toast } from 'react-toastify';
 import { downloadPaymentFile } from '../services/advanceRequestService';
 
 export default function AERequestTable({ data, onApprove, onReject, onDownloadComplete, onApproveMultiple,getEmployeeOSBalance }) {
@@ -82,21 +83,34 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
 
   // Download function - hit the API and download the file directly
   const handleDownload = async () => {
+    console.log("handleDownload was clicked.");
     try {
       // Call API to download the payment Excel file
       const excelBlob = await downloadPaymentFile();
+      console.log("Backend response blob returned:", excelBlob);
 
-      // Save using file-saver
-      const file = new Blob([excelBlob], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      saveAs(file, "BankUploadFile.xlsx");
+      // Edge case: If server returned an error page/JSON wrapped in a blob
+      if (excelBlob instanceof Blob && excelBlob.type === 'application/json') {
+        const text = await excelBlob.text();
+        try {
+          const errObj = JSON.parse(text);
+          throw new Error(errObj.message || errObj.error || 'Failed to download bank upload file.');
+        } catch {
+          throw new Error('Server returned an error response.');
+        }
+      }
+
+      // Save using file-saver directly
+      saveAs(excelBlob, "BankUploadFile.xlsx");
       
       // Call the parent component's function to notify download complete
       if (onDownloadComplete) {
         onDownloadComplete();
       }
+      setSelectedIds([]); // Clear selection after download
     } catch (error) {
       console.error("Failed to download bank upload file:", error);
-      alert(error.message || "Failed to download bank upload file.");
+      toast.error(error.message || "Failed to download bank upload file.");
     }
   };
 
