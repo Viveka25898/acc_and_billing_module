@@ -183,35 +183,7 @@ const LoginForm = (props) => {
               {/* Role Dropdown (Testing Mode) */}
               {/* Role comes from API — this dropdown is for testing only */}
               {/* TODO: Remove this dropdown entirely when all users have proper login credentials */}
-              <select
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
-                value={role}
-                onChange={(e) => setRoleValue(e.target.value)}
-                disabled={loading}
-              >
-                <option value="">Select Role (Optional)</option>
-                {/* ── Level 1 — Employee Dashboard ────────────────── */}
-                <option value="operation-executive">Operation Executive</option>
-                <option value="operation-manager">Operation Manager</option>
-                <option value="supervisor">Supervisor</option>
-                {/* ── Level 2 ─────────────────────────────────────── */}
-                <option value="regional-head">Regional Head</option>
-                {/* ── Level 3 ─────────────────────────────────────── */}
-                <option value="avp-operations">AVP Operations</option>
-                {/* ── Level 4 & 5 ─────────────────────────────────── */}
-                <option value="vp-operations">VP Operations</option>
-                <option value="ae">Account Executive</option>
-                {/* ── Other Roles ──────────────────────────────────── */}
-                <option value="compliance-team">Compliance Team</option>
-                <option value="compliance-manager">Compliance Manager</option>
-                <option value="payroll-team">Payroll Team</option>
-                <option value="financial-head">Financial Head</option>
-                <option value="billing-manager">Billing Manager</option>
-                <option value="account-manager">Account Manager</option>
-                <option value="manager">Manager</option>
-                <option value="ph">PH</option>
-                <option value="vendor">Vendor</option>
-              </select>
+
 
               {/* Submit Button */}
               <button
