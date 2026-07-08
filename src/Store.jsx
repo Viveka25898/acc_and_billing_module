@@ -5,6 +5,7 @@ import authReducer from './Auth/authSlice'
 import advanceRequestReducer from './store/slices/advanceRequestSlice'
 import advanceSettlementReducer from './store/slices/advanceSettlementSlice'
 import chartOfAccountsReducer from './store/slices/chartOfAccountsSlice'
+import aeInvoiceReducer from './store/slices/aeInvoiceSlice'
 
 const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ const store = configureStore({
     advanceRequest: advanceRequestReducer,
     advanceSettlement: advanceSettlementReducer,
     chartOfAccounts: chartOfAccountsReducer,
+    aeInvoice: aeInvoiceReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 
-const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) => {
+const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice, isSubmitting }) => {
   const [gstRate, setGstRate] = useState('')
   const [hsnCode, setHsnCode] = useState('')
   const [hsnSummary, setHsnSummary] = useState('')
+  const [siteState, setSiteState] = useState('Maharashtra')
+  const [companyState, setCompanyState] = useState('Maharashtra')
   const [isRejecting, setIsRejecting] = useState(false)
   const [remarks, setRemarks] = useState('')
   const [isIframeLoading, setIsIframeLoading] = useState(true)
@@ -16,22 +18,31 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
       setGstRate(invoice.gstRate?.toString() || '')
       setHsnCode(invoice.hsnCode || '')
       setHsnSummary(invoice.hsnSummary || '')
+      setSiteState('Maharashtra')
+      setCompanyState('Maharashtra')
     }
   }, [invoice])
 
   if (!isOpen || !invoice) return null
 
   const handleApprove = () => {
-    const updatedInvoice = {
-      ...invoice,
+    if (!gstRate) {
+      toast.warn('Please enter a valid GST Rate.')
+      return
+    }
+    if (!hsnCode) {
+      toast.warn('Please enter a valid HSN Code.')
+      return
+    }
+
+    handleUpdateInvoice(invoice.id, 'Approved', {
       gstRate,
       hsnCode,
       hsnSummary,
-    }
-
-    handleUpdateInvoice(updatedInvoice.id, 'Approved', null, updatedInvoice)
-    onClose()
-    toast.success('Invoice approved successfully!')
+      siteState,
+      companyState,
+      remarks: remarks || 'GST rate and HSN verified'
+    })
   }
 
   const handleReject = () => {
@@ -40,18 +51,25 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
       return
     }
 
-    handleUpdateInvoice(invoice.id, 'Rejected', remarks)
-    onClose()
-    toast.error('Invoice rejected successfully!')
+    handleUpdateInvoice(invoice.id, 'Rejected', {
+      gstRate: gstRate || '0',
+      remarks
+    })
   }
+
+  // Safe mapping helper for both camelCase and snake_case GL mappings
+  const mappings = invoice.vendorGLMappings || invoice.vendor_gl_mappings || {}
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
         {/* Header */}
         <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold">Verify Invoice - {invoice.invoiceNumber}</h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-red-600">
+          <h2 className="text-lg font-semibold flex items-baseline gap-2">
+            <span>Verify Invoice - {invoice.id}</span>
+            <span className="text-xs text-gray-500 font-normal">({invoice.invoiceNumber})</span>
+          </h2>
+          <button onClick={onClose} className="text-gray-600 hover:text-red-600" disabled={isSubmitting}>
             X
           </button>
         </div>
@@ -67,6 +85,7 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
                 onChange={(e) => setGstRate(e.target.value)}
                 className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
                 placeholder="e.g., 18"
+                disabled={isSubmitting}
               />
             </div>
             <div>
@@ -77,6 +96,32 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
                 onChange={(e) => setHsnCode(e.target.value)}
                 className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
                 placeholder="e.g., 998314"
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-medium mb-1">Site State</label>
+              <input
+                type="text"
+                value={siteState}
+                onChange={(e) => setSiteState(e.target.value)}
+                className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
+                placeholder="e.g., Maharashtra"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Company State</label>
+              <input
+                type="text"
+                value={companyState}
+                onChange={(e) => setCompanyState(e.target.value)}
+                className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
+                placeholder="e.g., Maharashtra"
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -89,24 +134,25 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
               rows={3}
               className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
               placeholder="Write a short summary..."
+              disabled={isSubmitting}
             ></textarea>
           </div>
 
           {/* GL Mappings Display */}
-          {invoice.vendor_gl_mappings && (
+          {(mappings.expenseGLCode || mappings.expense_gl_code) && (
             <div className="border-t pt-4">
               <h3 className="font-semibold text-base mb-2 text-green-800">GL Mappings</h3>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <label className="block font-medium">Expense Account</label>
                   <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.vendor_gl_mappings.expense_gl_code} - HK MATERIALS
+                    {mappings.expenseGLCode || mappings.expense_gl_code} - {mappings.expenseGLName || mappings.expense_gl_name || 'HK MATERIALS'}
                   </div>
                 </div>
                 <div>
                   <label className="block font-medium">Payable Account</label>
                   <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.vendor_gl_mappings.payable_gl_code}
+                    {mappings.payableGLCode || mappings.payable_gl_code}
                   </div>
                 </div>
               </div>
@@ -178,6 +224,7 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
                 rows={3}
                 className="w-full border border-red-400 rounded px-3 py-2 outline-none focus:ring focus:ring-red-200"
                 placeholder="Why are you rejecting this invoice?"
+                disabled={isSubmitting}
               ></textarea>
             </div>
           )}
@@ -190,29 +237,33 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) =
               <button
                 onClick={() => setIsRejecting(true)}
                 className="text-red-600 border border-red-600 hover:bg-red-100 px-4 py-2 rounded"
+                disabled={isSubmitting}
               >
                 Reject
               </button>
               <button
                 onClick={handleApprove}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-green-400"
+                disabled={isSubmitting}
               >
-                Approve
+                {isSubmitting ? 'Approving...' : 'Approve'}
               </button>
             </>
           ) : (
             <>
               <button
-                onClick={onClose}
+                onClick={() => setIsRejecting(false)}
                 className="text-gray-600 border border-gray-400 px-4 py-2 rounded hover:bg-gray-100"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleReject}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-red-400"
+                disabled={isSubmitting}
               >
-                Confirm Reject
+                {isSubmitting ? 'Rejecting...' : 'Confirm Reject'}
               </button>
             </>
           )}
