@@ -1170,7 +1170,11 @@ const AccountsTable = ({
                     <td className="py-3 px-6 text-sm">
                       <div className="flex items-center gap-2">
                         {/* Expand/Collapse Arrow - Only for accounts with children or lazy-loading chevrons */}
-                        {account.type !== 'ACCOUNT' && (account.hasChildren !== false || hasChildren(account.code)) && (
+                        {account.type !== 'ACCOUNT' && (
+                          ['FOLDER', 'SUBFOLDER', 'SUB_FOLDER'].includes(account.type) ||
+                          account.hasChildren !== false ||
+                          hasChildren(account.code)
+                        ) && (
                           <button
                             onClick={(e) => toggleExpand(account.code, e)}
                             className="text-gray-600 hover:text-gray-900 focus:outline-none flex items-center justify-center"
