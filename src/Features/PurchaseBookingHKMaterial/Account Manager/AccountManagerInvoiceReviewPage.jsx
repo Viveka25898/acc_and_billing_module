@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
 import AMInvoiceFilter from './AccountManagerInvoiceFilter'
 import AMInvoiceVerifyModal from './AccountManagerInvoiceVerifyModal'
-import InvoiceJVDisplay from '../Components/InvoiceJVDisplay'
+import PurchaseVoucherModal from '../Components/PurchaseVoucherModal'
 import {
   fetchAMPendingInvoices,
   approveAMInvoice,
@@ -11,40 +11,11 @@ import {
   fetchPurchaseVoucherDetails
 } from '../../../store/slices/amInvoiceSlice'
 
-// Mappings from live backend voucher format to local JVDisplay format
-const mapVoucherToJVDisplay = (voucher) => {
-  if (!voucher) return {}
-  return {
-    header: {
-      company: 'iSmart Facitech',
-      voucherNo: voucher.voucherNo || '-',
-      financialYear: voucher.financialYear || '-',
-      date: voucher.voucherDate || '-',
-      reference: voucher.invoiceRef || '-',
-      preparedBy: voucher.postedBy || 'Account Manager'
-    },
-    entries: (voucher.entries || []).map((ent, idx) => ({
-      id: ent.lineNo || idx + 1,
-      particulars: ent.glName || '-',
-      gl: ent.glCode || '-',
-      costCenter: '-',
-      debit: parseFloat(ent.debit || 0),
-      credit: parseFloat(ent.credit || 0),
-      note: ent.narration || ''
-    })),
-    narration: voucher.narration || '-',
-    totals: {
-      debit: parseFloat(voucher.totals?.totalDebit || 0),
-      credit: parseFloat(voucher.totals?.totalCredit || 0)
-    }
-  }
-}
-
 const AMInvoiceReviewPage = () => {
   const dispatch = useDispatch()
   
   // Select values from Redux store
-  const { invoices, pagination, loading, vouchers } = useSelector(state => state.amInvoice)
+  const { invoices, pagination, loading, vouchers, errors } = useSelector(state => state.amInvoice)
 
   const [filters, setFilters] = useState({
     invoiceNumber: '',
@@ -53,7 +24,7 @@ const AMInvoiceReviewPage = () => {
   })
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isJVModalOpen, setIsJVModalOpen] = useState(false)
+  const [isPurchaseVoucherModalOpen, setIsPurchaseVoucherModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
@@ -96,6 +67,7 @@ const AMInvoiceReviewPage = () => {
   const handleUpdateInvoice = async (id, status, remark = '') => {
     if (status === 'Approved') {
       try {
+        const approvedInv = invoices.find(inv => inv.id === id)
         const resultAction = await dispatch(approveAMInvoice({ 
           invoiceId: id, 
           payload: { remarks: remark || 'Payment approved for processing' } 
@@ -116,6 +88,13 @@ const AMInvoiceReviewPage = () => {
             }))
           }
           closeModal()
+
+          // Automatically fetch and open purchase voucher modal
+          if (approvedInv) {
+            setSelectedInvoice(approvedInv)
+            setIsPurchaseVoucherModalOpen(true)
+            dispatch(fetchPurchaseVoucherDetails(id))
+          }
         } else {
           toast.error(resultAction.payload || 'Approval request failed')
         }
@@ -155,11 +134,10 @@ const AMInvoiceReviewPage = () => {
   // Load purchase voucher journal entries
   const handleViewJV = async (invoice) => {
     setSelectedInvoice(invoice)
+    setIsPurchaseVoucherModalOpen(true)
     try {
       const resultAction = await dispatch(fetchPurchaseVoucherDetails(invoice.id))
-      if (fetchPurchaseVoucherDetails.fulfilled.match(resultAction)) {
-        setIsJVModalOpen(true)
-      } else {
+      if (!fetchPurchaseVoucherDetails.fulfilled.match(resultAction)) {
         toast.error(resultAction.payload || 'Failed to load purchase voucher')
       }
     } catch (e) {
@@ -174,16 +152,17 @@ const AMInvoiceReviewPage = () => {
   }
 
   const activeVoucher = selectedInvoice ? vouchers[selectedInvoice.id] : null
-  const isVoucherLoading = selectedInvoice ? loading.voucher[selectedInvoice.id] : false
+  const isVoucherLoading = selectedInvoice ? !!loading.voucher[selectedInvoice.id] : false
+  const voucherError = selectedInvoice ? errors?.voucher?.[selectedInvoice.id] : null
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto bg-white shadow-sm rounded-2xl border border-gray-100">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto bg-white shadow-sm rounded-2xl border border-gray-100 font-sans">
       
       {/* Header section matching Account Executive & Advance Settlement standard styling */}
       <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-            <span>✅</span> HK Material Invoice Processing – Account Manager Review
+            <span>Example</span> HK Material Invoice Processing – Account Manager Review
           </h1>
           <p className="text-green-100 text-sm mt-0.5">
             Review and approve / reject material invoices for final posting
@@ -355,27 +334,17 @@ const AMInvoiceReviewPage = () => {
         />
       )}
 
-      {/* Journal entries double entry display */}
-      {isJVModalOpen && selectedInvoice && (
-        <div className="relative">
-          {isVoucherLoading ? (
-            <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
-              <div className="bg-white p-6 rounded-2xl flex items-center shadow-lg">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-700 mr-3"></div>
-                <span className="text-gray-700 text-sm font-medium">Fetching journal entries...</span>
-              </div>
-            </div>
-          ) : (
-            <InvoiceJVDisplay
-              data={mapVoucherToJVDisplay(activeVoucher)}
-              onClose={() => {
-                setIsJVModalOpen(false)
-                setSelectedInvoice(null)
-              }}
-            />
-          )}
-        </div>
-      )}
+      {/* Purchase Voucher Modal (replaces the old JV Display) */}
+      <PurchaseVoucherModal
+        isOpen={isPurchaseVoucherModalOpen}
+        onClose={() => {
+          setIsPurchaseVoucherModalOpen(false)
+          setSelectedInvoice(null)
+        }}
+        voucher={activeVoucher}
+        isLoading={isVoucherLoading}
+        error={voucherError}
+      />
     </div>
   )
 }
