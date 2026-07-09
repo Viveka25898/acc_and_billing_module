@@ -1,0 +1,12 @@
+name: accounts-module
+
+services:
+  frontend:
+    build:
+      context: ../../
+      dockerfile: deploy/test/Dockerfile
+    image: accounts-frontend:latest
+    container_name: test-accounts-frontend
+    ports:
+      - "8002:443"
+    restart: always
