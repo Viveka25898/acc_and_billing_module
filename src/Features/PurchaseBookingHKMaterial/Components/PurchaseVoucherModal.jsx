@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiCheckCircle, FiX, FiPrinter, FiAlertTriangle } from 'react-icons/fi'
+import { FiCheckCircle, FiX, FiAlertTriangle } from 'react-icons/fi'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Utility helpers
@@ -82,8 +82,6 @@ const PurchaseVoucherModal = ({ isOpen, onClose, voucher, isLoading, error }) =>
   const totalCredit = parseFloat(totals.totalCredit ?? 0)
   const difference = parseFloat(totals.difference ?? Math.abs(totalDebit - totalCredit))
   const isBalanced = difference === 0
-
-  const handlePrint = () => window.print()
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-2 sm:p-4">
