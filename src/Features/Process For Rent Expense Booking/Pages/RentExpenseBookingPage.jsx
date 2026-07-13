@@ -7,6 +7,7 @@ import { toast } from 'react-toastify'
 import ViewVouchersModal from '../Components/ViewVouchersModal'
 import RentExpenseVoucher from '../Components/RentExpenseVoucher'
 import { processRentApproval } from '../../Master/utils/accountingHelpers'
+import TerminateAgreementModal from '../Components/TerminateAgreementModal'
 
 export default function RentExpenseBookingPage() {
   // Load sites from localStorage
@@ -29,6 +30,8 @@ export default function RentExpenseBookingPage() {
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
   const [showAgreementModal, setShowAgreementModal] = useState(false)
   const [showVoucherModal, setShowVoucherModal] = useState(false)
+  const [showTerminateModal, setShowTerminateModal] = useState(false)
+  const [terminateSite, setTerminateSite] = useState(null)
   const [voucherViewSite, setVoucherViewSite] = useState(null)
   const [showViewVoucherModal, setShowViewVoucherModal] = useState(false)
   const [showExpenseVoucherModal, setShowExpenseVoucherModal] = useState(false)
@@ -73,6 +76,67 @@ export default function RentExpenseBookingPage() {
     setSelectedSite(null)
     setShowAgreementModal(false)
     toast.success('Rent agreement uploaded successfully')
+  }
+
+  const handleTerminateSubmit = (siteId, data) => {
+    try {
+      const activeAgreement = agreements.find((a) => a.siteId === siteId && a.status !== 'terminated')
+      if (!activeAgreement) {
+        toast.error('No active agreement found for this site.')
+        return
+      }
+
+      // Update agreement status and metadata
+      const updatedAgreements = agreements.map((a) =>
+        a.agreementId === activeAgreement.agreementId
+          ? {
+              ...a,
+              status: 'terminated',
+              terminationDate: data.effectiveMonth,
+              terminationReason: data.reason,
+            }
+          : a
+      )
+      setAgreements(updatedAgreements)
+      localStorage.setItem('agreements', JSON.stringify(updatedAgreements))
+
+      // If user chose to cancel unpaid future vouchers
+      if (data.cancelUnpaid) {
+        // Update general vouchers
+        const updatedVouchers = vouchers.map((v) => {
+          if (v.siteId === siteId && v.paymentStatus !== 'Paid' && v.month > data.effectiveMonth) {
+            return {
+              ...v,
+              status: 'Cancelled',
+              paymentStatus: 'Cancelled',
+            }
+          }
+          return v
+        })
+        setVouchers(updatedVouchers)
+        localStorage.setItem('vouchers', JSON.stringify(updatedVouchers))
+
+        // Update vendor vouchers (pending payments queue)
+        const updatedVendorVouchers = vendorVouchers.map((v) => {
+          if (v.siteId === siteId && v.paymentStatus !== 'Paid' && v.month > data.effectiveMonth) {
+            return {
+              ...v,
+              status: 'Cancelled',
+              paymentStatus: 'Cancelled',
+            }
+          }
+          return v
+        })
+        setVendorVouchers(updatedVendorVouchers)
+      }
+
+      toast.success('Rent agreement terminated prematurely and future vouchers blocked!')
+      setShowTerminateModal(false)
+      setTerminateSite(null)
+    } catch (error) {
+      console.error('Error terminating agreement:', error)
+      toast.error('Failed to terminate rent agreement')
+    }
   }
 
   const handleVoucherSubmit = async (voucherData) => {
@@ -364,24 +428,35 @@ export default function RentExpenseBookingPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white shadow-md rounded-md px-4 py-6 md:px-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-center text-green-700 mb-6">
-          Rent Expense Booking
-        </h1>
+      <div className="min-h-screen bg-white shadow-sm rounded-2xl border border-green-100 px-6 py-6 md:px-8">
+        {/* Title Header Banner with Green Background */}
+        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-6 mb-8 shadow-sm text-left relative overflow-hidden">
+          <div className="absolute right-0 top-0 bottom-0 w-32 bg-white/5 transform skew-x-12 translate-x-8 pointer-events-none"></div>
+          <h1 className="text-2xl md:text-3xl font-black mb-2 flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
+            Rent Expense Booking
+          </h1>
+          <p className="text-xs text-green-100/90 max-w-xl leading-relaxed">
+            Manage your retail and corporate rental sites, track rent agreements, upload files, and generate monthly accounting vouchers.
+          </p>
+        </div>
 
         {/* Filter UI with Add Site Button */}
-        <div className="p-4 mb-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <h2 className="text-lg font-semibold text-gray-700">Filter Sites</h2>
+        <div className="bg-green-50/20 rounded-xl p-5 border border-green-100/50 mb-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center">
+              <span className="inline-block w-1.5 h-3.5 bg-green-600 rounded-full mr-2"></span>
+              Filter Sites
+            </h2>
             <button
               onClick={() => setShowAddSiteModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2"
+              className="bg-green-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-green-700 shadow-sm hover:shadow hover:scale-[1.01] active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth="2.5"
                   d="M12 4v16m8-8H4"
                 />
               </svg>
@@ -393,12 +468,12 @@ export default function RentExpenseBookingPage() {
             <input
               type="text"
               placeholder="Owner Ledger Name"
-              className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="p-2.5 border border-gray-250 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm transition"
               value={filters.owner}
               onChange={(e) => setFilters({ ...filters, owner: e.target.value })}
             />
             <select
-              className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="p-2.5 border border-gray-250 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm transition cursor-pointer"
               value={filters.state}
               onChange={(e) => setFilters({ ...filters, state: e.target.value })}
             >
@@ -410,7 +485,7 @@ export default function RentExpenseBookingPage() {
               ))}
             </select>
             <select
-              className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="p-2.5 border border-gray-250 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm transition cursor-pointer"
               value={filters.city}
               onChange={(e) => setFilters({ ...filters, city: e.target.value })}
             >
@@ -425,11 +500,11 @@ export default function RentExpenseBookingPage() {
         </div>
 
         {/* Sites Table */}
-        <div className="p-4 mb-10 overflow-x-auto">
+        <div className="mb-10 overflow-x-auto rounded-xl border border-green-100 shadow-sm bg-white">
           {sites.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-16 px-4">
               <svg
-                className="mx-auto h-12 w-12 text-gray-400"
+                className="mx-auto h-14 w-14 text-gray-350"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -437,76 +512,80 @@ export default function RentExpenseBookingPage() {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth="1.5"
                   d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                 />
               </svg>
-              <p className="mt-4 text-gray-500">
+              <p className="mt-4 text-gray-500 text-sm font-medium">
                 No sites found. Add your first site to get started.
               </p>
               <button
                 onClick={() => setShowAddSiteModal(true)}
-                className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
+                className="mt-5 bg-green-600 text-white font-semibold text-xs px-6 py-2.5 rounded-lg hover:bg-green-700 shadow-sm hover:shadow transition duration-150 cursor-pointer"
               >
                 Add First Site
               </button>
             </div>
           ) : (
             <>
-              <table className="min-w-full table-fixed border text-sm">
-                <thead className="bg-gray-100">
+              <table className="min-w-full text-sm divide-y divide-gray-100 border-collapse">
+                <thead className="bg-green-600 text-white font-semibold">
                   <tr>
-                    <th className="border px-2 py-1 w-10">#</th>
-                    <th className="border px-2 py-1 w-28">Site</th>
-                    <th className="border px-2 py-1 w-28">Location</th>
-                    <th className="border px-2 py-1 w-24">State</th>
-                    <th className="border px-2 py-1 w-24">City</th>
-                    <th className="border px-2 py-1 w-28">Owner</th>
-                    <th className="border px-2 py-1 w-14">GST</th>
-                    <th className="border px-2 py-1 w-20">Agreement</th>
-                    <th className="border px-2 py-1 w-32">Vouchers</th>
-                    <th className="border px-2 py-1 w-44">Action</th>
+                    <th className="px-4 py-3 text-center w-12">#</th>
+                    <th className="px-4 py-3 text-left">Site</th>
+                    <th className="px-4 py-3 text-left">Location</th>
+                    <th className="px-4 py-3 text-left w-24">State</th>
+                    <th className="px-4 py-3 text-left w-24">City</th>
+                    <th className="px-4 py-3 text-left">Owner</th>
+                    <th className="px-4 py-3 text-center w-16">GST</th>
+                    <th className="px-4 py-3 text-center w-24">Agreement</th>
+                    <th className="px-4 py-3 text-center w-32">Vouchers</th>
+                    <th className="px-4 py-3 text-center w-52">Action</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-100">
                   {paginatedSites.map((site, index) => {
                     const agreement = getAgreementForSite(site.siteId)
                     const ownerName = site.owners?.[0]?.ownerName || 'No Owner'
                     return (
-                      <tr key={site.siteId} className="text-center hover:bg-gray-50">
-                        <td className="border px-2 py-1">
+                      <tr key={site.siteId} className="hover:bg-green-50/20 transition duration-75">
+                        <td className="px-4 py-3 text-center text-gray-500 font-medium">
                           {(currentPage - 1) * itemsPerPage + index + 1}
                         </td>
-                        <td className="border px-2 py-1">{site.siteName}</td>
-                        <td className="border px-2 py-1">{site.location}</td>
-                        <td className="border px-2 py-1">{site.state}</td>
-                        <td className="border px-2 py-1">{site.city}</td>
-                        <td className="border px-2 py-1">{ownerName}</td>
-                        <td className="border px-2 py-1">
-                          {agreement?.withGST
-                            ? 'Yes'
-                            : site.rentConfig?.gstExpected === 'yes'
-                              ? 'Yes'
-                              : 'No'}
+                        <td className="px-4 py-3 font-semibold text-gray-900">{site.siteName}</td>
+                        <td className="px-4 py-3 text-gray-600">{site.location}</td>
+                        <td className="px-4 py-3 text-gray-600">{site.state}</td>
+                        <td className="px-4 py-3 text-gray-600">{site.city}</td>
+                        <td className="px-4 py-3 text-gray-700">{ownerName}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span
+                            className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${
+                              agreement?.withGST || site.rentConfig?.gstExpected === 'yes'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {agreement?.withGST || site.rentConfig?.gstExpected === 'yes' ? 'Yes' : 'No'}
+                          </span>
                         </td>
-                        <td className="border px-2 py-1">
+                        <td className="px-4 py-3 text-center">
                           {agreement ? (
                             <a
                               href={agreement.fileUrl || '#'}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 underline text-xs"
+                              className="text-green-700 hover:text-green-900 font-bold hover:underline transition duration-150"
                             >
-                              View
+                              View PDF
                             </a>
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
-                        <td className="border px-2 py-1">
+                        <td className="px-4 py-3 text-center">
                           {agreement ? (
                             <button
-                              className="text-blue-600 underline text-xs hover:text-blue-800"
+                              className="text-blue-600 hover:text-blue-800 font-bold hover:underline transition duration-150 cursor-pointer text-xs"
                               onClick={() => {
                                 setVoucherViewSite(site)
                                 setShowViewVoucherModal(true)
@@ -518,28 +597,54 @@ export default function RentExpenseBookingPage() {
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
-                        <td className="border px-2 py-1 space-x-2">
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
                           {site.isStandalone ? (
                             <button
                               onClick={() => {
                                 setSelectedSite(site)
                                 setShowAgreementModal(true)
                               }}
-                              className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition duration-150 cursor-pointer"
                             >
                               Add Owner & Agreement
                             </button>
                           ) : (
-                            <button
-                              onClick={() => {
-                                setSelectedSite(site)
-                                if (!agreement) setShowAgreementModal(true)
-                                else setShowVoucherModal(true)
-                              }}
-                              className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                            >
-                              {agreement ? 'Generate Voucher' : 'Upload Agreement'}
-                            </button>
+                            <>
+                              {agreement && agreement.status === 'terminated' ? (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className="inline-block bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200">
+                                    Terminated
+                                  </span>
+                                  <span className="text-[9px] text-gray-500 font-medium">
+                                    Closed: {agreement.terminationDate || '-'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex justify-center items-center gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedSite(site)
+                                      if (!agreement) setShowAgreementModal(true)
+                                      else setShowVoucherModal(true)
+                                    }}
+                                    className="bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition duration-150 cursor-pointer"
+                                  >
+                                    {agreement ? 'Gen Voucher' : 'Upload Agr'}
+                                  </button>
+                                  {agreement && (
+                                    <button
+                                      onClick={() => {
+                                        setTerminateSite(site)
+                                        setShowTerminateModal(true)
+                                      }}
+                                      className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition duration-150 cursor-pointer"
+                                    >
+                                      Terminate
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </>
                           )}
                         </td>
                       </tr>
@@ -655,6 +760,19 @@ export default function RentExpenseBookingPage() {
               setShowExpenseVoucherModal(false)
               setExpenseVoucherData(null)
             }}
+          />
+        )}
+
+        {/* Terminate Rent Agreement Modal */}
+        {showTerminateModal && terminateSite && (
+          <TerminateAgreementModal
+            site={terminateSite}
+            agreement={getAgreementForSite(terminateSite.siteId)}
+            onClose={() => {
+              setShowTerminateModal(false)
+              setTerminateSite(null)
+            }}
+            onSubmit={(data) => handleTerminateSubmit(terminateSite.siteId, data)}
           />
         )}
       </div>
