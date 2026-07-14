@@ -63,7 +63,7 @@ export default function OperationExecutiveReliverPage() {
       );
 
       toast.success("Request submitted successfully!");
-      navigate("/dashboard/operation-executive/my-requests");
+      navigate("/dashboard/employee/my-reliver-requests");
     } catch (error) {
       console.error("Error submitting request:", error);
       toast.error(`Failed to submit request: ${error.message}`);
@@ -71,18 +71,21 @@ export default function OperationExecutiveReliverPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 bg-white rounded-md shadow-md">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-green-600">Reliever Request Form</h1>
+    <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      {/* Premium Green Header Block */}
+      <div className="bg-gradient-to-r from-green-700 to-green-600 px-6 py-5 text-white flex justify-between items-center shadow-sm">
+        <h1 className="text-xl font-bold tracking-wide">Reliever Request Form</h1>
         <button
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition cursor-pointer"
-          onClick={() => navigate("/dashboard/operation-executive/my-requests")}
+          className="bg-white hover:bg-gray-100 text-green-700 font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
+          onClick={() => navigate("/dashboard/employee/my-reliver-requests")}
         >
           My Requests
         </button>
       </div>
 
-      <RelieverForm onSubmit={handleFormSubmit} />
+      <div className="p-2">
+        <RelieverForm onSubmit={handleFormSubmit} />
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import FilterBar from "../Components/Filter";
 import RelieverRequestsTable from "../Components/RelieverRequestsTable";
 
@@ -6,6 +7,7 @@ export default function OperationExecutiveMyRequestsPage() {
   const [requests, setRequests] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const currentUser = JSON.parse(localStorage.getItem("user"));
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadRequests = () => {
@@ -44,13 +46,27 @@ export default function OperationExecutiveMyRequestsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 bg-white rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-green-600">My Reliever Requests</h1>
-      <FilterBar onFilter={handleFilter} />
-      <RelieverRequestsTable 
-        requests={filtered} 
-        showFullHistory={false} 
-      />
+    <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      {/* Premium Green Header Block */}
+      <div className="bg-gradient-to-r from-green-700 to-green-600 px-6 py-5 text-white flex justify-between items-center shadow-sm">
+        <h1 className="text-xl font-bold tracking-wide">My Reliever Requests</h1>
+        <button
+          className="bg-white hover:bg-gray-100 text-green-700 font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
+          onClick={() => navigate("/dashboard/employee/reliver-form")}
+        >
+          + Submit Reliever Request
+        </button>
+      </div>
+
+      <div className="p-6">
+        <FilterBar onFilter={handleFilter} />
+        <div className="mt-4">
+          <RelieverRequestsTable 
+            requests={filtered} 
+            showFullHistory={false} 
+          />
+        </div>
+      </div>
     </div>
   );
 }

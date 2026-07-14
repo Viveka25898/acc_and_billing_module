@@ -27,7 +27,13 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
 
   const getApprovalStatus = (req, role) => {
     // If the overall request is approved, all roles show approved
-    if (req.status === "Approved") return "Approved";
+    if (req.status === "Approved") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+          Approved
+        </span>
+      );
+    }
     
     // Map role names to match your system
     const roleMap = {
@@ -39,11 +45,13 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
     // Check if rejected by checking the main status
     if (req.status.includes(`Rejected by ${role}`)) {
       return (
-        <div className="flex justify-center items-center gap-2">
-          <span className="text-red-600">Rejected</span>
+        <div className="flex items-center justify-center gap-1.5">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+            Rejected
+          </span>
           <FaEye 
             onClick={() => handleViewReason(req)} 
-            className="text-red-600 cursor-pointer hover:text-red-800" 
+            className="text-red-500 cursor-pointer hover:text-red-700 transition" 
             title="View reason"
           />
         </div>
@@ -57,12 +65,20 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
     );
     
     if (roleApproval) {
-      return "Approved";
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+          Approved
+        </span>
+      );
     }
     
     // Check if currently pending with this role
     if (req.status.includes(role) && req.status.includes("Pending")) {
-      return req.status;
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">
+          Pending
+        </span>
+      );
     }
     
     // If request was rejected by a later role, earlier roles should show as approved
@@ -73,53 +89,61 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
     );
     
     if (wasApproved) {
-      return "Approved";
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+          Approved
+        </span>
+      );
     }
     
-    return "Pending";
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-50 text-gray-500 border border-gray-200">
+        Pending
+      </span>
+    );
   };
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full table-auto border shadow rounded">
-          <thead className="bg-gray-100">
+      <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+        <table className="w-full table-auto border-collapse text-left bg-white">
+          <thead className="bg-gradient-to-r from-green-700 to-green-600 text-white">
             <tr>
-              <th className="p-2 border">Request ID</th>
-              <th className="p-2 border">Name</th>
-              <th className="p-2 border">Date</th>
-              <th className="p-2 border">Site</th>
-              <th className="p-2 border">Amount</th>
-              <th className="p-2 border">Status</th>
-              <th className="p-2 border">Line Manager</th>
-              <th className="p-2 border">VP Operations</th>
-              <th className="p-2 border">Account Executive</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider">Request ID</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider">Name</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider">Date</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider">Site</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider">Amount</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider">Status</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-center">Line Manager</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-center">VP Operations</th>
+              <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-center">Account Executive</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {paginated.map((req) => (
-              <tr key={req.id} className="hover:bg-gray-50">
-                <td className="border p-2">{req.id.slice(-6)}</td>
-                <td className="border p-2">{req.name}</td>
-                <td className="border p-2">{new Date(req.date).toLocaleDateString()}</td>
-                <td className="border p-2">{req.site}</td>
-                <td className="border p-2">₹{req.amount}</td>
-                <td className="border p-2">
-                  <span className={`px-2 py-1 rounded ${
-                    req.status.includes("Rejected") ? "bg-red-100 text-red-800" :
-                    req.status === "Approved" ? "bg-green-100 text-green-800" :
-                    "bg-yellow-100 text-yellow-800"
+              <tr key={req.id} className="hover:bg-gray-50/50 transition-colors duration-150">
+                <td className="px-6 py-4 text-sm font-semibold text-gray-800">#{req.id.slice(-6)}</td>
+                <td className="px-6 py-4 text-sm text-gray-700 font-medium">{req.name}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">{new Date(req.date).toLocaleDateString()}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">{req.site}</td>
+                <td className="px-6 py-4 text-sm font-bold text-gray-900">₹{parseFloat(req.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td className="px-6 py-4 text-sm">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                    req.status.includes("Rejected") ? "bg-red-50 text-red-700 border-red-200" :
+                    req.status === "Approved" ? "bg-green-50 text-green-700 border-green-200" :
+                    "bg-yellow-50 text-yellow-700 border-yellow-200"
                   }`}>
                     {req.status}
                   </span>
                 </td>
-                <td className="border p-2">
+                <td className="px-6 py-4 text-sm text-center">
                   {getApprovalStatus(req, "Line Manager")}
                 </td>
-                <td className="border p-2">
+                <td className="px-6 py-4 text-sm text-center">
                   {getApprovalStatus(req, "VP Operations")}
                 </td>
-                <td className="border p-2">
+                <td className="px-6 py-4 text-sm text-center">
                   {getApprovalStatus(req, "Account Executive")}
                 </td>
               </tr>
@@ -130,17 +154,17 @@ export default function RelieverRequestsTable({ requests, showFullHistory = fals
 
       {/* Pagination */}
       {requests.length > ITEMS_PER_PAGE && (
-        <div className="flex justify-between items-center mt-4">
+        <div className="flex justify-between items-center mt-5 bg-gray-50 px-6 py-4 border border-gray-100 rounded-2xl shadow-sm">
           <button
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-semibold rounded-xl text-sm transition-all hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
           >
             Previous
           </button>
-          <span>Page {currentPage} of {totalPages}</span>
+          <span className="text-sm font-semibold text-gray-600">Page {currentPage} of {totalPages}</span>
           <button
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-semibold rounded-xl text-sm transition-all hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}
           >

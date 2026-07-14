@@ -302,6 +302,14 @@ export const router = createBrowserRouter([
         path: 'my-conveyance-requests',
         element: <MyConveyanceRequestsPage />,
       },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
     ],
   },
 
