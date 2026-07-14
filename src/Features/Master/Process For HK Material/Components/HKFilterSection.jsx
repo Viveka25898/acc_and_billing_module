@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const HKFilterSection = ({ filters, setFilters }) => {
+const HKFilterSection = ({ filters = {}, setFilters }) => {
   const [localFilters, setLocalFilters] = useState(filters);
 
   // Keep local filters synchronized when parent state is updated from the outside (e.g. Category changes)

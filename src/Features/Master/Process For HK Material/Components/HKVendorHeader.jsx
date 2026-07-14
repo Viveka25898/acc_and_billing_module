@@ -1,6 +1,6 @@
 import React from "react";
 
-const HKVendorHeader = ({ info, balances }) => {
+const HKVendorHeader = ({ info = {}, balances = [] }) => {
   return (
     <div className="bg-gradient-to-r from-green-700 to-green-400 text-white p-6 rounded-t-lg shadow-md">
       <h1 className="text-2xl font-bold mb-4">Vendor Ledger</h1>

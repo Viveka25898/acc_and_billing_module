@@ -1,6 +1,6 @@
 import React from "react";
 
-const HKFooterSummary = ({ totals }) => {
+const HKFooterSummary = ({ totals = {} }) => {
   // Default values if totals not provided
   const totalDebit = totals?.totalDebit || "0.00";
   const totalCredit = totals?.totalCredit || "0.00";
