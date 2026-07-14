@@ -13,8 +13,8 @@ export default function VPRelieverApprovalPage() {
       try {
         const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
         const pendingRequests = allRequests.filter(
-          req => req.status === "Pending VP Operations Approval" && 
-                req.currentApprover === currentUser.username
+          req => req.status === "Pending VP Operations Approval" &&
+            req.currentApprover === currentUser.username
         );
         setRequests(pendingRequests);
         setFiltered(pendingRequests);
@@ -42,107 +42,108 @@ export default function VPRelieverApprovalPage() {
   };
 
   const handleStatusChange = (id, newStatus, reason = null) => {
-  const now = new Date();
-  const isBeforeDeadline = canApproveNow();
-  
-  setRequests(prevRequests => {
-    const request = prevRequests.find(req => req.id === id);
-    if (!request) return prevRequests;
+    const now = new Date();
+    const isBeforeDeadline = canApproveNow();
 
-    const historyEntry = {
-      action: newStatus.includes("Rejected") ? 
-        "Rejected by VP Operations" : 
-        "Approved by VP Operations",
-      by: currentUser.username,
-      at: now.toISOString(),
-      comments: reason || (isBeforeDeadline ? "Approved" : "Approved (after deadline)")
-    };
+    setRequests(prevRequests => {
+      const request = prevRequests.find(req => req.id === id);
+      if (!request) return prevRequests;
 
-    const updatedRequest = {
-      ...request,
-      status: newStatus,
-      currentApprover: newStatus.includes("Rejected") 
-        ? request.submittedBy 
-        : request.approvers.accountExecutive,
-      history: [...request.history, historyEntry],
-      rejectionReason: reason || null,
-      delayed: !reason && !isBeforeDeadline
-    };
+      const historyEntry = {
+        action: newStatus.includes("Rejected") ?
+          "Rejected by VP Operations" :
+          "Approved by VP Operations",
+        by: currentUser.username,
+        at: now.toISOString(),
+        comments: reason || (isBeforeDeadline ? "Approved" : "Approved (after deadline)")
+      };
 
-    // Update localStorage
-    const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
-    const updatedAllRequests = allRequests.map(req => 
-      req.id === id ? updatedRequest : req
-    );
-    localStorage.setItem("relieverRequests", JSON.stringify(updatedAllRequests));
+      const updatedRequest = {
+        ...request,
+        status: newStatus,
+        currentApprover: newStatus.includes("Rejected")
+          ? request.submittedBy
+          : request.approvers.accountExecutive,
+        history: [...request.history, historyEntry],
+        rejectionReason: reason || null,
+        delayed: !reason && !isBeforeDeadline
+      };
 
-    return prevRequests.map(req => req.id === id ? updatedRequest : req);
-  });
+      // Update localStorage
+      const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
+      const updatedAllRequests = allRequests.map(req =>
+        req.id === id ? updatedRequest : req
+      );
+      localStorage.setItem("relieverRequests", JSON.stringify(updatedAllRequests));
 
-  // Update filtered requests
-  setFiltered(prev => prev.map(req => 
-    req.id === id ? {
-      ...req,
-      status: newStatus,
-      rejectionReason: reason || null,
-      delayed: !reason && !isBeforeDeadline
-    } : req
-  ));
+      return prevRequests.map(req => req.id === id ? updatedRequest : req);
+    });
 
-  // Show toast
-  if (reason) {
-    toast.error(`Request #${id.slice(-6)} rejected`);
-  } else if (!isBeforeDeadline) {
-    toast.info(`Request #${id.slice(-6)} approved (will process next day)`);
-  } else {
-    toast.success(`Request #${id.slice(-6)} approved`);
-  }
-};
+    // Update filtered requests
+    setFiltered(prev => prev.map(req =>
+      req.id === id ? {
+        ...req,
+        status: newStatus,
+        rejectionReason: reason || null,
+        delayed: !reason && !isBeforeDeadline
+      } : req
+    ));
+
+    // Show toast
+    if (reason) {
+      toast.error(`Request #${id.slice(-6)} rejected`);
+    } else if (!isBeforeDeadline) {
+      toast.info(`Request #${id.slice(-6)} approved (will process next day)`);
+    } else {
+      toast.success(`Request #${id.slice(-6)} approved`);
+    }
+  };
 
   const handleBulkApprove = (ids) => {
-  const isBeforeDeadline = canApproveNow();
-  
-  if (!isBeforeDeadline) {
-    toast.info("Approvals after 7:00 PM will be processed next day");
-  }
+    const isBeforeDeadline = canApproveNow();
 
-  const updated = requests.map(req => {
-    if (!ids.includes(req.id)) return req;
+    if (!isBeforeDeadline) {
+      toast.info("Approvals after 7:00 PM will be processed next day");
+    }
 
-    const historyEntry = {
-      action: "Approved by VP Operations",
-      by: currentUser.username,
-      at: new Date().toISOString(),
-      comments: isBeforeDeadline ? "Bulk approved" : "Bulk approved (after deadline)"
-    };
+    const updated = requests.map(req => {
+      if (!ids.includes(req.id)) return req;
 
-    return {
-      ...req,
-      status: "Pending Account Executive Approval",
-      currentApprover: req.approvers.accountExecutive,
-      history: [...req.history, historyEntry],
-      rejectionReason: null,
-      delayed: !isBeforeDeadline
-    };
-  });
+      const historyEntry = {
+        action: "Approved by VP Operations",
+        by: currentUser.username,
+        at: new Date().toISOString(),
+        comments: isBeforeDeadline ? "Bulk approved" : "Bulk approved (after deadline)"
+      };
 
-  setRequests(updated);
-  setFiltered(updated);
-  updateLocalStorage(updated);
+      return {
+        ...req,
+        status: "Pending Account Executive Approval",
+        currentApprover: req.approvers.accountExecutive,
+        history: [...req.history, historyEntry],
+        rejectionReason: null,
+        delayed: !isBeforeDeadline
+      };
+    });
 
-  if (!isBeforeDeadline) {
-    toast.info(`${ids.length} request(s) approved (will process next day)`);
-  } else {
-    toast.success(`${ids.length} request(s) approved`);
-  }
-};
+    setRequests(updated);
+    setFiltered(updated);
+    updateLocalStorage(updated);
+
+    if (!isBeforeDeadline) {
+      toast.info(`${ids.length} request(s) approved (will process next day)`);
+    } else {
+      toast.success(`${ids.length} request(s) approved`);
+    }
+  };
 
   const handleFilter = (filters) => {
     let temp = [...requests];
     if (filters.name?.trim()) {
       temp = temp.filter(req =>
         req.name.toLowerCase().includes(filters.name.toLowerCase())
-    )}
+      )
+    }
     setFiltered(temp);
   };
 
