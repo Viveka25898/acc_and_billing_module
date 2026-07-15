@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 
 export default function FilterBar({ onFilter }) {
-  const [filters, setFilters] = useState({ name: "", status: "" });
+  const [filters, setFilters] = useState({ name: "", date: "" });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,22 +28,14 @@ export default function FilterBar({ onFilter }) {
       </div>
 
       <div className="flex-1 min-w-[200px] md:max-w-[280px]">
-        <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Status</label>
-        <select
-          name="status"
-          value={filters.status}
+        <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Filter by Date</label>
+        <input
+          type="date"
+          name="date"
+          value={filters.date}
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
-        >
-          <option value="">All Statuses</option>
-          <option value="Pending Line Manager Approval">Pending Line Manager Approval</option>
-          <option value="Pending VP Operations Approval">Pending VP Operations Approval</option>
-          <option value="Pending Account Executive Approval">Pending Account Executive Approval</option>
-          <option value="Approved">Approved</option>
-          <option value="Rejected by Line Manager">Rejected by Line Manager</option>
-          <option value="Rejected by VP Operations">Rejected by VP Operations</option>
-          <option value="Rejected by Account Executive">Rejected by Account Executive</option>
-        </select>
+          className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm text-gray-700"
+        />
       </div>
 
       <button
