@@ -64,6 +64,7 @@ export default function LineManagerApprovalTable({
   onStatusChange,
   onBulkApprove,
   showActions = false,
+  activeStatus = "Pending Regional Head Approval",
 }) {
   const [selectedId, setSelectedId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,6 +92,10 @@ export default function LineManagerApprovalTable({
   const handleApprove = (id, status) => {
     if (status === "Pending Regional Head Approval") {
       onStatusChange(id, "Pending AVP Operations Approval");
+    } else if (status === "Pending AVP Operations Approval") {
+      onStatusChange(id, "Pending VP Operations Approval");
+    } else if (status === "Pending VP Operations Approval") {
+      onStatusChange(id, "Pending Account Executive Approval");
     }
   };
 
@@ -102,7 +107,7 @@ export default function LineManagerApprovalTable({
 
   const handleRejectConfirm = (reason) => {
     if (selectedId) {
-      onStatusChange(selectedId, "Rejected by Regional Head", reason);
+      onStatusChange(selectedId, "Rejected", reason);
     }
     setShowRejectionModal(false);
     setSelectedId(null);
@@ -119,7 +124,7 @@ export default function LineManagerApprovalTable({
   const handleApproveAll = () => {
     const approvableIds = selectedRequests.filter((id) => {
       const req = requests.find((r) => r.id === id);
-      return req && req.status === "Pending Regional Head Approval";
+      return req && req.status === activeStatus;
     });
 
     if (approvableIds.length > 0) {
@@ -169,7 +174,7 @@ export default function LineManagerApprovalTable({
               return (
                 <tr key={req.id} className="hover:bg-gray-50/50 transition-colors duration-150">
                   <td className="px-6 py-4 text-center">
-                    {req.status === "Pending Regional Head Approval" && (
+                    {req.status === activeStatus && (
                       <input
                         type="checkbox"
                         checked={selectedRequests.includes(req.id)}
@@ -224,7 +229,7 @@ export default function LineManagerApprovalTable({
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center whitespace-nowrap">
-                    {req.status === "Pending Regional Head Approval" ? (
+                    {req.status === activeStatus ? (
                       <div className="flex gap-2 justify-center">
                         <button
                           className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"

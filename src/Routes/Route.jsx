@@ -124,6 +124,7 @@ import OperationExecutiveHome from '../Roles/Operation Executive/Components/Oper
 import OperationExecutiveReliverPage from '../Features/Process For Reliver Payments/Pages/OperationExecutiveReliverPage'
 import OperationExecutiveMyRequestsPage from '../Features/Process For Reliver Payments/Pages/OperationExecutiveMyRequestsPage'
 import LineManagerRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/LineManagerRelieverApprovalPage'
+import AVPRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/AVPRelieverApprovalPage'
 import VPRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/VPRelieverApprovalPage'
 import AERelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/AERelieverApprovalPage'
 import GSTR2BRecoPage from '../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BReco'
@@ -407,6 +408,7 @@ export const router = createBrowserRouter([
       { path: 'advance-settelment', element: <AVPExpenseRequestsPage /> },
       { path: 'submit-advance-settlement', element: <AVPAdvanceSettlementForm /> },
       { path: 'my-settelment-requests', element: <MySettlements /> },
+      { path: 'avp-reliever-approval', element: <AVPRelieverApprovalPage /> },
     ],
   },
   // *******************************VP Operations***********************************
