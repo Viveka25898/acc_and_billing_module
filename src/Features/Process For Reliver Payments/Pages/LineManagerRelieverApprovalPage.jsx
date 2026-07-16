@@ -1,117 +1,103 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import FilterBar from "../Components/Filter";
 import LineManagerApprovalTable from "../Components/LineManagerApprovalTable";
+import {
+  fetchRelieverQueue,
+  approveRelieverRequest,
+  rejectRelieverRequest,
+  selectRelieverQueueRequests,
+  selectRelieverQueueLoading
+} from "../../../store/slices/relieverSlice";
 
 export default function LineManagerRelieverApprovalPage() {
-  const [requests, setRequests] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const dispatch = useDispatch();
+  const queueRequests = useSelector(selectRelieverQueueRequests);
+  const loading = useSelector(selectRelieverQueueLoading);
+
+  const [filters, setFilters] = useState({ name: "", date: "" });
 
   useEffect(() => {
-    const loadRequests = () => {
-      try {
-        const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
-        const pendingRequests = allRequests.filter(
-          req => req.status === "Pending Line Manager Approval" && 
-                req.currentApprover === currentUser.username
-        );
-        setRequests(pendingRequests);
-        setFiltered(pendingRequests);
-      } catch (error) {
-        console.error("Error loading requests:", error);
-        toast.error("Failed to load requests");
+    dispatch(fetchRelieverQueue());
+  }, [dispatch]);
+
+  const handleStatusChange = async (id, newStatus, reason = null) => {
+    try {
+      if (newStatus.includes("Rejected")) {
+        await dispatch(rejectRelieverRequest({ 
+          id, 
+          comments: "Rejected by Regional Head", 
+          rejectionReason: reason || "Bank details mismatch"
+        })).unwrap();
+        toast.error(`Request #${id.slice(-6)} rejected`);
+      } else {
+        await dispatch(approveRelieverRequest({ 
+          id, 
+          comments: "Approved by Regional Head" 
+        })).unwrap();
+        toast.success(`Request #${id.slice(-6)} approved`);
       }
-    };
-    loadRequests();
-  }, [currentUser?.username]);
-
-  const updateLocalStorage = (updatedRequests) => {
-    const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
-    const updatedAllRequests = allRequests.map(req => {
-      const updatedReq = updatedRequests.find(ur => ur.id === req.id);
-      return updatedReq || req;
-    });
-    localStorage.setItem("relieverRequests", JSON.stringify(updatedAllRequests));
-  };
-
-  const handleStatusChange = (id, newStatus, reason = null) => {
-    const updated = requests.map((req) => {
-      if (req.id !== id) return req;
-      
-      const historyEntry = {
-        action: newStatus.includes("Rejected") ? "Rejected by Line Manager" : "Approved by Line Manager",
-        by: currentUser.username,
-        at: new Date().toISOString(),
-        comments: reason || "Approved"
-      };
-
-      return {
-        ...req,
-        status: newStatus,
-        currentApprover: newStatus.includes("VP") ? req.approvers.vpOperations : req.submittedBy,
-        history: [...req.history, historyEntry],
-        rejectionReason: reason || null
-      };
-    });
-
-    setRequests(updated);
-    setFiltered(updated);
-    updateLocalStorage(updated);
-
-    if (reason) {
-      toast.error(`Request #${id.slice(-6)} rejected`);
-    } else {
-      toast.success(`Request #${id.slice(-6)} approved`);
+    } catch (error) {
+      console.error("Action error:", error);
+      toast.error(`Operation failed: ${error}`);
     }
   };
 
-  const handleBulkApprove = (ids) => {
-    const updated = requests.map((req) => {
-      if (!ids.includes(req.id)) return req;
-      
-      const historyEntry = {
-        action: "Approved by Line Manager",
-        by: currentUser.username,
-        at: new Date().toISOString(),
-        comments: "Bulk approved"
-      };
-
-      return {
-        ...req,
-        status: "Pending VP Operations Approval",
-        currentApprover: req.approvers.vpOperations,
-        history: [...req.history, historyEntry],
-        rejectionReason: null
-      };
-    });
-
-    setRequests(updated);
-    setFiltered(updated);
-    updateLocalStorage(updated);
-    toast.success(`${ids.length} request(s) approved`);
+  const handleBulkApprove = async (ids) => {
+    try {
+      await Promise.all(ids.map(id => 
+        dispatch(approveRelieverRequest({ id, comments: "Approved by Regional Head" })).unwrap()
+      ));
+      toast.success(`${ids.length} request(s) approved`);
+    } catch (error) {
+      console.error("Bulk approval error:", error);
+      toast.error(`Bulk approval failed: ${error}`);
+    }
   };
 
-  const handleFilter = (filters) => {
-    let temp = [...requests];
+  const handleFilter = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const filteredRequests = queueRequests.filter((req) => {
     if (filters.name?.trim()) {
-      temp = temp.filter((req) =>
-        req.name.toLowerCase().includes(filters.name.toLowerCase())
-      );
+      const searchName = filters.name.trim().toLowerCase();
+      const reqName = (req.name || req.relieverName || "").toLowerCase();
+      if (!reqName.includes(searchName)) return false;
     }
-    setFiltered(temp);
-  };
+    if (filters.date?.trim()) {
+      const searchDate = filters.date.trim();
+      const reqDate = req.date || "";
+      if (!reqDate.includes(searchDate)) return false;
+    }
+    return true;
+  });
 
   return (
-    <div className="max-w-6xl mx-auto p-4 bg-white shadow-md rounded-md">
-      <h1 className="text-2xl font-bold mb-4 text-green-600">Line Manager - Approvals</h1>
-      <FilterBar onFilter={handleFilter} />
-      <LineManagerApprovalTable
-        requests={filtered}
-        onStatusChange={handleStatusChange}
-        onBulkApprove={handleBulkApprove}
-        showActions={true}
-      />
+    <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      {/* Premium Green Header Block */}
+      <div className="bg-gradient-to-r from-green-700 to-green-600 px-6 py-5 text-white shadow-sm">
+        <h1 className="text-xl font-bold tracking-wide">Regional Head - Reliever Approvals</h1>
+        <p className="text-green-100 text-sm mt-0.5">Review and approve or reject reliever payment claims</p>
+      </div>
+
+      <div className="p-6">
+        <FilterBar onFilter={handleFilter} />
+        
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+          </div>
+        ) : (
+          <LineManagerApprovalTable
+            requests={filteredRequests}
+            onStatusChange={handleStatusChange}
+            onBulkApprove={handleBulkApprove}
+            showActions={true}
+          />
+        )}
+      </div>
     </div>
   );
 }

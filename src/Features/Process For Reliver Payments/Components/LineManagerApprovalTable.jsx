@@ -60,7 +60,7 @@ const FileViewModal = ({ isOpen, onClose, title, fileData }) => {
 };
 
 export default function LineManagerApprovalTable({
-  requests,
+  requests = [],
   onStatusChange,
   onBulkApprove,
   showActions = false,
@@ -76,9 +76,21 @@ export default function LineManagerApprovalTable({
   const paginated = requests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   const totalPages = Math.ceil(requests.length / ITEMS_PER_PAGE);
 
+  if (requests.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-green-100 shadow-sm py-16 text-center mt-4">
+        <p className="text-4xl mb-3">📭</p>
+        <p className="text-gray-500 font-medium text-base">No reliever requests found.</p>
+        <p className="text-sm text-gray-400 mt-1">
+          Reliever requests pending your approval will appear here.
+        </p>
+      </div>
+    );
+  }
+
   const handleApprove = (id, status) => {
-    if (status === "Pending Line Manager Approval") {
-      onStatusChange(id, "Pending VP Operations Approval");
+    if (status === "Pending Regional Head Approval") {
+      onStatusChange(id, "Pending AVP Operations Approval");
     }
   };
 
@@ -90,8 +102,7 @@ export default function LineManagerApprovalTable({
 
   const handleRejectConfirm = (reason) => {
     if (selectedId) {
-      // ✅ FIXED: Pass the specific rejection status
-      onStatusChange(selectedId, "Rejected by Line Manager", reason);
+      onStatusChange(selectedId, "Rejected by Regional Head", reason);
     }
     setShowRejectionModal(false);
     setSelectedId(null);
@@ -108,7 +119,7 @@ export default function LineManagerApprovalTable({
   const handleApproveAll = () => {
     const approvableIds = selectedRequests.filter((id) => {
       const req = requests.find((r) => r.id === id);
-      return req && req.status === "Pending Line Manager Approval";
+      return req && req.status === "Pending Regional Head Approval";
     });
 
     if (approvableIds.length > 0) {
@@ -126,100 +137,130 @@ export default function LineManagerApprovalTable({
   };
 
   return (
-    <div className="overflow-x-auto mt-4">
-      <table className="w-full table-auto border shadow rounded">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="p-2 border">#</th>
-            <th className="p-2 border">Request ID</th>
-            <th className="p-2 border">Name</th>
-            <th className="p-2 border">Date</th>
-            <th className="p-2 border">Site</th>
-            <th className="p-2 border">Amount</th>
-            <th className="p-2 border">Account No</th>
-            <th className="p-2 border">IFSC Code</th>
-            <th className="p-2 border">Passbook</th>
-            <th className="p-2 border">ID Proof</th>
-            <th className="p-2 border">Type</th>
-            <th className="p-2 border">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((req, index) => (
-            <tr key={req.id} className="text-center">
-              <td className="border p-2">
-                {req.status === "Pending Line Manager Approval" && (
-                  <input
-                    type="checkbox"
-                    checked={selectedRequests.includes(req.id)}
-                    onChange={() => handleCheckboxChange(req.id)}
-                  />
-                )}
-              </td>
-              <td className="border p-2">{req.id.slice(-6)}</td>
-              <td className="border p-2">{req.name}</td>
-              <td className="border p-2">{req.date}</td>
-              <td className="border p-2">{req.site}</td>
-              <td className="border p-2">₹{req.amount}</td>
-              <td className="border p-2">{req.accountNo || 'N/A'}</td>
-              <td className="border p-2">{req.ifscCode || 'N/A'}</td>
-              <td className="border p-2">
-                {req.files?.passbookFile ? (
-                  <button
-                    onClick={() => openFileModal('Passbook', { name: req.files.passbookFile })}
-                    className="text-blue-600 hover:text-blue-800 p-1 rounded"
-                    title="View Passbook"
-                  >
-                    <FiEye size={18} />
-                  </button>
-                ) : (
-                  <span className="text-gray-400 text-sm">No file</span>
-                )}
-              </td>
-              <td className="border p-2">
-                {req.files?.idProof ? (
-                  <button
-                    onClick={() => openFileModal('ID Proof', { name: req.files.idProof })}
-                    className="text-blue-600 hover:text-blue-800 p-1 rounded"
-                    title="View ID Proof"
-                  >
-                    <FiEye size={18} />
-                  </button>
-                ) : (
-                  <span className="text-gray-400 text-sm">No file</span>
-                )}
-              </td>
-              <td className="border p-2">{req.type}</td>
-              <td className="border p-2 space-x-2">
-                {req.status === "Pending Line Manager Approval" ? (
-                  <>
-                    <button
-                      className="bg-green-600 text-white px-3 py-1 rounded"
-                      onClick={() => handleApprove(req.id, req.status)}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      className="bg-red-600 text-white px-3 py-1 rounded"
-                      onClick={() => handleRejectClick(req.id)}
-                    >
-                      Reject
-                    </button>
-                  </>
-                ) : (
-                  <span>{req.status}</span>
-                )}
-              </td>
+    <div className="mt-4">
+      <div className="overflow-x-auto border border-gray-100 rounded-2xl shadow-sm">
+        <table className="w-full min-w-[1800px] table-auto border-collapse text-left bg-white">
+          <thead className="bg-gradient-to-r from-green-700 to-green-600 text-white text-xs font-semibold uppercase tracking-wider">
+            <tr>
+              <th className="px-6 py-4 text-center w-12">#</th>
+              <th className="px-6 py-4">Request ID</th>
+              <th className="px-6 py-4">Name</th>
+              <th className="px-6 py-4">Reliever Emp Code</th>
+              <th className="px-6 py-4">Reliever For</th>
+              <th className="px-6 py-4">Absent Emp Code</th>
+              <th className="px-6 py-4">Shift</th>
+              <th className="px-6 py-4">Type</th>
+              <th className="px-6 py-4">Site</th>
+              <th className="px-6 py-4">Date</th>
+              <th className="px-6 py-4">Amount</th>
+              <th className="px-6 py-4">Account Details</th>
+              <th className="px-6 py-4">Submitted By</th>
+              <th className="px-6 py-4">Submitted At</th>
+              <th className="px-6 py-4">Reason</th>
+              <th className="px-6 py-4 text-center">Files</th>
+              <th className="px-6 py-4 text-center">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+            {paginated.map((req) => {
+              const passbookFile = req.passbookFile || req.files?.passbookFile || (req.hasPassbook ? 'passbook.pdf' : null);
+              const idProof = req.idProof || req.files?.idProof || (req.hasIdProof ? 'id_proof.pdf' : null);
+              
+              return (
+                <tr key={req.id} className="hover:bg-gray-50/50 transition-colors duration-150">
+                  <td className="px-6 py-4 text-center">
+                    {req.status === "Pending Regional Head Approval" && (
+                      <input
+                        type="checkbox"
+                        checked={selectedRequests.includes(req.id)}
+                        onChange={() => handleCheckboxChange(req.id)}
+                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                      />
+                    )}
+                  </td>
+                  <td className="px-6 py-4 font-semibold text-gray-800 whitespace-nowrap">#{req.id.slice(-6)}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{req.relieverName || req.name}</td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{req.relieverEmpCode || 'N/A'}</td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{req.relieverFor || 'N/A'}</td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{req.absentEmpCode || 'N/A'}</td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{req.shift || 'N/A'}</td>
+                  <td className="px-6 py-4"><span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 whitespace-nowrap">{req.type || req.relieverType || 'External'}</span></td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{req.site}</td>
+                  <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{new Date(req.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-bold text-gray-900 whitespace-nowrap">₹{parseFloat(req.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-xs text-gray-600">
+                      <p><span className="font-semibold text-gray-500 uppercase tracking-wider">A/C:</span> {req.accountNo || req.account_no || 'N/A'}</p>
+                      <p><span className="font-semibold text-gray-500 uppercase tracking-wider">IFSC:</span> {req.ifscCode || req.ifsc_code || 'N/A'}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{req.submittedBy || 'N/A'}</td>
+                  <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{req.submittedAt ? new Date(req.submittedAt).toLocaleString() : 'N/A'}</td>
+                  <td className="px-6 py-4 text-gray-600 max-w-[220px] truncate" title={req.reason}>{req.reason || 'N/A'}</td>
+                  <td className="px-6 py-4 text-center whitespace-nowrap">
+                    <div className="inline-flex gap-3 justify-center items-center">
+                      {passbookFile ? (
+                        <button
+                          onClick={() => openFileModal('Passbook', { name: passbookFile })}
+                          className="text-green-600 hover:text-green-800 p-1.5 bg-green-50 rounded-xl hover:bg-green-100 transition duration-150"
+                          title="View Passbook"
+                        >
+                          <FiEye size={16} />
+                        </button>
+                      ) : (
+                        <span className="text-gray-300 text-xs">-</span>
+                      )}
+                      {idProof ? (
+                        <button
+                          onClick={() => openFileModal('ID Proof', { name: idProof })}
+                          className="text-green-600 hover:text-green-800 p-1.5 bg-green-50 rounded-xl hover:bg-green-100 transition duration-150"
+                          title="View ID Proof"
+                        >
+                          <FiEye size={16} />
+                        </button>
+                      ) : (
+                        <span className="text-gray-300 text-xs">-</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center whitespace-nowrap">
+                    {req.status === "Pending Regional Head Approval" ? (
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
+                          onClick={() => handleApprove(req.id, req.status)}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
+                          onClick={() => handleRejectClick(req.id)}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                        req.status.includes("Rejected") ? "bg-red-50 text-red-700 border-red-200" :
+                        req.status === "Approved" ? "bg-green-50 text-green-700 border-green-200" :
+                        "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      }`}>
+                        {req.status}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {/* Approve All Button */}
       {selectedRequests.length > 0 && (
-        <div className="flex justify-end mt-4">
+        <div className="flex justify-end mt-5">
           <button
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
             onClick={handleApproveAll}
           >
             Approve All ({selectedRequests.length})
@@ -228,27 +269,27 @@ export default function LineManagerApprovalTable({
       )}
 
       {/* Pagination Controls */}
-      <div className="flex justify-between items-center mt-4">
-        <button
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-        >
-          Previous
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          onClick={() =>
-            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-          }
-          disabled={currentPage === totalPages}
-        >
-          Next
-        </button>
-      </div>
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center mt-5 bg-gray-50 px-6 py-4 border border-gray-100 rounded-2xl shadow-sm">
+          <button
+            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-semibold rounded-xl text-sm transition-all hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          <span className="text-sm font-semibold text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-semibold rounded-xl text-sm transition-all hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Rejection Modal */}
       {showRejectionModal && (

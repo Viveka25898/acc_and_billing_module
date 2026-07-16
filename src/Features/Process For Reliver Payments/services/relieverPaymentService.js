@@ -95,3 +95,60 @@ export const fetchMyRelieverRequests = async (params = {}) => {
     }
   };
 };
+
+/**
+ * fetchRelieverQueue
+ * Fetches the pending requests queue for approval by the logged-in manager (Regional Head)
+ * @returns {Promise<Object>} Object containing pendingRequests, approvedRequests, rejectedRequests and counts
+ */
+export const fetchRelieverQueue = async () => {
+  const response = await axiosInstance.get('/accounts/reliever/queue');
+  const body = response.data;
+  if (!body || !body.success) {
+    throw new Error(body?.message || 'Failed to retrieve reliever approval queue.');
+  }
+  return {
+    pendingRequests: body.data?.pendingRequests || [],
+    approvedRequests: body.data?.approvedRequests || [],
+    rejectedRequests: body.data?.rejectedRequests || [],
+    counts: body.data?.counts || { pending: 0, approved: 0, rejected: 0 }
+  };
+};
+
+/**
+ * approveRelieverRequest
+ * Approves a reliever request forwarding it to next stage
+ * @param {Object} payload Payload containing id and comments
+ * @returns {Promise<Object>} Updated workflow result details
+ */
+export const approveRelieverRequest = async ({ id, comments = 'Approved' }) => {
+  const response = await axiosInstance.patch(`/accounts/reliever/${id}/workflow`, {
+    action: 'APPROVE',
+    comments: comments
+  });
+  const body = response.data;
+  if (!body || !body.success) {
+    throw new Error(body?.message || 'Failed to approve request.');
+  }
+  return body.data;
+};
+
+/**
+ * rejectRelieverRequest
+ * Rejects a reliever request
+ * @param {Object} payload Payload containing id, comments and rejectionReason
+ * @returns {Promise<Object>} Updated workflow result details
+ */
+export const rejectRelieverRequest = async ({ id, comments = 'Rejected', rejectionReason = '' }) => {
+  const response = await axiosInstance.patch(`/accounts/reliever/${id}/workflow`, {
+    action: 'REJECT',
+    comments: comments,
+    rejection_reason: rejectionReason
+  });
+  const body = response.data;
+  if (!body || !body.success) {
+    throw new Error(body?.message || 'Failed to reject request.');
+  }
+  return body.data;
+};
+

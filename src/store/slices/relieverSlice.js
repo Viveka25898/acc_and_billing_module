@@ -34,6 +34,42 @@ export const fetchMyRelieverRequests = createAsyncThunk(
   }
 );
 
+export const fetchRelieverQueue = createAsyncThunk(
+  'reliever/fetchRelieverQueue',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchRelieverQueue();
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const approveRelieverRequest = createAsyncThunk(
+  'reliever/approveRelieverRequest',
+  async ({ id, comments }, { rejectWithValue }) => {
+    try {
+      const data = await service.approveRelieverRequest({ id, comments });
+      return { id, data };
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const rejectRelieverRequest = createAsyncThunk(
+  'reliever/rejectRelieverRequest',
+  async ({ id, comments, rejectionReason }, { rejectWithValue }) => {
+    try {
+      const data = await service.rejectRelieverRequest({ id, comments, rejectionReason });
+      return { id, data };
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 const initialState = {
   requests: [],
   pagination: {
@@ -49,13 +85,23 @@ const initialState = {
     rejected: 0,
     totalAmountClaimed: '0.00',
   },
+  queueRequests: [],
+  queueCounts: {
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  },
   loading: {
     fetch: false,
     submit: false,
+    queue: false,
+    action: false,
   },
   errors: {
     fetch: null,
     submit: null,
+    queue: null,
+    action: null,
   },
   submitResult: null,
 };
@@ -99,6 +145,50 @@ const relieverSlice = createSlice({
       .addCase(fetchMyRelieverRequests.rejected, (state, action) => {
         state.loading.fetch = false;
         state.errors.fetch = action.payload;
+      })
+      // Fetch Reliever Queue
+      .addCase(fetchRelieverQueue.pending, (state) => {
+        state.loading.queue = true;
+        state.errors.queue = null;
+      })
+      .addCase(fetchRelieverQueue.fulfilled, (state, action) => {
+        state.loading.queue = false;
+        state.queueRequests = action.payload?.pendingRequests || [];
+        state.queueCounts = action.payload?.counts || { pending: 0, approved: 0, rejected: 0 };
+      })
+      .addCase(fetchRelieverQueue.rejected, (state, action) => {
+        state.loading.queue = false;
+        state.errors.queue = action.payload;
+      })
+      // Approve Reliever Request
+      .addCase(approveRelieverRequest.pending, (state) => {
+        state.loading.action = true;
+        state.errors.action = null;
+      })
+      .addCase(approveRelieverRequest.fulfilled, (state, action) => {
+        state.loading.action = false;
+        state.queueRequests = state.queueRequests.filter(req => req.id !== action.payload.id);
+        if (state.queueCounts.pending > 0) state.queueCounts.pending -= 1;
+        state.queueCounts.approved += 1;
+      })
+      .addCase(approveRelieverRequest.rejected, (state, action) => {
+        state.loading.action = false;
+        state.errors.action = action.payload;
+      })
+      // Reject Reliever Request
+      .addCase(rejectRelieverRequest.pending, (state) => {
+        state.loading.action = true;
+        state.errors.action = null;
+      })
+      .addCase(rejectRelieverRequest.fulfilled, (state, action) => {
+        state.loading.action = false;
+        state.queueRequests = state.queueRequests.filter(req => req.id !== action.payload.id);
+        if (state.queueCounts.pending > 0) state.queueCounts.pending -= 1;
+        state.queueCounts.rejected += 1;
+      })
+      .addCase(rejectRelieverRequest.rejected, (state, action) => {
+        state.loading.action = false;
+        state.errors.action = action.payload;
       });
   },
 });
@@ -113,5 +203,12 @@ export const selectRelieverSubmitLoading = (state) => state.reliever.loading.sub
 export const selectRelieverSubmitError = (state) => state.reliever.errors.submit;
 export const selectRelieverFetchError = (state) => state.reliever.errors.fetch;
 export const selectRelieverSubmitResult = (state) => state.reliever.submitResult;
+
+export const selectRelieverQueueRequests = (state) => state.reliever.queueRequests;
+export const selectRelieverQueueCounts = (state) => state.reliever.queueCounts;
+export const selectRelieverQueueLoading = (state) => state.reliever.loading.queue;
+export const selectRelieverActionLoading = (state) => state.reliever.loading.action;
+export const selectRelieverActionError = (state) => state.reliever.errors.action;
+export const selectRelieverQueueError = (state) => state.reliever.errors.queue;
 
 export default relieverSlice.reducer;
