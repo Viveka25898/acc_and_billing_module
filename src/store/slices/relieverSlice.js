@@ -70,6 +70,19 @@ export const rejectRelieverRequest = createAsyncThunk(
   }
 );
 
+export const bulkApproveRelieverRequests = createAsyncThunk(
+  'reliever/bulkApproveRelieverRequests',
+  async ({ ids }, { rejectWithValue }) => {
+    try {
+      const data = await service.bulkApproveRelieverRequests({ ids });
+      return { ids, data };
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+
 const initialState = {
   requests: [],
   pagination: {
@@ -187,6 +200,22 @@ const relieverSlice = createSlice({
         state.queueCounts.rejected += 1;
       })
       .addCase(rejectRelieverRequest.rejected, (state, action) => {
+        state.loading.action = false;
+        state.errors.action = action.payload;
+      })
+      // Bulk Approve Reliever Requests
+      .addCase(bulkApproveRelieverRequests.pending, (state) => {
+        state.loading.action = true;
+        state.errors.action = null;
+      })
+      .addCase(bulkApproveRelieverRequests.fulfilled, (state, action) => {
+        state.loading.action = false;
+        const approvedIds = action.payload.ids || [];
+        state.queueRequests = state.queueRequests.filter(req => !approvedIds.includes(req.id));
+        state.queueCounts.pending = Math.max(0, state.queueCounts.pending - approvedIds.length);
+        state.queueCounts.approved += approvedIds.length;
+      })
+      .addCase(bulkApproveRelieverRequests.rejected, (state, action) => {
         state.loading.action = false;
         state.errors.action = action.payload;
       });

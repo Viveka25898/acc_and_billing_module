@@ -7,6 +7,7 @@ import {
   fetchRelieverQueue,
   approveRelieverRequest,
   rejectRelieverRequest,
+  bulkApproveRelieverRequests,
   selectRelieverQueueRequests,
   selectRelieverQueueLoading
 } from "../../../store/slices/relieverSlice";
@@ -46,10 +47,8 @@ export default function LineManagerRelieverApprovalPage() {
 
   const handleBulkApprove = async (ids) => {
     try {
-      await Promise.all(ids.map(id => 
-        dispatch(approveRelieverRequest({ id, comments: "Approved by Regional Head" })).unwrap()
-      ));
-      toast.success(`${ids.length} request(s) approved`);
+      await dispatch(bulkApproveRelieverRequests({ ids })).unwrap();
+      toast.success(`${ids.length} request(s) approved successfully`);
     } catch (error) {
       console.error("Bulk approval error:", error);
       toast.error(`Bulk approval failed: ${error}`);

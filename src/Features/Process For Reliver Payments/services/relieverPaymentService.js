@@ -152,3 +152,21 @@ export const rejectRelieverRequest = async ({ id, comments = 'Rejected', rejecti
   return body.data;
 };
 
+/**
+ * bulkApproveRelieverRequests
+ * Approves multiple reliever requests in a single call
+ * @param {Object} payload Payload containing array of ids
+ * @returns {Promise<Object>} Bulk approval result stats
+ */
+export const bulkApproveRelieverRequests = async ({ ids }) => {
+  const response = await axiosInstance.post('/accounts/reliever/bulk-approve', {
+    request_ids: ids
+  });
+  const body = response.data;
+  if (!body || !body.success) {
+    throw new Error(body?.message || 'Failed to bulk approve requests.');
+  }
+  return body.data;
+};
+
+
