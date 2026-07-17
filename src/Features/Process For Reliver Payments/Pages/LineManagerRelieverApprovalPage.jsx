@@ -42,6 +42,7 @@ export default function LineManagerRelieverApprovalPage() {
     } catch (error) {
       console.error("Action error:", error);
       toast.error(`Operation failed: ${error}`);
+      throw error;
     }
   };
 

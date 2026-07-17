@@ -6,7 +6,8 @@ export default function RejectionModal({
   onClose,
   onSubmit,
   mode = "reject",
-  existingReason = "" // Default to empty string
+  existingReason = "", // Default to empty string
+  isLoading = false
 }) {
   const [reason, setReason] = useState("");
 
@@ -35,8 +36,9 @@ export default function RejectionModal({
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 disabled:opacity-30"
             aria-label="Close modal"
+            disabled={isLoading}
           >
             <FaTimes />
           </button>
@@ -48,24 +50,26 @@ export default function RejectionModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={4}
-              className="w-full border rounded p-2 mb-4"
+              className="w-full border rounded p-2 mb-4 disabled:opacity-60 disabled:bg-gray-50"
               placeholder="Enter detailed rejection reason..."
               required
               autoFocus
+              disabled={isLoading}
             />
             <div className="flex justify-end space-x-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 disabled:opacity-50"
+                disabled={isLoading}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                disabled={!reason.trim()}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center justify-center min-w-[140px]"
+                disabled={isLoading || !reason.trim()}
               >
-                Confirm Rejection
+                {isLoading ? "Rejecting..." : "Confirm Rejection"}
               </button>
             </div>
           </>

@@ -72,6 +72,8 @@ export default function LineManagerApprovalTable({
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionMode, setRejectionMode] = useState("reject");
   const [fileModal, setFileModal] = useState({ isOpen: false, title: '', fileData: null });
+  const [processingId, setProcessingId] = useState(null);
+  const [isLocalLoading, setIsLocalLoading] = useState(false);
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginated = requests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -89,13 +91,20 @@ export default function LineManagerApprovalTable({
     );
   }
 
-  const handleApprove = (id, status) => {
-    if (status === "Pending Regional Head Approval") {
-      onStatusChange(id, "Pending AVP Operations Approval");
-    } else if (status === "Pending AVP Operations Approval") {
-      onStatusChange(id, "Pending VP Operations Approval");
-    } else if (status === "Pending VP Operations Approval") {
-      onStatusChange(id, "Pending Account Executive Approval");
+  const handleApprove = async (id, status) => {
+    setProcessingId(id);
+    try {
+      if (status === "Pending Regional Head Approval") {
+        await onStatusChange(id, "Pending AVP Operations Approval");
+      } else if (status === "Pending AVP Operations Approval") {
+        await onStatusChange(id, "Pending VP Approval");
+      } else if (status === "Pending VP Approval") {
+        await onStatusChange(id, "Pending Account Executive Approval");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -105,12 +114,19 @@ export default function LineManagerApprovalTable({
     setShowRejectionModal(true);
   };
 
-  const handleRejectConfirm = (reason) => {
+  const handleRejectConfirm = async (reason) => {
     if (selectedId) {
-      onStatusChange(selectedId, "Rejected", reason);
+      setIsLocalLoading(true);
+      try {
+        await onStatusChange(selectedId, "Rejected", reason);
+        setShowRejectionModal(false);
+        setSelectedId(null);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLocalLoading(false);
+      }
     }
-    setShowRejectionModal(false);
-    setSelectedId(null);
   };
 
   const handleCheckboxChange = (id) => {
@@ -232,14 +248,16 @@ export default function LineManagerApprovalTable({
                     {req.status === activeStatus ? (
                       <div className="flex gap-2 justify-center">
                         <button
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
+                          className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer disabled:opacity-50"
                           onClick={() => handleApprove(req.id, req.status)}
+                          disabled={processingId !== null}
                         >
-                          Approve
+                          {processingId === req.id ? "Approving..." : "Approve"}
                         </button>
                         <button
-                          className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
+                          className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer disabled:opacity-50"
                           onClick={() => handleRejectClick(req.id)}
+                          disabled={processingId !== null}
                         >
                           Reject
                         </button>
@@ -304,6 +322,7 @@ export default function LineManagerApprovalTable({
           onSubmit={handleRejectConfirm}
           mode={rejectionMode}
           existingReason={requests.find(r => r.id === selectedId)?.rejectionReason}
+          isLoading={isLocalLoading}
         />
       )}
 

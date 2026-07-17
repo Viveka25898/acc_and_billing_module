@@ -42,6 +42,7 @@ export default function AVPRelieverApprovalPage() {
     } catch (error) {
       console.error("Action error:", error);
       toast.error(`Operation failed: ${error}`);
+      throw error;
     }
   };
 
