@@ -1,170 +1,129 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
+import { FaClock } from "react-icons/fa";
 import FilterBar from "../Components/Filter";
-import VPApprovalTable from "../Components/VPApprovalTable";
+import LineManagerApprovalTable from "../Components/LineManagerApprovalTable";
+import {
+  fetchRelieverQueue,
+  approveRelieverRequest,
+  rejectRelieverRequest,
+  bulkApproveRelieverRequests,
+  selectRelieverQueueRequests,
+  selectRelieverQueueLoading
+} from "../../../store/slices/relieverSlice";
 
 export default function VPRelieverApprovalPage() {
-  const [requests, setRequests] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const dispatch = useDispatch();
+  const queueRequests = useSelector(selectRelieverQueueRequests);
+  const loading = useSelector(selectRelieverQueueLoading);
+
+  const [filters, setFilters] = useState({ name: "", date: "" });
 
   useEffect(() => {
-    const loadRequests = () => {
-      try {
-        const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
-        const pendingRequests = allRequests.filter(
-          req => req.status === "Pending VP Operations Approval" &&
-            req.currentApprover === currentUser.username
-        );
-        setRequests(pendingRequests);
-        setFiltered(pendingRequests);
-      } catch (error) {
-        console.error("Error loading requests:", error);
-        toast.error("Failed to load requests");
-      }
-    };
-    loadRequests();
-  }, [currentUser?.username]);
+    dispatch(fetchRelieverQueue());
+  }, [dispatch]);
 
-  const updateLocalStorage = (updatedRequests) => {
-    const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
-    const updatedAllRequests = allRequests.map(req => {
-      const updatedReq = updatedRequests.find(ur => ur.id === req.id);
-      return updatedReq || req;
-    });
-    localStorage.setItem("relieverRequests", JSON.stringify(updatedAllRequests));
-  };
-
-  // ✅ FIXED: Changed from 11:59 AM to 7:00 PM (19:00)
   const canApproveNow = () => {
     const now = new Date();
-    return now.getHours() < 22; // Before 7:00 PM
+    return now.getHours() < 22; // Before 10:00 PM (or 7:00 PM depending on requirement - keep 10:00 PM / hour < 22 as per logic)
   };
 
-  const handleStatusChange = (id, newStatus, reason = null) => {
-    const now = new Date();
+  const handleStatusChange = async (id, newStatus, reason = null) => {
     const isBeforeDeadline = canApproveNow();
-
-    setRequests(prevRequests => {
-      const request = prevRequests.find(req => req.id === id);
-      if (!request) return prevRequests;
-
-      const historyEntry = {
-        action: newStatus.includes("Rejected") ?
-          "Rejected by VP Operations" :
-          "Approved by VP Operations",
-        by: currentUser.username,
-        at: now.toISOString(),
-        comments: reason || (isBeforeDeadline ? "Approved" : "Approved (after deadline)")
-      };
-
-      const updatedRequest = {
-        ...request,
-        status: newStatus,
-        currentApprover: newStatus.includes("Rejected")
-          ? request.submittedBy
-          : request.approvers.accountExecutive,
-        history: [...request.history, historyEntry],
-        rejectionReason: reason || null,
-        delayed: !reason && !isBeforeDeadline
-      };
-
-      // Update localStorage
-      const allRequests = JSON.parse(localStorage.getItem("relieverRequests")) || [];
-      const updatedAllRequests = allRequests.map(req =>
-        req.id === id ? updatedRequest : req
-      );
-      localStorage.setItem("relieverRequests", JSON.stringify(updatedAllRequests));
-
-      return prevRequests.map(req => req.id === id ? updatedRequest : req);
-    });
-
-    // Update filtered requests
-    setFiltered(prev => prev.map(req =>
-      req.id === id ? {
-        ...req,
-        status: newStatus,
-        rejectionReason: reason || null,
-        delayed: !reason && !isBeforeDeadline
-      } : req
-    ));
-
-    // Show toast
-    if (reason) {
-      toast.error(`Request #${id.slice(-6)} rejected`);
-    } else if (!isBeforeDeadline) {
-      toast.info(`Request #${id.slice(-6)} approved (will process next day)`);
-    } else {
-      toast.success(`Request #${id.slice(-6)} approved`);
+    try {
+      if (newStatus.includes("Rejected")) {
+        await dispatch(rejectRelieverRequest({ 
+          id, 
+          comments: "Rejected by VP Operations", 
+          rejectionReason: reason || "Budget limit exceeded"
+        })).unwrap();
+        toast.error(`Request #${id.slice(-6)} rejected`);
+      } else {
+        await dispatch(approveRelieverRequest({ 
+          id, 
+          comments: isBeforeDeadline ? "Approved by VP Operations" : "Approved by VP Operations (after deadline)"
+        })).unwrap();
+        
+        if (!isBeforeDeadline) {
+          toast.info(`Request #${id.slice(-6)} approved (will process next day)`);
+        } else {
+          toast.success(`Request #${id.slice(-6)} approved`);
+        }
+      }
+    } catch (error) {
+      console.error("Action error:", error);
+      toast.error(`Operation failed: ${error}`);
+      throw error;
     }
   };
 
-  const handleBulkApprove = (ids) => {
+  const handleBulkApprove = async (ids) => {
     const isBeforeDeadline = canApproveNow();
-
-    if (!isBeforeDeadline) {
-      toast.info("Approvals after 7:00 PM will be processed next day");
-    }
-
-    const updated = requests.map(req => {
-      if (!ids.includes(req.id)) return req;
-
-      const historyEntry = {
-        action: "Approved by VP Operations",
-        by: currentUser.username,
-        at: new Date().toISOString(),
-        comments: isBeforeDeadline ? "Bulk approved" : "Bulk approved (after deadline)"
-      };
-
-      return {
-        ...req,
-        status: "Pending Account Executive Approval",
-        currentApprover: req.approvers.accountExecutive,
-        history: [...req.history, historyEntry],
-        rejectionReason: null,
-        delayed: !isBeforeDeadline
-      };
-    });
-
-    setRequests(updated);
-    setFiltered(updated);
-    updateLocalStorage(updated);
-
-    if (!isBeforeDeadline) {
-      toast.info(`${ids.length} request(s) approved (will process next day)`);
-    } else {
-      toast.success(`${ids.length} request(s) approved`);
+    try {
+      await dispatch(bulkApproveRelieverRequests({ ids })).unwrap();
+      
+      if (!isBeforeDeadline) {
+        toast.info(`${ids.length} request(s) approved (will process next day)`);
+      } else {
+        toast.success(`${ids.length} request(s) approved successfully`);
+      }
+    } catch (error) {
+      console.error("Bulk approval error:", error);
+      toast.error(`Bulk approval failed: ${error}`);
     }
   };
 
-  const handleFilter = (filters) => {
-    let temp = [...requests];
+  const handleFilter = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const filteredRequests = queueRequests.filter((req) => {
     if (filters.name?.trim()) {
-      temp = temp.filter(req =>
-        req.name.toLowerCase().includes(filters.name.toLowerCase())
-      )
+      const searchName = filters.name.trim().toLowerCase();
+      const reqName = (req.name || req.relieverName || "").toLowerCase();
+      if (!reqName.includes(searchName)) return false;
     }
-    setFiltered(temp);
-  };
+    if (filters.date?.trim()) {
+      const searchDate = filters.date.trim();
+      const reqDate = req.date || "";
+      if (!reqDate.includes(searchDate)) return false;
+    }
+    return true;
+  });
 
   return (
-    <div className="max-w-6xl mx-auto p-4 bg-white shadow-md rounded-md">
-      <h1 className="text-2xl font-bold mb-4 text-green-600">
-        VP Operations - Approvals
+    <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      {/* Premium Green Header Block */}
+      <div className="bg-gradient-to-r from-green-700 to-green-600 px-6 py-5 text-white shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-wide">VP Operations - Reliever Approvals</h1>
+          <p className="text-green-100 text-sm mt-0.5">Review and approve or reject reliever payment claims</p>
+        </div>
         {!canApproveNow() && (
-          <span className="ml-4 text-sm text-red-600 font-normal">
-            (Approvals after 7:00 PM will be processed next day)
-          </span>
+          <div className="bg-yellow-500/20 text-yellow-100 border border-yellow-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 animate-pulse">
+            <FaClock /> Approvals after 10:00 PM will process next day
+          </div>
         )}
-      </h1>
-      <FilterBar onFilter={handleFilter} />
-      <VPApprovalTable
-        requests={filtered}
-        onStatusChange={handleStatusChange}
-        onBulkApprove={handleBulkApprove}
-        showActions={true}
-        canApproveNow={canApproveNow()}
-      />
+      </div>
+
+      <div className="p-6">
+        <FilterBar onFilter={handleFilter} />
+        
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+          </div>
+        ) : (
+          <LineManagerApprovalTable
+            requests={filteredRequests}
+            onStatusChange={handleStatusChange}
+            onBulkApprove={handleBulkApprove}
+            showActions={true}
+            activeStatus="Pending VP Approval"
+          />
+        )}
+      </div>
     </div>
   );
 }
