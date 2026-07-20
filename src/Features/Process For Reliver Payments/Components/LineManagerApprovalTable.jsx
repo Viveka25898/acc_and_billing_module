@@ -100,6 +100,8 @@ export default function LineManagerApprovalTable({
         await onStatusChange(id, "Pending VP Approval");
       } else if (status === "Pending VP Approval") {
         await onStatusChange(id, "Pending Account Executive Approval");
+      } else if (status === "Pending Account Executive Approval") {
+        await onStatusChange(id, "Approved");
       }
     } catch (err) {
       console.error(err);
