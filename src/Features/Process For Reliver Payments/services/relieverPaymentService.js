@@ -169,4 +169,21 @@ export const bulkApproveRelieverRequests = async ({ ids }) => {
   return body.data;
 };
 
+/**
+ * fetchRelieverVoucher
+ * Fetches the details of a reliever voucher by its voucher number
+ * @param {string} voucherNo Voucher number
+ * @returns {Promise<Object>} Voucher details object
+ */
+export const fetchRelieverVoucher = async (voucherNo) => {
+  if (!voucherNo) throw new Error('Voucher number is required');
+  const response = await axiosInstance.get(`/accounts/reliever/account-executive/voucher/${voucherNo}`);
+  const body = response.data;
+  if (!body || !body.success) {
+    throw new Error(body?.message || 'Failed to fetch voucher details.');
+  }
+  return body.data;
+};
+
+
 

@@ -82,6 +82,18 @@ export const bulkApproveRelieverRequests = createAsyncThunk(
   }
 );
 
+export const fetchRelieverVoucher = createAsyncThunk(
+  'reliever/fetchRelieverVoucher',
+  async (voucherNo, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchRelieverVoucher(voucherNo);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 
 const initialState = {
   requests: [],
@@ -109,14 +121,17 @@ const initialState = {
     submit: false,
     queue: false,
     action: false,
+    voucher: false,
   },
   errors: {
     fetch: null,
     submit: null,
     queue: null,
     action: null,
+    voucher: null,
   },
   submitResult: null,
+  voucherDetails: null,
 };
 
 const relieverSlice = createSlice({
@@ -218,6 +233,20 @@ const relieverSlice = createSlice({
       .addCase(bulkApproveRelieverRequests.rejected, (state, action) => {
         state.loading.action = false;
         state.errors.action = action.payload;
+      })
+      // Fetch Reliever Voucher
+      .addCase(fetchRelieverVoucher.pending, (state) => {
+        state.loading.voucher = true;
+        state.errors.voucher = null;
+        state.voucherDetails = null;
+      })
+      .addCase(fetchRelieverVoucher.fulfilled, (state, action) => {
+        state.loading.voucher = false;
+        state.voucherDetails = action.payload || null;
+      })
+      .addCase(fetchRelieverVoucher.rejected, (state, action) => {
+        state.loading.voucher = false;
+        state.errors.voucher = action.payload;
       });
   },
 });
@@ -239,5 +268,9 @@ export const selectRelieverQueueLoading = (state) => state.reliever.loading.queu
 export const selectRelieverActionLoading = (state) => state.reliever.loading.action;
 export const selectRelieverActionError = (state) => state.reliever.errors.action;
 export const selectRelieverQueueError = (state) => state.reliever.errors.queue;
+
+export const selectRelieverVoucherDetails = (state) => state.reliever.voucherDetails;
+export const selectRelieverVoucherLoading = (state) => state.reliever.loading.voucher;
+export const selectRelieverVoucherError = (state) => state.reliever.errors.voucher;
 
 export default relieverSlice.reducer;

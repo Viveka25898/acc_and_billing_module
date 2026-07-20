@@ -43,9 +43,12 @@ export default function AERelieverApprovalPage() {
         })).unwrap();
         
         // Extract accounting details returned from backend response
-        const accountingData = res?.accounting || {
-          voucherNo: `PAY/AE/${new Date().getFullYear()}/${id.slice(-4)}`,
-          transactionId: `TXN_REL_${Date.now()}`
+        const apiData = res?.data || res;
+        const accountingData = {
+          voucherNo: apiData?.voucherNo || apiData?.accounting?.voucherNo || `PAY/AE/${new Date().getFullYear()}/${id.slice(-4)}`,
+          transactionId: apiData?.transactionId || apiData?.accounting?.transactionId || `TXN_REL_${Date.now()}`,
+          glEntries: apiData?.glEntries || apiData?.accounting?.glEntries || null,
+          ...apiData
         };
         
         const approvedItem = queueRequests.find((r) => r.id === id) || {};
@@ -68,10 +71,12 @@ export default function AERelieverApprovalPage() {
       const res = await dispatch(bulkApproveRelieverRequests({ ids })).unwrap();
       const approvedItems = queueRequests.filter((r) => ids.includes(r.id));
       
+      const apiData = res?.data || res;
       const batchAccounting = {
-        voucherNo: res?.accounting?.voucherNo || `PAY/AE/BATCH/${Date.now().toString().slice(-4)}`,
-        transactionId: res?.accounting?.transactionId || `TXN_BATCH_${Date.now()}`,
-        glEntries: res?.accounting?.glEntries || []
+        voucherNo: apiData?.voucherNo || apiData?.accounting?.voucherNo || `PAY/AE/BATCH/${Date.now().toString().slice(-4)}`,
+        transactionId: apiData?.transactionId || apiData?.accounting?.transactionId || `TXN_BATCH_${Date.now()}`,
+        glEntries: apiData?.glEntries || apiData?.accounting?.glEntries || null,
+        ...apiData
       };
       
       setAccountingResult(batchAccounting);
