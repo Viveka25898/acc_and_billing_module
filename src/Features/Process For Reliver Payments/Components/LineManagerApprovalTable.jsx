@@ -1,17 +1,26 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from "react";
-import { FiEye, FiX } from "react-icons/fi";
+import React, { useState, useEffect } from "react";
+import { FiEye, FiX, FiDownload } from "react-icons/fi";
 import RejectionModal from "./RejectionModal";
+import axiosInstance from "../../../api/axiosInstance";
 
 const ITEMS_PER_PAGE = 5;
 
 // Modal Component for File Viewing
-const FileViewModal = ({ isOpen, onClose, title, fileData }) => {
+const FileViewModal = ({ isOpen, onClose, title, fileData, fileUrl }) => {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoading(true);
+    }
+  }, [isOpen, fileUrl]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] w-full overflow-hidden">
+      <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] w-full overflow-hidden flex flex-col shadow-2xl">
         <div className="flex justify-between items-center p-4 border-b">
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
           <button
@@ -21,19 +30,33 @@ const FileViewModal = ({ isOpen, onClose, title, fileData }) => {
             <FiX size={24} />
           </button>
         </div>
-        <div className="p-4 max-h-[calc(90vh-8rem)] overflow-auto">
-          {fileData ? (
+        <div className="p-4 flex-1 overflow-auto min-h-[50vh] flex flex-col justify-center relative bg-gray-50/50">
+          {loading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10 space-y-3">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+              <span className="text-gray-500 text-xs font-semibold">Loading document preview...</span>
+            </div>
+          )}
+          {fileUrl ? (
+            <iframe 
+              src={fileUrl} 
+              title={title} 
+              onLoad={() => setLoading(false)}
+              className="w-full h-[70vh] border border-gray-200 rounded-lg shadow-sm bg-white"
+            />
+          ) : fileData ? (
             <div className="text-center">
               {/* For images */}
               {fileData.name && fileData.name.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                 <img 
                   src={`data:image/jpeg;base64,${fileData.data || fileData}`} 
                   alt={title}
+                  onLoad={() => setLoading(false)}
                   className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
                 />
               ) : (
                 /* For other file types, show file info */
-                <div className="bg-gray-100 p-8 rounded-lg">
+                <div className="bg-gray-100 p-8 rounded-lg" ref={() => setLoading(false)}>
                   <div className="text-gray-600 mb-4">
                     <div className="text-lg font-medium mb-2">File Details:</div>
                     <div>Name: {fileData.name || 'Unknown'}</div>
@@ -48,6 +71,8 @@ const FileViewModal = ({ isOpen, onClose, title, fileData }) => {
                 </div>
               )}
             </div>
+          ) : loading ? (
+            null
           ) : (
             <div className="text-center text-gray-500 py-8">
               No file data available
@@ -71,9 +96,10 @@ export default function LineManagerApprovalTable({
   const [selectedRequests, setSelectedRequests] = useState([]);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionMode, setRejectionMode] = useState("reject");
-  const [fileModal, setFileModal] = useState({ isOpen: false, title: '', fileData: null });
+  const [fileModal, setFileModal] = useState({ isOpen: false, title: '', fileData: null, fileUrl: null });
   const [processingId, setProcessingId] = useState(null);
   const [isLocalLoading, setIsLocalLoading] = useState(false);
+  const [downloadingKey, setDownloadingKey] = useState(null);
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginated = requests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -151,12 +177,78 @@ export default function LineManagerApprovalTable({
     }
   };
 
-  const openFileModal = (title, fileData) => {
-    setFileModal({ isOpen: true, title, fileData });
+  const fetchAuthenticatedFile = async (fileUrl) => {
+    const token = localStorage.getItem('token');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Request relative URL via proxy to bypass ERR_CERT_AUTHORITY_INVALID.
+    // Use native fetch to avoid Axios XHR chunked transfer drops.
+    const response = await fetch(fileUrl, { headers });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const originalBlob = await response.blob();
+    // Explicitly override MIME type to application/pdf so the browser iframe can render it
+    const pdfBlob = new Blob([originalBlob], { type: 'application/pdf' });
+    return URL.createObjectURL(pdfBlob);
+  };
+
+  const openFileModal = async (title, fileData, fileUrl = null) => {
+    // Open modal immediately to show loader
+    setFileModal({ isOpen: true, title, fileData: null, fileUrl: null });
+
+    if (fileUrl && typeof fileUrl === 'string' && (fileUrl.startsWith('/') || fileUrl.startsWith('http'))) {
+      try {
+        const blobUrl = await fetchAuthenticatedFile(fileUrl);
+        setFileModal(prev => {
+          // If modal was closed while downloading, clean up
+          if (!prev.isOpen) {
+            URL.revokeObjectURL(blobUrl);
+            return prev;
+          }
+          return { ...prev, fileUrl: blobUrl };
+        });
+      } catch (err) {
+        console.error("Error loading secure document:", err);
+        setFileModal(prev => ({
+          ...prev,
+          fileData: { name: 'Failed to load secure document. Please try again.' }
+        }));
+      }
+    } else {
+      setFileModal({ isOpen: true, title, fileData, fileUrl: null });
+    }
   };
 
   const closeFileModal = () => {
-    setFileModal({ isOpen: false, title: '', fileData: null });
+    if (fileModal.fileUrl && fileModal.fileUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(fileModal.fileUrl);
+    }
+    setFileModal({ isOpen: false, title: '', fileData: null, fileUrl: null });
+  };
+
+  const handleDownloadFile = async (e, fileUrl, filename, downloadKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDownloadingKey(downloadKey);
+    try {
+      const blobUrl = await fetchAuthenticatedFile(fileUrl);
+      const tempLink = document.createElement('a');
+      tempLink.href = blobUrl;
+      tempLink.setAttribute('download', filename);
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      document.body.removeChild(tempLink);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert("Failed to download document: " + (err.message || err));
+    } finally {
+      setDownloadingKey(null);
+    }
   };
 
   return (
@@ -186,8 +278,11 @@ export default function LineManagerApprovalTable({
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
             {paginated.map((req) => {
-              const passbookFile = req.passbookFile || req.files?.passbookFile || (req.hasPassbook ? 'passbook.pdf' : null);
-              const idProof = req.idProof || req.files?.idProof || (req.hasIdProof ? 'id_proof.pdf' : null);
+              const passbookUrl = req.passbookUrl || req.passbookFile || req.files?.passbookFile || (req.hasPassbook ? 'passbook.pdf' : null);
+              const idProofUrl = req.idProofUrl || req.idProof || req.files?.idProof || (req.hasIdProof ? 'id_proof.pdf' : null);
+              
+              const hasPassbookUrl = passbookUrl && typeof passbookUrl === 'string' && (passbookUrl.startsWith('/') || passbookUrl.startsWith('http'));
+              const hasIdProofUrl = idProofUrl && typeof idProofUrl === 'string' && (idProofUrl.startsWith('/') || idProofUrl.startsWith('http'));
               
               return (
                 <tr key={req.id} className="hover:bg-gray-50/50 transition-colors duration-150">
@@ -222,25 +317,72 @@ export default function LineManagerApprovalTable({
                   <td className="px-6 py-4 text-gray-600 max-w-[220px] truncate" title={req.reason}>{req.reason || 'N/A'}</td>
                   <td className="px-6 py-4 text-center whitespace-nowrap">
                     <div className="inline-flex gap-3 justify-center items-center">
-                      {passbookFile ? (
-                        <button
-                          onClick={() => openFileModal('Passbook', { name: passbookFile })}
-                          className="text-green-600 hover:text-green-800 p-1.5 bg-green-50 rounded-xl hover:bg-green-100 transition duration-150"
-                          title="View Passbook"
-                        >
-                          <FiEye size={16} />
-                        </button>
+                      {/* Passbook Section */}
+                      {passbookUrl ? (
+                        <div className="flex gap-1.5 items-center">
+                          <button
+                            onClick={() => {
+                              if (hasPassbookUrl) {
+                                openFileModal('Passbook', null, passbookUrl);
+                              } else {
+                                openFileModal('Passbook', typeof passbookUrl === 'object' ? passbookUrl : { name: passbookUrl });
+                              }
+                            }}
+                            className="text-green-600 hover:text-green-800 p-1.5 bg-green-50 rounded-xl hover:bg-green-100 transition duration-150 cursor-pointer"
+                            title="Preview Passbook"
+                          >
+                            <FiEye size={16} />
+                          </button>
+                          {hasPassbookUrl && (
+                            <button
+                              onClick={(e) => handleDownloadFile(e, passbookUrl, `passbook-${req.id.slice(-6)}.pdf`, `${req.id}-passbook`)}
+                              disabled={downloadingKey !== null}
+                              className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 rounded-xl hover:bg-blue-100 transition duration-150 inline-flex items-center justify-center cursor-pointer border-0 disabled:opacity-50"
+                              title="Download Passbook"
+                            >
+                              {downloadingKey === `${req.id}-passbook` ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                              ) : (
+                                <FiDownload size={16} />
+                              )}
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-gray-300 text-xs">-</span>
                       )}
-                      {idProof ? (
-                        <button
-                          onClick={() => openFileModal('ID Proof', { name: idProof })}
-                          className="text-green-600 hover:text-green-800 p-1.5 bg-green-50 rounded-xl hover:bg-green-100 transition duration-150"
-                          title="View ID Proof"
-                        >
-                          <FiEye size={16} />
-                        </button>
+
+                      {/* ID Proof Section */}
+                      {idProofUrl ? (
+                        <div className="flex gap-1.5 items-center">
+                          <button
+                            onClick={() => {
+                              if (hasIdProofUrl) {
+                                openFileModal('ID Proof', null, idProofUrl);
+                              } else {
+                                openFileModal('ID Proof', typeof idProofUrl === 'object' ? idProofUrl : { name: idProofUrl });
+                              }
+                            }}
+                            className="text-green-600 hover:text-green-800 p-1.5 bg-green-50 rounded-xl hover:bg-green-100 transition duration-150 cursor-pointer"
+                            title="Preview ID Proof"
+                          >
+                            <FiEye size={16} />
+                          </button>
+                          {hasIdProofUrl && (
+                            <button
+                              onClick={(e) => handleDownloadFile(e, idProofUrl, `id-proof-${req.id.slice(-6)}.pdf`, `${req.id}-idproof`)}
+                              disabled={downloadingKey !== null}
+                              className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 rounded-xl hover:bg-blue-100 transition duration-150 inline-flex items-center justify-center cursor-pointer border-0 disabled:opacity-50"
+                              title="Download ID Proof"
+                            >
+                              {downloadingKey === `${req.id}-idproof` ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                              ) : (
+                                <FiDownload size={16} />
+                              )}
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-gray-300 text-xs">-</span>
                       )}
@@ -334,6 +476,7 @@ export default function LineManagerApprovalTable({
         onClose={closeFileModal}
         title={fileModal.title}
         fileData={fileModal.fileData}
+        fileUrl={fileModal.fileUrl}
       />
     </div>
   );
