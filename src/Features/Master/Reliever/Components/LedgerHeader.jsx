@@ -82,7 +82,7 @@ const LedgerHeader = ({ ledgerInfo }) => {
             {formatCurrency(ledgerInfo.openingBalance)}
           </div>
           <div className="text-xs opacity-80 mt-1">
-            Expense Account | Temporary Staff Coverage
+            {ledgerInfo.accountType} | Temporary Staff Coverage
           </div>
         </div>
       </div>  

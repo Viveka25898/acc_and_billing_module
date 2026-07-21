@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 // services/RelieverLedgerService.js
+import axiosInstance from '../../../api/axiosInstance'
 
 /**
  * Reliever Ledger Service - Converts transactions to reliever ledger entries
@@ -630,5 +631,47 @@ export class RelieverLedgerService {
       totalCredit: totalCredit,
       closingBalance: closingBalance
     };
+  }
+
+  /**
+   * Get employee reliever liability header from API
+   * Endpoint: GET /account-master/ledger/employee-reliever/{relieverGl}/header
+   */
+  static async getLiabilityHeaderApi(relieverGl) {
+    try {
+      const res = await axiosInstance.get(`/account-master/ledger/employee-reliever/${relieverGl}/header`)
+      return res.data?.results || res.data || null
+    } catch (error) {
+      console.error(`❌ Error in getLiabilityHeaderApi for ${relieverGl}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Get paginated and filtered transactions for employee reliever liability ledger
+   * Endpoint: GET /account-master/ledger/employee-reliever/{relieverGl}/entries
+   */
+  static async getLiabilityEntriesApi(relieverGl, params = {}) {
+    try {
+      const res = await axiosInstance.get(`/account-master/ledger/employee-reliever/${relieverGl}/entries`, { params })
+      return res.data?.results || res.data || { entries: [], pagination: {} }
+    } catch (error) {
+      console.error(`❌ Error in getLiabilityEntriesApi for ${relieverGl}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Get employee reliever liability footer summary from API
+   * Endpoint: GET /account-master/ledger/employee-reliever/{relieverGl}/footer
+   */
+  static async getLiabilityFooterApi(relieverGl, params = {}) {
+    try {
+      const res = await axiosInstance.get(`/account-master/ledger/employee-reliever/${relieverGl}/footer`, { params })
+      return res.data?.results || res.data || null
+    } catch (error) {
+      console.error(`❌ Error in getLiabilityFooterApi for ${relieverGl}:`, error)
+      throw error
+    }
   }
 }

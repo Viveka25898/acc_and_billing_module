@@ -1,6 +1,6 @@
 import React from 'react';
 
-const FilterSection = ({ filters, onFilterChange, onApplyFilter }) => {
+const FilterSection = ({ filters, onFilterChange, onApplyFilter, onClear }) => {
   const handleInputChange = (field, value) => {
     onFilterChange({
       ...filters,
@@ -9,14 +9,22 @@ const FilterSection = ({ filters, onFilterChange, onApplyFilter }) => {
   };
 
   const handleClearFilters = () => {
-    onFilterChange({
+    const cleared = {
       fromDate: '',
       toDate: '',
       entryType: 'All',
       status: 'All',
       site: 'All',
-      reliever: 'All'
-    });
+      reliever: 'All',
+      searchText: ''
+    };
+    onFilterChange(cleared);
+    if (onClear) {
+      onClear();
+    } else if (onApplyFilter) {
+      // Small timeout to let state flush
+      setTimeout(() => onApplyFilter(), 0);
+    }
   };
 
   return (
