@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Summary = ({ summary }) => {
+const Summary = ({ summary, balanceType = 'DR' }) => {
   const formatCurrency = (amount) => {
     return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   };
@@ -37,7 +37,7 @@ const Summary = ({ summary }) => {
             Closing Balance
           </h4>
           <p className="text-lg md:text-xl font-bold">
-            {formatCurrency(summary.closingBalance)} DR
+            {formatCurrency(summary.closingBalance)} {balanceType}
           </p>
         </div>
       </div>

@@ -197,6 +197,7 @@ import OfficeSuppliesLedgerPage from '../Features/Master/EmployeeAdvanceAndSettl
 import ConveyancePayblePage from '../Features/Master/Conveyance/Pages/ConveyancePayblePage'
 import ConveyanceExpenseLedgerPage from '../Features/Master/Conveyance/Pages/ConveyanceExpenseLedgerPage'
 import RelieverPaymentPage from '../Features/Master/Reliever/Pages/RelieverPaymentPage'
+import RelieverLiabilityLedgerPage from '../Features/Master/Reliever/Pages/RelieverLiabilityLedgerPage'
 import RentExpenseBookingLedgerPage from '../Features/Master/Rent Expense/Pages/RentExpenseBookingLedgerPage'
 import GSTLedgersPage from '../Features/Master/GST/Pages/GSTLedgerPage'
 import CGSTInputLedgerPage from '../Features/Master/GST/Pages/CGSTInputLedgerPage'
@@ -1172,6 +1173,10 @@ export const router = createBrowserRouter([
       {
         path: 'reliever-payment-page',
         element: <RelieverPaymentPage />,
+      },
+      {
+        path: 'reliever-liability-ledger',
+        element: <RelieverLiabilityLedgerPage />,
       },
       {
         path: 'rent-expense-account',
