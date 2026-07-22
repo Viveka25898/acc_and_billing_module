@@ -1,206 +1,202 @@
-/* eslint-disable no-undef */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import ConveyanceFilter from "../Components/ConveyanceFilter";
 import ConveyanceTable from "../Components/ConveyanceTable";
 import RejectReasonModal from "../Components/RejectionReasonModal";
+import {
+  fetchMyConveyanceClaims,
+  fetchRejectionReason,
+  selectMyConveyanceClaims,
+  selectConveyancePagination,
+  selectConveyanceSummary,
+  selectConveyanceClaimsLoading,
+  clearRejectionDetails,
+} from "../../../store/slices/conveyanceSlice";
+import { FiPlusCircle, FiList, FiClock, FiCheckCircle, FiDollarSign, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 export default function MyConveyanceRequestsPage() {
-  const [requests, setRequests] = useState([]);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const requests = useSelector(selectMyConveyanceClaims);
+  const pagination = useSelector(selectConveyancePagination);
+  const summary = useSelector(selectConveyanceSummary);
+  const isLoading = useSelector(selectConveyanceClaimsLoading);
+
   const [filter, setFilter] = useState({
     client: "",
     status: "",
-    date: ""
+    date: "",
   });
+
+  const [page, setPage] = useState(1);
   const [selectedRejectReason, setSelectedRejectReason] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const currentUser = JSON.parse(localStorage.getItem("user")) || {};
-
-  const loadRequests = () => {
-    try {
-      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-      const userRequests = allRequests
-        .filter(request => request.submittedBy === currentUser.username)
-        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
-        .slice(0, 5);
-      
-      console.log("Loaded user requests:", userRequests);
-      setRequests(userRequests);
-    } catch (error) {
-      toast.error("Failed to load requests");
-      console.error("Loading error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const loadData = useCallback(() => {
+    dispatch(
+      fetchMyConveyanceClaims({
+        page,
+        limit: 5,
+        status: filter.status,
+        client: filter.client,
+        date: filter.date,
+      })
+    );
+  }, [dispatch, page, filter.status, filter.client, filter.date]);
 
   useEffect(() => {
-    loadRequests();
-    
-    // Add event listener for storage changes from other tabs
-    window.addEventListener('storage', loadRequests);
-    
-    // Add custom event listener for same-tab updates
-    window.addEventListener('conveyanceUpdated', loadRequests);
-    
-    return () => {
-      window.removeEventListener('storage', loadRequests);
-      window.removeEventListener('conveyanceUpdated', loadRequests);
-    };
-  }, [currentUser.username]);
+    loadData();
+  }, [loadData]);
 
-  const filteredRequests = requests.filter((r) => (
-    (filter.client === "" || r.client.toLowerCase().includes(filter.client.toLowerCase())) &&
-    (filter.status === "" || r.status === filter.status) &&
-    (filter.date === "" || r.date === filter.date)
-  ));
-
-  const getStatusStyle = (status) => {
-    switch(status) {
-      case "Pending Manager Approval":
-        return "bg-yellow-100 text-yellow-800";
-      case "Pending VP Approval":
-        return "bg-blue-100 text-blue-800";
-      case "Rejected by Line Manager":
-      case "Rejected by VP":
-      case "Rejected by AE":
-        return "bg-red-100 text-red-800";
-      case "Approved":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= (pagination.totalPages || 1)) {
+      setPage(newPage);
     }
   };
 
-  // FIXED: Improved handleViewReason function with better debugging and data retrieval
-  const handleViewReason = (request) => {
-    console.log("=== View Reason Debug Info ===");
-    console.log("Full request object:", request);
-    console.log("Request ID:", request.id);
-    console.log("Request status:", request.status);
-    console.log("rejectionReason field:", request.rejectionReason);
-    console.log("rejections array:", request.rejections);
-    console.log("================================");
-    
-    let rejectionReason = "No reason provided";
-    
-    try {
-      // Strategy 1: Check top-level rejectionReason field
-      if (request.rejectionReason && typeof request.rejectionReason === 'string' && request.rejectionReason.trim()) {
-        rejectionReason = request.rejectionReason.trim();
-        console.log("Found reason in rejectionReason field:", rejectionReason);
-      }
-      // Strategy 2: Check rejections array for the most recent rejection
-      else if (request.rejections && Array.isArray(request.rejections) && request.rejections.length > 0) {
-        // Get the most recent rejection
-        const lastRejection = request.rejections[request.rejections.length - 1];
-        console.log("Last rejection object:", lastRejection);
-        
-        if (lastRejection.reason && lastRejection.reason.trim()) {
-          rejectionReason = lastRejection.reason.trim();
-          console.log("Found reason in rejections array:", rejectionReason);
-        } else {
-          // Fallback: construct a message with available info
-          const rejectedBy = lastRejection.user || lastRejection.rejectedBy || 'Unknown';
-          const rejectedAt = lastRejection.date ? new Date(lastRejection.date).toLocaleDateString() : 'Unknown date';
-          const level = lastRejection.level || 'unknown level';
-          
-          rejectionReason = `Request was rejected by ${rejectedBy} at ${level} level on ${rejectedAt}. No specific reason was provided.`;
-          console.log("Constructed fallback reason:", rejectionReason);
-        }
-      }
-      // Strategy 3: Check for other possible rejection reason fields
-      else if (request.remarks && request.remarks.trim()) {
-        rejectionReason = `Remarks: ${request.remarks.trim()}`;
-        console.log("Found reason in remarks field:", rejectionReason);
-      }
-      // Strategy 4: Final fallback with basic rejection info
-      else if (request.rejectedBy) {
-        const rejectedAt = request.rejectedAt ? new Date(request.rejectedAt).toLocaleDateString() : 'Unknown date';
-        rejectionReason = `Request was rejected by ${request.rejectedBy} on ${rejectedAt}. No specific reason was recorded.`;
-        console.log("Final fallback reason:", rejectionReason);
-      }
-      
-    } catch (error) {
-      console.error("Error extracting rejection reason:", error);
-      rejectionReason = "Error retrieving rejection reason. Please contact administrator.";
+  const handleViewReason = async (request) => {
+    if (request.rejectionReason) {
+      setSelectedRejectReason(request.rejectionReason);
+      return;
     }
-    
-    console.log("Final rejection reason to display:", rejectionReason);
-    setSelectedRejectReason(rejectionReason);
+
+    try {
+      const data = await dispatch(fetchRejectionReason(request.id)).unwrap();
+      if (data?.rejectionReason) {
+        setSelectedRejectReason(data.rejectionReason);
+      } else {
+        setSelectedRejectReason("No specific rejection reason provided.");
+      }
+    } catch (err) {
+      console.error("Failed to fetch rejection reason:", err);
+      setSelectedRejectReason(request.remarks || "No rejection reason provided.");
+    }
   };
 
   const handleCloseModal = () => {
-    console.log("Closing rejection reason modal");
     setSelectedRejectReason(null);
+    dispatch(clearRejectionDetails());
   };
 
-  if (isLoading) {
-    return <div className="p-4">Loading your requests...</div>;
-  }
-
   return (
-    <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-green-600">My Recent Conveyance Requests (Last 5)</h2>
-
-      <ConveyanceFilter filter={filter} setFilter={setFilter} />
-
-      {filteredRequests.length > 0 ? (
-        <div className="overflow-x-auto border border-gray-200 bg-white mt-4">
-          <table className="w-full text-sm border">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-2 border text-left">Date</th>
-                <th className="p-2 border text-left">Client</th>
-                <th className="p-2 border text-left">Transport</th>
-                <th className="p-2 border text-left">Distance</th>
-                <th className="p-2 border text-left">Amount</th>
-                <th className="p-2 border text-left">Status</th>
-              </tr>
-            </thead>  
-            <tbody>
-              {filteredRequests.map((request) => (
-                <tr key={request.id}>
-                  <td className="p-2 border">{request.date.split('T')[0]}</td>
-                  <td className="p-2 border">{request.client}</td>
-                  <td className="p-2 border">{request.transport}</td>
-                  <td className="p-2 border">{request.distance} km</td>
-                  <td className="p-2 border">₹{request.amount}</td>
-                  <td className="p-2 border">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 border py-1 rounded-full font-medium ${getStatusStyle(request.status)}`}>
-                        {request.status}
-                      </span>
-                      {(request.status.includes("Rejected") || request.status.includes("rejected")) && (
-                        <button 
-                          onClick={() => handleViewReason(request)}
-                          className="ml-2 text-xs text-blue-500 hover:underline hover:text-blue-700 cursor-pointer transition-colors duration-200"
-                          type="button"
-                        >
-                          View Reason
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header Container */}
+      <div className="bg-gradient-to-r from-green-700 to-green-600 rounded-2xl shadow-lg p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Conveyance Claims</h1>
+          <p className="text-green-100 text-sm mt-1 font-medium">
+            Track and monitor the approval status of your conveyance reimbursement requests.
+          </p>
         </div>
-      ) : (
-        <div className="text-center py-8">
-          <p>No conveyance requests found.</p>
-          {(filter.client || filter.status || filter.date) && (
-            <button 
-              className="text-blue-500 mt-2 hover:underline"
-              onClick={() => setFilter({ client: "", status: "", date: "" })}
-            >
-              Clear filters
-            </button>
-          )}
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard/employee/conveyance-form")}
+          className="flex items-center gap-2 bg-white text-green-700 hover:bg-green-50 px-5 py-2.5 rounded-xl text-sm font-semibold transition shadow-md cursor-pointer shrink-0"
+        >
+          <FiPlusCircle size={18} /> New Claim Request
+        </button>
+      </div>
+
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+            <FiList size={22} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-800">{summary.totalRequests || 0}</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Claims</div>
+          </div>
         </div>
-      )}
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-yellow-50 text-yellow-600 rounded-xl">
+            <FiClock size={22} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-800">{summary.pendingApproval || 0}</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pending Approval</div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+            <FiCheckCircle size={22} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-800">{summary.approved || 0}</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Approved</div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <FiDollarSign size={22} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-800">
+              ₹{Number(summary.totalAmountClaimed || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Claimed</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Section */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <ConveyanceFilter filter={filter} setFilter={setFilter} />
+      </div>
+
+      {/* Table Content */}
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3"></div>
+            <span className="text-gray-500 text-sm font-semibold">Loading your conveyance claims...</span>
+          </div>
+        ) : (
+          <>
+            <ConveyanceTable
+              requests={requests}
+              onViewReason={handleViewReason}
+            />
+
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-sm">
+                <div className="text-gray-600">
+                  Showing page <span className="font-semibold text-gray-900">{pagination.currentPage}</span> of{" "}
+                  <span className="font-semibold text-gray-900">{pagination.totalPages}</span> ({pagination.totalRecords} records)
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                    disabled={pagination.currentPage <= 1}
+                    className="p-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-xs text-gray-700"
+                  >
+                    <FiChevronLeft size={16} /> Previous
+                  </button>
+
+                  <span className="px-3 py-1 bg-green-50 text-green-700 font-bold text-xs rounded-xl border border-green-200">
+                    {pagination.currentPage}
+                  </span>
+
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                    disabled={pagination.currentPage >= pagination.totalPages}
+                    className="p-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-xs text-gray-700"
+                  >
+                    Next <FiChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Modal for displaying rejection reason */}
       {selectedRejectReason && (
