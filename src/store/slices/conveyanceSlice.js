@@ -46,8 +46,45 @@ export const fetchRejectionReason = createAsyncThunk(
   }
 );
 
+export const fetchConveyanceQueue = createAsyncThunk(
+  'conveyance/fetchConveyanceQueue',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchConveyanceQueue();
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const approveConveyanceRequest = createAsyncThunk(
+  'conveyance/approveConveyanceRequest',
+  async ({ id, comments }, { rejectWithValue }) => {
+    try {
+      const data = await service.approveConveyanceRequest({ id, comments });
+      return { id, data };
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const rejectConveyanceRequest = createAsyncThunk(
+  'conveyance/rejectConveyanceRequest',
+  async ({ id, comments, rejectionReason }, { rejectWithValue }) => {
+    try {
+      const data = await service.rejectConveyanceRequest({ id, comments, rejectionReason });
+      return { id, data };
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 const initialState = {
   myClaims: [],
+  queueRequests: [],
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -63,6 +100,8 @@ const initialState = {
   },
   submitLoading: false,
   claimsLoading: false,
+  queueLoading: false,
+  actionLoadingId: null,
   rejectionReasonLoading: false,
   error: null,
   activeRejectionDetails: null,
@@ -124,6 +163,51 @@ const conveyanceSlice = createSlice({
       })
       .addCase(fetchRejectionReason.rejected, (state) => {
         state.rejectionReasonLoading = false;
+      })
+
+      // Fetch Conveyance Queue
+      .addCase(fetchConveyanceQueue.pending, (state) => {
+        state.queueLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchConveyanceQueue.fulfilled, (state, action) => {
+        state.queueLoading = false;
+        state.error = null;
+        state.queueRequests = action.payload || [];
+      })
+      .addCase(fetchConveyanceQueue.rejected, (state, action) => {
+        state.queueLoading = false;
+        state.error = action.payload;
+      })
+
+      // Approve Request
+      .addCase(approveConveyanceRequest.pending, (state, action) => {
+        state.actionLoadingId = action.meta.arg.id;
+        state.error = null;
+      })
+      .addCase(approveConveyanceRequest.fulfilled, (state, action) => {
+        state.actionLoadingId = null;
+        const { id } = action.payload;
+        state.queueRequests = state.queueRequests.filter((item) => item.id !== id);
+      })
+      .addCase(approveConveyanceRequest.rejected, (state, action) => {
+        state.actionLoadingId = null;
+        state.error = action.payload;
+      })
+
+      // Reject Request
+      .addCase(rejectConveyanceRequest.pending, (state, action) => {
+        state.actionLoadingId = action.meta.arg.id;
+        state.error = null;
+      })
+      .addCase(rejectConveyanceRequest.fulfilled, (state, action) => {
+        state.actionLoadingId = null;
+        const { id } = action.payload;
+        state.queueRequests = state.queueRequests.filter((item) => item.id !== id);
+      })
+      .addCase(rejectConveyanceRequest.rejected, (state, action) => {
+        state.actionLoadingId = null;
+        state.error = action.payload;
       });
   },
 });
@@ -138,5 +222,10 @@ export const selectConveyanceSubmitLoading = (state) => state.conveyance.submitL
 export const selectConveyanceClaimsLoading = (state) => state.conveyance.claimsLoading;
 export const selectConveyanceError = (state) => state.conveyance.error;
 export const selectActiveRejectionDetails = (state) => state.conveyance.activeRejectionDetails;
+
+// Approver Queue Selectors
+export const selectConveyanceQueueRequests = (state) => state.conveyance.queueRequests;
+export const selectConveyanceQueueLoading = (state) => state.conveyance.queueLoading;
+export const selectConveyanceActionLoadingId = (state) => state.conveyance.actionLoadingId;
 
 export default conveyanceSlice.reducer;

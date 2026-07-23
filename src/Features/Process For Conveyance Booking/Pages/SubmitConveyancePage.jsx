@@ -4,12 +4,27 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import ConveyanceForm from "../Components/ConveyanceForm";
 import { submitConveyanceClaim, selectConveyanceSubmitLoading } from "../../../store/slices/conveyanceSlice";
+import { selectRole } from "../../../Auth/authSlice";
 import { FiList } from "react-icons/fi";
+
+const getMyRequestsPath = (role) => {
+  const normRole = (role || "").toLowerCase().replace(/_/g, "-");
+  if (normRole === "regional-head") return "/dashboard/regional-head/my-conveyance-requests";
+  if (normRole === "line-manager") return "/dashboard/line-manager/my-conveyance-requests";
+  if (normRole === "avp-operations" || normRole === "avp") return "/dashboard/avp-operations/my-conveyance-requests";
+  if (normRole === "vp-operations" || normRole === "vp") return "/dashboard/vp-operations/my-conveyance-requests";
+  if (normRole === "account-executive" || normRole === "ae") return "/dashboard/ae/my-conveyance-requests";
+  return "/dashboard/employee/my-conveyance-requests";
+};
 
 export default function SubmitConveyancePage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const submitLoading = useSelector(selectConveyanceSubmitLoading);
+
+  const rawRole = useSelector(selectRole);
+  const localUser = JSON.parse(localStorage.getItem("user")) || {};
+  const role = rawRole || localUser.role || "";
 
   const handleSubmit = async (formData) => {
     try {
@@ -21,6 +36,11 @@ export default function SubmitConveyancePage() {
       toast.error(error || "Submission failed. Please try again.");
       return false;
     }
+  };
+
+  const handleNavigateMyRequests = () => {
+    const targetPath = getMyRequestsPath(role);
+    navigate(targetPath);
   };
 
   return (
@@ -36,7 +56,7 @@ export default function SubmitConveyancePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate("/dashboard/employee/my-conveyance-requests")}
+            onClick={handleNavigateMyRequests}
             className="flex items-center gap-2 bg-white text-green-700 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-semibold transition shadow-md cursor-pointer"
           >
             <FiList size={16} /> My Requests

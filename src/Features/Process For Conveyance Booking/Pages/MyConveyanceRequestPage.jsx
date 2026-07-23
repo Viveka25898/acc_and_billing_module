@@ -14,7 +14,18 @@ import {
   selectConveyanceClaimsLoading,
   clearRejectionDetails,
 } from "../../../store/slices/conveyanceSlice";
+import { selectRole } from "../../../Auth/authSlice";
 import { FiPlusCircle, FiList, FiClock, FiCheckCircle, FiDollarSign, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+
+const getConveyanceFormPath = (role) => {
+  const normRole = (role || "").toLowerCase().replace(/_/g, "-");
+  if (normRole === "regional-head") return "/dashboard/regional-head/conveyance-form";
+  if (normRole === "line-manager") return "/dashboard/line-manager/conveyance-form";
+  if (normRole === "avp-operations" || normRole === "avp") return "/dashboard/avp-operations/conveyance-form";
+  if (normRole === "vp-operations" || normRole === "vp") return "/dashboard/vp-operations/conveyance-form";
+  if (normRole === "account-executive" || normRole === "ae") return "/dashboard/ae/conveyance-form";
+  return "/dashboard/employee/conveyance-form";
+};
 
 export default function MyConveyanceRequestsPage() {
   const navigate = useNavigate();
@@ -24,6 +35,10 @@ export default function MyConveyanceRequestsPage() {
   const pagination = useSelector(selectConveyancePagination);
   const summary = useSelector(selectConveyanceSummary);
   const isLoading = useSelector(selectConveyanceClaimsLoading);
+
+  const rawRole = useSelector(selectRole);
+  const localUser = JSON.parse(localStorage.getItem("user")) || {};
+  const role = rawRole || localUser.role || "";
 
   const [filter, setFilter] = useState({
     client: "",
@@ -80,6 +95,11 @@ export default function MyConveyanceRequestsPage() {
     dispatch(clearRejectionDetails());
   };
 
+  const handleNavigateNewClaim = () => {
+    const targetPath = getConveyanceFormPath(role);
+    navigate(targetPath);
+  };
+
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
       {/* Header Container */}
@@ -92,7 +112,7 @@ export default function MyConveyanceRequestsPage() {
         </div>
         <button
           type="button"
-          onClick={() => navigate("/dashboard/employee/conveyance-form")}
+          onClick={handleNavigateNewClaim}
           className="flex items-center gap-2 bg-white text-green-700 hover:bg-green-50 px-5 py-2.5 rounded-xl text-sm font-semibold transition shadow-md cursor-pointer shrink-0"
         >
           <FiPlusCircle size={18} /> New Claim Request

@@ -1,230 +1,207 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import ConveyanceFilter from "../Components/ConveyanceFilter";
 import ManagerConveyanceTable from "../Components/ManagerConveyanceTable";
 import DocumentPreviewModal from "../Components/DocumentPreviewModal";
 import RejectionModal from "../Components/RejectionModal";
+import {
+  fetchConveyanceQueue,
+  approveConveyanceRequest,
+  rejectConveyanceRequest,
+  selectConveyanceQueueRequests,
+  selectConveyanceQueueLoading,
+  selectConveyanceActionLoadingId,
+} from "../../../store/slices/conveyanceSlice";
+import { FiCheckSquare, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 export default function ManagerConveyanceApprovalsPage() {
-  const [claims, setClaims] = useState([]);
-  const [filter, setFilter] = useState({ 
-    date: "", 
-    status: "Pending", 
+  const dispatch = useDispatch();
+
+  const queueRequests = useSelector(selectConveyanceQueueRequests);
+  const loading = useSelector(selectConveyanceQueueLoading);
+  const actionLoadingId = useSelector(selectConveyanceActionLoadingId);
+
+  const [filter, setFilter] = useState({
+    date: "",
+    status: "",
     employee: "",
-    transport: "" 
+    transport: "",
   });
+
   const [rejection, setRejection] = useState({ show: false, claimId: null });
   const [viewDocs, setViewDocs] = useState(null);
   const [viewReports, setViewReports] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const currentUser = JSON.parse(localStorage.getItem("user")) || {};
+  const loadQueue = useCallback(() => {
+    dispatch(fetchConveyanceQueue());
+  }, [dispatch]);
 
-  // Load claims with proper error handling
   useEffect(() => {
-    try {
-      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-      const managerRequests = allRequests.filter(
-        request => request.assignedTo === currentUser.username && 
-                  (request.status === "Pending Manager Approval" ||
-                   request.status === "Pending VP Approval" ||
-                   request.status === "Rejected by Line Manager")
-      );
-      setClaims(managerRequests);
-    } catch (error) {
-      toast.error("Failed to load requests");
-      console.error("Loading error:", error);
-    }
-  }, [currentUser.username]);
+    loadQueue();
+  }, [loadQueue]);
 
   // Enhanced filtering
-  const filteredClaims = claims.filter((claim) => {
-    const employeeMatch = filter.employee === '' || 
-      claim.employeeName?.toLowerCase().includes(filter.employee.toLowerCase());
-    
-    const statusMatch = filter.status === 'Pending' 
-      ? claim.status === 'Pending Manager Approval'
-      : filter.status === 'Approved'
-      ? claim.status === 'Pending VP Approval'
-      : filter.status === 'Rejected'
-      ? claim.status === 'Rejected by Line Manager'
-      : filter.status === '' || claim.status === filter.status;
-    
-    const dateMatch = filter.date === '' || 
-      claim.date.split('T')[0] === filter.date;
-    
-    const transportMatch = filter.transport === '' || 
-      claim.transport === filter.transport;
+  const filteredClaims = queueRequests.filter((claim) => {
+    const employeeName = claim.employeeName || claim.employee_name || claim.submittedBy || "";
+    const employeeMatch =
+      filter.employee === "" ||
+      employeeName.toLowerCase().includes(filter.employee.toLowerCase());
+
+    const statusText = claim.status_display || claim.status || "";
+    const statusMatch =
+      filter.status === "" ||
+      filter.status === "Pending" ||
+      statusText.toLowerCase().includes(filter.status.toLowerCase());
+
+    const claimDate = claim.visit_date || claim.date || "";
+    const dateMatch =
+      filter.date === "" ||
+      claimDate.split("T")[0] === filter.date;
+
+    const transportMode = claim.transport_mode || claim.transport || "";
+    const transportMatch =
+      filter.transport === "" ||
+      transportMode.toLowerCase() === filter.transport.toLowerCase();
 
     return employeeMatch && statusMatch && dateMatch && transportMatch;
   });
 
-  // Pagination with boundary checks
+  // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredClaims.length / itemsPerPage));
   const paginatedClaims = filteredClaims.slice(
     Math.max(0, (currentPage - 1) * itemsPerPage),
     Math.min(filteredClaims.length, currentPage * itemsPerPage)
   );
 
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
     try {
-      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-      const requestToApprove = allRequests.find(request => request.id === id);
-      
-      // Get the VP this Line Manager reports to
-      const users = JSON.parse(localStorage.getItem("users")) || [];
-      const lineManager = users.find(user => user.username === currentUser.username);
-      const assignedVP = lineManager?.reportsTo;
+      const result = await dispatch(
+        approveConveyanceRequest({
+          id,
+          comments: "Distance and amount verified against Google Maps",
+        })
+      ).unwrap();
 
-      const updatedRequests = allRequests.map(request => 
-        request.id === id ? {
-          ...request,
-          status: "Pending VP Approval",
-          assignedTo: assignedVP,
-          currentLevel: "vp",
-          approvedAt: new Date().toISOString(),
-          approvedBy: currentUser.username,
-          approvers: [...(request.approvers || []), {
-            level: "line-manager",
-            user: currentUser.username,
-            action: "approved",
-            date: new Date().toISOString()
-          }]
-        } : request
-      );
-      
-      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
-      setClaims(prev => prev.filter(c => c.id !== id));
-      toast.success(`Sent to VP ${assignedVP} for approval`);
+      toast.success(result.message || `Claim request #${id.slice(-6)} approved successfully`);
     } catch (error) {
-      toast.error("Approval failed");
-      console.error(error);
+      console.error("Approval failed:", error);
+      toast.error(error || "Approval failed. Please try again.");
     }
   };
 
-  // FIXED: handleReject function with proper rejection reason storage
-  const handleReject = (id, reason) => {
+  const handleReject = async (id, reason) => {
+    if (!reason || !reason.trim()) {
+      toast.error("Rejection reason is mandatory");
+      return;
+    }
+
     try {
-      console.log("Rejecting request ID:", id, "with reason:", reason);
-      
-      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-      const updatedRequests = allRequests.map(request => {
-        if (request.id === id) {
-          // Create rejection entry with all necessary information
-          const rejectionEntry = {
-            level: "line-manager",
-            user: currentUser.username,
-            reason: reason.trim(), // Store the actual reason
-            date: new Date().toISOString(),
-            rejectedBy: currentUser.username
-          };
-
-          console.log("Creating rejection entry:", rejectionEntry);
-
-          return {
-            ...request,
-            status: "Rejected by Line Manager",
-            rejectedAt: new Date().toISOString(),
-            rejectedBy: currentUser.username,
-            rejectionReason: reason.trim(), // Store reason at top level too
-            currentLevel: "rejected",
-            // Add to rejections array and ensure it's properly structured
-            rejections: [...(request.rejections || []), rejectionEntry]
-          };
-        }
-        return request;
-      });
-      
-      console.log("Updated requests after rejection:", updatedRequests.find(r => r.id === id));
-      
-      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
-      
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
-      
-      // Update local state
-      setClaims(prev => prev.map(c => 
-        c.id === id ? { 
-          ...c, 
-          status: "Rejected by Line Manager", 
+      const result = await dispatch(
+        rejectConveyanceRequest({
+          id,
+          comments: reason.trim(),
           rejectionReason: reason.trim(),
-          rejections: [...(c.rejections || []), {
-            level: "line-manager",
-            user: currentUser.username,
-            reason: reason.trim(),
-            date: new Date().toISOString()
-          }]
-        } : c
-      ));
-      
-      toast.warning("Request rejected");
+        })
+      ).unwrap();
+
+      toast.warning(result.message || `Claim request #${id.slice(-6)} rejected`);
+      setRejection({ show: false, claimId: null });
     } catch (error) {
-      toast.error("Rejection failed");
-      console.error("Rejection error:", error);
+      console.error("Rejection failed:", error);
+      toast.error(error || "Rejection failed. Please try again.");
     }
   };
 
-  // Helper function to convert file objects to URLs for viewing
   const prepareDocumentUrl = (documents) => {
     if (!documents || documents.length === 0) return null;
-    
     const firstDoc = documents[0];
-    if (typeof firstDoc === 'string') {
-      return firstDoc;
-    }
-    
-    if (firstDoc.type && firstDoc.size) {
-      return URL.createObjectURL(new Blob([''], { type: firstDoc.type }));
-    }
-    
+    if (typeof firstDoc === "string") return firstDoc;
+    if (firstDoc?.fileUrl || firstDoc?.url) return firstDoc.fileUrl || firstDoc.url;
     return null;
   };
 
   return (
-    <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-green-600">
-          Conveyance Approvals ({filteredClaims.length})
-        </h2>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header Container */}
+      <div className="bg-gradient-to-r from-green-700 to-green-600 rounded-2xl shadow-lg p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <FiCheckSquare size={26} /> Regional Head - Conveyance Approvals
+          </h1>
+          <p className="text-green-100 text-sm mt-1 font-medium">
+            Review and approve or reject employee conveyance reimbursement claims ({filteredClaims.length} pending).
+          </p>
+        </div>
       </div>
 
-      <ConveyanceFilter 
-        filter={filter} 
-        setFilter={setFilter} 
-        showEmployeeFilter={true}
-        showTransportFilter={true}
-      />
+      {/* Filter Section */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <ConveyanceFilter
+          filter={filter}
+          setFilter={setFilter}
+          showEmployeeFilter={true}
+          showTransportFilter={true}
+        />
+      </div>
 
-      <ManagerConveyanceTable
-        claims={paginatedClaims}
-        onApprove={handleApprove}
-        onReject={(id) => setRejection({ show: true, claimId: id })}
-        onViewDocs={(docs) => setViewDocs(docs)}
-        onViewReports={(reports) => setViewReports(reports)}
-        currentUserRole={currentUser.role}
-      />
+      {/* Approval Table Container */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3"></div>
+            <span className="text-gray-500 text-sm font-semibold">Loading approval queue...</span>
+          </div>
+        ) : (
+          <>
+            <ManagerConveyanceTable
+              claims={paginatedClaims}
+              onApprove={handleApprove}
+              onReject={(id) => setRejection({ show: true, claimId: id })}
+              onViewDocs={(docs) => setViewDocs(docs)}
+              onViewReports={(reports) => setViewReports(reports)}
+              actionLoadingId={actionLoadingId}
+              showActions={true}
+            />
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex justify-center gap-2">
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i + 1)}
-              className={`px-3 py-1 rounded ${
-                currentPage === i + 1 
-                  ? "bg-blue-600 text-white" 
-                  : "bg-gray-100 hover:bg-gray-200"
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      )}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-sm">
+                <div className="text-gray-600">
+                  Page <span className="font-semibold text-gray-900">{currentPage}</span> of{" "}
+                  <span className="font-semibold text-gray-900">{totalPages}</span> ({filteredClaims.length} items)
+                </div>
 
-      {/* FIXED: RejectionModal with proper parameter passing */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage <= 1}
+                    className="p-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-xs text-gray-700"
+                  >
+                    <FiChevronLeft size={16} /> Previous
+                  </button>
+
+                  <span className="px-3 py-1 bg-green-50 text-green-700 font-bold text-xs rounded-xl border border-green-200">
+                    {currentPage}
+                  </span>
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="p-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-xs text-gray-700"
+                  >
+                    Next <FiChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Rejection Modal */}
       <RejectionModal
         isOpen={rejection.show}
         onClose={() => setRejection({ show: false, claimId: null })}
@@ -233,15 +210,15 @@ export default function ManagerConveyanceApprovalsPage() {
       />
 
       {/* Modal for receipts */}
-      <DocumentPreviewModal 
-        url={viewDocs?.[0] ? prepareDocumentUrl(viewDocs) : null}
+      <DocumentPreviewModal
+        url={viewDocs ? prepareDocumentUrl(viewDocs) : null}
         onClose={() => setViewDocs(null)}
-        title="Receipt"
+        title="Transport Receipt"
       />
 
       {/* Modal for visit reports */}
-      <DocumentPreviewModal 
-        url={viewReports?.[0] ? prepareDocumentUrl(viewReports) : null}
+      <DocumentPreviewModal
+        url={viewReports ? prepareDocumentUrl(viewReports) : null}
         onClose={() => setViewReports(null)}
         title="Visit Report"
       />
