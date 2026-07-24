@@ -34,6 +34,8 @@ const AVPSidebar = () => {
     { to: `${base}/advance-settelment`,                 label: 'Settlement Approvals' },
     { to: `${base}/submit-advance-settlement`,          label: 'Submit Advance Settlement' },
     { to: `${base}/avp-reliever-approval`,              label: 'Reliever Requests Approval' },
+    { to: `${base}/conveyance-approval`,                label: 'Conveyance Approvals' },
+    { to: `${base}/conveyance-form`,                    label: 'Submit Conveyance' },
   ]
 
   return (
