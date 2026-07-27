@@ -259,3 +259,31 @@ export const rejectConveyanceRequest = async ({ id, comments = 'Rejected', rejec
 
   return body.data;
 };
+
+/**
+ * fetchConveyanceVoucher
+ * Retrieves expense voucher details and transaction information for an approved conveyance claim
+ * @param {string} claimId Claim ID or request UUID
+ * @returns {Promise<Object>} Voucher details
+ */
+export const fetchConveyanceVoucher = async (claimId) => {
+  if (!claimId) throw new Error('Claim ID is required');
+
+  const encodedId = encodeURIComponent(claimId);
+  const endpoints = [
+    `/accounts/conveyance/${claimId}/voucher`,
+    `/accounts/conveyance/${encodedId}/voucher`,
+    `/conveyance/${claimId}/voucher`,
+    `/conveyance/${encodedId}/voucher`,
+  ];
+
+  const response = await getWithFallback(endpoints);
+  const body = response.data;
+
+  if (!body || !body.success) {
+    throw new Error(body?.message || 'Failed to fetch expense voucher details.');
+  }
+
+  return body.data;
+};
+

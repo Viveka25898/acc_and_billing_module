@@ -149,32 +149,56 @@ export default function ManagerConveyanceTable({
                   {/* Action Buttons */}
                   {showActions && (
                     <td className="px-5 py-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          disabled={actionLoadingId !== null}
-                          onClick={() => onApprove && onApprove(claim.id)}
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                          {isProcessing ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
-                              <span>Approving...</span>
-                            </>
-                          ) : (
-                            <span>Approve</span>
-                          )}
-                        </button>
+                      {(() => {
+                        const statusRaw = (claim.status || claim.status_display || "").toLowerCase();
+                        const isApproved = statusRaw.includes("approved");
+                        const isRejected = statusRaw.includes("reject");
 
-                        <button
-                          type="button"
-                          disabled={actionLoadingId !== null}
-                          onClick={() => onReject && onReject(claim.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </div>
+                        if (isApproved) {
+                          return (
+                            <span className="text-green-600 font-semibold text-xs bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
+                              Approved
+                            </span>
+                          );
+                        }
+
+                        if (isRejected) {
+                          return (
+                            <span className="text-red-600 font-semibold text-xs bg-red-50 px-2.5 py-1 rounded-full border border-red-200">
+                              Rejected
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              disabled={actionLoadingId !== null}
+                              onClick={() => onApprove && onApprove(claim.id)}
+                              className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                              {isProcessing ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
+                                  <span>Approving...</span>
+                                </>
+                              ) : (
+                                <span>Approve</span>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={actionLoadingId !== null}
+                              onClick={() => onReject && onReject(claim.id)}
+                              className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </td>
                   )}
                 </tr>

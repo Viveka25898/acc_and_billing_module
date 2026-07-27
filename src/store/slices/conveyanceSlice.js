@@ -82,6 +82,18 @@ export const rejectConveyanceRequest = createAsyncThunk(
   }
 );
 
+export const fetchConveyanceVoucher = createAsyncThunk(
+  'conveyance/fetchConveyanceVoucher',
+  async (claimId, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchConveyanceVoucher(claimId);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 const initialState = {
   myClaims: [],
   queueRequests: [],
@@ -101,10 +113,12 @@ const initialState = {
   submitLoading: false,
   claimsLoading: false,
   queueLoading: false,
+  voucherLoading: false,
   actionLoadingId: null,
   rejectionReasonLoading: false,
   error: null,
   activeRejectionDetails: null,
+  activeVoucherData: null,
 };
 
 const conveyanceSlice = createSlice({
@@ -116,6 +130,9 @@ const conveyanceSlice = createSlice({
     },
     clearRejectionDetails: (state) => {
       state.activeRejectionDetails = null;
+    },
+    clearVoucherData: (state) => {
+      state.activeVoucherData = null;
     },
   },
   extraReducers: (builder) => {
@@ -208,11 +225,25 @@ const conveyanceSlice = createSlice({
       .addCase(rejectConveyanceRequest.rejected, (state, action) => {
         state.actionLoadingId = null;
         state.error = action.payload;
+      })
+
+      // Fetch Voucher
+      .addCase(fetchConveyanceVoucher.pending, (state) => {
+        state.voucherLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchConveyanceVoucher.fulfilled, (state, action) => {
+        state.voucherLoading = false;
+        state.activeVoucherData = action.payload;
+      })
+      .addCase(fetchConveyanceVoucher.rejected, (state, action) => {
+        state.voucherLoading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { clearConveyanceError, clearRejectionDetails } = conveyanceSlice.actions;
+export const { clearConveyanceError, clearRejectionDetails, clearVoucherData } = conveyanceSlice.actions;
 
 // Selectors
 export const selectMyConveyanceClaims = (state) => state.conveyance.myClaims;
@@ -227,5 +258,7 @@ export const selectActiveRejectionDetails = (state) => state.conveyance.activeRe
 export const selectConveyanceQueueRequests = (state) => state.conveyance.queueRequests;
 export const selectConveyanceQueueLoading = (state) => state.conveyance.queueLoading;
 export const selectConveyanceActionLoadingId = (state) => state.conveyance.actionLoadingId;
+export const selectConveyanceVoucher = (state) => state.conveyance.activeVoucherData;
+export const selectConveyanceVoucherLoading = (state) => state.conveyance.voucherLoading;
 
 export default conveyanceSlice.reducer;
