@@ -162,7 +162,7 @@ const AMInvoiceReviewPage = () => {
       <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-            <span>Example</span> HK Material Invoice Processing – Account Manager Review
+            <span>✅</span> HK Material Invoice Processing – Account Manager Review
           </h1>
           <p className="text-green-100 text-sm mt-0.5">
             Review and approve / reject material invoices for final posting

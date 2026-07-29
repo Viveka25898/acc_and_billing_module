@@ -61,8 +61,8 @@ export class HKMaterialsExpenseLedgerService {
         axiosInstance.get('/account-master/ledger/expense/hk-materials/entries', { params })
       ])
 
-      const headerData = headerRes.data?.results || {}
-      const entriesResults = entriesRes.data?.results || {}
+      const headerData = headerRes.data?.results || headerRes.data?.data || headerRes.data || {}
+      const entriesResults = entriesRes.data?.results || entriesRes.data?.data || entriesRes.data || {}
       const rawEntries = entriesResults.entries || []
       const totalsData = entriesResults.totals || {}
       const paginationData = entriesResults.pagination || {}

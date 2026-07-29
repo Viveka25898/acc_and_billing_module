@@ -151,8 +151,9 @@ const amInvoiceSlice = createSlice({
       })
       .addCase(fetchAMPendingInvoices.fulfilled, (state, action) => {
         state.loading.fetch = false;
-        state.invoices = action.payload.invoices || [];
-        state.pagination = action.payload.pagination || {
+        const responseData = action.payload?.data || action.payload;
+        state.invoices = responseData?.invoices || [];
+        state.pagination = responseData?.pagination || {
           currentPage: 1,
           totalPages: 1,
           totalItems: 0,
