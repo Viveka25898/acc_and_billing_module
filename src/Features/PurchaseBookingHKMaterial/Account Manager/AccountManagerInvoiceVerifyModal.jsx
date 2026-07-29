@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 
-const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice }) => {
+const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice, isSubmitting }) => {
   const [gstRate, setGstRate] = useState('')
   const [hsnCode, setHsnCode] = useState('')
   const [hsnSummary, setHsnSummary] = useState('')
@@ -11,28 +11,23 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
 
   useEffect(() => {
     if (invoice) {
-      // Set the values from the invoice when it changes
       setGstRate(invoice.gstRate || '')
       setHsnCode(invoice.hsnCode || '')
       setHsnSummary(invoice.hsnSummary || '')
     }
     setIsRejecting(false)
     setRemarks('')
+    setIsIframeLoading(true)
   }, [invoice])
 
   if (!isOpen || !invoice) return null
 
   const handleFinalApprove = () => {
-    // For Procurement Prepaid, the modal will stay open and prepaid period modal will open
     if (invoice.type === 'Procurement Prepaid') {
-      handleUpdateInvoice(invoice.id, 'Approved')
-      // Don't close this modal - it will be closed when prepaid period is set
+      handleUpdateInvoice(invoice.id, 'Approved', remarks)
       toast.success('Opening prepaid period selection...')
     } else {
-      handleUpdateInvoice(invoice.id, 'Approved')
-      // For other types, close the modal as usual
-      onClose()
-      toast.success('Invoice approved successfully!')
+      handleUpdateInvoice(invoice.id, 'Approved', remarks)
     }
   }
 
@@ -42,17 +37,22 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
       return
     }
     handleUpdateInvoice(invoice.id, 'Rejected', remarks)
-    onClose()
-    toast.error('Invoice rejected by Account Manager!')
   }
+
+  // Safe mapping helper for both camelCase and snake_case GL mappings
+  const mappings = invoice.vendorGLMappings || invoice.vendor_gl_mappings || {}
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-40 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+        
         {/* Header */}
         <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold">Final Approval - {invoice.invoiceNumber}</h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-red-600">
+          <h2 className="text-lg font-semibold flex items-baseline gap-2">
+            <span>Final Approval - {invoice.id}</span>
+            <span className="text-xs text-gray-500 font-normal">({invoice.invoiceNumber})</span>
+          </h2>
+          <button onClick={onClose} className="text-gray-600 hover:text-red-600" disabled={isSubmitting}>
             X
           </button>
         </div>
@@ -63,9 +63,10 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <h3 className="font-semibold text-green-800 mb-2">Account Executive Review</h3>
             <p className="text-sm text-green-700">
-              This invoice has been approved by the Account Executive
+              This invoice has been approved by the Account Executive.
             </p>
-            <p className="text-xs text-gray-600 mt-1">Status: {invoice.status}</p>
+            <p className="text-xs text-gray-600 mt-1">Status: {invoice.status || '-'}</p>
+            <p className="text-xs text-gray-600 mt-1">AE Remarks: {invoice.aeRemarks || '-'}</p>
             {invoice.type && (
               <p className="text-xs text-gray-600 mt-1">
                 Type: <span className="font-medium">{invoice.type}</span>
@@ -89,10 +90,9 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
               <label className="block font-medium mb-1">GST Rate (%)</label>
               <input
                 type="number"
-                value={gstRate}
-                onChange={(e) => setGstRate(e.target.value)}
-                className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-                placeholder="e.g., 18"
+                value={gstRate || '-'}
+                disabled
+                className="w-full border rounded px-3 py-2 bg-gray-100 outline-none cursor-not-allowed font-medium text-gray-600"
               />
             </div>
 
@@ -100,10 +100,9 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
               <label className="block font-medium mb-1">HSN Code</label>
               <input
                 type="text"
-                value={hsnCode}
-                onChange={(e) => setHsnCode(e.target.value)}
-                className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-                placeholder="e.g., 998314"
+                value={hsnCode || '-'}
+                disabled
+                className="w-full border rounded px-3 py-2 bg-gray-100 outline-none cursor-not-allowed font-medium text-gray-600"
               />
             </div>
           </div>
@@ -111,11 +110,10 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
           <div>
             <label className="block font-medium mb-1">HSN Summary</label>
             <textarea
-              value={hsnSummary}
-              onChange={(e) => setHsnSummary(e.target.value)}
-              rows={3}
-              className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-              placeholder="Write a short summary..."
+              value={hsnSummary || '-'}
+              disabled
+              rows={2}
+              className="w-full border rounded px-3 py-2 bg-gray-100 outline-none cursor-not-allowed font-medium text-gray-600"
             ></textarea>
           </div>
 
@@ -159,6 +157,7 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
               <div className="relative w-full h-96 border rounded overflow-hidden">
                 {isIframeLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-700"></div>
                     <span className="ml-2 text-gray-600">Loading document...</span>
                   </div>
                 )}
@@ -173,45 +172,53 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
                 href={invoice.documentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline text-sm mt-2 inline-block"
+                className="text-green-600 underline text-sm mt-2 inline-block hover:text-green-800 font-semibold"
               >
                 Open full document in new tab
               </a>
             </div>
           )}
 
-          {/* Reject Option */}
-          {isRejecting && (
-            <div className="mt-4">
-              <label className="block font-medium mb-1 text-red-600">Rejection Remarks</label>
-              <textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                rows={3}
-                className="w-full border border-red-400 rounded px-3 py-2 outline-none focus:ring focus:ring-red-200"
-                placeholder="Why are you rejecting this invoice?"
-              ></textarea>
-            </div>
-          )}
+          {/* Remarks text input for approval context, or rejection remarks */}
+          <div>
+            <label className="block font-medium mb-1">Decision Remarks</label>
+            <textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              disabled={isSubmitting}
+              rows={2}
+              className="w-full border rounded px-3 py-2 outline-none focus:ring focus:ring-green-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              placeholder={isRejecting ? "Why are you rejecting this invoice? (Mandatory)" : "Enter approval comments (Optional)..."}
+            ></textarea>
+          </div>
         </div>
 
         {/* Footer Buttons */}
         <div className="flex justify-end items-center gap-3 border-t px-6 py-4">
+          {isSubmitting && (
+            <div className="flex items-center text-sm font-medium text-gray-500 mr-auto">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-700 mr-2"></div>
+              Submitting decision...
+            </div>
+          )}
+
           {!isRejecting ? (
             <>
               <button
                 onClick={() => setIsRejecting(true)}
-                className="text-red-600 border border-red-600 hover:bg-red-100 px-4 py-2 rounded"
+                className="text-red-600 border border-red-600 hover:bg-red-50 px-4 py-2 rounded-xl transition-colors duration-200"
+                disabled={isSubmitting}
               >
                 Reject
               </button>
               <button
                 onClick={handleFinalApprove}
-                className={`px-4 py-2 rounded text-white ${
+                className={`px-4 py-2 rounded-xl text-white font-medium transition-colors duration-200 ${
                   invoice.type === 'Procurement Prepaid'
                     ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-green-600 hover:bg-green-700'
                 }`}
+                disabled={isSubmitting}
               >
                 {invoice.type === 'Procurement Prepaid' ? 'Approve & Set Period' : 'Final Approve'}
               </button>
@@ -219,14 +226,16 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice })
           ) : (
             <>
               <button
-                onClick={onClose}
-                className="text-gray-600 border border-gray-400 px-4 py-2 rounded hover:bg-gray-100"
+                onClick={() => setIsRejecting(false)}
+                className="text-gray-600 border border-gray-400 px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors duration-200"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleReject}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 font-medium transition-colors duration-200"
+                disabled={isSubmitting}
               >
                 Confirm Reject
               </button>

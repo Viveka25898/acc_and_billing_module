@@ -29,11 +29,11 @@ const UnifiedVendorLedgerPage = () => {
         console.log('🔍 Loading unified vendor ledger for:', accountCode)
 
         // Use UnifiedVendorLedgerService instead of specific services
-        const vendorInfo = UnifiedVendorLedgerService.getVendorAccountDetails(accountCode)
-        const entries = UnifiedVendorLedgerService.getVendorLedgerEntries(accountCode)
+        const vendorInfo = await UnifiedVendorLedgerService.getVendorAccountDetails(accountCode)
+        const entries = await UnifiedVendorLedgerService.getVendorLedgerEntries(accountCode)
 
         console.log('📊 Loaded vendor info:', vendorInfo)
-        console.log('📋 Loaded entries:', entries.length)
+        console.log('📋 Loaded entries:', entries?.length || 0)
 
         if (!vendorInfo) {
           setError('Vendor account not found')

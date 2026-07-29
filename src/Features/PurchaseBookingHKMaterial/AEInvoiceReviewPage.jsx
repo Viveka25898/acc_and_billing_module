@@ -1,351 +1,39 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 import AEInvoiceFilter from './Components/AEInvoiceFilter'
 import InvoiceVerifyModal from './InvoiceVerifyModal'
+import {
+  fetchAEPendingInvoices,
+  approveAEInvoice,
+  rejectAEInvoice
+} from '../../store/slices/aeInvoiceSlice'
+import { toast } from 'react-toastify'
 
 const InvoiceReviewPage = () => {
-  const [invoices, setInvoices] = useState([])
+  const dispatch = useDispatch()
+  const { invoices, pagination, loading, errors } = useSelector((state) => state.aeInvoice)
+
   const [filters, setFilters] = useState({
     invoiceNumber: '',
     vendorName: '',
     date: '',
   })
-  const [filteredInvoices, setFilteredInvoices] = useState([])
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
-  const navigate = useNavigate()
-
-  // Initialize Invoice Data (From Procurement - Step 9)
-  const initializeInvoiceData = () => {
-    const initialInvoicesForAE = [
-      {
-        id: 'INV-001',
-        type: 'Material',
-        invoiceNumber: 'INV-001',
-        vendorName: 'ABC Enterprises',
-        totalAmount: 125000,
-        status: 'Pending GST Verification',
-        gstRate: 18,
-        hsnCode: '998314',
-        hsnSummary: 'Construction Services',
-        documentUrl: '/public/DxotBTxfHn.png',
-        submittedBy: 'procurement',
-        submittedAt: new Date().toISOString(),
-        processedBy: null,
-        processedAt: null,
-        remarks: '',
-        poDocuments: [
-          { name: 'PO-001', url: 'https://example.com/po-001.pdf' },
-          { name: 'PO-002', url: 'https://example.com/po-002.pdf' },
-        ],
-      },
-      {
-        id: 'INV-002',
-        type: 'Fixed Asset',
-        invoiceNumber: 'INV-002',
-        vendorName: 'XYZ Pvt Ltd',
-        totalAmount: 82000,
-        status: 'Pending GST Verification',
-        gstRate: 12,
-        hsnCode: '847130',
-        hsnSummary: 'Computer Systems',
-        documentUrl: '/public/DxotBTxfHn.png',
-        submittedBy: 'procurement',
-        submittedAt: new Date().toISOString(),
-        processedBy: null,
-        processedAt: null,
-        remarks: '',
-        poDocuments: [
-          { name: 'PO-001', url: 'https://example.com/po-001.pdf' },
-          { name: 'PO-002', url: 'https://example.com/po-002.pdf' },
-        ],
-        assetDetails: {
-          assetCategory: 'Computer',
-          assetTag: 'FA-2024-001',
-          serialNumber: 'SN-AX2390',
-          warranty: '3 Years',
-          location: 'Main Office, Pune',
-        },
-      },
-      {
-        id: 'INV-003',
-        type: 'Procurement Prepaid',
-        invoiceNumber: 'INV-003',
-        vendorName: 'Delta Solutions',
-        totalAmount: 230000,
-        status: 'Pending GST Verification',
-        gstRate: 18,
-        hsnCode: '998223',
-        hsnSummary: 'Consultancy Services',
-        documentUrl: '/public/DxotBTxfHn.png',
-        submittedBy: 'procurement',
-        submittedAt: new Date().toISOString(),
-        processedBy: null,
-        processedAt: null,
-        remarks: '',
-        poDocuments: [
-          { name: 'PO-001', url: 'https://example.com/po-001.pdf' },
-          { name: 'PO-002', url: 'https://example.com/po-002.pdf' },
-        ],
-        assetDetails: {
-          assetCategory: 'Machinery',
-          assetTag: 'FA-2024-002',
-          serialNumber: 'SN-BX4591',
-          warranty: '2 Years',
-          location: 'Factory Unit B',
-        },
-      },
-      {
-        id: 'INV-004',
-        type: 'Material',
-        invoiceNumber: 'INV-004',
-        vendorName: 'FastBuild Supplies',
-        totalAmount: 45000,
-        status: 'Pending GST Verification',
-        gstRate: 5,
-        hsnCode: '401693',
-        hsnSummary: 'Rubber Gaskets',
-        documentUrl: '/public/DxotBTxfHn.png',
-        submittedBy: 'procurement',
-        submittedAt: new Date().toISOString(),
-        processedBy: null,
-        processedAt: null,
-        remarks: '',
-        poDocuments: [
-          { name: 'PO-001', url: 'https://example.com/po-001.pdf' },
-          { name: 'PO-002', url: 'https://example.com/po-002.pdf' },
-        ],
-      },
-      {
-        id: 'INV-005',
-        type: 'Procurement Prepaid',
-        invoiceNumber: 'INV-005',
-        vendorName: 'TechFront Pvt Ltd',
-        totalAmount: 158000,
-        status: 'Pending GST Verification',
-        gstRate: 18,
-        hsnCode: '847149',
-        hsnSummary: 'Hardware Equipments',
-        documentUrl: '/public/DxotBTxfHn.png',
-        submittedBy: 'procurement',
-        submittedAt: new Date().toISOString(),
-        processedBy: null,
-        processedAt: null,
-        remarks: '',
-        poDocuments: [
-          { name: 'PO-001', url: 'https://example.com/po-001.pdf' },
-          { name: 'PO-002', url: 'https://example.com/po-002.pdf' },
-        ],
-        assetDetails: {
-          assetCategory: 'Office Equipment',
-          assetTag: 'FA-2024-003',
-          serialNumber: 'SN-CY1234',
-          warranty: '5 Years',
-          location: 'Branch Office, Mumbai',
-        },
-      },
-    ]
-
-    // Initialize localStorage with invoice data
-    localStorage.setItem('pending_ae_invoices', JSON.stringify(initialInvoicesForAE))
-    localStorage.setItem('pending_am_invoices', JSON.stringify([]))
-    localStorage.setItem('processed_invoices', JSON.stringify([]))
-    localStorage.setItem('rejected_invoices', JSON.stringify([]))
-    localStorage.setItem('invoice_counter', '1006')
-    localStorage.setItem('vendor_counter', '0')
-    localStorage.setItem('vendor_master', JSON.stringify({}))
-    localStorage.setItem('last_data_refresh', new Date().toISOString())
-
-    return initialInvoicesForAE
-  }
-
-  // Load Invoice Data from localStorage
-  const loadInvoiceData = () => {
-    try {
-      const pendingInvoices = localStorage.getItem('pending_ae_invoices')
-
-      if (pendingInvoices) {
-        const parsedInvoices = JSON.parse(pendingInvoices)
-        setInvoices(parsedInvoices)
-        setFilteredInvoices(parsedInvoices)
-      } else {
-        // Initialize if no data exists
-        const initialData = initializeInvoiceData()
-        setInvoices(initialData)
-        setFilteredInvoices(initialData)
-      }
-    } catch (error) {
-      console.error('Error loading invoice data:', error)
-      // Fallback to initialization if loading fails
-      const initialData = initializeInvoiceData()
-      setInvoices(initialData)
-      setFilteredInvoices(initialData)
-    }
-  }
-
-  // Generate new invoices (Simulating new invoices from Procurement)
-  const generateNewInvoice = () => {
-    const vendors = [
-      'Tech Solutions Pvt Ltd',
-      'Office Supplies Co',
-      'Marketing Agency Ltd',
-      'Industrial Equipment Corp',
-      'Construction Materials Inc',
-      'Software Services Ltd',
-    ]
-
-    const types = ['Material', 'Fixed Asset', 'Procurement Prepaid']
-    const priorities = ['High', 'Medium', 'Low']
-
-    const randomVendor = vendors[Math.floor(Math.random() * vendors.length)]
-    const randomType = types[Math.floor(Math.random() * types.length)]
-    const randomPriority = priorities[Math.floor(Math.random() * priorities.length)]
-
-    // Vendor Master Creation with Auto-Increment
-    const vendorMaster = JSON.parse(localStorage.getItem('vendor_master') || '{}')
-    const vendorCounter = parseInt(localStorage.getItem('vendor_counter') || '0')
-
-    if (!vendorMaster[randomVendor]) {
-      // Increment vendor counter
-      const newVendorNumber = vendorCounter + 1
-      const vendorCode = String(newVendorNumber).padStart(3, '0')
-
-      // Create vendor-specific payable GL code with auto-increment
-      const payableGlCode = `L2005002_${vendorCode}_${randomVendor.replace(/\s+/g, '_')}`
-
-      vendorMaster[randomVendor] = {
-        vendor_id: `VEND_${vendorCode}`,
-        vendor_name: randomVendor,
-        vendor_number: vendorCode,
-        created_date: new Date().toISOString(),
-
-        // GL MAPPINGS:
-        expense_gl_code: 'X1001004001', // Shared HK MATERIALS expense
-        payable_gl_code: payableGlCode, // Vendor-specific with increment
-
-        // Track invoices
-        total_invoices: 0,
-        total_amount: 0,
-      }
-
-      // Save updated vendor master and counter
-      localStorage.setItem('vendor_master', JSON.stringify(vendorMaster))
-      localStorage.setItem('vendor_counter', String(newVendorNumber))
-
-      console.log(`New vendor created: ${randomVendor} with code ${vendorCode}`)
-    }
-
-    const currentCounter = parseInt(localStorage.getItem('invoice_counter') || '1006')
-    const newInvoiceId = `INV-${String(currentCounter).padStart(3, '0')}`
-
-    const newInvoice = {
-      id: newInvoiceId,
-      type: randomType,
-      invoiceNumber: newInvoiceId,
-      vendorName: randomVendor,
-      totalAmount: Math.floor(Math.random() * 200000) + 50000,
-      status: 'Pending GST Verification',
-      gstRate: [5, 12, 18][Math.floor(Math.random() * 3)],
-      hsnCode: Math.floor(Math.random() * 900000) + 100000,
-      hsnSummary: `${randomType} Services`,
-      documentUrl: '/public/DxotBTxfHn.png',
-      submittedBy: 'procurement',
-      submittedAt: new Date().toISOString(),
-      processedBy: null,
-      processedAt: null,
-      remarks: '',
-      priority: randomPriority,
-      poDocuments: [
-        { name: `PO-${currentCounter}`, url: `https://example.com/po-${currentCounter}.pdf` },
-      ],
-      // ADD GL MAPPINGS TO THE NEW INVOICE
-      vendor_gl_mappings: {
-        expense_gl_code: vendorMaster[randomVendor].expense_gl_code,
-        payable_gl_code: vendorMaster[randomVendor].payable_gl_code,
-        vendor_number: vendorMaster[randomVendor].vendor_number,
-      },
-    }
-
-    if (randomType === 'Fixed Asset') {
-      const assetCategories = ['Computer', 'Machinery', 'Furniture', 'Software', 'Office Equipment']
-      const randomCategory = assetCategories[Math.floor(Math.random() * assetCategories.length)]
-
-      newInvoice.assetDetails = {
-        assetCategory: randomCategory,
-        assetTag: `FA-2024-${String(currentCounter).padStart(3, '0')}`,
-        serialNumber: `SN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-        warranty: `${Math.floor(Math.random() * 5) + 1} Years`,
-        location: ['Main Office, Pune', 'Factory Unit B', 'Branch Office, Mumbai'][
-          Math.floor(Math.random() * 3)
-        ],
-      }
-    }
-
-    // Update localStorage
-    const currentInvoices = JSON.parse(localStorage.getItem('pending_ae_invoices') || '[]')
-    const updatedInvoices = [...currentInvoices, newInvoice]
-
-    localStorage.setItem('pending_ae_invoices', JSON.stringify(updatedInvoices))
-    localStorage.setItem('invoice_counter', String(currentCounter + 1))
-    localStorage.setItem('last_data_refresh', new Date().toISOString())
-
-    // Update state
-    setInvoices(updatedInvoices)
-    setFilteredInvoices(updatedInvoices)
-
-    alert(`New invoice ${newInvoiceId} from ${randomVendor} added to your queue!`)
-  }
-
-  // Reset Invoice Data
-  const resetInvoiceData = () => {
-    if (
-      window.confirm(
-        'Are you sure you want to reset all invoice data? This will clear all processed invoices.'
-      )
-    ) {
-      localStorage.removeItem('pending_ae_invoices')
-      localStorage.removeItem('pending_am_invoices')
-      localStorage.removeItem('processed_invoices')
-      localStorage.removeItem('rejected_invoices')
-      localStorage.removeItem('invoice_counter')
-      localStorage.removeItem('vendor_counter')
-      localStorage.removeItem('vendor_master')
-      localStorage.removeItem('last_data_refresh')
-
-      const initialData = initializeInvoiceData()
-      setInvoices(initialData)
-      setFilteredInvoices(initialData)
-
-      alert('Invoice data has been reset!')
-    }
-  }
-
-  // Load data on component mount
+  // Fetch pending invoices when page or filters change
   useEffect(() => {
-    loadInvoiceData()
-  }, [])
-
-  // Auto-refresh mechanism (optional)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const lastRefresh = localStorage.getItem('last_data_refresh')
-      if (lastRefresh) {
-        const timeDiff = new Date() - new Date(lastRefresh)
-        if (timeDiff > 5 * 60 * 1000) {
-          const shouldAdd = Math.random() > 0.7
-          if (shouldAdd) {
-            generateNewInvoice()
-          }
-        }
-      }
-    }, 60000)
-
-    return () => clearInterval(interval)
-  }, [])
+    const fetchParams = {
+      page: currentPage,
+      limit: itemsPerPage,
+      invoiceNumber: filters.invoiceNumber || undefined,
+      vendorName: filters.vendorName || undefined,
+      date: filters.date || undefined,
+    }
+    dispatch(fetchAEPendingInvoices(fetchParams))
+  }, [dispatch, currentPage, filters])
 
   const openModal = (invoice) => {
     setSelectedInvoice(invoice)
@@ -357,212 +45,209 @@ const InvoiceReviewPage = () => {
     setIsModalOpen(false)
   }
 
-  // Modified handleUpdateInvoice - This is the key function for workflow
-  const handleUpdateInvoice = (id, status, remark = '') => {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
-    const timestamp = new Date().toISOString()
+  // Handle AE Decision (Approve or Reject) triggering Redux Thunks
+  const handleUpdateInvoice = async (id, status, decisionData) => {
+    try {
+      if (status === 'Approved') {
+        const payload = {
+          gstRate: parseFloat(decisionData.gstRate),
+          hsnCode: decisionData.hsnCode,
+          hsnSummary: decisionData.hsnSummary,
+          site_state: decisionData.siteState,
+          company_state: decisionData.companyState,
+          remarks: decisionData.remarks
+        }
+        await dispatch(approveAEInvoice({ invoiceId: id, payload })).unwrap()
+        toast.success(`Invoice Approved and forwarded to Account Manager!`)
+      } else {
+        const payload = {
+          gst_rate: parseFloat(decisionData.gstRate || 0),
+          remarks: decisionData.remarks
+        }
+        await dispatch(rejectAEInvoice({ invoiceId: id, payload })).unwrap()
+        toast.error(`Invoice Rejected and returned to vendor.`)
+      }
+      closeModal()
+      
+      // Edge Case: If we just approved/rejected the last item on page > 1, go back one page.
+      const targetPage = (invoices.length === 1 && currentPage > 1) ? currentPage - 1 : currentPage;
+      setCurrentPage(targetPage);
 
-    // Get current invoice data
-    const currentInvoices = JSON.parse(localStorage.getItem('pending_ae_invoices') || '[]')
-    const invoiceToUpdate = currentInvoices.find((inv) => inv.id === id)
-
-    if (!invoiceToUpdate) return
-
-    // Update invoice with AE decision
-    const updatedInvoice = {
-      ...invoiceToUpdate,
-      status: status,
-      remark: remark,
-      processedBy: currentUser.username || 'ae1',
-      processedAt: timestamp,
+      // Refresh active page queue
+      dispatch(fetchAEPendingInvoices({
+        page: targetPage,
+        limit: itemsPerPage,
+        invoiceNumber: filters.invoiceNumber || undefined,
+        vendorName: filters.vendorName || undefined,
+        date: filters.date || undefined,
+      }))
+    } catch (error) {
+      toast.error(`Decision Submission Failed: ${error}`)
     }
-
-    if (status === 'Approved') {
-      // Step 12: AE Approved - Move to Account Manager queue
-      const pendingAMInvoices = JSON.parse(localStorage.getItem('pending_am_invoices') || '[]')
-      updatedInvoice.status = 'Approved by AE - Pending AM Review'
-
-      // Add to AM queue
-      const updatedAMQueue = [...pendingAMInvoices, updatedInvoice]
-      localStorage.setItem('pending_am_invoices', JSON.stringify(updatedAMQueue))
-
-      // Remove from AE queue
-      const updatedAEQueue = currentInvoices.filter((inv) => inv.id !== id)
-      localStorage.setItem('pending_ae_invoices', JSON.stringify(updatedAEQueue))
-
-      // Update local state
-      setInvoices(updatedAEQueue)
-      setFilteredInvoices(updatedAEQueue)
-
-      alert(
-        `Invoice ${invoiceToUpdate.invoiceNumber} approved and sent to Account Manager for final processing!`
-      )
-    } else if (status === 'Rejected') {
-      // Step 11: AE Rejected - Move to rejected queue
-      const rejectedInvoices = JSON.parse(localStorage.getItem('rejected_invoices') || '[]')
-      updatedInvoice.status = 'Rejected by AE'
-      updatedInvoice.rejectedAt = timestamp
-
-      // Add to rejected queue
-      const updatedRejectedQueue = [...rejectedInvoices, updatedInvoice]
-      localStorage.setItem('rejected_invoices', JSON.stringify(updatedRejectedQueue))
-
-      // Remove from AE queue
-      const updatedAEQueue = currentInvoices.filter((inv) => inv.id !== id)
-      localStorage.setItem('pending_ae_invoices', JSON.stringify(updatedAEQueue))
-
-      // Update local state
-      setInvoices(updatedAEQueue)
-      setFilteredInvoices(updatedAEQueue)
-
-      alert(
-        `Invoice ${invoiceToUpdate.invoiceNumber} rejected and sent back to vendor with remarks.`
-      )
-    }
-
-    closeModal()
   }
 
   const handleFilter = (newFilters) => {
     setFilters(newFilters)
-    const { invoiceNumber, vendorName, date } = newFilters
-    const filtered = invoices.filter((inv) => {
-      return (
-        (!invoiceNumber || inv.invoiceNumber.includes(invoiceNumber)) &&
-        (!vendorName || inv.vendorName.toLowerCase().includes(vendorName.toLowerCase())) &&
-        (!date || inv.submittedAt?.includes(date))
-      )
-    })
-    setFilteredInvoices(filtered)
     setCurrentPage(1)
   }
 
-  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage)
-  const currentInvoices = filteredInvoices.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  const handleRefresh = () => {
+    dispatch(fetchAEPendingInvoices({
+      page: currentPage,
+      limit: itemsPerPage,
+      invoiceNumber: filters.invoiceNumber || undefined,
+      vendorName: filters.vendorName || undefined,
+      date: filters.date || undefined,
+    }))
+    toast.info('Refreshing invoices list...')
+  }
 
   return (
-    <div className="p-2 md:p-4 lg:p-6 max-w-7xl mx-auto bg-white shadow-md rounded-md overflow-hidden">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-green-700">
-          Invoice Review (Account Executive)
-        </h1>
-
-        {/* Control Buttons for Demo/Development */}
-        <div className="flex gap-2">
-          <button
-            onClick={generateNewInvoice}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-            title="Simulate new invoice from Procurement"
-          >
-            + Add New Invoice
-          </button>
-          <button
-            onClick={resetInvoiceData}
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-            title="Reset all invoice data"
-          >
-            Reset Data
-          </button>
-          <button
-            onClick={loadInvoiceData}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
-            title="Refresh invoice data"
-          >
-            Refresh
-          </button>
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto bg-gray-50 min-h-screen">
+      {/* Header section styled like Advance Settlement */}
+      <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <span>✅</span>Invoice Processing – Account Executive Review
+          </h1>
+          <p className="text-green-100 text-sm mt-0.5">
+            Review and verify / reject invoices for your queue
+          </p>
         </div>
+        <button
+          onClick={handleRefresh}
+          className="bg-white hover:bg-green-50 text-green-700 font-semibold px-4 py-2 rounded-xl text-sm transition-colors duration-200 shadow-sm border border-green-200"
+          title="Refresh invoices list"
+        >
+          Refresh Queue
+        </button>
       </div>
 
       <AEInvoiceFilter filters={filters} setFilters={handleFilter} />
 
-      <div className="overflow-x-auto mt-4 rounded border">
-        <table className="w-full text-xs sm:text-sm md:text-base table-fixed">
-          <thead className="bg-gray-100 text-left text-gray-700">
-            <tr>
-              <th className="p-2 sm:p-3 border w-[12%]">Invoice #</th>
-              <th className="p-2 sm:p-3 border w-[20%]">Vendor Name</th>
-              <th className="p-2 sm:p-3 border w-[12%]">Amount (₹)</th>
-              <th className="p-2 sm:p-3 border w-[15%]">PO</th>
-              <th className="p-2 sm:p-3 border w-[15%]">Type</th>
-              <th className="p-2 sm:p-3 border w-[16%]">Status</th>
-              <th className="p-2 sm:p-3 border text-center w-[10%]">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentInvoices.length === 0 ? (
-              <tr>
-                <td colSpan="7" className="p-4 text-center text-gray-500">
-                  No invoices pending for review
-                </td>
-              </tr>
-            ) : (
-              currentInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="p-2 sm:p-3 border">{inv.invoiceNumber}</td>
-                  <td className="p-2 sm:p-3 border">{inv.vendorName}</td>
-                  <td className="p-2 sm:p-3 border">₹{inv.totalAmount.toLocaleString()}</td>
-                  <td className="p-2 sm:p-3 border text-xs space-y-1">
-                    {inv.poDocuments && inv.poDocuments.length > 0 ? (
-                      inv.poDocuments.map((doc, index) => (
-                        <div key={index}>
-                          {index + 1}]{' '}
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-green-600 underline hover:text-green-800"
-                          >
-                            {doc.name}
-                          </a>
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 italic">No PO</span>
-                    )}
-                  </td>
-                  <td className="p-2 sm:p-3 border">{inv.type || 'Material'}</td>
-                  <td className="p-2 sm:p-3 border">
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        inv.status === 'Pending GST Verification'
-                          ? 'bg-yellow-200 text-yellow-800'
-                          : inv.status === 'Approved'
-                            ? 'bg-green-200 text-green-800'
-                            : inv.status === 'Rejected'
-                              ? 'bg-red-200 text-red-800'
-                              : 'bg-gray-200 text-gray-800'
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="p-2 sm:p-3 border text-center">
-                    <button
-                      onClick={() => openModal(inv)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs md:text-sm"
-                    >
-                      View & Verify
-                    </button>
-                  </td>
+      {errors.fetch && (
+        <div className="bg-red-50 text-red-600 border border-red-200 p-4 rounded-xl mb-4 text-sm font-medium">
+          Error loading invoices: {errors.fetch}
+        </div>
+      )}
+
+      {/* Loading state spinner */}
+      {loading.fetch && (
+        <div className="flex justify-center py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+        </div>
+      )}
+
+      {/* Empty State matching Advance Settlement */}
+      {!loading.fetch && invoices.length === 0 && (
+        <div className="bg-white rounded-xl border border-green-100 shadow-sm py-16 text-center">
+          <p className="text-4xl mb-3">📭</p>
+          <p className="text-gray-500 font-medium">No material invoices found.</p>
+          <p className="text-sm text-gray-400 mt-1">
+            {filters.invoiceNumber || filters.vendorName || filters.date
+              ? 'Try changing your search filters.'
+              : 'Material invoices pending your review will appear here.'}
+          </p>
+        </div>
+      )}
+
+      {/* Table block matching Advance Settlement styling */}
+      {!loading.fetch && invoices.length > 0 && (
+        <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden mt-4">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-green-600 text-white text-left">
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Invoice ID</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Vendor Name</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Amount (₹)</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">PO References</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Invoice Type</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-green-50">
+                {invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-green-50/30 transition-colors duration-150">
+                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                      <div className="font-semibold">{inv.id}</div>
+                      <div className="text-xs text-gray-400 font-normal">{inv.invoiceNumber}</div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {inv.vendorName}
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">
+                      ₹{parseFloat(inv.totalAmount || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {inv.poDocuments && inv.poDocuments.length > 0 ? (
+                        <div className="space-y-1">
+                          {inv.poDocuments.map((doc, index) => (
+                            <div key={index} className="truncate max-w-[200px]">
+                              {index + 1}.{' '}
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-green-600 underline hover:text-green-800 font-medium"
+                                title={doc.po_number || doc.name}
+                              >
+                                {doc.po_number || doc.name || `PO-${index + 1}`}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic">No PO References</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                      {inv.type ? (inv.type.charAt(0).toUpperCase() + inv.type.slice(1).toLowerCase()) : 'Material'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold inline-block border ${
+                          inv.status === 'Pending GST Verification'
+                            ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                            : inv.status === 'Approved' || inv.status.includes('Approved')
+                              ? 'bg-green-50 text-green-700 border-green-200'
+                              : inv.status === 'Rejected' || inv.status.includes('Rejected')
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-gray-50 text-gray-700 border-gray-200'
+                        }`}
+                      >
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <button
+                        onClick={() => openModal(inv)}
+                        className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-xl text-xs md:text-sm shadow-sm transition-colors duration-200"
+                      >
+                        View & Verify
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {pagination.totalPages > 1 && (
         <div className="flex justify-center mt-4 flex-wrap gap-2">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
               onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1 rounded border text-xs md:text-sm font-medium ${
-                page === currentPage ? 'bg-green-600 text-white' : 'bg-white text-gray-700'
+              className={`px-3 py-1 rounded border text-xs md:text-sm font-medium transition-colors duration-200 ${
+                page === currentPage ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
               {page}
@@ -578,6 +263,7 @@ const InvoiceReviewPage = () => {
           onClose={closeModal}
           invoice={selectedInvoice}
           handleUpdateInvoice={handleUpdateInvoice}
+          isSubmitting={loading.approve || loading.reject}
         />
       )}
     </div>

@@ -47,6 +47,16 @@ const MonthlyVoucherGenerator = ({ site, agreement, onSuccess }) => {
       return false;
     }
 
+    // Check if agreement is terminated prematurely
+    if (agreement.status === "terminated" && agreement.terminationDate) {
+      const termDate = new Date(agreement.terminationDate + "-01");
+      const termFirstDay = new Date(termDate.getFullYear(), termDate.getMonth(), 1);
+      if (selectedFirstDay > termFirstDay) {
+        setValidationError(`Agreement terminated prematurely. Cannot generate voucher after ${agreement.terminationDate}`);
+        return false;
+      }
+    }
+
     // ✅ NEW: Check if voucher already exists for this month
     const voucherExists = existingVouchers.some(v => v.month === selectedMonth);
     if (voucherExists) {

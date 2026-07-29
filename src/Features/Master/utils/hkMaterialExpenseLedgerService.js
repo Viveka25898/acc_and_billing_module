@@ -1,299 +1,190 @@
 /* eslint-disable no-unused-vars */
 // utils/hkMaterialsExpenseLedgerService.js
 
-/**
- * HK MATERIALS EXPENSE LEDGER SERVICE
- * GL Code: X1001004001
- * Handles all HK Materials expense transactions
- */
+import axiosInstance from '../../../api/axiosInstance'
 
 export class HKMaterialsExpenseLedgerService {
+  /**
+   * Formats API Date string (YYYY-MM-DD) to UI display (DD-MMM-YYYY)
+   */
+  static formatDate(dateString) {
+    try {
+      if (!dateString) return '-'
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return dateString
 
-    /**
-     * Get all expense entries for HK Materials (X1001004001)
-     */
-    static getExpenseLedgerEntries() {
-        try {
-            const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = months[date.getMonth()]
+      const year = date.getFullYear()
+      return `${day}-${month}-${year}`
+    } catch {
+      return dateString
+    }
+  }
 
-            console.log('📊 Generating HK Materials Expense ledger for: X1001004001');
+  /**
+   * Safe date parsing helper for filtering
+   */
+  static parseDate(dateString) {
+    try {
+      if (!dateString) return null
+      return new Date(dateString)
+    } catch {
+      return null
+    }
+  }
 
-            // Filter transactions that have X1001004001 (HK Materials Expense) entries
-            const hkExpenseTransactions = transactions.filter(txn =>
-                txn.entries?.some(entry => entry.glCode === "X1001004001")
-            );
+  /**
+   * Fetches actual HK materials expense ledger from the backend APIs
+   */
+  static async getHKMaterialsExpenseLedger(filters = {}) {
+    try {
+      console.log(`📊 Fetching HK Materials Expense Ledger from APIs with filters:`, filters)
 
-            // Sort by date ascending
-            hkExpenseTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+      // Prepare request parameters for the entries endpoint (omit empty parameters to avoid 422 validation errors)
+      const params = {
+        page: filters.page || 1,
+        limit: filters.limit || 20,
+      }
+      if (filters.fromDate) params.fromDate = filters.fromDate
+      if (filters.toDate) params.toDate = filters.toDate
+      if (filters.entryType) params.entryType = filters.entryType
+      if (filters.vendorName) {
+        params.vendorName = filters.vendorName
+        params.search = filters.vendorName
+      }
 
-            console.log(`📋 Found ${hkExpenseTransactions.length} HK Materials Expense transactions`);
+      // Fetch header and entries in parallel
+      const [headerRes, entriesRes] = await Promise.all([
+        axiosInstance.get('/account-master/ledger/expense/hk-materials/header'),
+        axiosInstance.get('/account-master/ledger/expense/hk-materials/entries', { params })
+      ])
 
-            // Convert to ledger entries with running balance
-            const ledgerEntries = [];
-            let runningBalance = 0;
-            let balanceType = 'DR'; // Expenses have debit balance
+      const headerData = headerRes.data?.results || headerRes.data?.data || headerRes.data || {}
+      const entriesResults = entriesRes.data?.results || entriesRes.data?.data || entriesRes.data || {}
+      const rawEntries = entriesResults.entries || []
+      const totalsData = entriesResults.totals || {}
+      const paginationData = entriesResults.pagination || {}
 
-            hkExpenseTransactions.forEach(txn => {
-                const expenseEntry = txn.entries.find(entry => entry.glCode === "X1001004001");
+      // Map entries to match the table rendering properties
+      const entries = rawEntries.map((entry) => {
+        const debit = entry.debit !== null && entry.debit !== undefined && entry.debit !== '-' ? parseFloat(entry.debit) : 0
+        const credit = entry.credit !== null && entry.credit !== undefined && entry.credit !== '-' ? parseFloat(entry.credit) : 0
 
-                if (expenseEntry) {
-                    const debit = expenseEntry.debit || 0;
-                    const credit = expenseEntry.credit || 0;
+        const debitStr = debit > 0 ? debit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'
+        const creditStr = credit > 0 ? credit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'
 
-                    // Calculate running balance (expense perspective)
-                    // For expenses: Debit increases expense, Credit decreases
-                    runningBalance += debit - credit;
-                    balanceType = runningBalance >= 0 ? 'DR' : 'CR';
-
-                    // Get vendor info from transaction
-                    const vendorEntry = txn.entries.find(entry =>
-                        entry.glCode.startsWith('L2005')
-                    );
-                    const vendorName = vendorEntry?.glName?.replace('VENDOR - ', '') ||
-                        txn.vendorName || 'Unknown Vendor';
-
-                    // Format date for display (DD-MM-YY format)
-                    const displayDate = this.formatDate(txn.date);
-
-                    // Format balance
-                    const formattedBalance = `${Math.abs(runningBalance).toLocaleString('en-IN', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    })} ${balanceType}`;
-
-                    ledgerEntries.push({
-                        date: displayDate,
-                        originalDate: txn.date,
-                        voucherNo: txn.voucherNo,
-                        entryType: this.getExpenseEntryType(debit, credit),
-                        particulars: this.getParticulars(txn, expenseEntry, vendorName),
-                        voucherType: txn.voucherType || 'Purchase Voucher',
-                        debit: debit > 0 ? debit.toLocaleString('en-IN', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        }) : '-',
-                        credit: credit > 0 ? credit.toLocaleString('en-IN', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        }) : '-',
-                        balance: formattedBalance,
-                        balanceType: balanceType,
-                        narration: expenseEntry.narration || txn.narration || '',
-                        vendorName: vendorName,
-                        invoiceNumber: txn.invoiceNumber || '-',
-                        costCenter: expenseEntry.costCenter || txn.costCenter || 'Operations',
-                        customer: txn.customer || txn.clientName || '-',
-                        site: expenseEntry.site || txn.site || '-',
-                        state: txn.state || '-',
-                        city: txn.city || '-',
-                        branch: txn.branch || '-',
-                        status: txn.status || 'Posted',
-                        approvedBy: txn.approvedBy || 'System'
-                    });
-                }
-            });
-
-            console.log(`✅ Generated ${ledgerEntries.length} HK Materials Expense ledger entries`);
-            return ledgerEntries;
-
-        } catch (error) {
-            console.error('❌ Error generating HK Materials Expense ledger:', error);
-            return [];
+        // Balance formatting (the API returns it as "111864.41 DR")
+        let balanceStr = entry.balance || '-'
+        if (typeof balanceStr === 'number') {
+          balanceStr = `${balanceStr.toLocaleString('en-IN', { minimumFractionDigits: 2 })} DR`
         }
-    }
 
-    /**
-     * Get account details for header
-     */
-    static getAccountDetails() {
-        try {
-            const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-            const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
-
-            const account = chartOfAccounts.find(acc => acc.code === "X1001004001");
-
-            if (!account) {
-                console.log('❌ HK Materials Expense account not found');
-                return {
-                    accountCode: "X1001004001",
-                    accountName: "HK MATERIALS",
-                    accountType: "Expense Account",
-                    category: "Direct Expenses",
-                    currentBalance: "0.00 DR"
-                };
-            }
-
-            // Get current balance
-            const balance = ledgerBalances["X1001004001"] || { debit: 0, credit: 0, balance: 0 };
-            const currentBalance = Math.abs(balance.balance);
-            const balanceType = balance.balance >= 0 ? 'DR' : 'CR';
-
-            // Get transaction summary
-            const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-            const hkExpenseTransactions = transactions.filter(txn =>
-                txn.entries?.some(entry => entry.glCode === "X1001004001")
-            );
-
-            let totalExpenses = 0;
-            let totalReversals = 0;
-            let transactionCount = 0;
-
-            hkExpenseTransactions.forEach(txn => {
-                const expenseEntry = txn.entries.find(entry => entry.glCode === "X1001004001");
-                if (expenseEntry) {
-                    totalExpenses += expenseEntry.debit || 0;
-                    totalReversals += expenseEntry.credit || 0;
-                    transactionCount++;
-                }
-            });
-
-            return {
-                accountCode: "X1001004001",
-                accountName: account.name || "HK MATERIALS",
-                accountType: "Expense Account",
-                category: "Direct Expenses",
-                parentAccount: account.parentAccount || "DIRECT EXPENSES",
-                currentBalance: `${currentBalance.toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })} ${balanceType}`,
-                balanceAmount: currentBalance,
-                balanceType: balanceType,
-                summary: {
-                    totalExpenses: `₹${totalExpenses.toLocaleString('en-IN')}`,
-                    totalReversals: `₹${totalReversals.toLocaleString('en-IN')}`,
-                    netExpense: `₹${(totalExpenses - totalReversals).toLocaleString('en-IN')}`,
-                    transactionCount: transactionCount
-                }
-            };
-
-        } catch (error) {
-            console.error('❌ Error getting account details:', error);
-            return {
-                accountCode: "X1001004001",
-                accountName: "HK MATERIALS",
-                accountType: "Expense Account",
-                category: "Direct Expenses",
-                currentBalance: "0.00 DR"
-            };
+        return {
+          date: this.formatDate(entry.date),
+          originalDate: entry.date,
+          voucherNo: entry.voucherNo || '-',
+          entryType: entry.entryType || 'Expense',
+          particulars: entry.particulars || '-',
+          voucherType: entry.voucherType || '-',
+          debit: debitStr,
+          credit: creditStr,
+          balance: balanceStr,
+          vendorName: entry.vendorName || '-',
+          invoiceNumber: entry.invoiceNumber || '-',
+          costCenter: entry.costCenter || '-',
+          customer: entry.customer || '-',
+          site: entry.site || '-',
+          state: entry.state || '-'
         }
-    }
+      })
 
-    /**
-     * Determine entry type based on debit/credit
-     */
-    static getExpenseEntryType(debit, credit) {
-        if (debit > 0 && credit === 0) return 'Expense';
-        if (credit > 0 && debit === 0) return 'Reversal';
-        return 'Journal';
-    }
+      // Generate the vendor wise summary dynamically from the entries list
+      const vendorSummary = this.getVendorWiseSummary(entries)
 
-    /**
-     * Get particulars text for ledger entry
-     */
-    static getParticulars(txn, expenseEntry, vendorName) {
-        // For expense entries, show the vendor name
-        if (expenseEntry.debit > 0) {
-            return `To ${vendorName}`;
-        } else {
-            return `By ${vendorName}`;
+      // Normalize current balance formatting
+      let currentBalanceStr = headerData.currentBalance || '0.00 DR'
+      let balanceVal = parseFloat(currentBalanceStr.replace(/[^\d.]/g, '')) || 0
+      let balanceType = currentBalanceStr.includes('CR') ? 'CR' : 'DR'
+
+      const summary = headerData.summary || {}
+
+      return {
+        accountDetails: {
+          accountCode: headerData.accountCode || 'X1001004001',
+          accountName: headerData.accountName || 'HK materials',
+          accountType: headerData.accountType || 'Expense Account',
+          category: headerData.category || 'Direct Expenses',
+          parentAccount: headerData.parentAccount || 'MATERIALS FOR PRODUCTION',
+          currentBalance: currentBalanceStr,
+          balanceAmount: balanceVal,
+          balanceType: balanceType,
+          summary: {
+            totalExpenses: summary.totalExpenses || '₹0',
+            totalReversals: summary.totalReversals || '₹0',
+            netExpense: summary.netExpense || '₹0',
+            transactionCount: summary.transactionCount || 0
+          }
+        },
+        entries,
+        vendorSummary,
+        totals: {
+          totalDebit: parseFloat(totalsData.totalDebit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          totalCredit: parseFloat(totalsData.totalCredit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          closingBalance: totalsData.closingBalance || '0.00 DR'
+        },
+        pagination: {
+          page: paginationData.page || 1,
+          limit: paginationData.limit || 20,
+          totalItems: paginationData.totalItems || rawEntries.length,
+          totalPages: paginationData.totalPages || 1,
+          hasNextPage: paginationData.hasNextPage !== undefined ? paginationData.hasNextPage : false,
+          hasPreviousPage: paginationData.hasPreviousPage !== undefined ? paginationData.hasPreviousPage : false
         }
+      }
+    } catch (e) {
+      console.error('Error fetching HK Materials Expense Ledger:', e)
+      throw e
     }
+  }
 
-    /**
-     * Format date for display (DD-MM-YY format)
-     */
-    static formatDate(dateString) {
-        try {
-            let date;
-            if (dateString.includes('-')) {
-                const parts = dateString.split('-');
-                if (parts[0].length === 4) {
-                    // YYYY-MM-DD format
-                    date = new Date(dateString);
-                } else {
-                    // DD-MM-YY format - convert to YYYY-MM-DD
-                    const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-                    date = new Date(`${year}-${parts[1]}-${parts[0]}`);
-                }
-            } else {
-                date = new Date(dateString);
-            }
+  /**
+   * Get vendor-wise expense summary from the entries
+   */
+  static getVendorWiseSummary(entries) {
+    try {
+      const vendorMap = new Map()
 
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = String(date.getFullYear()).slice(-2);
-            return `${day}-${month}-${year}`;
-        } catch (error) {
-            return dateString;
+      entries.forEach(entry => {
+        // Group by vendorName if present; if it is '-' (unmapped), group under 'Unmapped'
+        const vendorName = entry.vendorName !== '-' ? entry.vendorName : 'Unmapped'
+        const debitVal = entry.debit !== '-' ? parseFloat(entry.debit.replace(/,/g, '')) : 0
+
+        if (debitVal <= 0) return
+
+        if (!vendorMap.has(vendorName)) {
+          vendorMap.set(vendorName, {
+            vendorName: vendorName,
+            totalExpense: 0,
+            transactionCount: 0,
+            invoices: []
+          })
         }
-    }
 
-    /**
-     * Parse date for filtering (convert DD-MM-YY to Date object)
-     */
-    static parseDate(dateString) {
-        try {
-            if (!dateString) return null;
-            if (dateString.includes('-')) {
-                const parts = dateString.split('-');
-                if (parts[0].length === 4) {
-                    // YYYY-MM-DD format
-                    return new Date(dateString);
-                } else {
-                    // DD-MM-YY format
-                    const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-                    return new Date(`${year}-${parts[1]}-${parts[0]}`);
-                }
-            }
-            return new Date(dateString);
-        } catch (error) {
-            return null;
+        const vendor = vendorMap.get(vendorName)
+        vendor.totalExpense += debitVal
+        vendor.transactionCount++
+        if (entry.invoiceNumber && entry.invoiceNumber !== '-') {
+          vendor.invoices.push(entry.invoiceNumber)
         }
+      })
+
+      return Array.from(vendorMap.values())
+        .sort((a, b) => b.totalExpense - a.totalExpense)
+    } catch (error) {
+      console.error('Error calculating vendor-wise summary:', error)
+      return []
     }
-
-    /**
-     * Get vendor-wise expense summary
-     */
-    static getVendorWiseSummary() {
-        try {
-            const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-
-            const vendorMap = new Map();
-
-            transactions.forEach(txn => {
-                const expenseEntry = txn.entries?.find(entry => entry.glCode === "X1001004001");
-                const vendorEntry = txn.entries?.find(entry => entry.glCode.startsWith('L2005'));
-
-                if (expenseEntry && vendorEntry) {
-                    const vendorName = vendorEntry.glName?.replace('VENDOR - ', '') ||
-                        txn.vendorName || 'Unknown';
-                    const amount = expenseEntry.debit || 0;
-
-                    if (!vendorMap.has(vendorName)) {
-                        vendorMap.set(vendorName, {
-                            vendorName: vendorName,
-                            totalExpense: 0,
-                            transactionCount: 0,
-                            invoices: []
-                        });
-                    }
-
-                    const vendor = vendorMap.get(vendorName);
-                    vendor.totalExpense += amount;
-                    vendor.transactionCount++;
-                    if (txn.invoiceNumber) {
-                        vendor.invoices.push(txn.invoiceNumber);
-                    }
-                }
-            });
-
-            return Array.from(vendorMap.values())
-                .sort((a, b) => b.totalExpense - a.totalExpense);
-
-        } catch (error) {
-            console.error('Error getting vendor-wise summary:', error);
-            return [];
-        }
-    }
-}
+  }
+}

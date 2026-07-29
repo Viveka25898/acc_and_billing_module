@@ -1,65 +1,116 @@
 /* eslint-disable no-unused-vars */
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { FaFilter, FaTimes, FaPrint } from 'react-icons/fa'
 
 const GSTFilterSection = ({ filters, onFilterChange, onPrint }) => {
-  const handleChange = (field, value) => {
-    onFilterChange({ ...filters, [field]: value })
+  const [localFilters, setLocalFilters] = useState(filters)
+
+  // Sync local buffer when parent filter defaults change
+  useEffect(() => {
+    setLocalFilters(filters)
+  }, [filters])
+
+  const handleFieldChange = (field, value) => {
+    setLocalFilters((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleApply = () => {
+    onFilterChange(localFilters)
+  }
+
+  const handleClear = () => {
+    const cleared = { fromDate: '', toDate: '', status: 'All', search: '' }
+    setLocalFilters(cleared)
+    onFilterChange(cleared)
   }
 
   return (
-    <div className="bg-gray-50 p-4 md:p-6 border-b border-gray-200 rounded-md mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+    <div className="bg-white p-5 rounded-xl border border-green-100 shadow-sm mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end mb-4">
+        {/* From Date */}
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">From Date</label>
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            From Date
+          </label>
           <input
             type="date"
-            value={filters.fromDate}
-            onChange={(e) => handleChange('fromDate', e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            value={localFilters.fromDate}
+            onChange={(e) => handleFieldChange('fromDate', e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-gray-50"
           />
         </div>
+
+        {/* To Date */}
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">To Date</label>
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            To Date
+          </label>
           <input
             type="date"
-            value={filters.toDate}
-            onChange={(e) => handleChange('toDate', e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            value={localFilters.toDate}
+            onChange={(e) => handleFieldChange('toDate', e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-gray-50"
           />
         </div>
+
+        {/* Status */}
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            Status
+          </label>
           <select
-            value={filters.status}
-            onChange={(e) => handleChange('status', e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            value={localFilters.status}
+            onChange={(e) => handleFieldChange('status', e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-gray-50 cursor-pointer"
           >
-            <option>All</option>
-            <option>Posted</option>
-            <option>Pending</option>
+            <option value="All">All Transactions</option>
+            <option value="Posted">Posted</option>
+            <option value="Pending">Pending</option>
           </select>
         </div>
+
+        {/* Search */}
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Search</label>
+          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            Search Keyword
+          </label>
           <input
             type="text"
-            placeholder="Search voucher/counterparty..."
-            value={filters.search}
-            onChange={(e) => handleChange('search', e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Search voucher, counterparty..."
+            value={localFilters.search}
+            onChange={(e) => handleFieldChange('search', e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-gray-50"
           />
         </div>
-        <div className="flex gap-2">
-          {/* <button
-            onClick={onPrint}
-            className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-indigo-700 transition"
+      </div>
+
+      {/* Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleApply}
+            className="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-sm hover:shadow transition duration-150"
           >
-            Print
-          </button> */}
+            <FaFilter className="w-3 h-3" /> Apply Filters
+          </button>
+          <button
+            onClick={handleClear}
+            className="inline-flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-250 text-gray-700 font-semibold text-xs px-4 py-2 rounded-lg border border-gray-250 transition duration-150"
+          >
+            <FaTimes className="w-3 h-3" /> Clear Filters
+          </button>
         </div>
+
+        <button
+          onClick={onPrint}
+          className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-xs px-4 py-2 rounded-lg border border-gray-250 shadow-sm transition duration-150"
+        >
+          <FaPrint className="w-3.5 h-3.5 text-gray-500" /> Print Ledger
+        </button>
       </div>
     </div>
   )
 }
 
 export default GSTFilterSection
+
