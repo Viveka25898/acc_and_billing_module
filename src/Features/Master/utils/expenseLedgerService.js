@@ -9,11 +9,6 @@ export class ExpenseLedgerService {
    * Get ledger data for specific expense head
    */
   static async getExpenseLedgerData(expenseHeadCode, params = {}) {
-    // If it's conveyance, fallback to local storage logic to keep Conveyance page intact
-    if (expenseHeadCode === 'X2001003') {
-      return this.getLocalExpenseLedgerData(expenseHeadCode)
-    }
-
     try {
       console.log(`📊 API call for expense head: ${expenseHeadCode}`, params)
 
