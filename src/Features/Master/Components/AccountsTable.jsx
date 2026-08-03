@@ -480,7 +480,11 @@ const AccountsTable = ({
       const isRelieverPaymentAccount =
         account.code === 'X100101003' ||
         account.code === 'X1001001003' ||
-        (account.code.startsWith('X10010100') && account.name.toLowerCase().includes('reliever'))
+        account.code === 'X2002002001' ||
+        account.code.startsWith('X2002002') ||
+        (account.code.startsWith('X10010100') && account.name.toLowerCase().includes('reliever')) ||
+        account.name.toLowerCase().includes('reliever payment') ||
+        (account.name.toLowerCase().includes('reliever') && !account.name.toLowerCase().includes('liability') && !account.code.startsWith('L'))
 
       const isRelieverLiabilityAccount =
         account.code === 'L2001002' ||
