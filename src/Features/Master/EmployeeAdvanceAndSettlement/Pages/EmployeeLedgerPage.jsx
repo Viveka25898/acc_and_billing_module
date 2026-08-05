@@ -8,6 +8,7 @@ import { EmployeeLedgerService } from '../../utils/employeeLedgerService'
 
 const EmployeeLedgerPage = () => {
   const { accountCode } = useParams()
+  // eslint-disable-next-line no-unused-vars
   const navigate = useNavigate()
 
   const [filters, setFilters] = useState({

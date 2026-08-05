@@ -69,6 +69,7 @@ export const INITIAL_CHART_OF_ACCOUNTS = [
     { code: "X1001001", name: "TOTAL WAGE COST", type: "SUB_SUB_FOLDER", parentAccount: "DIRECT PRODUCTION COST", parentCode: "X1001" },
     { code: "X1001001002", name: "SUB CONTRACTORS", type: "ACCOUNT_SUBCATEGORY", parentAccount: "TOTAL WAGE COST", parentCode: "X1001001" },
     { code: "X1001001003", name: "RELIEVER PAYMENTS", type: "ACCOUNT", parentAccount: "SUB CONTRACTORS", parentCode: "X1001001002" },
+    { code: "X2002002001", name: "RELIEVER PAYMENTS", type: "ACCOUNT", parentAccount: "SUB CONTRACTORS", parentCode: "X2002002" },
 
     // Other Production Cost
     { code: "X1001002", name: "OTHER PRODUCTION COST", type: "SUB_SUB_FOLDER", parentAccount: "DIRECT PRODUCTION COST", parentCode: "X1001" },

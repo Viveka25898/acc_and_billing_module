@@ -480,7 +480,15 @@ const AccountsTable = ({
       const isRelieverPaymentAccount =
         account.code === 'X100101003' ||
         account.code === 'X1001001003' ||
-        (account.code.startsWith('X10010100') && account.name.toLowerCase().includes('reliever'))
+        account.code === 'X2002002001' ||
+        account.code.startsWith('X2002002') ||
+        (account.code.startsWith('X10010100') && account.name.toLowerCase().includes('reliever')) ||
+        account.name.toLowerCase().includes('reliever payment') ||
+        (account.name.toLowerCase().includes('reliever') && !account.name.toLowerCase().includes('liability') && !account.code.startsWith('L'))
+
+      const isRelieverLiabilityAccount =
+        account.code === 'L2001002' ||
+        (account.code.startsWith('L2001002') && account.name.toLowerCase().includes('reliever'))
 
       const isConveyanceExpenseAccount =
         account.code === 'X2001003' ||
@@ -889,6 +897,9 @@ const AccountsTable = ({
       if (isRelieverPaymentAccount) {
         console.log('✅ Navigating to Reliever Payment Page')
         navigate(`/dashboard/account-manager/reliever-payment-page`)
+      } else if (isRelieverLiabilityAccount) {
+        console.log('✅ Navigating to Reliever Liability Ledger')
+        navigate(`/dashboard/account-manager/reliever-liability-ledger`)
       } else if (isConveyanceExpenseAccount) {
         console.log('✅ Navigating to Conveyance Expense Ledger')
         navigate(`/dashboard/account-manager/conveyance-expense-ledger`)

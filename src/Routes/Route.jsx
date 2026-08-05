@@ -124,6 +124,7 @@ import OperationExecutiveHome from '../Roles/Operation Executive/Components/Oper
 import OperationExecutiveReliverPage from '../Features/Process For Reliver Payments/Pages/OperationExecutiveReliverPage'
 import OperationExecutiveMyRequestsPage from '../Features/Process For Reliver Payments/Pages/OperationExecutiveMyRequestsPage'
 import LineManagerRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/LineManagerRelieverApprovalPage'
+import AVPRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/AVPRelieverApprovalPage'
 import VPRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/VPRelieverApprovalPage'
 import AERelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/AERelieverApprovalPage'
 import GSTR2BRecoPage from '../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BReco'
@@ -196,6 +197,7 @@ import OfficeSuppliesLedgerPage from '../Features/Master/EmployeeAdvanceAndSettl
 import ConveyancePayblePage from '../Features/Master/Conveyance/Pages/ConveyancePayblePage'
 import ConveyanceExpenseLedgerPage from '../Features/Master/Conveyance/Pages/ConveyanceExpenseLedgerPage'
 import RelieverPaymentPage from '../Features/Master/Reliever/Pages/RelieverPaymentPage'
+import RelieverLiabilityLedgerPage from '../Features/Master/Reliever/Pages/RelieverLiabilityLedgerPage'
 import RentExpenseBookingLedgerPage from '../Features/Master/Rent Expense/Pages/RentExpenseBookingLedgerPage'
 import GSTLedgersPage from '../Features/Master/GST/Pages/GSTLedgerPage'
 import CGSTInputLedgerPage from '../Features/Master/GST/Pages/CGSTInputLedgerPage'
@@ -302,6 +304,14 @@ export const router = createBrowserRouter([
         path: 'my-conveyance-requests',
         element: <MyConveyanceRequestsPage />,
       },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
     ],
   },
 
@@ -399,6 +409,7 @@ export const router = createBrowserRouter([
       { path: 'advance-settelment', element: <AVPExpenseRequestsPage /> },
       { path: 'submit-advance-settlement', element: <AVPAdvanceSettlementForm /> },
       { path: 'my-settelment-requests', element: <MySettlements /> },
+      { path: 'avp-reliever-approval', element: <AVPRelieverApprovalPage /> },
     ],
   },
   // *******************************VP Operations***********************************
@@ -1162,6 +1173,10 @@ export const router = createBrowserRouter([
       {
         path: 'reliever-payment-page',
         element: <RelieverPaymentPage />,
+      },
+      {
+        path: 'reliever-liability-ledger',
+        element: <RelieverLiabilityLedgerPage />,
       },
       {
         path: 'rent-expense-account',
