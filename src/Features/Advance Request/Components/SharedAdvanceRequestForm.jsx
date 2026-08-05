@@ -60,6 +60,10 @@ const SharedAdvanceRequestForm = ({
 
   const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG['employee']
 
+  const MAX_FILE_SIZE = 1 * 1024 * 1024 // 1 MB limit
+  const MAX_FILES = 5
+  const ALLOWED_EXTENSIONS = ['.pdf', '.xlsx', '.xls', '.png', '.jpg', '.jpeg', '.webp']
+
   const [formData, setFormData] = useState({
     employeeName: '',
     employeeId: '',
@@ -67,27 +71,23 @@ const SharedAdvanceRequestForm = ({
     reasons: [],
     customReason: '',
     requestDate: new Date().toISOString().slice(0, 10),
+    attachments: [], // Array of File objects
   })
 
   const [localError, setLocalError] = useState('')
   const [isPreFilled, setIsPreFilled] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const prefillRef = React.useRef(false)  // ✅ Prevent re-runs with ref
 
   // ✅ Step 4.3: Pre-fill from Redux auth state (replaces localStorage lookup)
-  // ✅ Only run ONCE on mount to prevent overwriting user input
   useEffect(() => {
-    // ✅ Use ref to prevent re-running even if deps array changes
     if (prefillRef.current) return
     if (!authContext) return  // Not logged in yet, skip
     
     try {
-      // ─── Extract empId and empName from Redux auth context ─────────────────
-      // Our authSlice stores: { empId, empName, email, role, region }
-      // Old field names (employeeId / employeeName) no longer exist in the store
       const empId   = authContext?.empId   || authContext?.email || ''
       const empName = authContext?.empName || authContext?.email || ''
 
-      // ✅ Validate before setting
       if (typeof empId !== 'string' || typeof empName !== 'string') {
         throw new Error('Invalid auth context data')
       }
@@ -115,7 +115,6 @@ const SharedAdvanceRequestForm = ({
   // ── Show toast for service errors ──────────────────────────────────────────
   useEffect(() => {
     if (errors.submit) {
-      // ✅ Step 9.3: Show server error in toast
       toast.error(`❌ ${errors.submit}`)
     }
   }, [errors.submit])
@@ -123,9 +122,8 @@ const SharedAdvanceRequestForm = ({
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleChange = (e) => {
     const { name, value } = e.target
-    // ✅ Clear error when user starts editing
     setLocalError('')
-    dispatch(clearErrors())  // ✅ Clear Redux errors too
+    dispatch(clearErrors())
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -145,6 +143,111 @@ const SharedAdvanceRequestForm = ({
     }))
   }
 
+  // ── File Attachment Handlers ────────────────────────────────────────────────
+  const validateAndAddFiles = (fileList) => {
+    setLocalError('')
+    dispatch(clearErrors())
+    try {
+      const incomingFiles = Array.from(fileList || [])
+      if (incomingFiles.length === 0) return
+
+      let currentFiles = [...(formData.attachments || [])]
+      let errorMsgs = []
+
+      for (const file of incomingFiles) {
+        if (currentFiles.length >= MAX_FILES) {
+          errorMsgs.push(`Maximum ${MAX_FILES} attachments allowed per request.`)
+          break
+        }
+
+        // Check file size limit (1 MB)
+        if (file.size > MAX_FILE_SIZE) {
+          errorMsgs.push(`File "${file.name}" exceeds 1MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB).`)
+          continue
+        }
+
+        // Check extension
+        const ext = '.' + file.name.split('.').pop().toLowerCase()
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+          errorMsgs.push(`File "${file.name}" format is invalid. Only PDF, Excel (.xlsx/.xls), and Images (PNG, JPG, WEBP) are allowed.`)
+          continue
+        }
+
+        // Check duplicate
+        if (currentFiles.some((f) => f.name === file.name && f.size === file.size)) {
+          errorMsgs.push(`File "${file.name}" is already attached.`)
+          continue
+        }
+
+        currentFiles.push(file)
+      }
+
+      if (errorMsgs.length > 0) {
+        const combinedMsg = errorMsgs.join(' ')
+        setLocalError(combinedMsg)
+        toast.error(`⚠️ ${combinedMsg}`)
+      }
+
+      setFormData((prev) => ({ ...prev, attachments: currentFiles }))
+    } catch (err) {
+      console.error('Error attaching file:', err)
+      const msg = err instanceof Error ? err.message : 'Failed to attach file'
+      setLocalError(msg)
+      toast.error(`❌ ${msg}`)
+    }
+  }
+
+  const handleFileInputChange = (e) => {
+    validateAndAddFiles(e.target.files)
+    e.target.value = '' // Reset input so re-selecting same file triggers event
+  }
+
+  const handleFileDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer?.files) {
+      validateAndAddFiles(e.dataTransfer.files)
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleFileRemove = (indexToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      attachments: (prev.attachments || []).filter((_, i) => i !== indexToRemove),
+    }))
+  }
+
+  const formatFileSize = (bytes) => {
+    if (!bytes || isNaN(bytes)) return '0 B'
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
+
+  const getFileBadgeDetails = (filename) => {
+    const ext = filename?.split('.').pop().toLowerCase()
+    if (ext === 'pdf') {
+      return { label: 'PDF', badgeStyle: 'bg-red-100 text-red-700 border-red-200', icon: '📄' }
+    }
+    if (['xlsx', 'xls', 'csv'].includes(ext)) {
+      return { label: 'EXCEL', badgeStyle: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: '📊' }
+    }
+    if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+      return { label: 'IMAGE', badgeStyle: 'bg-purple-100 text-purple-700 border-purple-200', icon: '🖼️' }
+    }
+    return { label: 'FILE', badgeStyle: 'bg-gray-100 text-gray-700 border-gray-200', icon: '📎' }
+  }
+
   const isFormValid = () => {
     const { employeeName, employeeId, amount, reasons, customReason } = formData
     if (!employeeName.trim() || !employeeId.trim() || !amount || Number(amount) <= 0) return false
@@ -160,7 +263,6 @@ const SharedAdvanceRequestForm = ({
     
     console.log('📤 Form submitted. Validating...', formData)
 
-    // ✅ Step 9.2: Client-side validation before submit
     if (!isFormValid()) {
       const msg = 'Please fill in all required fields.'
       console.warn('❌ Form validation failed:', msg, formData)
@@ -169,32 +271,24 @@ const SharedAdvanceRequestForm = ({
     }
 
     try {
-      // ✅ Step 9.2: Try-catch for form preparation errors
-      // Build API-ready payload
       const finalReasons = formData.reasons.map((r) =>
         r === 'Other' && formData.customReason.trim() ? formData.customReason.trim() : r
       )
 
-      // Validate employeeId and employeeName before submit (edge cases)
       const empId = formData.employeeId?.trim()
       const empName = formData.employeeName?.trim()
 
-      console.log('✅ Employee Info:', { empId, empName })
-
       if (!empId) {
         const msg = 'Employee ID is required. Please refresh and try again.'
-        console.warn('❌', msg)
         setLocalError(msg)
         return
       }
       if (!empName) {
         const msg = 'Employee Name is required. Please enter your name.'
-        console.warn('❌', msg)
         setLocalError(msg)
         return
       }
 
-      // Build payload
       const payload = {
         employeeName: empName,
         employeeId: empId,
@@ -202,14 +296,13 @@ const SharedAdvanceRequestForm = ({
         reason: finalReasons,
         customReason: formData.reasons.includes('Other') ? formData.customReason : '',
         requestDate: formData.requestDate,
+        attachments: formData.attachments || [],
       }
 
-      console.log('📦 Submitting payload:', payload)
+      console.log('📦 Submitting payload with attachments:', payload)
 
-      // ✅ Step 9.2: Dispatch with error handling
       const dispatchResult = dispatch(createAdvanceRequest(payload))
       
-      // Handle async thunk completion
       if (dispatchResult && typeof dispatchResult.then === 'function') {
         dispatchResult
           .then((result) => {
@@ -223,11 +316,9 @@ const SharedAdvanceRequestForm = ({
           })
       }
     } catch (error) {
-      // ✅ Step 9.3: Catch validation/preparation errors
       console.error('❌ Error preparing advance request:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to prepare request'
       setLocalError(`Validation error: ${errorMessage}`)
-      // ✅ Also show in toast for visibility
       toast.error(`Error: ${errorMessage}`)
     }
   }
@@ -240,6 +331,7 @@ const SharedAdvanceRequestForm = ({
       reasons: [],
       customReason: '',
       requestDate: new Date().toISOString().slice(0, 10),
+      attachments: [],
     }))
   }
 
@@ -423,6 +515,86 @@ const SharedAdvanceRequestForm = ({
                     onChange={handleChange}
                     className="w-full border border-gray-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition"
                   />
+                </div>
+
+                {/* Attachments Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Attachments <span className="text-xs text-gray-400 font-normal">(PDF, Excel, Images • max 1MB each)</span>
+                    </label>
+                    <span className="text-xs font-semibold text-gray-500">
+                      {formData.attachments?.length || 0} / {MAX_FILES} files
+                    </span>
+                  </div>
+
+                  {/* Dropzone Container */}
+                  {(!formData.attachments || formData.attachments.length < MAX_FILES) && (
+                    <div
+                      onDrop={handleFileDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 ${
+                        isDragging
+                          ? 'border-green-500 bg-green-50 scale-[1.01]'
+                          : 'border-gray-300 bg-gray-50 hover:bg-green-50/50 hover:border-green-400'
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        id="advance-request-attachment-input"
+                        multiple
+                        accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
+                        onChange={handleFileInputChange}
+                        className="hidden"
+                      />
+                      <label htmlFor="advance-request-attachment-input" className="cursor-pointer block">
+                        <div className="text-2xl mb-1">📎</div>
+                        <p className="text-sm font-semibold text-gray-700">
+                          Click to upload or drag & drop files
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Allowed formats: PDF, XLSX, XLS, PNG, JPG, WEBP (Max 1MB per file)
+                        </p>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Selected Attachments List */}
+                  {formData.attachments && formData.attachments.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {formData.attachments.map((file, idx) => {
+                        const badge = getFileBadgeDetails(file.name)
+                        return (
+                          <div
+                            key={`${file.name}-${idx}`}
+                            className="flex items-center justify-between bg-white border border-green-200 rounded-xl px-3 py-2 shadow-sm text-sm"
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden mr-2">
+                              <span className="text-lg flex-shrink-0">{badge.icon}</span>
+                              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${badge.badgeStyle}`}>
+                                {badge.label}
+                              </span>
+                              <span className="font-medium text-gray-800 truncate text-xs" title={file.name}>
+                                {file.name}
+                              </span>
+                              <span className="text-xs text-gray-400 whitespace-nowrap">
+                                ({formatFileSize(file.size)})
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleFileRemove(idx)}
+                              className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-full transition flex-shrink-0"
+                              title="Remove attachment"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Button */}

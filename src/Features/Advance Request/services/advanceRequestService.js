@@ -229,22 +229,134 @@ export const isBeforeAEDeadline = () => {
   return now.getHours() < ADVANCE_REQUEST_CONFIG.AE_DEADLINE_HOUR
 }
 
+/**
+ * Cleans relative API paths to prevent duplicate prefixing (e.g. /api/v1/api/v1/...)
+ */
+export const cleanApiUrl = (url) => {
+  if (!url || typeof url !== 'string') return url
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+    return url
+  }
+
+  const baseURL = axiosInstance.defaults.baseURL || ''
+  let targetPath = url
+
+  let basePath = ''
+  try {
+    basePath = new URL(baseURL, window.location.origin).pathname.replace(/\/$/, '')
+  } catch (_) {
+    basePath = baseURL.replace(/\/$/, '')
+  }
+
+  if (basePath && basePath !== '/' && targetPath.startsWith(basePath)) {
+    targetPath = targetPath.slice(basePath.length)
+  }
+
+  return targetPath.startsWith('/') ? targetPath : `/${targetPath}`
+}
+
+/**
+ * Helper to build full clickable URL for attachments opening in a new tab
+ */
+export const resolveAttachmentUrl = (fileUrl) => {
+  if (!fileUrl) return '#'
+  if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://') || fileUrl.startsWith('blob:')) {
+    return fileUrl
+  }
+  const baseURL = axiosInstance.defaults.baseURL || ''
+  const cleanedPath = cleanApiUrl(fileUrl)
+  try {
+    const origin = new URL(baseURL, window.location.origin).origin
+    const basePath = new URL(baseURL, window.location.origin).pathname.replace(/\/$/, '')
+    return `${origin}${basePath}${cleanedPath}`
+  } catch (_) {
+    return fileUrl
+  }
+}
+
+/**
+ * Helper to safely view protected attachments in a new tab using JWT Authorization header.
+ * Fetches file as a Blob with axiosInstance and opens the Blob URL in a new browser tab.
+ */
+export const viewAttachmentInNewTab = async (fileUrl, fileName = 'attachment') => {
+  if (!fileUrl) {
+    throw new Error('File URL is required')
+  }
+
+  if (fileUrl.startsWith('blob:') || fileUrl.startsWith('data:')) {
+    window.open(fileUrl, '_blank')
+    return
+  }
+
+  const fileId = fileUrl.split('/').pop()
+  const primaryPath = cleanApiUrl(fileUrl)
+
+  // Candidate paths to try if backend routes differ
+  const candidatePaths = [
+    primaryPath,
+    `/accounts/advances/files/${fileId}`,
+    `/accounts/advance-files/${fileId}`,
+    `/accounts/files/${fileId}`,
+    `/advances/files/${fileId}`,
+    `/files/${fileId}`,
+    `/v1/accounts/advances/files/${fileId}`,
+  ]
+
+  const uniquePaths = [...new Set(candidatePaths)]
+  let response = null
+
+  for (const path of uniquePaths) {
+    try {
+      response = await axiosInstance.get(path, { responseType: 'blob' })
+      if (response && response.data) {
+        break // Found file!
+      }
+    } catch (err) {
+      if (!isNotFoundApiError(err)) {
+        throw err // Re-throw non-404 errors (like 401 session expired)
+      }
+    }
+  }
+
+  if (!response || !response.data) {
+    throw new Error('File not found on server. It may have been submitted in a previous test run or deleted.')
+  }
+
+  const contentType = response.headers['content-type'] || 'application/octet-stream'
+  const blob = new Blob([response.data], { type: contentType })
+  const blobUrl = window.URL.createObjectURL(blob)
+
+  const newWindow = window.open(blobUrl, '_blank')
+  if (!newWindow) {
+    // Popup fallback
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+}
+
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SUBMIT ADVANCE REQUEST
-//    POST /api/advance-requests
+//    POST /api/advance-requests (or /accounts/advances)
 // ─────────────────────────────────────────────────────────────────────────────
 export const submitAdvanceRequest = async (payload) => {
   // ── Payload Field Mapping ────────────────────────────────────────────────
-  // API (Postman) expects snake_case: amount, reasons[], custom_reason, request_date
-  // Component sends camelCase: amount, reason[], customReason, requestDate
-  // Service is the translation layer — handles mapping here so components stay clean
+  // API (Postman) expects form-data: amount, reasons[], custom_reason, request_date, attachments[]
+  // Component sends camelCase + attachments File array
+  
+  const amount       = parseFloat(payload?.amount)
+  const reasons      = Array.isArray(payload?.reason) ? payload.reason : []
+  const customReason = typeof payload?.customReason === 'string' ? payload.customReason.trim() : ''
+  const requestDate  = payload?.requestDate?.trim?.() || ''
+  const attachments  = Array.isArray(payload?.attachments) ? payload.attachments : []
 
   // ── Guard: Validate required fields before hitting API ───────────────────
-  const amount      = parseFloat(payload?.amount)
-  const reasons     = Array.isArray(payload?.reason) ? payload.reason : []
-  const customReason = typeof payload?.customReason === 'string' ? payload.customReason.trim() : ''
-  const requestDate = payload?.requestDate?.trim?.() || ''
-
   if (!amount || amount <= 0) {
     throw new Error('Amount must be greater than zero')
   }
@@ -258,22 +370,38 @@ export const submitAdvanceRequest = async (payload) => {
     throw new Error('Custom reason is required when "Other" is selected')
   }
 
-  // ── Build API Payload (snake_case — matches Postman) ─────────────────────
-  const apiPayload = {
-    amount,
-    reasons,
-    custom_reason: customReason,
-    request_date:  requestDate,
-  }
+  // ── Build FormData API Payload (matches Postman form-data) ────────────────
+  const formData = new FormData()
+  formData.append('amount', amount)
+
+  // Append each reason (mapped to backend reason codes)
+  const formattedReasons = reasons.map(toAdvanceReasonCode)
+  formattedReasons.forEach((r) => {
+    formData.append('reasons', r)
+  })
+
+  formData.append('custom_reason', customReason || 'N/A')
+  formData.append('request_date', requestDate)
+
+  // Append attachments if present
+  attachments.forEach((file) => {
+    if (file instanceof File) {
+      formData.append('attachments', file)
+    }
+  })
 
   // ── API Call ─────────────────────────────────────────────────────────────
   const res = await callAdvanceRequestApi({
     method: 'post',
-    data: apiPayload,
+    data: formData,
+    config: {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
   })
 
   // ── Validate Response Shape ───────────────────────────────────────────────
-  // Postman response: { success, message, data: { id, requestId, status, assignedTo, submittedAt }, errors }
   const responseData = getApiResponsePayload(res)
 
   if (!responseData) {
@@ -293,8 +421,10 @@ export const submitAdvanceRequest = async (payload) => {
     assignedTo:  responseData.assignedTo  || null,
     submittedAt: responseData.submittedAt || new Date().toISOString(),
     id:          responseData.id          || null,
+    attachments: responseData.attachments || [],
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. FETCH MY REQUESTS (for the logged-in user, any role)

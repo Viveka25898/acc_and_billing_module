@@ -12,6 +12,8 @@ import {
   selectErrors,
 } from '../../../store/slices/advanceRequestSlice'
 
+import { resolveAttachmentUrl, viewAttachmentInNewTab } from '../services/advanceRequestService'
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ITEMS_PER_PAGE = 5
 const CLARIFY_MIN_CHARS = 10
@@ -47,7 +49,6 @@ const formatAmount = (amount) => {
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
   try {
-    // requestDate from API is already YYYY-MM-DD — format nicely
     const [yyyy, mm, dd] = dateStr.split('-')
     if (yyyy && mm && dd) return `${dd}-${mm}-${yyyy}`
   } catch (_) { /* fallback */ }
@@ -57,7 +58,7 @@ const formatDate = (dateStr) => {
 /** Skeleton loader row for table */
 const SkeletonRow = () => (
   <tr className="animate-pulse">
-    {[...Array(7)].map((_, i) => (
+    {[...Array(8)].map((_, i) => (
       <td key={i} className="px-4 py-3">
         <div className="h-3 bg-gray-200 rounded w-full" />
       </td>
@@ -93,6 +94,26 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
   const [showClarifyModal, setShowClarifyModal] = useState(false)
   const [clarificationText, setClarificationText] = useState('')
   const [selectedRequest, setSelectedRequest] = useState(null)
+  const [openingFileKey, setOpeningFileKey] = useState(null)
+
+  // ── Attachment opener handler (includes JWT Bearer Token) ─────────────────
+  const handleOpenAttachment = async (e, att, fileKey) => {
+    e.preventDefault()
+    if (!att?.fileUrl) {
+      toast.error('❌ Attachment URL is invalid')
+      return
+    }
+    setOpeningFileKey(fileKey)
+    try {
+      await viewAttachmentInNewTab(att.fileUrl, att.fileName)
+    } catch (err) {
+      console.error('Failed to open attachment:', err)
+      const msg = err instanceof Error ? err.message : 'Could not open file'
+      toast.error(`❌ ${msg}`)
+    } finally {
+      setOpeningFileKey(null)
+    }
+  }
 
   // ── Derived flags ────────────────────────────────────────────────────────────
   const isLoading = loading.fetchMyRequests
@@ -222,7 +243,7 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-green-600 text-white">
-                    {['Request ID', 'Amount', 'Date', 'Reason', 'Status', 'Remarks', 'Action'].map((h) => (
+                    {['Request ID', 'Amount', 'Date', 'Reason', 'Attachments', 'Status', 'Remarks', 'Action'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
                     ))}
                   </tr>
@@ -274,6 +295,7 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
                     <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Amount</th>
                     <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Date</th>
                     <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Reason</th>
+                    <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Attachments</th>
                     <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Status</th>
                     <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Remarks</th>
                     <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Action</th>
@@ -285,6 +307,7 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
                     const remarksStr = req.remarks || '—'
                     const isRejected = req.status?.includes('Rejected')
                     const hasClarification = Boolean(req.clarification && req.clarification.trim())
+                    const attachmentsList = Array.isArray(req.attachments) ? req.attachments : []
 
                     return (
                       <tr
@@ -312,6 +335,38 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
                           title={reasonStr}
                         >
                           {reasonStr}
+                        </td>
+
+                        {/* Attachments (clickable links opening in new tab with JWT auth header) */}
+                        <td className="px-4 py-3 text-xs max-w-[180px]">
+                          {attachmentsList.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {attachmentsList.map((att, attIdx) => {
+                                const fileKey = `${req.requestId || index}-${attIdx}`
+                                const isOpening = openingFileKey === fileKey
+                                return (
+                                  <button
+                                    type="button"
+                                    key={att.fileUrl || attIdx}
+                                    onClick={(e) => handleOpenAttachment(e, att, fileKey)}
+                                    disabled={isOpening}
+                                    className="inline-flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-2 py-1 rounded-md font-medium text-xs transition-colors hover:underline text-left cursor-pointer disabled:opacity-50 max-w-[170px]"
+                                    title={`${att.fileName || 'Attachment'} (${att.fileSize || ''}) - Click to view document`}
+                                  >
+                                    <span className="text-sm">{isOpening ? '⏳' : '📎'}</span>
+                                    <span className="truncate">{att.fileName || `File ${attIdx + 1}`}</span>
+                                    {att.fileSize && (
+                                      <span className="text-[10px] text-gray-400 font-normal">
+                                        ({att.fileSize})
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
                         </td>
 
                         {/* Status badge */}
