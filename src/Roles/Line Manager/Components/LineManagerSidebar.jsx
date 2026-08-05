@@ -27,7 +27,7 @@ const LineManagerSidebar = () => {
     { to: `${base}/submit-advance-settlement`,          label: 'Submit Advance Settlement' },
     // { to: `${base}/conveyance-approval`,                label: 'Conveyance Approval' },
     // { to: `${base}/conveyance-form`,                    label: 'Conveyance Form' },
-    // { to: `${base}/line-manager-reliever-approval`,     label: 'Reliever Requests Approval' },
+    { to: `${base}/line-manager-reliever-approval`,     label: 'Reliever Requests Approval' },
   ]
 
   return (
