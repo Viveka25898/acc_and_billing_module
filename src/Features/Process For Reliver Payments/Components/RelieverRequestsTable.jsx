@@ -16,14 +16,17 @@ export default function RelieverRequestsTable({
   const totalPages = pagination.totalPages || 1;
 
   const handleViewReason = (req) => {
-    // Find the most recent rejection in history
+    // Find the most recent rejection in history for fallback 'by' user
     const rejection = req.history?.findLast(item => 
-      item.action.includes("Rejected") || item.comments.includes("Rejected")
+      item?.action?.includes("Rejected") || item?.comments?.includes("Rejected")
     );
     
+    // Read the actual rejection reason entered by the approver
+    const reasonText = req.rejectionReason || req.rejection_reason || rejection?.rejectionReason || rejection?.comments || "No reason provided";
+    
     setRejectionData({
-      reason: rejection?.comments || "No reason provided",
-      by: rejection?.by || "Unknown"
+      reason: reasonText,
+      by: rejection?.by || req.rejectedBy || "Unknown"
     });
     setShowModal(true);
   };
