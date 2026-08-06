@@ -26,11 +26,50 @@ export default function RelieverForm({ onSubmit }) {
   const idProofRef = useRef();
   const passbookRef = useRef();
 
+  const getDateBounds = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const isBefore12PM = now.getHours() < 12;
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yYear = yesterday.getFullYear();
+    const yMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const yDay = String(yesterday.getDate()).padStart(2, '0');
+    const yesterdayStr = `${yYear}-${yMonth}-${yDay}`;
+
+    if (isBefore12PM) {
+      return { min: yesterdayStr, max: todayStr, isBefore12PM: true, yesterdayStr, todayStr };
+    } else {
+      return { min: todayStr, max: todayStr, isBefore12PM: false, yesterdayStr, todayStr };
+    }
+  };
+
+  const dateBounds = getDateBounds();
+
   const validate = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.site.trim()) newErrors.site = "Site is required";
-    if (!formData.date) newErrors.date = "Date is required";
+    
+    if (!formData.date) {
+      newErrors.date = "Date is required";
+    } else {
+      if (formData.date > dateBounds.max) {
+        newErrors.date = "Future reliever dates are not allowed";
+      } else if (formData.date < dateBounds.min) {
+        if (!dateBounds.isBefore12PM && formData.date === dateBounds.yesterdayStr) {
+          newErrors.date = "Yesterday's date submission expired at 11:59 AM";
+        } else {
+          newErrors.date = `Allowed date range: ${dateBounds.min} to ${dateBounds.max}`;
+        }
+      }
+    }
+
     if (!formData.amount || isNaN(formData.amount)) newErrors.amount = "Valid amount is required";
     if (!formData.type) newErrors.type = "Reliever type is required";
     if (!formData.shift) newErrors.shift = "Shift timing is required";
@@ -172,11 +211,18 @@ export default function RelieverForm({ onSubmit }) {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reliever Date *</label>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-sm font-semibold text-gray-700">Reliever Date *</label>
+            <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+              {dateBounds.isBefore12PM ? "Today & Yesterday (till 11:59 AM)" : "Today Only"}
+            </span>
+          </div>
           <input
             type="date"
             name="date"
             value={formData.date}
+            min={dateBounds.min}
+            max={dateBounds.max}
             onChange={handleChange}
             className="mt-1 block w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
           />
