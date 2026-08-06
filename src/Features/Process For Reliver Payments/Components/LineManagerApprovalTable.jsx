@@ -7,7 +7,7 @@ import axiosInstance from "../../../api/axiosInstance";
 const ITEMS_PER_PAGE = 5;
 
 // Modal Component for File Viewing
-const FileViewModal = ({ isOpen, onClose, title, fileData, fileUrl }) => {
+const FileViewModal = ({ isOpen, onClose, title, fileData, fileUrl, isImage }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,16 +38,25 @@ const FileViewModal = ({ isOpen, onClose, title, fileData, fileUrl }) => {
             </div>
           )}
           {fileUrl ? (
-            <iframe 
-              src={fileUrl} 
-              title={title} 
-              onLoad={() => setLoading(false)}
-              className="w-full h-[70vh] border border-gray-200 rounded-lg shadow-sm bg-white"
-            />
+            isImage ? (
+              <img 
+                src={fileUrl} 
+                alt={title} 
+                onLoad={() => setLoading(false)}
+                className="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg shadow-md"
+              />
+            ) : (
+              <iframe 
+                src={fileUrl} 
+                title={title} 
+                onLoad={() => setLoading(false)}
+                className="w-full h-[70vh] border border-gray-200 rounded-lg shadow-sm bg-white"
+              />
+            )
           ) : fileData ? (
             <div className="text-center">
               {/* For images */}
-              {fileData.name && fileData.name.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+              {fileData.name && fileData.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                 <img 
                   src={`data:image/jpeg;base64,${fileData.data || fileData}`} 
                   alt={title}
@@ -96,7 +105,7 @@ export default function LineManagerApprovalTable({
   const [selectedRequests, setSelectedRequests] = useState([]);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionMode, setRejectionMode] = useState("reject");
-  const [fileModal, setFileModal] = useState({ isOpen: false, title: '', fileData: null, fileUrl: null });
+  const [fileModal, setFileModal] = useState({ isOpen: false, title: '', fileData: null, fileUrl: null, isImage: false });
   const [processingId, setProcessingId] = useState(null);
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [downloadingKey, setDownloadingKey] = useState(null);
@@ -191,25 +200,33 @@ export default function LineManagerApprovalTable({
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const originalBlob = await response.blob();
-    // Explicitly override MIME type to application/pdf so the browser iframe can render it
-    const pdfBlob = new Blob([originalBlob], { type: 'application/pdf' });
-    return URL.createObjectURL(pdfBlob);
+    
+    // Detect image format from blob header or file URL extension
+    const mimeType = originalBlob.type || '';
+    const isImg = mimeType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+    const contentType = isImg ? (mimeType || 'image/jpeg') : 'application/pdf';
+    
+    const fileBlob = new Blob([originalBlob], { type: contentType });
+    return {
+      blobUrl: URL.createObjectURL(fileBlob),
+      isImage: isImg
+    };
   };
 
   const openFileModal = async (title, fileData, fileUrl = null) => {
     // Open modal immediately to show loader
-    setFileModal({ isOpen: true, title, fileData: null, fileUrl: null });
+    setFileModal({ isOpen: true, title, fileData: null, fileUrl: null, isImage: false });
 
     if (fileUrl && typeof fileUrl === 'string' && (fileUrl.startsWith('/') || fileUrl.startsWith('http'))) {
       try {
-        const blobUrl = await fetchAuthenticatedFile(fileUrl);
+        const { blobUrl, isImage } = await fetchAuthenticatedFile(fileUrl);
         setFileModal(prev => {
           // If modal was closed while downloading, clean up
           if (!prev.isOpen) {
             URL.revokeObjectURL(blobUrl);
             return prev;
           }
-          return { ...prev, fileUrl: blobUrl };
+          return { ...prev, fileUrl: blobUrl, isImage };
         });
       } catch (err) {
         console.error("Error loading secure document:", err);
@@ -219,7 +236,8 @@ export default function LineManagerApprovalTable({
         }));
       }
     } else {
-      setFileModal({ isOpen: true, title, fileData, fileUrl: null });
+      const isImg = fileData?.name ? /\.(jpg|jpeg|png|gif|webp)$/i.test(fileData.name) : false;
+      setFileModal({ isOpen: true, title, fileData, fileUrl: null, isImage: isImg });
     }
   };
 
@@ -477,6 +495,7 @@ export default function LineManagerApprovalTable({
         title={fileModal.title}
         fileData={fileModal.fileData}
         fileUrl={fileModal.fileUrl}
+        isImage={fileModal.isImage}
       />
     </div>
   );
