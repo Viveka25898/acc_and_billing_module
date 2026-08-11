@@ -117,10 +117,7 @@ export default function ManagerConveyanceApprovalsPage() {
 
   const prepareDocumentUrl = (documents) => {
     if (!documents || documents.length === 0) return null;
-    const firstDoc = documents[0];
-    if (typeof firstDoc === "string") return firstDoc;
-    if (firstDoc?.fileUrl || firstDoc?.url) return firstDoc.fileUrl || firstDoc.url;
-    return null;
+    return documents[0];
   };
 
   return (

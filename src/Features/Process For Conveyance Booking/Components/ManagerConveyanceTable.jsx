@@ -42,6 +42,8 @@ export default function ManagerConveyanceTable({
           <tr>
             <th className="px-5 py-4 text-center w-12">#</th>
             <th className="px-5 py-4">Claim ID</th>
+            <th className="px-5 py-4">Emp ID</th>
+            <th className="px-5 py-4">Employee Name</th>
             <th className="px-5 py-4">Visit Date</th>
             <th className="px-5 py-4">Client / Site</th>
             <th className="px-5 py-4">Purpose</th>
@@ -57,13 +59,15 @@ export default function ManagerConveyanceTable({
         <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
           {claims.length === 0 ? (
             <tr>
-              <td colSpan={showActions ? 12 : 11} className="px-6 py-12 text-center text-gray-500 font-medium">
+              <td colSpan={showActions ? 14 : 13} className="px-6 py-12 text-center text-gray-500 font-medium">
                 📭 No pending conveyance requests found.
               </td>
             </tr>
           ) : (
             claims.map((claim, idx) => {
               const claimIdDisplay = claim.claim_id || claim.requestId || claim.id || "-";
+              const employeeId = claim.employeeId || claim.employee_id || claim.empId || "-";
+              const employeeName = claim.employeeName || claim.employee_name || claim.submittedBy || "-";
               const visitDate = claim.visit_date || claim.date ? (claim.visit_date || claim.date).split("T")[0] : "-";
               const clientName = claim.client_name || claim.client || "-";
               const purpose = claim.purpose || "-";
@@ -84,6 +88,14 @@ export default function ManagerConveyanceTable({
 
                   <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap text-xs">
                     {claimIdDisplay}
+                  </td>
+
+                  <td className="px-5 py-4 font-medium text-gray-700 whitespace-nowrap text-xs">
+                    {employeeId}
+                  </td>
+
+                  <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap text-xs">
+                    {employeeName}
                   </td>
 
                   <td className="px-5 py-4 font-medium text-gray-700 whitespace-nowrap text-xs">

@@ -94,9 +94,19 @@ export default function AEConveyanceApprovalPage() {
 
       toast.success("Request approved, GL posted and voucher generated");
 
-      // Display generated voucher modal with response payload
-      if (result) {
-        setSelectedVoucherData(result);
+      // Extract voucher payload or fetch via API if needed
+      let voucherPayload = result?.data || result;
+      if (!voucherPayload?.header && !voucherPayload?.data?.header) {
+        try {
+          const fetchedVoucher = await dispatch(fetchConveyanceVoucher(id)).unwrap();
+          if (fetchedVoucher) voucherPayload = fetchedVoucher;
+        } catch (err) {
+          console.warn("Auto-fetching voucher failed:", err);
+        }
+      }
+
+      if (voucherPayload) {
+        setSelectedVoucherData(voucherPayload);
         setShowVoucher(true);
       }
     } catch (error) {
@@ -143,10 +153,7 @@ export default function AEConveyanceApprovalPage() {
 
   const prepareDocumentUrl = (documents) => {
     if (!documents || documents.length === 0) return null;
-    const firstDoc = documents[0];
-    if (typeof firstDoc === "string") return firstDoc;
-    if (firstDoc?.fileUrl || firstDoc?.url) return firstDoc.fileUrl || firstDoc.url;
-    return null;
+    return documents[0];
   };
 
   return (
