@@ -1,9 +1,12 @@
-// AddSiteForm.jsx
 import React, { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
-import { createVendorLedger } from '../../Master/utils/accountingHelpers'
+import { useDispatch, useSelector } from 'react-redux'
+import { createRentalSite, selectRentCreateLoading } from '../../../store/slices/rentExpenseSlice'
 
 export default function AddSiteForm({ onSuccess, onCancel }) {
+  const dispatch = useDispatch()
+  const reduxCreateLoading = useSelector(selectRentCreateLoading)
+
   const [formData, setFormData] = useState({
     // Site Details
     siteName: '',
@@ -14,8 +17,8 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
     pinCode: '',
     status: 'active',
 
-    // Owner Toggle
-    addOwnerNow: false,
+    // Owner Details (Mandatory)
+    addOwnerNow: true,
     ownerType: 'individual',
 
     // Single Owner Details
@@ -39,7 +42,7 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
   })
 
   const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [backendGeneralError, setBackendGeneralError] = useState('')
 
   // Auto-generate site code
   useEffect(() => {
@@ -102,6 +105,93 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }))
     }
+    if (backendGeneralError) {
+      setBackendGeneralError('')
+    }
+  }
+
+  const parseBackendFieldErrors = (errorData) => {
+    const fieldErrors = {}
+    let genErr = ''
+
+    const details = Array.isArray(errorData?.details)
+      ? errorData.details
+      : Array.isArray(errorData?.errors)
+      ? errorData.errors
+      : []
+
+    const mainMessage = errorData?.message || (typeof errorData === 'string' ? errorData : '')
+
+    if (details.length > 0) {
+      details.forEach((item) => {
+        const text = String(item)
+        // Clean prefix like "body: Value error, " or "body.ownerDetails.panNumber: "
+        const cleanText = text.replace(/^body(\.[a-zA-Z0-9_]+)*:\s*(Value error,\s*)?/i, '').trim()
+        const lower = text.toLowerCase()
+        let matched = false
+
+        if (lower.includes('pin code') || lower.includes('pincode') || lower.includes('pin')) {
+          fieldErrors.pinCode = cleanText
+          matched = true
+        }
+        if (lower.includes('state')) {
+          fieldErrors.state = cleanText
+          matched = true
+        }
+        if (lower.includes('sitename') || lower.includes('site name')) {
+          fieldErrors.siteName = cleanText
+          matched = true
+        }
+        if (lower.includes('location')) {
+          fieldErrors.location = cleanText
+          matched = true
+        }
+        if (lower.includes('city')) {
+          fieldErrors.city = cleanText
+          matched = true
+        }
+        if (lower.includes('ownername') || lower.includes('owner name')) {
+          fieldErrors.ownerName = cleanText
+          fieldErrors.primaryOwnerName = cleanText
+          matched = true
+        }
+        if (lower.includes('pannumber') || lower.includes('pan number') || lower.includes('pan')) {
+          fieldErrors.panNumber = cleanText
+          fieldErrors.primaryPAN = cleanText
+          matched = true
+        }
+        if (lower.includes('gstin') || lower.includes('gst')) {
+          fieldErrors.gstin = cleanText
+          matched = true
+        }
+        if (lower.includes('contactnumber') || lower.includes('contact number') || lower.includes('contact')) {
+          fieldErrors.contactNumber = cleanText
+          matched = true
+        }
+        if (lower.includes('email')) {
+          fieldErrors.email = cleanText
+          matched = true
+        }
+        if (lower.includes('minrent') || lower.includes('min rent')) {
+          fieldErrors.expectedMinRent = cleanText
+          matched = true
+        }
+        if (lower.includes('maxrent') || lower.includes('max rent')) {
+          fieldErrors.expectedMaxRent = cleanText
+          matched = true
+        }
+
+        if (!matched) {
+          genErr += (genErr ? ' | ' : '') + cleanText
+        }
+      })
+    }
+
+    if (!genErr && mainMessage && mainMessage !== 'Validation constraints failed.') {
+      genErr = mainMessage
+    }
+
+    return { fieldErrors, genErr }
   }
 
   const validateForm = () => {
@@ -116,6 +206,8 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
 
     if (!formData.location.trim()) {
       newErrors.location = 'Location is required'
+    } else if (formData.location.trim().length < 10) {
+      newErrors.location = 'Location/Address must be at least 10 characters'
     }
 
     if (!formData.city.trim()) {
@@ -132,46 +224,30 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
       newErrors.pinCode = 'PIN code must be 6 digits'
     }
 
-    // Owner Details Validation (if adding owner)
-    if (formData.addOwnerNow) {
-      if (formData.ownerType === 'individual' || formData.ownerType === 'company') {
-        if (!formData.ownerName.trim()) {
-          newErrors.ownerName = 'Owner name is required'
-        }
+    // Owner Details Validation (Mandatory)
+    if (!formData.ownerName || !formData.ownerName.trim()) {
+      newErrors.ownerName = 'Owner name is required'
+    }
 
-        if (!formData.panNumber) {
-          newErrors.panNumber = 'PAN number is required'
-        } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
-          newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
-        }
+    if (!formData.panNumber) {
+      newErrors.panNumber = 'PAN number is required'
+    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.toUpperCase())) {
+      newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
+    }
 
-        if (
-          formData.gstin &&
-          !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstin)
-        ) {
-          newErrors.gstin = 'Invalid GSTIN format'
-        }
+    if (
+      formData.gstin &&
+      !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstin.toUpperCase())
+    ) {
+      newErrors.gstin = 'Invalid GSTIN format'
+    }
 
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-          newErrors.email = 'Invalid email format'
-        }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email format'
+    }
 
-        if (formData.contactNumber && !/^\d{10}$/.test(formData.contactNumber)) {
-          newErrors.contactNumber = 'Contact number must be 10 digits'
-        }
-      }
-
-      if (formData.ownerType === 'multiple') {
-        if (!formData.primaryOwnerName.trim()) {
-          newErrors.primaryOwnerName = 'Primary owner name is required'
-        }
-
-        if (!formData.primaryPAN) {
-          newErrors.primaryPAN = 'Primary owner PAN is required'
-        } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.primaryPAN)) {
-          newErrors.primaryPAN = 'Invalid PAN format'
-        }
-      }
+    if (formData.contactNumber && !/^\d{10}$/.test(formData.contactNumber)) {
+      newErrors.contactNumber = 'Contact number must be 10 digits'
     }
 
     // Rent Range Validation
@@ -193,80 +269,66 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
       return
     }
 
-    setIsSubmitting(true)
+    setBackendGeneralError('')
 
     try {
-      // Prepare site data
-      const siteId = `SITE-${Date.now()}`
-
-      const siteData = {
-        siteId,
+      const payload = {
         siteName: formData.siteName.trim(),
-        siteCode: formData.siteCode,
         location: formData.location.trim(),
         city: formData.city.trim(),
         state: formData.state,
-        pinCode: formData.pinCode,
-        status: formData.status,
-        isStandalone: !formData.addOwnerNow,
-        owners: [],
+        pinCode: String(formData.pinCode).trim(),
+        status: formData.status || 'active',
+        addOwnerNow: Boolean(formData.addOwnerNow),
+        ownerType: 'individual',
+        ownerDetails: formData.addOwnerNow
+          ? {
+              ownerName: formData.ownerName.trim(),
+              panNumber: formData.panNumber.toUpperCase().trim(),
+              gstin: formData.gstin ? formData.gstin.toUpperCase().trim() : null,
+              contactNumber: formData.contactNumber ? String(formData.contactNumber).trim() : null,
+              email: formData.email ? formData.email.trim() : null,
+              address: formData.ownerAddress ? formData.ownerAddress.trim() : null,
+            }
+          : null,
         rentConfig: {
-          expectedMinRent: formData.expectedMinRent || null,
-          expectedMaxRent: formData.expectedMaxRent || null,
-          gstExpected: formData.gstExpected,
-          tdsApplicable: formData.tdsApplicable,
+          expectedMinRent: formData.expectedMinRent ? Number(formData.expectedMinRent) : 0,
+          expectedMaxRent: formData.expectedMaxRent ? Number(formData.expectedMaxRent) : 0,
+          gstExpected: formData.gstExpected || 'not_sure',
+          tdsApplicable: Boolean(formData.tdsApplicable),
         },
-        createdAt: new Date().toISOString(),
-        createdBy: 'current_user', // Replace with actual user
       }
 
-      // Add owner details if provided
-      if (formData.addOwnerNow && formData.ownerType !== 'multiple') {
-        try {
-          // ✅ PROPERLY CREATE VENDOR LEDGER IN COA
-          const vendorGL = await createVendorLedger(`OWN-${Date.now()}`, formData.ownerName.trim())
+      const resultAction = await dispatch(createRentalSite(payload)).unwrap()
+      toast.success(resultAction?.message || 'Site added successfully and vendor ledger created!')
+      if (onSuccess) onSuccess(resultAction)
+    } catch (err) {
+      console.error('Error adding site:', err)
+      const { fieldErrors, genErr } = parseBackendFieldErrors(err)
 
-          siteData.owners = [
-            {
-              ownerId: `OWN-${Date.now()}`,
-              ownerName: formData.ownerName.trim(),
-              ownerType: formData.ownerType,
-              panNumber: formData.panNumber,
-              gstin: formData.gstin || null,
-              contactNumber: formData.contactNumber || null,
-              email: formData.email || null,
-              address: formData.ownerAddress || null,
-              isPrimary: true,
-              glCode: vendorGL, // ✅ Use the ACTUALLY CREATED GL code
-              glName: `Rent Payable - ${formData.ownerName.trim()}`,
-              createdAt: new Date().toISOString(),
-            },
-          ]
-        } catch (error) {
-          console.error('Failed to create vendor ledger:', error)
-          toast.error('Failed to create vendor accounting ledger')
-          return
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }))
+        toast.error('Validation failed. Please check highlighted fields below.')
+      }
+
+      if (genErr) {
+        setBackendGeneralError(genErr)
+        if (Object.keys(fieldErrors).length === 0) {
+          toast.error(genErr)
         }
       }
-
-      // Save to local storage
-      const existingSites = JSON.parse(localStorage.getItem('sites') || '[]')
-      existingSites.push(siteData)
-      localStorage.setItem('sites', JSON.stringify(existingSites))
-
-      toast.success('Site added successfully!')
-      onSuccess(siteData)
-    } catch (error) {
-      console.error('Error adding site:', error)
-      toast.error('Failed to add site. Please try again.')
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6">
       <h2 className="text-2xl font-semibold text-green-700 mb-4">Add New Site</h2>
+
+      {backendGeneralError && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md mb-4 text-sm text-red-700 font-medium">
+          ⚠️ {backendGeneralError}
+        </div>
+      )}
 
       {/* SECTION 1: Site Information */}
       <div className="bg-gray-50 p-4 rounded-lg space-y-4">
@@ -311,7 +373,8 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
         {/* Location */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Location/Address <span className="text-red-500">*</span>
+            Location/Address <span className="text-red-500">*</span>{' '}
+            <span className="text-gray-400 text-xs font-normal">(Min 10 characters required)</span>
           </label>
           <textarea
             name="location"
@@ -403,270 +466,139 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
         </div>
       </div>
 
-      {/* SECTION 2: Owner Information */}
-      <div className="bg-blue-50 p-4 rounded-lg space-y-4">
-        <div className="flex items-center justify-between border-b pb-2">
-          <h3 className="text-lg font-semibold text-gray-800">Owner Information</h3>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              name="addOwnerNow"
-              checked={formData.addOwnerNow}
-              onChange={handleChange}
-              className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-            />
-            <span className="text-sm font-medium text-gray-700">Add Owner Details Now</span>
-          </label>
+      {/* SECTION 2: Owner Information (Mandatory) */}
+      <div className="bg-blue-50 p-4 rounded-lg space-y-4 border border-blue-200">
+        <div className="flex items-center justify-between border-b border-blue-200 pb-2">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            Owner Information <span className="text-red-500 text-xs font-bold font-mono uppercase bg-red-100 px-2 py-0.5 rounded border border-red-200">* Mandatory</span>
+          </h3>
         </div>
 
-        {formData.addOwnerNow && (
-          <>
-            {/* Owner Type Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Owner Type</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="ownerType"
-                    value="individual"
-                    checked={formData.ownerType === 'individual'}
-                    onChange={handleChange}
-                    className="h-4 w-4 text-green-600"
-                  />
-                  <span className="text-sm">Individual</span>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Owner Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Owner Name <span className="text-red-500">*</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="ownerType"
-                    value="company"
-                    checked={formData.ownerType === 'company'}
-                    onChange={handleChange}
-                    className="h-4 w-4 text-green-600"
-                  />
-                  <span className="text-sm">Company/HUF</span>
+                <input
+                  type="text"
+                  name="ownerName"
+                  value={formData.ownerName}
+                  onChange={handleChange}
+                  placeholder="Enter owner name"
+                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                    errors.ownerName
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'focus:ring-green-500'
+                  }`}
+                />
+                {errors.ownerName && (
+                  <p className="text-red-500 text-xs mt-1">{errors.ownerName}</p>
+                )}
+              </div>
+
+              {/* PAN Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  PAN Number <span className="text-red-500">*</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="ownerType"
-                    value="multiple"
-                    checked={formData.ownerType === 'multiple'}
-                    onChange={handleChange}
-                    className="h-4 w-4 text-green-600"
-                  />
-                  <span className="text-sm">Multiple Owners</span>
-                </label>
+                <input
+                  type="text"
+                  name="panNumber"
+                  value={formData.panNumber}
+                  onChange={handleChange}
+                  placeholder="ABCDE1234F"
+                  maxLength="10"
+                  className={`w-full p-3 border rounded-lg uppercase focus:outline-none focus:ring-2 ${
+                    errors.panNumber
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'focus:ring-green-500'
+                  }`}
+                />
+                {errors.panNumber && (
+                  <p className="text-red-500 text-xs mt-1">{errors.panNumber}</p>
+                )}
               </div>
             </div>
 
-            {/* Single Owner or Company Fields */}
-            {(formData.ownerType === 'individual' || formData.ownerType === 'company') && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Owner Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Owner Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="ownerName"
-                      value={formData.ownerName}
-                      onChange={handleChange}
-                      placeholder="Enter owner name"
-                      className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                        errors.ownerName
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'focus:ring-green-500'
-                      }`}
-                    />
-                    {errors.ownerName && (
-                      <p className="text-red-500 text-xs mt-1">{errors.ownerName}</p>
-                    )}
-                  </div>
-
-                  {/* PAN Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      PAN Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="panNumber"
-                      value={formData.panNumber}
-                      onChange={handleChange}
-                      placeholder="ABCDE1234F"
-                      maxLength="10"
-                      className={`w-full p-3 border rounded-lg uppercase focus:outline-none focus:ring-2 ${
-                        errors.panNumber
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'focus:ring-green-500'
-                      }`}
-                    />
-                    {errors.panNumber && (
-                      <p className="text-red-500 text-xs mt-1">{errors.panNumber}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* GSTIN */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      GSTIN <span className="text-gray-400 text-xs">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="gstin"
-                      value={formData.gstin}
-                      onChange={handleChange}
-                      placeholder="27ABCDE1234F1Z5"
-                      maxLength="15"
-                      className={`w-full p-3 border rounded-lg uppercase focus:outline-none focus:ring-2 ${
-                        errors.gstin ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'
-                      }`}
-                    />
-                    {errors.gstin && <p className="text-red-500 text-xs mt-1">{errors.gstin}</p>}
-                  </div>
-
-                  {/* Contact Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Number <span className="text-gray-400 text-xs">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="contactNumber"
-                      value={formData.contactNumber}
-                      onChange={handleChange}
-                      placeholder="9876543210"
-                      maxLength="10"
-                      className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                        errors.contactNumber
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'focus:ring-green-500'
-                      }`}
-                    />
-                    {errors.contactNumber && (
-                      <p className="text-red-500 text-xs mt-1">{errors.contactNumber}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email <span className="text-gray-400 text-xs">(Optional)</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="owner@email.com"
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors.email ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'
-                    }`}
-                  />
-                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                </div>
-
-                {/* Owner Address */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Owner Address <span className="text-gray-400 text-xs">(Optional)</span>
-                  </label>
-                  <textarea
-                    name="ownerAddress"
-                    value={formData.ownerAddress}
-                    onChange={handleChange}
-                    placeholder="Enter owner's address"
-                    rows="2"
-                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* GSTIN */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  GSTIN <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  name="gstin"
+                  value={formData.gstin}
+                  onChange={handleChange}
+                  placeholder="27ABCDE1234F1Z5"
+                  maxLength="15"
+                  className={`w-full p-3 border rounded-lg uppercase focus:outline-none focus:ring-2 ${
+                    errors.gstin ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'
+                  }`}
+                />
+                {errors.gstin && <p className="text-red-500 text-xs mt-1">{errors.gstin}</p>}
               </div>
-            )}
 
-            {/* Multiple Owners Fields */}
-            {formData.ownerType === 'multiple' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Primary Owner Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Primary Owner Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="primaryOwnerName"
-                      value={formData.primaryOwnerName}
-                      onChange={handleChange}
-                      placeholder="Primary contact person"
-                      className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                        errors.primaryOwnerName
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'focus:ring-green-500'
-                      }`}
-                    />
-                    {errors.primaryOwnerName && (
-                      <p className="text-red-500 text-xs mt-1">{errors.primaryOwnerName}</p>
-                    )}
-                  </div>
-
-                  {/* Primary PAN */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Primary Owner PAN <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="primaryPAN"
-                      value={formData.primaryPAN}
-                      onChange={handleChange}
-                      placeholder="ABCDE1234F"
-                      maxLength="10"
-                      className={`w-full p-3 border rounded-lg uppercase focus:outline-none focus:ring-2 ${
-                        errors.primaryPAN
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'focus:ring-green-500'
-                      }`}
-                    />
-                    {errors.primaryPAN && (
-                      <p className="text-red-500 text-xs mt-1">{errors.primaryPAN}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Other Owners */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Other Owners <span className="text-gray-400 text-xs">(Comma separated)</span>
-                  </label>
-                  <textarea
-                    name="otherOwners"
-                    value={formData.otherOwners}
-                    onChange={handleChange}
-                    placeholder="e.g., Mr. John Doe, Mrs. Jane Smith"
-                    rows="2"
-                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    List additional owners separated by commas
-                  </p>
-                </div>
+              {/* Contact Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contact Number <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  name="contactNumber"
+                  value={formData.contactNumber}
+                  onChange={handleChange}
+                  placeholder="9876543210"
+                  maxLength="10"
+                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                    errors.contactNumber
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'focus:ring-green-500'
+                  }`}
+                />
+                {errors.contactNumber && (
+                  <p className="text-red-500 text-xs mt-1">{errors.contactNumber}</p>
+                )}
               </div>
-            )}
-          </>
-        )}
+            </div>
 
-        {!formData.addOwnerNow && (
-          <p className="text-sm text-gray-600 italic">
-            Owner details can be added later when creating rent agreement
-          </p>
-        )}
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email <span className="text-gray-400 text-xs">(Optional)</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="owner@email.com"
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                  errors.email ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'
+                }`}
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
+
+            {/* Owner Address */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Owner Address <span className="text-gray-400 text-xs">(Optional)</span>
+              </label>
+              <textarea
+                name="ownerAddress"
+                value={formData.ownerAddress}
+                onChange={handleChange}
+                placeholder="Enter owner's address"
+                rows="2"
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+          </div>
       </div>
 
       {/* SECTION 3: Rent Configuration (Optional) */}
@@ -757,12 +689,12 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
       <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={reduxCreateLoading}
           className={`flex-1 px-6 py-3 rounded-lg font-medium text-white transition focus:outline-none focus:ring-2 focus:ring-green-500 ${
-            isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+            reduxCreateLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
           }`}
         >
-          {isSubmitting ? (
+          {reduxCreateLoading ? (
             <span className="flex items-center justify-center gap-2">
               <svg
                 className="animate-spin h-5 w-5 text-white"
@@ -794,7 +726,7 @@ export default function AddSiteForm({ onSuccess, onCancel }) {
         <button
           type="button"
           onClick={onCancel}
-          disabled={isSubmitting}
+          disabled={reduxCreateLoading}
           className="flex-1 sm:flex-none px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
           Cancel

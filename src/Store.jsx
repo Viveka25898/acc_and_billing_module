@@ -9,6 +9,7 @@ import aeInvoiceReducer from './store/slices/aeInvoiceSlice'
 import amInvoiceReducer from './store/slices/amInvoiceSlice'
 import relieverReducer from './store/slices/relieverSlice'
 import conveyanceReducer from './store/slices/conveyanceSlice'
+import rentExpenseReducer from './store/slices/rentExpenseSlice'
 
 const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ const store = configureStore({
     amInvoice: amInvoiceReducer,
     reliever: relieverReducer,
     conveyance: conveyanceReducer,
+    rentExpense: rentExpenseReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

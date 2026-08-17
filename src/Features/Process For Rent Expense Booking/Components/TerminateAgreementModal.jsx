@@ -2,37 +2,42 @@ import React, { useState } from 'react'
 import { toast } from 'react-toastify'
 
 const TerminateAgreementModal = ({ site, agreement, onClose, onSubmit }) => {
+  const [effectiveDate, setEffectiveDate] = useState('')
   const [effectiveMonth, setEffectiveMonth] = useState('')
   const [reason, setReason] = useState('')
   const [cancelUnpaid, setCancelUnpaid] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const handleDateChange = (e) => {
+    const val = e.target.value
+    setEffectiveDate(val)
+    if (val) {
+      setEffectiveMonth(val.substring(0, 7))
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!effectiveMonth) {
-      toast.error('Please select effective month of closure.')
+    if (!effectiveDate || !effectiveMonth) {
+      toast.error('Please select effective termination date and month of closure.')
       return
     }
 
-    // Validate that the effective month is within the agreement range
+    // Validate that the effective date is within the agreement range
     if (agreement) {
-      const selected = new Date(effectiveMonth + '-01')
+      const selected = new Date(effectiveDate)
       const start = new Date(agreement.startDate)
       const end = new Date(agreement.endDate)
 
-      const selectedFirstDay = new Date(selected.getFullYear(), selected.getMonth(), 1)
-      const startFirstDay = new Date(start.getFullYear(), start.getMonth(), 1)
-      const endFirstDay = new Date(end.getFullYear(), end.getMonth(), 1)
-
-      if (selectedFirstDay < startFirstDay || selectedFirstDay > endFirstDay) {
-        toast.error(`The closure month must be within the agreement range: ${agreement.startDate} to ${agreement.endDate}`)
+      if (selected < start || selected > end) {
+        toast.error(`The closure date must be within the agreement range: ${agreement.startDate} to ${agreement.endDate}`)
         return
       }
     }
 
     setIsSubmitting(true)
     setTimeout(() => {
-      onSubmit({ effectiveMonth, reason, cancelUnpaid })
+      onSubmit({ effectiveDate, effectiveMonth, reason, cancelUnpaid })
       setIsSubmitting(false)
     }, 600)
   }
@@ -56,17 +61,32 @@ const TerminateAgreementModal = ({ site, agreement, onClose, onSubmit }) => {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
-          <div>
-            <label className="block text-xs font-bold text-gray-650 uppercase tracking-wider mb-1.5">
-              Effective Month of Closure
-            </label>
-            <input
-              type="month"
-              value={effectiveMonth}
-              onChange={(e) => setEffectiveMonth(e.target.value)}
-              className="w-full border border-gray-250 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition bg-gray-50/50"
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-650 uppercase tracking-wider mb-1.5">
+                Effective Termination Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={effectiveDate}
+                onChange={handleDateChange}
+                className="w-full border border-gray-250 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition bg-gray-50/50"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-650 uppercase tracking-wider mb-1.5">
+                Effective Month <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="month"
+                value={effectiveMonth}
+                onChange={(e) => setEffectiveMonth(e.target.value)}
+                className="w-full border border-gray-250 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition bg-gray-50/50"
+                required
+              />
+            </div>
           </div>
 
           <div>
