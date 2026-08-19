@@ -42,6 +42,24 @@ export default defineConfig({
           'referer': 'https://dev-int.ismart.org/',
         },
       },
+      '/uploads': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
+      '/accounts/uploads': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
     },
   },
 })

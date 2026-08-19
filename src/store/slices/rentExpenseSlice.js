@@ -54,6 +54,46 @@ export const createRentAgreement = createAsyncThunk(
   }
 );
 
+export const fetchRentAgreementById = createAsyncThunk(
+  'rentExpense/fetchRentAgreementById',
+  async (agreementId, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchRentAgreementById(agreementId);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const generateMonthlyVoucher = createAsyncThunk(
+  'rentExpense/generateMonthlyVoucher',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await service.generateMonthlyVoucher(payload);
+      return data;
+    } catch (err) {
+      const errorPayload = err.responseData || err.response?.data || {
+        message: err.message || 'Failed to generate monthly voucher',
+        details: [err.message]
+      };
+      return rejectWithValue(errorPayload);
+    }
+  }
+);
+
+export const fetchSiteVouchers = createAsyncThunk(
+  'rentExpense/fetchSiteVouchers',
+  async ({ siteId, params }, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchSiteVouchers(siteId, params);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 const initialState = {
   sites: [],
   pagination: {
@@ -69,6 +109,16 @@ const initialState = {
     sitesWithAgreements: 0,
     totalMonthlyRent: 0,
   },
+  activeAgreementDetails: null,
+  agreementDetailsLoading: false,
+  siteVouchers: [],
+  vouchersSummary: null,
+  vouchersLoading: false,
+  vouchersError: null,
+  voucherGenLoading: false,
+  voucherGenError: null,
+  voucherGenSuccess: false,
+  lastGeneratedVoucher: null,
   loading: false,
   createLoading: false,
   agreementLoading: false,
@@ -93,10 +143,28 @@ const rentExpenseSlice = createSlice({
       state.agreementError = null;
       state.agreementSuccess = false;
     },
+    resetVoucherGenStatus: (state) => {
+      state.voucherGenLoading = false;
+      state.voucherGenError = null;
+      state.voucherGenSuccess = false;
+      state.lastGeneratedVoucher = null;
+    },
+    clearActiveAgreementDetails: (state) => {
+      state.activeAgreementDetails = null;
+      state.agreementDetailsLoading = false;
+    },
+    clearSiteVouchers: (state) => {
+      state.siteVouchers = [];
+      state.vouchersSummary = null;
+      state.vouchersLoading = false;
+      state.vouchersError = null;
+    },
     clearRentErrors: (state) => {
       state.error = null;
       state.createError = null;
       state.agreementError = null;
+      state.voucherGenError = null;
+      state.vouchersError = null;
     },
   },
   extraReducers: (builder) => {
@@ -169,11 +237,61 @@ const rentExpenseSlice = createSlice({
         state.agreementLoading = false;
         state.agreementError = action.payload;
         state.agreementSuccess = false;
+      })
+
+      // fetchRentAgreementById
+      .addCase(fetchRentAgreementById.pending, (state) => {
+        state.agreementDetailsLoading = true;
+      })
+      .addCase(fetchRentAgreementById.fulfilled, (state, action) => {
+        state.agreementDetailsLoading = false;
+        state.activeAgreementDetails = action.payload;
+        if (action.payload?.siteId) {
+          const matchingSite = state.sites.find(s => s.siteId === action.payload.siteId);
+          if (matchingSite) {
+            matchingSite.agreement = action.payload;
+          }
+        }
+      })
+      .addCase(fetchRentAgreementById.rejected, (state) => {
+        state.agreementDetailsLoading = false;
+      })
+
+      // generateMonthlyVoucher
+      .addCase(generateMonthlyVoucher.pending, (state) => {
+        state.voucherGenLoading = true;
+        state.voucherGenError = null;
+        state.voucherGenSuccess = false;
+      })
+      .addCase(generateMonthlyVoucher.fulfilled, (state, action) => {
+        state.voucherGenLoading = false;
+        state.voucherGenSuccess = true;
+        state.lastGeneratedVoucher = action.payload;
+      })
+      .addCase(generateMonthlyVoucher.rejected, (state, action) => {
+        state.voucherGenLoading = false;
+        state.voucherGenError = action.payload;
+        state.voucherGenSuccess = false;
+      })
+
+      // fetchSiteVouchers
+      .addCase(fetchSiteVouchers.pending, (state) => {
+        state.vouchersLoading = true;
+        state.vouchersError = null;
+      })
+      .addCase(fetchSiteVouchers.fulfilled, (state, action) => {
+        state.vouchersLoading = false;
+        state.siteVouchers = action.payload.vouchers || (Array.isArray(action.payload) ? action.payload : []);
+        state.vouchersSummary = action.payload.summary || null;
+      })
+      .addCase(fetchSiteVouchers.rejected, (state, action) => {
+        state.vouchersLoading = false;
+        state.vouchersError = action.payload;
       });
   },
 });
 
-export const { resetCreateStatus, resetAgreementStatus, clearRentErrors } = rentExpenseSlice.actions;
+export const { resetCreateStatus, resetAgreementStatus, resetVoucherGenStatus, clearActiveAgreementDetails, clearSiteVouchers, clearRentErrors } = rentExpenseSlice.actions;
 
 // Selectors
 export const selectRentalSites = (state) => state.rentExpense?.sites || [];
@@ -187,5 +305,15 @@ export const selectRentCreateSuccess = (state) => state.rentExpense?.createSucce
 export const selectAgreementLoading = (state) => state.rentExpense?.agreementLoading || false;
 export const selectAgreementError = (state) => state.rentExpense?.agreementError || null;
 export const selectAgreementSuccess = (state) => state.rentExpense?.agreementSuccess || false;
+export const selectActiveAgreementDetails = (state) => state.rentExpense?.activeAgreementDetails || null;
+export const selectAgreementDetailsLoading = (state) => state.rentExpense?.agreementDetailsLoading || false;
+export const selectVoucherGenLoading = (state) => state.rentExpense?.voucherGenLoading || false;
+export const selectVoucherGenError = (state) => state.rentExpense?.voucherGenError || null;
+export const selectVoucherGenSuccess = (state) => state.rentExpense?.voucherGenSuccess || false;
+export const selectLastGeneratedVoucher = (state) => state.rentExpense?.lastGeneratedVoucher || null;
+export const selectSiteVouchers = (state) => state.rentExpense?.siteVouchers || [];
+export const selectVouchersSummary = (state) => state.rentExpense?.vouchersSummary || null;
+export const selectVouchersLoading = (state) => state.rentExpense?.vouchersLoading || false;
+export const selectVouchersError = (state) => state.rentExpense?.error || null;
 
 export default rentExpenseSlice.reducer;

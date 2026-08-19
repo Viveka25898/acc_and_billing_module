@@ -53,8 +53,8 @@ const getWithFallback = async (endpoints, config) => {
 export const createRentalSite = async (payload) => {
   try {
     const endpoints = [
-      '/rent-expense/sites',
       '/accounts/rent-expense/sites',
+      '/rent-expense/sites',
       '/rent/sites',
     ];
 
@@ -94,8 +94,8 @@ export const fetchRentalSites = async (params = {}) => {
     if (params.search && params.search.trim()) queryParams.search = params.search.trim();
 
     const endpoints = [
-      '/rent-expense/sites',
       '/accounts/rent-expense/sites',
+      '/rent-expense/sites',
       '/rent/sites',
     ];
 
@@ -137,8 +137,8 @@ export const fetchRentalSites = async (params = {}) => {
 export const createRentAgreement = async (payload) => {
   try {
     const endpoints = [
-      '/rent-expense/agreements',
       '/accounts/rent-expense/agreements',
+      '/rent-expense/agreements',
       '/rent/agreements',
     ];
 
@@ -163,4 +163,97 @@ export const createRentAgreement = async (payload) => {
     throw error;
   }
 };
+
+/**
+ * fetchRentAgreementById
+ * Fetches detailed rent agreement (including fileUrl, fileName, calculations) by agreement ID.
+ * @param {string} agreementId Agreement ID (e.g. AGR-1783624734068)
+ * @returns {Promise<Object>} Full agreement details
+ */
+export const fetchRentAgreementById = async (agreementId) => {
+  try {
+    const endpoints = [
+      `/accounts/rent-expense/agreements/${agreementId}`,
+      `/rent-expense/agreements/${agreementId}`,
+      `/rent/agreements/${agreementId}`,
+    ];
+
+    const response = await getWithFallback(endpoints);
+    const body = response.data;
+
+    if (!body || body.success === false) {
+      throw new Error(body?.message || 'Failed to fetch agreement details.');
+    }
+
+    return body.data || body.results || body;
+  } catch (error) {
+    console.error('❌ Error in fetchRentAgreementById:', error);
+    throw error;
+  }
+};
+
+/**
+ * generateMonthlyVoucher
+ * Triggers monthly rent expense voucher generation for a site and agreement.
+ * @param {Object} payload { siteId, agreementId, month, amount }
+ * @returns {Promise<Object>} Generated voucher response data
+ */
+export const generateMonthlyVoucher = async (payload) => {
+  try {
+    const endpoints = [
+      '/accounts/rent-expense/vouchers/generate',
+      '/rent-expense/vouchers/generate',
+      '/rent/vouchers/generate',
+    ];
+
+    const response = await postWithFallback(endpoints, payload);
+    const body = response.data;
+
+    if (!body || body.success === false) {
+      const errObj = new Error(body?.message || 'Failed to generate monthly voucher.');
+      errObj.responseData = body;
+      throw errObj;
+    }
+
+    return body.data || body.results || body;
+  } catch (error) {
+    console.error('❌ Error in generateMonthlyVoucher:', error);
+    if (error.response?.data) {
+      error.responseData = error.response.data;
+    }
+    throw error;
+  }
+};
+
+/**
+ * fetchSiteVouchers
+ * Retrieves vouchers list, summary stats, and pagination for a specific site.
+ * @param {string} siteId Site ID (e.g. SITE-1786509987091)
+ * @param {Object} params Optional pagination query params
+ * @returns {Promise<Object>} { siteId, siteName, vouchers, summary, pagination }
+ */
+export const fetchSiteVouchers = async (siteId, params = {}) => {
+  try {
+    const endpoints = [
+      `/accounts/rent-expense/sites/${siteId}/vouchers`,
+      `/rent-expense/sites/${siteId}/vouchers`,
+      `/rent/sites/${siteId}/vouchers`,
+    ];
+
+    const response = await getWithFallback(endpoints, { params });
+    const body = response.data;
+
+    if (!body || body.success === false) {
+      throw new Error(body?.message || 'Failed to fetch site vouchers.');
+    }
+
+    return body.data || body.results || body;
+  } catch (error) {
+    console.error('❌ Error in fetchSiteVouchers:', error);
+    throw error;
+  }
+};
+
+
+
 

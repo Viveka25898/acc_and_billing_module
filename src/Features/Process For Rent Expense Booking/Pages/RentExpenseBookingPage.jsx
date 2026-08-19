@@ -8,10 +8,13 @@ import ViewVouchersModal from '../Components/ViewVouchersModal'
 import RentExpenseVoucher from '../Components/RentExpenseVoucher'
 import { processRentApproval } from '../../Master/utils/accountingHelpers'
 import TerminateAgreementModal from '../Components/TerminateAgreementModal'
+import ViewAgreementModal from '../Components/ViewAgreementModal'
 
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchRentalSites,
+  fetchRentAgreementById,
+  clearActiveAgreementDetails,
   selectRentalSites,
   selectRentPagination,
   selectRentSummary,
@@ -38,6 +41,8 @@ export default function RentExpenseBookingPage() {
   const [filters, setFilters] = useState({ owner: '', city: '', state: '' })
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
   const [showAgreementModal, setShowAgreementModal] = useState(false)
+  const [showViewAgreementModal, setShowViewAgreementModal] = useState(false)
+  const [viewAgreementSite, setViewAgreementSite] = useState(null)
   const [showVoucherModal, setShowVoucherModal] = useState(false)
   const [showTerminateModal, setShowTerminateModal] = useState(false)
   const [terminateSite, setTerminateSite] = useState(null)
@@ -96,6 +101,18 @@ export default function RentExpenseBookingPage() {
     )
   }
 
+  const handleOpenViewAgreement = (siteObj) => {
+    setViewAgreementSite(siteObj)
+    setShowViewAgreementModal(true)
+    const agrId =
+      siteObj.currentAgreementId ||
+      siteObj.agreementId ||
+      getAgreementForSite(siteObj.siteId)?.agreementId
+    if (agrId) {
+      dispatch(fetchRentAgreementById(agrId))
+    }
+  }
+
   const handleTerminateSubmit = (siteId, data) => {
     try {
       const site = reduxSites.find((s) => s.siteId === siteId)
@@ -143,149 +160,46 @@ export default function RentExpenseBookingPage() {
     }
   }
 
-  const handleVoucherSubmit = async (voucherData) => {
+  const handleVoucherSubmit = async (serverVoucherData) => {
     try {
-      // Prepare rent voucher data
-      const agreement = getAgreementForSite(selectedSite.siteId)
-      const rentVoucher = {
-        ...voucherData,
-        siteId: selectedSite.siteId,
-        siteName: selectedSite.siteName,
-        siteLocation: selectedSite.location,
-        ownerName: agreement?.owner || selectedSite.owners?.[0]?.ownerName,
-        ownerId: selectedSite.owners?.[0]?.ownerId,
-        ownerGLCode: selectedSite.owners?.[0]?.glCode,
-        agreementId: agreement?.agreementId,
+      setShowVoucherModal(false);
+      setSelectedSite(null);
+      dispatch(fetchRentalSites({ page: currentPage, limit: itemsPerPage }));
+
+      // If server returned voucher accounting details, show rent expense voucher modal
+      if (serverVoucherData?.accounting) {
+        const expenseData = {
+          voucherNo: serverVoucherData.accounting.voucherNo || serverVoucherData.voucherId,
+          date: serverVoucherData.accounting.date || new Date().toISOString().split('T')[0],
+          company: 'iSmart',
+          financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+          reference: `Monthly rent voucher for ${serverVoucherData.siteName || 'Site'} (${serverVoucherData.month})`,
+          preparedBy: serverVoucherData.workflow?.generatedBy || 'Billing Executive',
+          siteDetails: {
+            siteName: serverVoucherData.siteName,
+            owner: serverVoucherData.ownerName || '-',
+            month: serverVoucherData.month,
+          },
+          rentDetails: {
+            month: serverVoucherData.month,
+            baseRent: serverVoucherData.breakdown?.baseRent || serverVoucherData.amount,
+            gstAmount: serverVoucherData.breakdown?.gst || 0,
+            totalAmount: serverVoucherData.amount,
+            withGST: serverVoucherData.gstDetails?.applicable || false,
+          },
+          entries: serverVoucherData.accounting.glEntries || [],
+          paymentWorkflow: {
+            status: serverVoucherData.status || 'Approved for Payment',
+            paymentDeadline: serverVoucherData.dueDate || '-',
+          },
+        };
+        setExpenseVoucherData(expenseData);
+        setShowExpenseVoucherModal(true);
       }
-
-      // Auto-select a default bank behind the scenes
-      const defaultBank = {
-        bankCode: 'A3004003002',
-        bankName: 'HDFC Bank - Current Account',
-        bankId: 'HDFC001',
-      }
-
-      // Process accounting immediately
-      const result = await processRentApproval(rentVoucher, defaultBank)
-
-      if (!result.success) throw new Error(result.message || 'Processing failed')
-
-      // Create enhanced voucher with approval workflow tracking
-      const updatedVoucher = {
-        ...rentVoucher,
-        voucherId: `VOUCH-${Date.now()}`,
-        accounting: {
-          voucherNo: result.voucherNo,
-          transactionId: result.transactionId,
-          vendorGL: result.vendorGL,
-          processedAt: new Date().toISOString(),
-        },
-        status: 'Approved', // Changed to 'Approved' for payment processing
-        paymentStatus: 'Pending Payment',
-        workflow: {
-          generatedBy: 'Billing Executive',
-          generatedAt: new Date().toISOString(),
-          approvedBy: 'Auto-Approval System',
-          approvedAt: new Date().toISOString(),
-          paidBy: null,
-          paidAt: null,
-        },
-        // Enhanced vendor details for payment processing
-        vendorDetails: {
-          vendorId: selectedSite.owners?.[0]?.ownerId,
-          vendorName: agreement?.owner || selectedSite.owners?.[0]?.ownerName,
-          vendorGL: result.vendorGL,
-          panNumber: selectedSite.owners?.[0]?.panNumber,
-          gstin: selectedSite.owners?.[0]?.gstin,
-          contactNumber: selectedSite.owners?.[0]?.contactNumber,
-          email: selectedSite.owners?.[0]?.email,
-          address: selectedSite.owners?.[0]?.address,
-          state: selectedSite.state, // Important for GST compliance
-        },
-        // Payment details (to be filled during payment processing)
-        paymentDetails: {
-          bankAccount: null,
-          ifscCode: null,
-          paymentMode: null,
-          utrNumber: null,
-          paidAmount: null,
-          paymentDate: null,
-        },
-        // Additional metadata for payment processing
-        paymentReady: true,
-        priority: 'Normal',
-        dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // 7 days from now
-      }
-
-      // Save to main vouchers list
-      setVouchers((prev) => [...prev, updatedVoucher])
-
-      // ✅ CRITICAL: Save to vendor vouchers for payment processing
-      const existingVendorVouchers = JSON.parse(localStorage.getItem('vendorVouchers') || '[]')
-      const vendorVoucherForPayment = {
-        ...updatedVoucher,
-        // Ensure all required fields for payment processing
-        id: `VENDOR-VOUCH-${Date.now()}`,
-        type: 'rent_payment',
-        category: 'Rent Expense',
-        department: 'Operations',
-      }
-
-      const updatedVendorVouchers = [...existingVendorVouchers, vendorVoucherForPayment]
-      localStorage.setItem('vendorVouchers', JSON.stringify(updatedVendorVouchers))
-
-      // Refresh sites list if vendor GL code was assigned
-      if (result.vendorGL && !selectedSite.owners?.[0]?.glCode) {
-        dispatch(fetchRentalSites({ page: currentPage, limit: itemsPerPage }))
-      }
-
-      // Build expense voucher data for viewing
-      const expenseData = {
-        voucherNo: result.voucherNo,
-        date: new Date().toISOString().split('T')[0],
-        company: 'iSmart',
-        financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
-        reference: `Monthly rent payment for ${selectedSite.siteName}`,
-        preparedBy: 'Billing Executive',
-        siteDetails: {
-          siteName: selectedSite.siteName,
-          location: selectedSite.location,
-          city: selectedSite.city,
-          state: selectedSite.state,
-          owner: rentVoucher.ownerName || 'N/A',
-          agreementPeriod: agreement ? `${agreement.startDate} to ${agreement.endDate}` : 'N/A',
-        },
-        rentDetails: {
-          month: rentVoucher.month,
-          baseRent: rentVoucher.breakdown?.baseRent || rentVoucher.amount,
-          gstAmount: rentVoucher.breakdown?.gst || 0,
-          totalAmount: rentVoucher.amount,
-          gstType: rentVoucher.gstType,
-          withGST: rentVoucher.gstDetails?.applicable || false,
-        },
-        entries: createRentAccountingEntries(rentVoucher, result.vendorGL),
-        // Add payment workflow info to the view
-        paymentWorkflow: {
-          status: 'Approved for Payment',
-          nextStep: 'Process Payment',
-          paymentDeadline: new Date(
-            new Date().setDate(new Date().getDate() + 7)
-          ).toLocaleDateString(),
-        },
-      }
-
-      setExpenseVoucherData(expenseData)
-      setShowExpenseVoucherModal(true)
-      toast.success(`✅ ${result.message} - Voucher approved for payment processing!`)
-
-      // Log for debugging
-      console.log('Vendor voucher saved for payment:', vendorVoucherForPayment)
-      console.log('Total vendor vouchers pending payment:', updatedVendorVouchers.length)
     } catch (error) {
-      console.error('Error in handleVoucherSubmit:', error)
-      toast.error('Failed to process voucher')
+      console.error('Error handling generated voucher:', error);
     }
-  }
+  };
 
   const approveVoucher = (voucherId) => {
     const voucherToApprove = vouchers.find((v) => v.voucherId === voucherId)
@@ -619,10 +533,17 @@ export default function RentExpenseBookingPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {site.hasActiveAgreement || agreement ? (
-                            <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
-                              Active
-                            </span>
+                          {site.hasActiveAgreement || site.agreementStatus === 'Active' || agreement ? (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <span>Active</span>
+                              <button
+                                onClick={() => handleOpenViewAgreement(site)}
+                                title="View Agreement Details & PDF"
+                                className="w-5 h-5 rounded-full bg-emerald-100 hover:bg-emerald-600 text-emerald-800 hover:text-white flex items-center justify-center transition-all cursor-pointer text-xs"
+                              >
+                                👁️
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
@@ -764,18 +685,13 @@ export default function RentExpenseBookingPage() {
 
         {/* Voucher Generation Modal */}
         {showVoucherModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-2">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md h-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6 relative">
-              <button
-                className="absolute top-2 right-2 text-gray-600 hover:text-red-600"
-                onClick={() => setShowVoucherModal(false)}
-              >
-                ✕
-              </button>
+          <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto my-auto relative border border-slate-100 divide-y divide-slate-100 transform transition-all">
               <MonthlyVoucherGenerator
                 site={selectedSite}
                 agreement={getAgreementForSite(selectedSite?.siteId)}
                 onSuccess={handleVoucherSubmit}
+                onCancel={() => setShowVoucherModal(false)}
               />
             </div>
           </div>
@@ -786,12 +702,38 @@ export default function RentExpenseBookingPage() {
           <ViewVouchersModal
             site={voucherViewSite}
             agreement={getAgreementForSite(voucherViewSite?.siteId)}
-            vouchers={getVouchersForSite(voucherViewSite?.siteId)}
             onClose={() => {
-              setShowViewVoucherModal(false)
-              setVoucherViewSite(null)
+              setShowViewVoucherModal(false);
+              setVoucherViewSite(null);
             }}
-            onApproveVoucher={approveVoucher} // Add this prop
+            onViewVoucherDetails={(v) => {
+              setExpenseVoucherData({
+                voucherNo: v.voucherNo || v.voucherId,
+                date: v.createdAt ? v.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+                company: 'iSmart',
+                financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+                reference: `Rent voucher for ${v.month}`,
+                preparedBy: 'Billing Executive',
+                siteDetails: {
+                  siteName: voucherViewSite?.siteName,
+                  owner: voucherViewSite?.owners?.[0]?.ownerName || '-',
+                  month: v.month,
+                },
+                rentDetails: {
+                  month: v.month,
+                  baseRent: v.breakdown?.baseRent || v.amount,
+                  gstAmount: v.breakdown?.gst || 0,
+                  totalAmount: v.amount,
+                  withGST: !!(v.breakdown?.gst > 0),
+                },
+                entries: v.accounting?.glEntries || [],
+                paymentWorkflow: {
+                  status: v.status || 'Approved for Payment',
+                  paymentDeadline: v.dueDate || '-',
+                },
+              });
+              setShowExpenseVoucherModal(true);
+            }}
           />
         )}
 
@@ -816,6 +758,18 @@ export default function RentExpenseBookingPage() {
               setTerminateSite(null)
             }}
             onSubmit={(data) => handleTerminateSubmit(terminateSite.siteId, data)}
+          />
+        )}
+
+        {/* View Agreement Details Modal */}
+        {showViewAgreementModal && (
+          <ViewAgreementModal
+            site={viewAgreementSite}
+            onClose={() => {
+              setShowViewAgreementModal(false)
+              setViewAgreementSite(null)
+              dispatch(clearActiveAgreementDetails())
+            }}
           />
         )}
       </div>
