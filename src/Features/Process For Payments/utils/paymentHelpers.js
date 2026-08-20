@@ -1,24 +1,84 @@
 // ─── paymentHelpers.js ────────────────────────────────────────────────────────
-// Centralised helper functions for the Process For Payments feature.
-// All localStorage keys and data structures are preserved as-is so that
-// other modules that write to these keys (AM, BM, Finance Head, Rent, etc.)
-// are not affected.
-// When the API is ready, replace the localStorage reads in each loader with
-// an API call — the callers stay the same.
+// Centralised helper functions and data transformers for Process For Payments
 // ─────────────────────────────────────────────────────────────────────────────
-import { toast } from 'react-toastify'
 
-// ─── Bank / IFSC Generators ───────────────────────────────────────────────────
-// NOTE: These generate deterministic pseudo-values from vendor name until the
-// vendor master API provides real bank details.
+/**
+ * Transforms raw API response array of vendors into component state format.
+ * Handles numeric conversions, label formatting, fallback defaults, and unique keys.
+ * 
+ * @param {Array} apiVendors Raw vendors array from API
+ * @returns {Array} Standardized vendor list for UI
+ */
+export const transformPendingVendorApiResponse = (apiVendors = []) => {
+  if (!Array.isArray(apiVendors)) return []
+
+  return apiVendors.map((vendor, vIdx) => {
+    const vendorId = vendor.vendorId || vendor.id || `VND-TMP-${vIdx}`
+    const vendorName = vendor.vendorName ? vendor.vendorName.trim() : '-'
+    const isRentVoucher =
+      vendorId.startsWith('OWN-') ||
+      (Array.isArray(vendor.invoices) && vendor.invoices.some((i) => i.type === 'RENT'))
+
+    const invoices = (vendor.invoices || []).map((inv, iIdx) => {
+      const rawAmt = inv.netPayable !== undefined && inv.netPayable !== null ? inv.netPayable : inv.amount
+      const parsedAmount = parseFloat(rawAmt) || 0
+
+      let typeLabel = '-'
+      if (inv.type) {
+        const uType = String(inv.type).toUpperCase()
+        if (uType === 'MATERIAL') typeLabel = 'Material Invoice'
+        else if (uType === 'FIXED_ASSET') typeLabel = 'Fixed Asset'
+        else if (uType === 'RENT') typeLabel = 'Rent Voucher'
+        else if (uType.includes('PREPAID') || uType.includes('UNIFORM')) typeLabel = 'Uniform Prepaid'
+        else typeLabel = inv.type
+      }
+
+      return {
+        id: inv.invoiceId || inv.id || `INV-TMP-${vendorId}-${iIdx}`,
+        invoiceNumber: inv.invoiceNumber || inv.invoiceNo || '-',
+        amount: parsedAmount,
+        netPayable: parseFloat(inv.netPayable) || parsedAmount,
+        originalAmount: parseFloat(inv.amount) || parsedAmount,
+        documentUrl: inv.documentUrl || null,
+        type: inv.type || 'MATERIAL',
+        invoiceTypeLabel: typeLabel,
+        vendorGLCode: inv.vendorGlCode || inv.vendorGLCode || inv.vendor_gl_code || '-',
+        paymentStatus: inv.paymentStatus || 'PENDING_PAYMENT',
+        isRentVoucher: inv.type === 'RENT' || vendorId.startsWith('OWN-'),
+        source: 'api_pending_list',
+      }
+    })
+
+    const computedDebitAmount =
+      parseFloat(vendor.debitAmount) ||
+      invoices.reduce((sum, i) => sum + i.amount, 0)
+
+    return {
+      id: vendorId,
+      vendorId,
+      vendorName,
+      debitAmount: computedDebitAmount,
+      currency: vendor.currency || 'INR',
+      debitBankAccountNumber: vendor.debitBankAccountNumber || 'N/A',
+      beneficiaryAccountNumber: vendor.beneficiaryAccountNumber || 'N/A',
+      ifscCode: vendor.ifscCode || 'N/A',
+      narration: vendorName !== '-' ? vendorName.substring(0, 20) : '-',
+      invoices,
+      isRentVoucher,
+    }
+  })
+}
+
+// ─── Bank / IFSC Generators (Fallback for mock entries) ───────────────────────
 const stringHash = (str) => {
   let hash = 0
   const s = String(str)
-  for (let i = 0; i < s.length; i++) hash = Math.imul(31, hash) + s.charCodeAt(i) | 0
+  for (let i = 0; i < s.length; i++) hash = (Math.imul(31, hash) + s.charCodeAt(i)) | 0
   return Math.abs(hash).toString(36)
 }
 
 export const generateBankAccount = (vendorName = '') => {
+  if (!vendorName || vendorName === '-') return 'N/A'
   const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
   return `${123456789000 + (hash % 10000)}`
 }
@@ -28,211 +88,23 @@ export const extractBeneficiaryAccount = (invoiceOrVoucher) => {
     const match = invoiceOrVoucher.vendorDetails.vendorGL.match(/\d+/)
     if (match) return `987654${match[0].substring(0, 6)}`
   }
-  if (invoiceOrVoucher?.vendor_gl_mappings?.payable_gl_code) {
-    const match = invoiceOrVoucher.vendor_gl_mappings.payable_gl_code.match(/\d+/)
-    if (match) return `987654${match[0].substring(0, 6)}`
-  }
-  const vendorName =
-    invoiceOrVoucher?.vendorName || invoiceOrVoucher?.vendorDetails?.vendorName
-  if (vendorName) {
+  const vendorName = invoiceOrVoucher?.vendorName || invoiceOrVoucher?.vendorDetails?.vendorName
+  if (vendorName && vendorName !== '-') {
     const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
     return `987654${String(321000 + (hash % 10000))}`
   }
-  return '987654321000'
+  return 'N/A'
 }
 
 export const extractIFSCCode = (invoiceOrVoucher) => {
-  const vendorName =
-    invoiceOrVoucher?.vendorName || invoiceOrVoucher?.vendorDetails?.vendorName
-  if (vendorName) {
+  const vendorName = invoiceOrVoucher?.vendorName || invoiceOrVoucher?.vendorDetails?.vendorName
+  if (vendorName && vendorName !== '-') {
     const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
     const banks = ['HDFC', 'ICIC', 'SBIN', 'YESB', 'AXIS']
     const branchCode = String(1000 + (hash % 9000)).padStart(4, '0')
     return `${banks[hash % banks.length]}0${branchCode}`
   }
-  return 'HDFC0000123'
-}
-
-// ─── Vendor Data Loader ───────────────────────────────────────────────────────
-/**
- * Loads all approved invoices from every upstream source in localStorage and
- * groups them by vendor.
- * Sources:
- *   - processed_invoices          (AM processed)
- *   - final_processed_invoices    (BM final processed)
- *   - oneTimeFinalProcessedInvoice (Finance Head approved)
- */
-export const loadInvoicesFromLocalStorage = () => {
-  try {
-    const processedInvoices = JSON.parse(localStorage.getItem('processed_invoices') || '[]')
-    const finalProcessedInvoices = JSON.parse(
-      localStorage.getItem('final_processed_invoices') || '[]'
-    )
-    const oneTimeFinalProcessed = JSON.parse(
-      localStorage.getItem('oneTimeFinalProcessedInvoice') || '[]'
-    )
-
-    const allInvoices = [...processedInvoices, ...finalProcessedInvoices, ...oneTimeFinalProcessed]
-
-    const filteredInvoices = allInvoices.filter((invoice) => {
-      const approvalStatus = invoice.approvalStatus || invoice.status || invoice.approval_status
-      const paymentStatus = invoice.paymentStatus || 'pending'
-
-      return (
-        approvalStatus === 'Approved' ||
-        approvalStatus === 'Approved by AM' ||
-        approvalStatus === 'Approved by BM' ||
-        approvalStatus === 'Processed by AM' ||
-        approvalStatus === 'Processed by BM' ||
-        approvalStatus?.includes('Final Approved') ||
-        invoice.processedAtAM ||
-        invoice.processedAtBM ||
-        (invoice.source === 'finance_head_approval' && paymentStatus === 'pending')
-      )
-    })
-
-    const vendorMap = {}
-
-    filteredInvoices.forEach((invoice, index) => {
-      const invoiceNo = invoice.invoiceNo || invoice.invoiceNumber
-      const vendorName = invoice.vendorName
-
-      if (!vendorName) return
-
-      if (!vendorMap[vendorName]) {
-        vendorMap[vendorName] = {
-          id: `VENDOR-${stringHash(vendorName)}`,
-          vendorName,
-          debitBankAccountNumber: generateBankAccount(vendorName),
-          debitAmount: 0,
-          currency: 'INR',
-          beneficiaryAccountNumber: extractBeneficiaryAccount(invoice),
-          ifscCode: extractIFSCCode(invoice),
-          narration: vendorName.substring(0, 20),
-          invoices: [],
-          source: invoice.source || 'am_bm_approval',
-        }
-      }
-
-      let invoiceTypeLabel = ''
-      if (invoice.type === 'Material') invoiceTypeLabel = 'Material Invoice'
-      else if (invoice.type === 'Fixed Asset') invoiceTypeLabel = 'Fixed Asset'
-      else if (invoice.type === 'Procurement Prepaid') invoiceTypeLabel = 'Uniform Prepaid'
-      else if (invoice.expenseType) invoiceTypeLabel = invoice.expenseType
-      else invoiceTypeLabel = invoice.type || 'Invoice'
-
-      // Priority: netPayable > amount > totalAmount
-      let amount = 0
-      if (invoice.netPayable !== undefined && invoice.netPayable !== null) {
-        amount = invoice.netPayable
-      } else if (invoice.amount) {
-        amount = invoice.amount
-      } else if (invoice.totalAmount) {
-        amount = invoice.totalAmount
-      }
-
-      const invoiceId = invoice.id || invoice._id || `INV-${stringHash(invoiceNo + '-' + amount + '-' + index)}`
-
-      vendorMap[vendorName].invoices.push({
-        id: invoiceId,
-        invoiceNumber: invoiceNo,
-        amount,
-        documentUrl: invoice.documentUrl || null,
-        type: invoice.type || invoice.expenseType,
-        invoiceTypeLabel,
-        gstRate: invoice.gstRate,
-        hsnCode: invoice.hsnCode,
-        processedAt:
-          invoice.processedAt ||
-          invoice.processedAtAM ||
-          invoice.processedAtBM ||
-          invoice.financeApprovedAt,
-        vendorGLCode:
-          invoice.vendorGLCode || invoice.vendor_gl_code || invoice.vendorGL,
-        voucherNo:
-          invoice.voucherNo ||
-          invoice.voucher_id ||
-          invoice.purchaseVoucherNo ||
-          invoice.accountingResult?.voucherNo,
-        tdsApplicable: invoice.tdsApplicable,
-        tdsSection: invoice.tdsSection,
-        tdsRate: invoice.tdsRate,
-        tdsAmount: invoice.tdsAmount,
-        netPayable: invoice.netPayable,
-        accountingResult: invoice.accountingResult,
-        source: invoice.source || 'am_bm_approval',
-      })
-
-      vendorMap[vendorName].debitAmount += amount
-    })
-
-    return Object.values(vendorMap)
-  } catch (error) {
-    toast.error('Failed to load vendor invoices from storage')
-    return []
-  }
-}
-
-// ─── Rent Voucher Loader ──────────────────────────────────────────────────────
-export const loadRentVouchersFromLocalStorage = () => {
-  try {
-    const rentVouchers = JSON.parse(localStorage.getItem('vendorVouchers') || '[]')
-    const vendorMap = {}
-
-    rentVouchers.forEach((voucher, index) => {
-      if (voucher.status !== 'Approved' || voucher.paymentStatus !== 'Pending Payment') return
-
-      const vendorName = voucher.vendorDetails?.vendorName || voucher.ownerName
-      const vendorId = `RENT-VND-${stringHash(vendorName)}`
-
-      vendorMap[vendorId] = {
-        id: vendorId,
-        vendorName,
-        debitBankAccountNumber: generateBankAccount(vendorName),
-        debitAmount: 0,
-        currency: 'INR',
-        beneficiaryAccountNumber: extractBeneficiaryAccount(voucher),
-        ifscCode: extractIFSCCode(voucher),
-        narration: `Rent Payment - ${voucher.siteName}`,
-        invoices: [],
-        isRentVoucher: true,
-      }
-
-      const invoiceId = voucher.id || voucher._id || `RENT-INV-${stringHash(voucher.month + '-' + voucher.amount + '-' + index)}`
-
-      vendorMap[vendorId].invoices.push({
-        id: invoiceId,
-        invoiceNumber: voucher.accounting?.voucherNo || `RENT-${voucher.month}`,
-        amount: voucher.amount,
-        documentUrl: null,
-        type: 'Rent Payment',
-        invoiceTypeLabel: 'Rent Voucher',
-        gstRate: voucher.gstDetails?.rate || 0,
-        hsnCode: null,
-        processedAt: voucher.workflow?.generatedAt,
-        vendorGLCode: voucher.vendorDetails?.vendorGL,
-        voucherNo: voucher.accounting?.voucherNo,
-        isRentVoucher: true,
-        rentDetails: {
-          month: voucher.month,
-          siteName: voucher.siteName,
-          siteLocation: voucher.siteLocation,
-          agreementId: voucher.agreementId,
-          baseRent: voucher.breakdown?.baseRent,
-          gstAmount: voucher.breakdown?.gst,
-          gstType: voucher.gstType,
-        },
-        vendorDetails: voucher.vendorDetails,
-      })
-
-      vendorMap[vendorId].debitAmount += voucher.amount
-    })
-
-    return Object.values(vendorMap)
-  } catch (error) {
-    toast.error('Failed to load rent vouchers')
-    return []
-  }
+  return 'N/A'
 }
 
 // ─── Data Validation ──────────────────────────────────────────────────────────
@@ -249,8 +121,7 @@ export const validateAndCleanVendorData = (data) => {
     .map((vendor) => ({
       ...vendor,
       invoices: vendor.invoices.filter(
-        (inv) =>
-          inv && inv.invoiceNumber && typeof inv.amount === 'number' && inv.amount >= 0
+        (inv) => inv && inv.invoiceNumber && typeof inv.amount === 'number' && inv.amount >= 0
       ),
     }))
     .filter((vendor) => vendor.invoices.length > 0)

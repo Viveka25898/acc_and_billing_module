@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
@@ -14,22 +15,20 @@ import ConveyancePaymentsSection from './Components/ConveyancePaymentsSection'
 import PaymentBankSelectionModal from './Components/PaymentBankSelectionModal'
 
 import { parseVendorExcelFile } from './utils/excelHelpers'
-import {
-  loadInvoicesFromLocalStorage,
-  loadRentVouchersFromLocalStorage,
-} from './utils/paymentHelpers'
+import { transformPendingVendorApiResponse } from './utils/paymentHelpers'
+import { fetchPendingVendorPayments } from '../../store/slices/vendorPaymentSlice'
 import { processVendorPayments } from '../Master/utils/accountingHelpers'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'vendor',     label: 'Vendor Payments',     color: 'green'  },
-  { id: 'reliever',   label: 'Reliever Payments',   color: 'blue'   },
+  { id: 'vendor', label: 'Vendor Payments', color: 'green' },
+  { id: 'reliever', label: 'Reliever Payments', color: 'blue' },
   { id: 'conveyance', label: 'Conveyance Payments', color: 'purple' },
 ]
 
 const TAB_ACTIVE_CLASSES = {
-  green:  'border-green-500 text-green-700 bg-green-50',
-  blue:   'border-blue-500 text-blue-700 bg-blue-50',
+  green: 'border-green-500 text-green-700 bg-green-50',
+  blue: 'border-blue-500 text-blue-700 bg-blue-50',
   purple: 'border-purple-500 text-purple-700 bg-purple-50',
 }
 
@@ -60,7 +59,7 @@ const PaymentTypeTabs = ({ activeTab, onTabChange }) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 sm:px-5 text-sm font-semibold rounded-lg transition-all duration-200 ${
+          className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 sm:px-5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 ${
             isActive
               ? `${TAB_ACTIVE_CLASSES[tab.color]} shadow-sm border`
               : 'text-gray-500 hover:text-gray-700 hover:bg-white'
@@ -100,33 +99,42 @@ const VendorPaymentsSection = ({
   pendingAcceptedData,
   setPendingAcceptedData,
 }) => {
-  const [loading, setLoading] = useState(false)
+  const dispatch = useDispatch()
+  const { summary, pagination, loading: apiLoading, error: apiError } = useSelector(
+    (state) => state.vendorPayment || {}
+  )
   const [bankProcessing, setBankProcessing] = useState(false)
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true)
-      try {
-        const invoiceData = loadInvoicesFromLocalStorage()
-        const rentData = loadRentVouchersFromLocalStorage()
-        const combined = [...invoiceData, ...rentData]
-        setVendorData(combined)
+  // Local Page State — Backend controls pageSize via response.pagination.pageSize
+  const [currentPage, setCurrentPage] = useState(1)
 
-        if (combined.length > 0) {
-          const totalInv = combined.reduce((s, v) => s + v.invoices.length, 0)
-          toast.info(`Loaded ${invoiceData.length} vendors (${totalInv} invoices) + ${rentData.length} rent vouchers`)
-        } else {
-          toast.info('No pending vendor payments found')
-        }
+  // Fetch pending vendor payments from backend API using backend-controlled pagination
+  const loadPendingVendorPayments = useCallback(
+    async (targetPage = currentPage) => {
+      try {
+        const resultAction = await dispatch(
+          fetchPendingVendorPayments({ page: targetPage })
+        ).unwrap()
+        const rawVendors = resultAction?.vendors || []
+        const transformed = transformPendingVendorApiResponse(rawVendors)
+        setVendorData(transformed)
       } catch (err) {
-        toast.error('Failed to load vendor data')
-      } finally {
-        setLoading(false)
+        toast.error(typeof err === 'string' ? err : 'Failed to load pending vendor payments')
       }
-    }
-    loadData()
-  }, [])
+    },
+    [dispatch, currentPage, setVendorData]
+  )
+
+  useEffect(() => {
+    loadPendingVendorPayments(currentPage)
+  }, [currentPage, loadPendingVendorPayments])
+
+  // Pagination Change Handler
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > (pagination?.totalPages || 1) || apiLoading) return
+    setCurrentPage(newPage)
+    loadPendingVendorPayments(newPage)
+  }
 
   // File upload handler
   const handleFileUpload = async (file) => {
@@ -166,12 +174,12 @@ const VendorPaymentsSection = ({
     approvedList.forEach((inv) => {
       if (!groups[inv.vendorId]) {
         groups[inv.vendorId] = {
-          debitBankAccountNumber: inv.debitBankAccountNumber,
+          debitBankAccountNumber: inv.debitBankAccountNumber || 'N/A',
           totalPaidAmount: 0,
           currency: inv.currency || 'INR',
-          beneficiaryAccountNumber: inv.beneficiaryAccountNumber,
-          ifscCode: inv.ifscCode,
-          narration: inv.narration,
+          beneficiaryAccountNumber: inv.beneficiaryAccountNumber || 'N/A',
+          ifscCode: inv.ifscCode || 'N/A',
+          narration: inv.narration || '-',
         }
       }
       groups[inv.vendorId].totalPaidAmount += inv.paidAmount
@@ -191,15 +199,15 @@ const VendorPaymentsSection = ({
     approvedList.forEach((inv) => {
       if (!groups[inv.vendorId]) {
         groups[inv.vendorId] = {
-          vendorName: inv.vendorName,
+          vendorName: inv.vendorName || '-',
           invoices: [],
           totalOrig: 0,
           totalPaid: 0,
         }
       }
-      groups[inv.vendorId].invoices.push(inv.invoiceNumber)
-      groups[inv.vendorId].totalOrig += inv.originalAmount
-      groups[inv.vendorId].totalPaid += inv.paidAmount
+      groups[inv.vendorId].invoices.push(inv.invoiceNumber || '-')
+      groups[inv.vendorId].totalOrig += inv.originalAmount || 0
+      groups[inv.vendorId].totalPaid += inv.paidAmount || 0
     })
     return Object.values(groups).map((g) => ({
       'Vendor Name': g.vendorName,
@@ -207,7 +215,7 @@ const VendorPaymentsSection = ({
       'Total Amount': g.totalOrig,
       'Payment Done': g.totalPaid,
       'Remaining Payment': g.totalOrig - g.totalPaid,
-      UTR: '',
+      UTR: '-',
     }))
   }
 
@@ -264,35 +272,41 @@ const VendorPaymentsSection = ({
       }
       const updatedInvoices = []
 
-      vendor.invoices.forEach((invoice) => {
-        const payment = currentPayments[invoice.id] ||
+      ;(vendor.invoices || []).forEach((invoice) => {
+        const payment =
+          currentPayments[invoice.id] ||
           invoicePayments[invoice.id] || { amount: invoice.amount, paymentType: 'full' }
         const paymentType = payment?.paymentType || 'full'
         let paidAmount = paymentType === 'full' ? invoice.amount : Number(payment?.amount || 0)
 
         if (paidAmount > invoice.amount) {
-          toast.warning(`Payment exceeds invoice amount for ${invoice.invoiceNumber}. Using full amount.`)
+          toast.warning(
+            `Payment exceeds invoice amount for ${invoice.invoiceNumber || '-'}. Using full amount.`
+          )
           paidAmount = invoice.amount
         }
 
         if (paidAmount > 0) {
           newlyApproved.push({
             vendorId: vendor.id,
-            vendorName: vendor.vendorName,
-            debitBankAccountNumber: vendor.debitBankAccountNumber,
+            vendorName: vendor.vendorName || '-',
+            debitBankAccountNumber: vendor.debitBankAccountNumber || 'N/A',
             currency: vendor.currency || 'INR',
-            beneficiaryAccountNumber: vendor.beneficiaryAccountNumber,
-            ifscCode: vendor.ifscCode,
-            narration: (vendor.narration || vendor.vendorName).substring(0, 20),
+            beneficiaryAccountNumber: vendor.beneficiaryAccountNumber || 'N/A',
+            ifscCode: vendor.ifscCode || 'N/A',
+            narration:
+              vendor.narration !== '-'
+                ? vendor.narration.substring(0, 20)
+                : (vendor.vendorName || '-').substring(0, 20),
             invoiceId: invoice.id,
-            invoiceNumber: invoice.invoiceNumber,
+            invoiceNumber: invoice.invoiceNumber || '-',
             originalAmount: invoice.amount,
             paidAmount,
             paymentType,
             type: invoice.type,
-            invoiceTypeLabel: invoice.invoiceTypeLabel,
+            invoiceTypeLabel: invoice.invoiceTypeLabel || '-',
             approvedDate: new Date().toISOString(),
-            source: invoice.source,
+            source: invoice.source || 'api_pending_list',
           })
           processedCount++
         }
@@ -316,8 +330,6 @@ const VendorPaymentsSection = ({
 
     setApprovedInvoices((prev) => [...prev, ...newlyApproved])
 
-    // Data is directly synced in component state for this session
-
     if (processedCount === 0) {
       toast.warning('No valid payments processed. Check amounts and selections.')
     } else {
@@ -329,7 +341,7 @@ const VendorPaymentsSection = ({
     const clearedPayments = { ...invoicePayments }
     vendorData.forEach((vendor) => {
       if (selectedVendors[vendor.id]) {
-        vendor.invoices.forEach((inv) => delete clearedPayments[inv.id])
+        ;(vendor.invoices || []).forEach((inv) => delete clearedPayments[inv.id])
       }
     })
     setInvoicePayments(clearedPayments)
@@ -344,7 +356,7 @@ const VendorPaymentsSection = ({
       const approved = approvedInvoices || []
 
       ;(pendingAcceptedData || []).forEach((row) => {
-        const vendorName = row['Vendor Name']
+        const vendorName = row['Vendor Name'] || '-'
         const invoiceNumbers = String(row['Invoice Numbers'] || '')
           .split(',')
           .map((s) => s.trim())
@@ -364,7 +376,7 @@ const VendorPaymentsSection = ({
             invoiceNumber: invNo,
             amount,
             type: match?.type || match?.invoiceTypeLabel || 'Material',
-            vendorGLCode: match?.vendorGLCode,
+            vendorGLCode: match?.vendorGLCode || '-',
           })
         })
       })
@@ -376,31 +388,14 @@ const VendorPaymentsSection = ({
       }
       toast.success(result.message)
 
-      // Remove paid invoices from localStorage sources
-      try {
-        const paidNos = new Set(result.results.map((r) => r.invoiceNumber))
-        ;['processed_invoices', 'final_processed_invoices', 'oneTimeFinalProcessedInvoice'].forEach(
-          (key) => {
-            const arr = JSON.parse(localStorage.getItem(key) || '[]')
-            localStorage.setItem(
-              key,
-              JSON.stringify(arr.filter((inv) => !paidNos.has(inv.invoiceNo || inv.invoiceNumber)))
-            )
-          }
-        )
-        toast.info(`Removed ${paidNos.size} invoice(s) from approval queues`)
-      } catch {
-        // non-critical cleanup
-      }
-
       // Build payment entry display data
       const totalAmount = result.totalPaid
       const vendorDetails = result.groups.map((g) => ({
-        vendorName: g.vendorName,
-        vendorGLCode: g.vendorGLCode,
+        vendorName: g.vendorName || '-',
+        vendorGLCode: g.vendorGLCode || '-',
         totalAmount: g.totalAmount,
         invoices: g.invoices.map((inv) => ({
-          invoiceNumber: inv.invoiceNumber,
+          invoiceNumber: inv.invoiceNumber || '-',
           originalAmount: inv.amount,
           paidAmount: inv.amount,
           paymentType: 'full',
@@ -408,18 +403,22 @@ const VendorPaymentsSection = ({
       }))
 
       setCurrentPaymentEntryData({
-        entryNo: `PE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`,
+        entryNo: `PE-${new Date().getFullYear()}-${String(
+          Math.floor(Math.random() * 999999)
+        ).padStart(6, '0')}`,
         date: new Date().toISOString().split('T')[0],
         vendor:
           vendorDetails.length > 1
             ? `Multiple Vendors (${vendorDetails.length})`
-            : vendorDetails[0]?.vendorName || '',
-        vendorCode: vendorDetails.length > 1 ? 'MULTIPLE' : '',
+            : vendorDetails[0]?.vendorName || '-',
+        vendorCode: vendorDetails.length > 1 ? 'MULTIPLE' : '-',
         amount: totalAmount,
         paymentMethod: 'Bank Transfer',
-        bankAccount: `${bank.bankName} (${bank.bankCode})`,
-        invoiceNo: result.results.map((r) => r.invoiceNumber).join(', '),
-        particulars: `Payment for invoices: ${result.results.map((r) => r.invoiceNumber).join(', ')}`,
+        bankAccount: `${bank.bankName || '-'} (${bank.bankCode || '-'})`,
+        invoiceNo: result.results.map((r) => r.invoiceNumber || '-').join(', '),
+        particulars: `Payment for invoices: ${result.results
+          .map((r) => r.invoiceNumber || '-')
+          .join(', ')}`,
         gstAmount: 0,
         netAmount: totalAmount,
         status: 'Posted',
@@ -429,16 +428,16 @@ const VendorPaymentsSection = ({
         vendorDetails,
         glEntries: [
           ...result.groups.map((g) => ({
-            glCode: g.vendorGLCode,
-            glDescription: `VENDOR - ${g.vendorName}`,
+            glCode: g.vendorGLCode || '-',
+            glDescription: `VENDOR - ${g.vendorName || '-'}`,
             costCenter: 'HEAD OFFICE',
             department: 'Finance',
             debitAmount: g.totalAmount,
             creditAmount: 0,
           })),
           {
-            glCode: bank.bankCode,
-            glDescription: bank.bankName,
+            glCode: bank.bankCode || '-',
+            glDescription: bank.bankName || '-',
             costCenter: 'HEAD OFFICE',
             department: 'Finance',
             debitAmount: 0,
@@ -471,59 +470,133 @@ const VendorPaymentsSection = ({
     }
   }
 
+  // Calculated Summary Metrics
+  const totalVendorsCount = summary?.totalVendors || pagination?.totalItems || vendorData.length || 0
+  const totalPayableVal =
+    parseFloat(summary?.totalAmount) ||
+    vendorData.reduce((s, v) => s + (v.debitAmount || 0), 0)
+  const totalInvoicesCount = vendorData.reduce((s, v) => s + (v.invoices?.length || 0), 0)
+
+  // Backend-Driven Pagination Values
+  const activePage = pagination?.currentPage || currentPage
+  const totalPages = pagination?.totalPages || 1
+  const totalItems = pagination?.totalItems || vendorData.length
+
   return (
     <div className="space-y-4">
-      {/* Top Card: Upload + Download */}
+      {/* Top Banner & Excel Upload / Download */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-green-600 to-green-500 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="bg-gradient-to-r from-green-600 to-green-500 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-white">Process Vendor Payments</h2>
+            <h2 className="text-base sm:text-lg font-bold text-white">Process Vendor Payments</h2>
             <p className="text-green-100 text-xs mt-0.5">
-              Upload a payment file or approve from the invoice list below
+              Select vendor invoices below or upload a settlement payment file
             </p>
           </div>
-          <button
-            onClick={handleDownloadTemplate}
-            disabled={approvedInvoices.length === 0}
-            className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition shadow-sm ${
-              approvedInvoices.length > 0
-                ? 'bg-white text-green-700 hover:bg-green-50 border border-green-200'
-                : 'bg-green-400 text-green-100 cursor-not-allowed border border-green-300'
-            }`}
-          >
-            ⬇ Download Files
-            {approvedInvoices.length > 0 && (
-              <span className="bg-green-600 text-white text-xs rounded-full px-2 py-0.5">
-                {approvedInvoices.length}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => loadPendingVendorPayments(activePage)}
+              disabled={apiLoading}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-green-700/60 hover:bg-green-700 text-white border border-green-400/40 transition flex items-center gap-1"
+              title="Refresh Pending Payments"
+            >
+              <span>🔄</span> Refresh
+            </button>
+            <button
+              onClick={handleDownloadTemplate}
+              disabled={approvedInvoices.length === 0}
+              className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${
+                approvedInvoices.length > 0
+                  ? 'bg-white text-green-700 hover:bg-green-50 border border-green-200'
+                  : 'bg-green-400 text-green-100 cursor-not-allowed border border-green-300'
+              }`}
+            >
+              ⬇ Download Files
+              {approvedInvoices.length > 0 && (
+                <span className="bg-green-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5">
+                  {approvedInvoices.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
         <div className="p-4">
           <UploadPaymentFile onFileUpload={handleFileUpload} />
         </div>
       </div>
 
-      {/* Invoice Management */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Metric Cards Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              Total Vendors
+            </span>
+            <p className="text-lg font-bold text-gray-800 mt-0.5">{totalVendorsCount}</p>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-600 font-bold text-sm">
+            🏢
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              Pending Invoices
+            </span>
+            <p className="text-lg font-bold text-gray-800 mt-0.5">{totalInvoicesCount}</p>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-sm">
+            📑
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              Total Amount Payable
+            </span>
+            <p className="text-lg font-bold text-green-700 mt-0.5">
+              ₹{totalPayableVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-sm">
+            💰
+          </div>
+        </div>
+      </div>
+
+      {/* Invoice Management Grid */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
         <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">
+          <h3 className="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2">
             Vendor Invoice Management
-            {!loading && (
-              <span className="ml-2 text-xs font-normal text-gray-400">
-                ({vendorData.length} vendors)
+            {!apiLoading && (
+              <span className="text-xs font-normal text-gray-400">
+                (Page {activePage} of {totalPages} — {vendorData.length} vendors)
               </span>
             )}
           </h3>
-          {loading && <Spinner size="sm" color="green" />}
+          {apiLoading && <Spinner size="sm" color="green" />}
         </div>
 
-        {loading ? (
+        {apiLoading ? (
           <div className="flex items-center justify-center py-16">
             <div className="text-center space-y-3">
               <Spinner size="lg" color="green" />
-              <p className="text-sm text-gray-500">Loading vendor invoices…</p>
+              <p className="text-xs sm:text-sm text-gray-500">Loading pending vendor payments…</p>
             </div>
+          </div>
+        ) : apiError ? (
+          <div className="p-8 text-center space-y-3">
+            <div className="text-3xl text-red-400">⚠️</div>
+            <p className="text-xs sm:text-sm font-medium text-red-600">{apiError}</p>
+            <button
+              onClick={() => loadPendingVendorPayments(activePage)}
+              className="text-xs font-semibold px-4 py-1.5 bg-green-600 text-white rounded-full hover:bg-green-700 transition"
+            >
+              Retry Loading
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[420px]">
@@ -551,6 +624,55 @@ const VendorPaymentsSection = ({
             </div>
           </div>
         )}
+
+        {/* Backend-Controlled Responsive Pagination Bar */}
+        <div className="border-t border-gray-100 p-3 bg-gray-50/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs text-gray-600">
+            Showing Page <strong className="text-gray-800">{activePage}</strong> of{' '}
+            <strong className="text-gray-800">{totalPages}</strong> ({totalItems} total vendors)
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handlePageChange(activePage - 1)}
+              disabled={activePage <= 1 || apiLoading}
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
+                activePage > 1 && !apiLoading
+                  ? 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:text-green-700 hover:border-green-300 shadow-sm'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
+              }`}
+            >
+              ◄ Prev
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => handlePageChange(p)}
+                disabled={apiLoading}
+                className={`w-7 h-7 text-xs rounded-lg font-semibold transition-all ${
+                  p === activePage
+                    ? 'bg-green-600 text-white shadow-sm'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+
+            <button
+              onClick={() => handlePageChange(activePage + 1)}
+              disabled={activePage >= totalPages || apiLoading}
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
+                activePage < totalPages && !apiLoading
+                  ? 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:text-green-700 hover:border-green-300 shadow-sm'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
+              }`}
+            >
+              Next ►
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Modals */}
@@ -602,7 +724,7 @@ const VendorPaymentsSection = ({
 export default function ProcessPaymentPage() {
   const [activeTab, setActiveTab] = useState('vendor')
 
-  // Shared vendor state (lifted from VendorPaymentsSection)
+  // Shared vendor state
   const [parsedData, setParsedData] = useState([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -668,10 +790,10 @@ export default function ProcessPaymentPage() {
       {/* Page Header */}
       <div className={`bg-gradient-to-r ${headerColor} px-4 sm:px-6 py-5`}>
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">
             💳 Process Payments
           </h1>
-          <p className="text-white/80 text-sm mt-1">
+          <p className="text-white/80 text-xs sm:text-sm mt-1">
             Manage and process vendor, reliever, and conveyance payments
           </p>
         </div>
