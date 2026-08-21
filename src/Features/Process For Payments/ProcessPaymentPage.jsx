@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
 
 import UploadPaymentFile from './Components/UploadPaymentFile'
 import PaymentPreviewModal from './Components/PaymentPreviewModal'
@@ -16,7 +14,11 @@ import PaymentBankSelectionModal from './Components/PaymentBankSelectionModal'
 
 import { parseVendorExcelFile } from './utils/excelHelpers'
 import { transformPendingVendorApiResponse } from './utils/paymentHelpers'
-import { fetchPendingVendorPayments } from '../../store/slices/vendorPaymentSlice'
+import {
+  fetchPendingVendorPayments,
+  generateVendorPaymentFiles,
+} from '../../store/slices/vendorPaymentSlice'
+import { downloadPaymentFileBlob } from './services/vendorPaymentService'
 import { processVendorPayments } from '../Master/utils/accountingHelpers'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -100,10 +102,20 @@ const VendorPaymentsSection = ({
   setPendingAcceptedData,
 }) => {
   const dispatch = useDispatch()
-  const { summary, pagination, loading: apiLoading, error: apiError } = useSelector(
-    (state) => state.vendorPayment || {}
-  )
+  const {
+    summary,
+    pagination,
+    loading: apiLoading,
+    error: apiError,
+    fileGenerating,
+    currentBatchId,
+    downloads,
+  } = useSelector((state) => state.vendorPayment || {})
   const [bankProcessing, setBankProcessing] = useState(false)
+
+  // Tracking Download Actions
+  const [filesDownloaded, setFilesDownloaded] = useState(false)
+  const [downloadingFiles, setDownloadingFiles] = useState(false)
 
   // Local Page State — Backend controls pageSize via response.pagination.pageSize
   const [currentPage, setCurrentPage] = useState(1)
@@ -168,183 +180,97 @@ const VendorPaymentsSection = ({
     }))
   }, [])
 
-  // Generate bank upload data grouped by vendor
-  const buildBankUploadRows = (approvedList) => {
-    const groups = {}
-    approvedList.forEach((inv) => {
-      if (!groups[inv.vendorId]) {
-        groups[inv.vendorId] = {
-          debitBankAccountNumber: inv.debitBankAccountNumber || 'N/A',
-          totalPaidAmount: 0,
-          currency: inv.currency || 'INR',
-          beneficiaryAccountNumber: inv.beneficiaryAccountNumber || 'N/A',
-          ifscCode: inv.ifscCode || 'N/A',
-          narration: inv.narration || '-',
-        }
-      }
-      groups[inv.vendorId].totalPaidAmount += inv.paidAmount
-    })
-    return Object.values(groups).map((v) => ({
-      'DEBIT BANK A/C NO': v.debitBankAccountNumber,
-      'DEBIT AMT': v.totalPaidAmount,
-      CUR: v.currency,
-      'BENEFICIARY A/C NO': v.beneficiaryAccountNumber,
-      'IFSC CODE': v.ifscCode,
-      'NARRATION/NAME': v.narration,
-    }))
-  }
-
-  const buildSystemUploadRows = (approvedList) => {
-    const groups = {}
-    approvedList.forEach((inv) => {
-      if (!groups[inv.vendorId]) {
-        groups[inv.vendorId] = {
-          vendorName: inv.vendorName || '-',
-          invoices: [],
-          totalOrig: 0,
-          totalPaid: 0,
-        }
-      }
-      groups[inv.vendorId].invoices.push(inv.invoiceNumber || '-')
-      groups[inv.vendorId].totalOrig += inv.originalAmount || 0
-      groups[inv.vendorId].totalPaid += inv.paidAmount || 0
-    })
-    return Object.values(groups).map((g) => ({
-      'Vendor Name': g.vendorName,
-      'Invoice Numbers': g.invoices.join(', '),
-      'Total Amount': g.totalOrig,
-      'Payment Done': g.totalPaid,
-      'Remaining Payment': g.totalOrig - g.totalPaid,
-      UTR: '-',
-    }))
-  }
-
-  const handleDownloadTemplate = () => {
-    if (approvedInvoices.length === 0) {
-      toast.warning('No approved invoices. Please approve some invoices first.')
+  // Manual download handler — Downloads files ONLY when user clicks "Download Files" button
+  const handleDownloadGeneratedFiles = async () => {
+    if (filesDownloaded) {
+      toast.info('Files have already been downloaded for this batch.')
       return
     }
+    if (!downloads?.bankFileUrl && !downloads?.systemFileUrl) {
+      toast.warning('No generated payment files available. Please approve selected invoices first.')
+      return
+    }
+
+    setDownloadingFiles(true)
     try {
-      const ts = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')
-
-      const bankRows = buildBankUploadRows(approvedInvoices)
-      const bankWb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(bankWb, XLSX.utils.json_to_sheet(bankRows), 'Bank_Payment_File')
-      saveAs(
-        new Blob([XLSX.write(bankWb, { bookType: 'xlsx', type: 'array' })], {
-          type: 'application/octet-stream',
-        }),
-        `Bank_Payment_File_${ts}.xlsx`
-      )
-
-      const sysRows = buildSystemUploadRows(approvedInvoices)
-      const sysWb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(sysWb, XLSX.utils.json_to_sheet(sysRows), 'System_Upload_File')
-      saveAs(
-        new Blob([XLSX.write(sysWb, { bookType: 'xlsx', type: 'array' })], {
-          type: 'application/octet-stream',
-        }),
-        `System_Upload_File_${ts}.xlsx`
-      )
-
-      setApprovedInvoices([])
-      toast.success(`Downloaded Bank + System files for ${approvedInvoices.length} invoice(s).`)
+      const batchTag = currentBatchId || 'Batch'
+      if (downloads.bankFileUrl) {
+        toast.info('Downloading Bank Payment File…')
+        await downloadPaymentFileBlob(downloads.bankFileUrl, `Bank_Payment_${batchTag}.xlsx`)
+      }
+      if (downloads.systemFileUrl) {
+        toast.info('Downloading System Payment File…')
+        await downloadPaymentFileBlob(downloads.systemFileUrl, `System_Payment_${batchTag}.xlsx`)
+      }
+      toast.success('Downloaded generated payment files successfully.')
+      setFilesDownloaded(true) // Disable button after successful download
     } catch (err) {
-      toast.error('Failed to generate download files')
+      toast.error('Failed to download payment files from backend')
+    } finally {
+      setDownloadingFiles(false)
     }
   }
 
-  const handleInvoiceApproval = (selectedVendors, currentPayments = {}) => {
+  // Generate Vendor Payment Files API Trigger
+  const handleInvoiceApproval = async (selectedVendors, currentPayments = {}) => {
     const selectedIds = Object.keys(selectedVendors).filter((id) => selectedVendors[id])
     if (selectedIds.length === 0) {
-      toast.warning('Please select at least one vendor to approve')
+      toast.warning('Please select at least one vendor to approve and generate payment files')
       return
     }
 
-    const updatedVendors = []
-    const newlyApproved = []
-    let processedCount = 0
+    // Build payload matching backend contract:
+    // { selections: [ { vendorId, invoiceSelections: [ { invoiceId, paymentType, paidAmount } ] } ] }
+    const selections = []
 
-    vendorData.forEach((vendor) => {
-      if (!selectedVendors[vendor.id]) {
-        updatedVendors.push(vendor)
-        return
-      }
-      const updatedInvoices = []
-
-      ;(vendor.invoices || []).forEach((invoice) => {
-        const payment =
-          currentPayments[invoice.id] ||
-          invoicePayments[invoice.id] || { amount: invoice.amount, paymentType: 'full' }
-        const paymentType = payment?.paymentType || 'full'
-        let paidAmount = paymentType === 'full' ? invoice.amount : Number(payment?.amount || 0)
-
-        if (paidAmount > invoice.amount) {
-          toast.warning(
-            `Payment exceeds invoice amount for ${invoice.invoiceNumber || '-'}. Using full amount.`
-          )
-          paidAmount = invoice.amount
-        }
-
-        if (paidAmount > 0) {
-          newlyApproved.push({
-            vendorId: vendor.id,
-            vendorName: vendor.vendorName || '-',
-            debitBankAccountNumber: vendor.debitBankAccountNumber || 'N/A',
-            currency: vendor.currency || 'INR',
-            beneficiaryAccountNumber: vendor.beneficiaryAccountNumber || 'N/A',
-            ifscCode: vendor.ifscCode || 'N/A',
-            narration:
-              vendor.narration !== '-'
-                ? vendor.narration.substring(0, 20)
-                : (vendor.vendorName || '-').substring(0, 20),
-            invoiceId: invoice.id,
-            invoiceNumber: invoice.invoiceNumber || '-',
-            originalAmount: invoice.amount,
-            paidAmount,
-            paymentType,
-            type: invoice.type,
-            invoiceTypeLabel: invoice.invoiceTypeLabel || '-',
-            approvedDate: new Date().toISOString(),
-            source: invoice.source || 'api_pending_list',
-          })
-          processedCount++
-        }
-
-        if (paymentType === 'full' || paidAmount >= invoice.amount) return
-        if (paymentType === 'partial' && paidAmount > 0 && paidAmount < invoice.amount) {
-          updatedInvoices.push({ ...invoice, amount: invoice.amount - paidAmount })
-        } else if (paymentType === 'partial' && paidAmount <= 0) {
-          updatedInvoices.push(invoice)
-        }
-      })
-
-      if (updatedInvoices.length > 0) {
-        updatedVendors.push({
-          ...vendor,
-          invoices: updatedInvoices,
-          debitAmount: updatedInvoices.reduce((s, i) => s + i.amount, 0),
-        })
-      }
-    })
-
-    setApprovedInvoices((prev) => [...prev, ...newlyApproved])
-
-    if (processedCount === 0) {
-      toast.warning('No valid payments processed. Check amounts and selections.')
-    } else {
-      toast.success(`${processedCount} invoice(s) processed successfully.`)
-    }
-    setVendorData(updatedVendors)
-
-    // Clear payment state for approved invoices
-    const clearedPayments = { ...invoicePayments }
     vendorData.forEach((vendor) => {
       if (selectedVendors[vendor.id]) {
-        ;(vendor.invoices || []).forEach((inv) => delete clearedPayments[inv.id])
+        const invoiceSelections = (vendor.invoices || []).map((invoice) => {
+          const payment =
+            currentPayments[invoice.id] ||
+            invoicePayments[invoice.id] || { amount: invoice.amount, paymentType: 'full' }
+          const paymentType = payment?.paymentType === 'partial' ? 'partial' : 'full'
+          let paidAmount = paymentType === 'full' ? invoice.amount : Number(payment?.amount || 0)
+
+          if (paidAmount > invoice.amount) {
+            paidAmount = invoice.amount
+          }
+
+          return {
+            invoiceId: invoice.id || invoice.invoiceId,
+            paymentType,
+            paidAmount,
+          }
+        })
+
+        if (invoiceSelections.length > 0) {
+          selections.push({
+            vendorId: vendor.vendorId || vendor.id,
+            invoiceSelections,
+          })
+        }
       }
     })
-    setInvoicePayments(clearedPayments)
+
+    if (selections.length === 0) {
+      toast.warning('No valid invoice selections found')
+      return
+    }
+
+    try {
+      // 1. Call Generate Vendor Payment Files API (POST /accounts/payments/vendor/generate-payment-files)
+      const res = await dispatch(generateVendorPaymentFiles({ selections })).unwrap()
+      setFilesDownloaded(false) // Enable download button for the new generated batch
+
+      toast.success(
+        res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
+      )
+
+      // 2. Refresh pending vendor list from backend
+      loadPendingVendorPayments(currentPage)
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to generate vendor payment files')
+    }
   }
 
   // ── Bank selection confirm handler ─────────────────────────────────────────
@@ -482,6 +408,11 @@ const VendorPaymentsSection = ({
   const totalPages = pagination?.totalPages || 1
   const totalItems = pagination?.totalItems || vendorData.length
 
+  // Download Button State Logic
+  const hasFilesToDownload = downloads?.bankFileUrl || downloads?.systemFileUrl
+  const isDownloadBtnDisabled =
+    !hasFilesToDownload || filesDownloaded || downloadingFiles || fileGenerating
+
   return (
     <div className="space-y-4">
       {/* Top Banner & Excel Upload / Download */}
@@ -496,26 +427,44 @@ const VendorPaymentsSection = ({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => loadPendingVendorPayments(activePage)}
-              disabled={apiLoading}
+              disabled={apiLoading || fileGenerating}
               className="text-xs font-semibold px-3 py-1.5 rounded-full bg-green-700/60 hover:bg-green-700 text-white border border-green-400/40 transition flex items-center gap-1"
               title="Refresh Pending Payments"
             >
               <span>🔄</span> Refresh
             </button>
             <button
-              onClick={handleDownloadTemplate}
-              disabled={approvedInvoices.length === 0}
+              onClick={handleDownloadGeneratedFiles}
+              disabled={isDownloadBtnDisabled}
               className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${
-                approvedInvoices.length > 0
-                  ? 'bg-white text-green-700 hover:bg-green-50 border border-green-200'
-                  : 'bg-green-400 text-green-100 cursor-not-allowed border border-green-300'
+                !isDownloadBtnDisabled
+                  ? 'bg-white text-green-700 hover:bg-green-50 border border-green-200 cursor-pointer active:scale-95'
+                  : 'bg-green-400/70 text-green-100 cursor-not-allowed border border-green-300/40 opacity-80'
               }`}
             >
-              ⬇ Download Files
-              {approvedInvoices.length > 0 && (
-                <span className="bg-green-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5">
-                  {approvedInvoices.length}
-                </span>
+              {fileGenerating ? (
+                <>
+                  <Spinner size="sm" color="green" />
+                  Generating Files…
+                </>
+              ) : downloadingFiles ? (
+                <>
+                  <Spinner size="sm" color="green" />
+                  Downloading…
+                </>
+              ) : filesDownloaded ? (
+                <>
+                  <span>✓</span> Files Downloaded
+                </>
+              ) : (
+                <>
+                  ⬇ Download Files
+                  {hasFilesToDownload && (
+                    <span className="bg-green-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5 animate-pulse">
+                      Ready
+                    </span>
+                  )}
+                </>
               )}
             </button>
           </div>

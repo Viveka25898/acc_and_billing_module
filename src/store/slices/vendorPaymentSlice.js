@@ -21,6 +21,18 @@ export const fetchPendingVendorPayments = createAsyncThunk(
   }
 )
 
+export const generateVendorPaymentFiles = createAsyncThunk(
+  'vendorPayment/generateVendorPaymentFiles',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await vendorService.generateVendorPaymentFiles(payload)
+      return data
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err))
+    }
+  }
+)
+
 const initialState = {
   pendingVendors: [],
   summary: {
@@ -35,6 +47,10 @@ const initialState = {
   },
   loading: false,
   error: null,
+  fileGenerating: false,
+  currentBatchId: null,
+  downloads: null,
+  fileGenError: null,
 }
 
 const vendorPaymentSlice = createSlice({
@@ -43,6 +59,7 @@ const vendorPaymentSlice = createSlice({
   reducers: {
     clearVendorPaymentError: (state) => {
       state.error = null
+      state.fileGenError = null
     },
     setPendingVendors: (state, action) => {
       state.pendingVendors = action.payload
@@ -73,6 +90,21 @@ const vendorPaymentSlice = createSlice({
       .addCase(fetchPendingVendorPayments.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload || 'Failed to fetch pending vendor payments'
+      })
+
+      // generateVendorPaymentFiles
+      .addCase(generateVendorPaymentFiles.pending, (state) => {
+        state.fileGenerating = true
+        state.fileGenError = null
+      })
+      .addCase(generateVendorPaymentFiles.fulfilled, (state, action) => {
+        state.fileGenerating = false
+        state.currentBatchId = action.payload?.batchId || null
+        state.downloads = action.payload?.downloads || null
+      })
+      .addCase(generateVendorPaymentFiles.rejected, (state, action) => {
+        state.fileGenerating = false
+        state.fileGenError = action.payload || 'Failed to generate vendor payment files'
       })
   },
 })
