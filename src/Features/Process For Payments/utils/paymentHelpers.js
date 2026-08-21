@@ -69,6 +69,45 @@ export const transformPendingVendorApiResponse = (apiVendors = []) => {
   })
 }
 
+/**
+ * Transforms raw API response array of pending reliever requests into component state format.
+ * Handles numeric string conversions, label formatting, default fallbacks, and unique keys.
+ * 
+ * @param {Array} apiRequests Raw reliever requests from API
+ * @returns {Array} Standardized reliever requests list for UI
+ */
+export const transformPendingRelieverApiResponse = (apiRequests = []) => {
+  if (!Array.isArray(apiRequests)) return []
+
+  return apiRequests.map((req, idx) => {
+    const requestId = req.requestId || req.id || `REL-TMP-${idx}`
+    const parsedAmount = parseFloat(req.amount) || 0
+    const documentUrl = req.documentUrl
+      ? req.documentUrl.startsWith('http')
+        ? req.documentUrl
+        : `/${req.documentUrl}`
+      : null
+
+    return {
+      id: requestId,
+      requestId,
+      'Reliever Name': req.relieverName ? req.relieverName.trim() : '-',
+      'Employee ID': req.employeeId ? String(req.employeeId).trim() : '-',
+      relieverName: req.relieverName ? req.relieverName.trim() : '-',
+      employeeId: req.employeeId ? String(req.employeeId).trim() : '-',
+      Site: req.site ? req.site.trim() : '-',
+      site: req.site ? req.site.trim() : '-',
+      Amount: parsedAmount,
+      amount: parsedAmount,
+      'Account No': req.accountNo || req.bankAccount || 'N/A',
+      'IFSC Code': req.ifscCode || req.ifsc || 'N/A',
+      'Days Worked': req.daysWorked || 1,
+      documentUrl,
+      paymentStatus: req.paymentStatus || 'PENDING_PAYMENT',
+    }
+  })
+}
+
 // ─── Bank / IFSC Generators (Fallback for mock entries) ───────────────────────
 const stringHash = (str) => {
   let hash = 0
@@ -99,30 +138,8 @@ export const extractBeneficiaryAccount = (invoiceOrVoucher) => {
 export const extractIFSCCode = (invoiceOrVoucher) => {
   const vendorName = invoiceOrVoucher?.vendorName || invoiceOrVoucher?.vendorDetails?.vendorName
   if (vendorName && vendorName !== '-') {
-    const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    const banks = ['HDFC', 'ICIC', 'SBIN', 'YESB', 'AXIS']
-    const branchCode = String(1000 + (hash % 9000)).padStart(4, '0')
-    return `${banks[hash % banks.length]}0${branchCode}`
+    const code = stringHash(vendorName).toUpperCase().substring(0, 4)
+    return `HDFC0${code.padStart(6, '0')}`
   }
-  return 'N/A'
-}
-
-// ─── Data Validation ──────────────────────────────────────────────────────────
-export const validateAndCleanVendorData = (data) => {
-  if (!Array.isArray(data)) return []
-  return data
-    .filter(
-      (vendor) =>
-        vendor &&
-        vendor.vendorName &&
-        Array.isArray(vendor.invoices) &&
-        vendor.invoices.length > 0
-    )
-    .map((vendor) => ({
-      ...vendor,
-      invoices: vendor.invoices.filter(
-        (inv) => inv && inv.invoiceNumber && typeof inv.amount === 'number' && inv.amount >= 0
-      ),
-    }))
-    .filter((vendor) => vendor.invoices.length > 0)
+  return 'HDFC0001234'
 }

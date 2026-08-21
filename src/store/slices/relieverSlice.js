@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as service from '../../Features/Process For Reliver Payments/services/relieverPaymentService';
+import * as relieverPaymentService from '../../Features/Process For Payments/services/relieverPaymentService';
 
 const extractErrorMessage = (error) => {
   if (!error) return 'An unexpected error occurred';
@@ -94,6 +95,17 @@ export const fetchRelieverVoucher = createAsyncThunk(
   }
 );
 
+export const fetchPendingRelieverRequests = createAsyncThunk(
+  'reliever/fetchPendingRelieverRequests',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const data = await relieverPaymentService.fetchPendingRelieverRequests(params);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
 
 const initialState = {
   requests: [],
@@ -116,12 +128,20 @@ const initialState = {
     approved: 0,
     rejected: 0,
   },
+  pendingPaymentRelievers: [],
+  pendingPaymentPagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    pageSize: 20,
+  },
   loading: {
     fetch: false,
     submit: false,
     queue: false,
     action: false,
     voucher: false,
+    pendingPayments: false,
   },
   errors: {
     fetch: null,
@@ -129,6 +149,7 @@ const initialState = {
     queue: null,
     action: null,
     voucher: null,
+    pendingPayments: null,
   },
   submitResult: null,
   voucherDetails: null,
@@ -247,6 +268,25 @@ const relieverSlice = createSlice({
       .addCase(fetchRelieverVoucher.rejected, (state, action) => {
         state.loading.voucher = false;
         state.errors.voucher = action.payload;
+      })
+      // Fetch Pending Reliever Requests (Process for Payments)
+      .addCase(fetchPendingRelieverRequests.pending, (state) => {
+        state.loading.pendingPayments = true;
+        state.errors.pendingPayments = null;
+      })
+      .addCase(fetchPendingRelieverRequests.fulfilled, (state, action) => {
+        state.loading.pendingPayments = false;
+        state.pendingPaymentRelievers = action.payload?.relieverRequests || [];
+        state.pendingPaymentPagination = action.payload?.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          pageSize: 20,
+        };
+      })
+      .addCase(fetchPendingRelieverRequests.rejected, (state, action) => {
+        state.loading.pendingPayments = false;
+        state.errors.pendingPayments = action.payload;
       });
   },
 });
@@ -272,5 +312,10 @@ export const selectRelieverQueueError = (state) => state.reliever.errors.queue;
 export const selectRelieverVoucherDetails = (state) => state.reliever.voucherDetails;
 export const selectRelieverVoucherLoading = (state) => state.reliever.loading.voucher;
 export const selectRelieverVoucherError = (state) => state.reliever.errors.voucher;
+
+export const selectPendingPaymentRelievers = (state) => state.reliever.pendingPaymentRelievers;
+export const selectPendingPaymentPagination = (state) => state.reliever.pendingPaymentPagination;
+export const selectPendingPaymentLoading = (state) => state.reliever.loading.pendingPayments;
+export const selectPendingPaymentError = (state) => state.reliever.errors.pendingPayments;
 
 export default relieverSlice.reducer;
