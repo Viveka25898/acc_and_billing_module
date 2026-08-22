@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
 
 import UploadPaymentFile from './UploadPaymentFile'
 import RelieverPaymentTable from './RelieverPaymentTable'
@@ -12,7 +10,11 @@ import RelieverPaymentEntryModal from './RelieverPaymentEntryModal'
 
 import { parseRelieverExcelFile } from '../utils/excelHelpers'
 import { transformPendingRelieverApiResponse } from '../utils/paymentHelpers'
-import { fetchPendingRelieverRequests } from '../../../store/slices/relieverSlice'
+import {
+  fetchPendingRelieverRequests,
+  generateRelieverPaymentFiles,
+} from '../../../store/slices/relieverSlice'
+import { downloadRelieverFileBlob } from '../services/relieverPaymentService'
 import { processRelieverBankPayments } from '../../Master/utils/accountingHelpers'
 
 const Spinner = ({ size = 'md' }) => {
@@ -33,6 +35,9 @@ const RelieverPaymentSection = () => {
     pendingPaymentPagination,
     loading: { pendingPayments: apiLoading },
     errors: { pendingPayments: apiError },
+    relieverFileGenerating,
+    relieverBatchId,
+    relieverDownloads,
   } = useSelector((state) => state.reliever || {})
 
   const [relieverData, setRelieverData] = useState([])
@@ -42,7 +47,10 @@ const RelieverPaymentSection = () => {
   const [pendingAcceptedData, setPendingAcceptedData] = useState(null)
   const [showPaymentEntry, setShowPaymentEntry] = useState(false)
   const [paymentEntryData, setPaymentEntryData] = useState(null)
-  const [approvedPayments, setApprovedPayments] = useState([])
+
+  // Tracking Download Actions
+  const [filesDownloaded, setFilesDownloaded] = useState(false)
+  const [downloadingFiles, setDownloadingFiles] = useState(false)
 
   // Local Page State — Backend controls pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -92,53 +100,59 @@ const RelieverPaymentSection = () => {
     }
   }
 
-  const handleDownloadTemplate = () => {
-    if (approvedPayments.length === 0) {
-      toast.warning('No approved reliever payments to download.')
+  // Manual download handler — Downloads files ONLY when user clicks "Download Files" button
+  const handleDownloadGeneratedFiles = async () => {
+    if (filesDownloaded) {
+      toast.info('Files have already been downloaded for this batch.')
+      return
+    }
+    if (!relieverDownloads?.bankFileUrl && !relieverDownloads?.systemFileUrl) {
+      toast.warning('No generated payment files available. Please approve selected requests first.')
       return
     }
 
+    setDownloadingFiles(true)
     try {
-      const ts = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')
-
-      const bankData = approvedPayments.map((r) => ({
-        'BENEFICIARY NAME': r['Reliever Name'] || r.relieverName || '-',
-        'ACCOUNT NUMBER': r['Account No'] || r.accountNo || 'N/A',
-        'IFSC CODE': r['IFSC Code'] || r.ifscCode || 'N/A',
-        AMOUNT: r.Amount || r.amount || 0,
-        NARRATION: `Reliever Payment - ${r.Site || r.site || 'General'} - ${r['Days Worked'] || 1} days`,
-      }))
-
-      const systemData = approvedPayments.map((r) => ({
-        'Reliever Name': r['Reliever Name'] || r.relieverName || '-',
-        'Employee ID': r['Employee ID'] || r.employeeId || '-',
-        'Paid Amount': r.Amount || r.amount || 0,
-        UTR: '',
-        'Payment Date': new Date().toISOString().split('T')[0],
-      }))
-
-      const wb1 = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb1, XLSX.utils.json_to_sheet(bankData), 'Bank_Upload')
-      saveAs(
-        new Blob([XLSX.write(wb1, { bookType: 'xlsx', type: 'array' })], {
-          type: 'application/octet-stream',
-        }),
-        `Reliever_Bank_File_${ts}.xlsx`
-      )
-
-      const wb2 = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(systemData), 'System_Upload')
-      saveAs(
-        new Blob([XLSX.write(wb2, { bookType: 'xlsx', type: 'array' })], {
-          type: 'application/octet-stream',
-        }),
-        `Reliever_System_File_${ts}.xlsx`
-      )
-
-      setApprovedPayments([])
-      toast.success('Downloaded Bank + System files successfully.')
+      const batchTag = relieverBatchId || 'Batch'
+      if (relieverDownloads.bankFileUrl) {
+        toast.info('Downloading Bank Payment File…')
+        await downloadRelieverFileBlob(relieverDownloads.bankFileUrl, `Reliever_Bank_File_${batchTag}.xlsx`)
+      }
+      if (relieverDownloads.systemFileUrl) {
+        toast.info('Downloading System Payment File…')
+        await downloadRelieverFileBlob(relieverDownloads.systemFileUrl, `Reliever_System_File_${batchTag}.xlsx`)
+      }
+      toast.success('Downloaded generated payment files successfully.')
+      setFilesDownloaded(true) // Disable button after successful download
     } catch (err) {
-      toast.error('Failed to generate download files')
+      toast.error('Failed to download payment files from backend')
+    } finally {
+      setDownloadingFiles(false)
+    }
+  }
+
+  // Generate Reliever Payment Files API Trigger
+  const handleRelieverApproval = async (selectedRequests = []) => {
+    if (!Array.isArray(selectedRequests) || selectedRequests.length === 0) {
+      toast.warning('Please select at least one reliever request to approve')
+      return
+    }
+
+    const selections = selectedRequests.map((r) => r.requestId || r.id)
+
+    try {
+      // 1. Call Generate Reliever Payment Files API (POST /accounts/payments/reliever/generate-payment-files)
+      const res = await dispatch(generateRelieverPaymentFiles({ selections })).unwrap()
+      setFilesDownloaded(false) // Enable download button for the new generated batch
+
+      toast.success(
+        res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
+      )
+
+      // 2. Refresh pending reliever request list from backend
+      loadPendingRelieverRequests(currentPage)
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to generate reliever payment files')
     }
   }
 
@@ -209,6 +223,11 @@ const RelieverPaymentSection = () => {
     0
   )
 
+  // Download Button State Logic
+  const hasFilesToDownload = relieverDownloads?.bankFileUrl || relieverDownloads?.systemFileUrl
+  const isDownloadBtnDisabled =
+    !hasFilesToDownload || filesDownloaded || downloadingFiles || relieverFileGenerating
+
   return (
     <div className="space-y-4">
       {/* Top Banner & Excel Upload */}
@@ -223,26 +242,44 @@ const RelieverPaymentSection = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => loadPendingRelieverRequests(activePage)}
-              disabled={apiLoading}
+              disabled={apiLoading || relieverFileGenerating}
               className="text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-700/60 hover:bg-blue-700 text-white border border-blue-400/40 transition flex items-center gap-1"
               title="Refresh Pending Requests"
             >
               <span>🔄</span> Refresh
             </button>
             <button
-              onClick={handleDownloadTemplate}
-              disabled={approvedPayments.length === 0}
+              onClick={handleDownloadGeneratedFiles}
+              disabled={isDownloadBtnDisabled}
               className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${
-                approvedPayments.length > 0
-                  ? 'bg-white text-blue-700 hover:bg-blue-50 border border-blue-200'
-                  : 'bg-blue-400 text-blue-100 cursor-not-allowed border border-blue-300'
+                !isDownloadBtnDisabled
+                  ? 'bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 cursor-pointer active:scale-95'
+                  : 'bg-blue-400/70 text-blue-100 cursor-not-allowed border border-blue-300/40 opacity-80'
               }`}
             >
-              ⬇ Download Files
-              {approvedPayments.length > 0 && (
-                <span className="bg-blue-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5">
-                  {approvedPayments.length}
-                </span>
+              {relieverFileGenerating ? (
+                <>
+                  <Spinner size="sm" />
+                  Generating Files…
+                </>
+              ) : downloadingFiles ? (
+                <>
+                  <Spinner size="sm" />
+                  Downloading…
+                </>
+              ) : filesDownloaded ? (
+                <>
+                  <span>✓</span> Files Downloaded
+                </>
+              ) : (
+                <>
+                  ⬇ Download Files
+                  {hasFilesToDownload && (
+                    <span className="bg-blue-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5 animate-pulse">
+                      Ready
+                    </span>
+                  )}
+                </>
               )}
             </button>
           </div>
@@ -315,13 +352,7 @@ const RelieverPaymentSection = () => {
           ) : (
             <RelieverPaymentTable
               data={relieverData}
-              onApprove={(selected) => {
-                setApprovedPayments((prev) => {
-                  const map = new Map(prev.map((p) => [p.id || p.requestId, p]))
-                  selected.forEach((s) => map.set(s.id || s.requestId, s))
-                  return Array.from(map.values())
-                })
-              }}
+              onApprove={handleRelieverApproval}
             />
           )}
         </div>

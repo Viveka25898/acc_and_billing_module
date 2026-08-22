@@ -107,6 +107,18 @@ export const fetchPendingRelieverRequests = createAsyncThunk(
   }
 );
 
+export const generateRelieverPaymentFiles = createAsyncThunk(
+  'reliever/generateRelieverPaymentFiles',
+  async ({ selections }, { rejectWithValue }) => {
+    try {
+      const data = await relieverPaymentService.generateRelieverPaymentFiles(selections);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 const initialState = {
   requests: [],
   pagination: {
@@ -153,6 +165,10 @@ const initialState = {
   },
   submitResult: null,
   voucherDetails: null,
+  relieverFileGenerating: false,
+  relieverBatchId: null,
+  relieverDownloads: null,
+  relieverFileGenError: null,
 };
 
 const relieverSlice = createSlice({
@@ -162,6 +178,9 @@ const relieverSlice = createSlice({
     clearSubmitResult: (state) => {
       state.submitResult = null;
       state.errors.submit = null;
+    },
+    clearRelieverFileGenError: (state) => {
+      state.relieverFileGenError = null;
     },
   },
   extraReducers: (builder) => {
@@ -287,11 +306,25 @@ const relieverSlice = createSlice({
       .addCase(fetchPendingRelieverRequests.rejected, (state, action) => {
         state.loading.pendingPayments = false;
         state.errors.pendingPayments = action.payload;
+      })
+      // Generate Reliever Payment Files
+      .addCase(generateRelieverPaymentFiles.pending, (state) => {
+        state.relieverFileGenerating = true;
+        state.relieverFileGenError = null;
+      })
+      .addCase(generateRelieverPaymentFiles.fulfilled, (state, action) => {
+        state.relieverFileGenerating = false;
+        state.relieverBatchId = action.payload?.batchId || null;
+        state.relieverDownloads = action.payload?.downloads || null;
+      })
+      .addCase(generateRelieverPaymentFiles.rejected, (state, action) => {
+        state.relieverFileGenerating = false;
+        state.relieverFileGenError = action.payload;
       });
   },
 });
 
-export const { clearSubmitResult } = relieverSlice.actions;
+export const { clearSubmitResult, clearRelieverFileGenError } = relieverSlice.actions;
 
 export const selectRelieverRequests = (state) => state.reliever.requests;
 export const selectRelieverPagination = (state) => state.reliever.pagination;
@@ -317,5 +350,10 @@ export const selectPendingPaymentRelievers = (state) => state.reliever.pendingPa
 export const selectPendingPaymentPagination = (state) => state.reliever.pendingPaymentPagination;
 export const selectPendingPaymentLoading = (state) => state.reliever.loading.pendingPayments;
 export const selectPendingPaymentError = (state) => state.reliever.errors.pendingPayments;
+
+export const selectRelieverFileGenerating = (state) => state.reliever.relieverFileGenerating;
+export const selectRelieverBatchId = (state) => state.reliever.relieverBatchId;
+export const selectRelieverDownloads = (state) => state.reliever.relieverDownloads;
+export const selectRelieverFileGenError = (state) => state.reliever.relieverFileGenError;
 
 export default relieverSlice.reducer;
