@@ -108,6 +108,48 @@ export const transformPendingRelieverApiResponse = (apiRequests = []) => {
   })
 }
 
+/**
+ * Transforms raw API response array of pending conveyance claims into component state format.
+ * Handles numeric string conversions, default fallbacks (- or N/A), and unique keys.
+ * 
+ * @param {Array} apiRequests Raw conveyance requests from API
+ * @returns {Array} Standardized conveyance list for UI
+ */
+export const transformPendingConveyanceApiResponse = (apiRequests = []) => {
+  if (!Array.isArray(apiRequests)) return []
+
+  return apiRequests.map((req, idx) => {
+    const claimId = req.id || `CONV-TMP-${idx}`
+    const parsedAmount = parseFloat(req.amount) || 0
+
+    return {
+      id: claimId,
+      'Employee Name': req.employeeName ? req.employeeName.trim() : '-',
+      'Employee ID': req.employeeId ? String(req.employeeId).trim() : '-',
+      employeeName: req.employeeName ? req.employeeName.trim() : '-',
+      employeeId: req.employeeId ? String(req.employeeId).trim() : '-',
+      Department: req.department ? req.department.trim() : '-',
+      department: req.department ? req.department.trim() : '-',
+      Designation: req.designation ? req.designation.trim() : '-',
+      Client: req.client ? req.client.trim() : '-',
+      client: req.client ? req.client.trim() : '-',
+      Purpose: req.purpose ? req.purpose.trim() : '-',
+      purpose: req.purpose ? req.purpose.trim() : '-',
+      Transport: req.transport || '-',
+      voucherNo: req.voucherNo || '-',
+      Amount: parsedAmount,
+      amount: parsedAmount,
+      'Account No': req.bankDetails?.accountNumber || 'N/A',
+      'IFSC Code': req.bankDetails?.ifscCode || 'N/A',
+      bankName: req.bankDetails?.bankName || 'N/A',
+      requestDate: req.date || (req.approvedDate ? req.approvedDate.split('T')[0] : '-'),
+      paymentStatus: req.paymentStatus || 'Pending Payment',
+      reports: req.reports || [],
+      receipts: req.receipts || [],
+    }
+  })
+}
+
 // ─── Bank / IFSC Generators (Fallback for mock entries) ───────────────────────
 const stringHash = (str) => {
   let hash = 0
