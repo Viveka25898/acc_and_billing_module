@@ -205,7 +205,7 @@ const VendorPaymentsSection = ({
       toast.success('Downloaded generated payment files successfully.')
       setFilesDownloaded(true) // Disable button after successful download
     } catch (err) {
-      toast.error('Failed to download payment files from backend')
+      toast.error(typeof err === 'string' ? err : err?.message || 'Failed to download payment files from backend')
     } finally {
       setDownloadingFiles(false)
     }

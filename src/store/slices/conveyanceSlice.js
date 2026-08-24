@@ -107,6 +107,18 @@ export const fetchPendingConveyancePayments = createAsyncThunk(
   }
 );
 
+export const generateConveyancePaymentFiles = createAsyncThunk(
+  'conveyance/generateConveyancePaymentFiles',
+  async ({ selections }, { rejectWithValue }) => {
+    try {
+      const data = await conveyancePaymentService.generateConveyancePaymentFiles(selections);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 const initialState = {
   myClaims: [],
   queueRequests: [],
@@ -146,6 +158,10 @@ const initialState = {
   pendingPaymentsError: null,
   activeRejectionDetails: null,
   activeVoucherData: null,
+  conveyanceFileGenerating: false,
+  conveyanceBatchId: null,
+  conveyanceDownloads: null,
+  conveyanceFileGenError: null,
 };
 
 const conveyanceSlice = createSlice({
@@ -277,6 +293,21 @@ const conveyanceSlice = createSlice({
       .addCase(fetchPendingConveyancePayments.rejected, (state, action) => {
         state.pendingPaymentsLoading = false;
         state.pendingPaymentsError = action.payload;
+      })
+
+      // Generate Conveyance Payment Files
+      .addCase(generateConveyancePaymentFiles.pending, (state) => {
+        state.conveyanceFileGenerating = true;
+        state.conveyanceFileGenError = null;
+      })
+      .addCase(generateConveyancePaymentFiles.fulfilled, (state, action) => {
+        state.conveyanceFileGenerating = false;
+        state.conveyanceBatchId = action.payload?.batchId || null;
+        state.conveyanceDownloads = action.payload?.downloads || null;
+      })
+      .addCase(generateConveyancePaymentFiles.rejected, (state, action) => {
+        state.conveyanceFileGenerating = false;
+        state.conveyanceFileGenError = action.payload;
       });
   },
 });
@@ -305,5 +336,10 @@ export const selectPendingPaymentConveyancePagination = (state) => state.conveya
 export const selectPendingPaymentConveyanceSummary = (state) => state.conveyance.pendingPaymentSummary;
 export const selectPendingPaymentConveyanceLoading = (state) => state.conveyance.pendingPaymentsLoading;
 export const selectPendingPaymentConveyanceError = (state) => state.conveyance.pendingPaymentsError;
+
+export const selectConveyanceFileGenerating = (state) => state.conveyance.conveyanceFileGenerating;
+export const selectConveyanceBatchId = (state) => state.conveyance.conveyanceBatchId;
+export const selectConveyanceDownloads = (state) => state.conveyance.conveyanceDownloads;
+export const selectConveyanceFileGenError = (state) => state.conveyance.conveyanceFileGenError;
 
 export default conveyanceSlice.reducer;

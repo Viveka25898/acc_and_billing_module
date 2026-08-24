@@ -38,11 +38,40 @@ export const downloadRelieverFileBlob = async (fileUrl, filename) => {
     relativePath = fileUrl.substring(fileUrl.indexOf('/api/v1/') + 7)
   }
 
-  const response = await axiosInstance.get(relativePath, { responseType: 'blob' })
-  const contentType =
-    response.headers['content-type'] ||
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  const blob = new Blob([response.data], { type: contentType })
+  const fetchBlob = async (path) => {
+    return await axiosInstance.get(path, { responseType: 'blob' })
+  }
+
+  let response
+  try {
+    response = await fetchBlob(relativePath)
+  } catch (primaryErr) {
+    if (primaryErr.response?.status === 404 && relativePath.includes('/accounts/payments/reliever/download/')) {
+      const altPath = relativePath.replace('/accounts/payments/reliever/download/', '/accounts/reliever/payments/download/')
+      try {
+        response = await fetchBlob(altPath)
+      } catch {
+        throw primaryErr
+      }
+    } else {
+      throw primaryErr
+    }
+  }
+
+  const contentType = response.headers['content-type'] || ''
+  if (contentType.includes('application/json')) {
+    const text = await response.data.text()
+    try {
+      const json = JSON.parse(text)
+      throw new Error(json.message || json.detail || 'Download failed on backend server')
+    } catch {
+      throw new Error(text || 'Download failed on backend server')
+    }
+  }
+
+  const blob = new Blob([response.data], {
+    type: contentType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
   const url = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

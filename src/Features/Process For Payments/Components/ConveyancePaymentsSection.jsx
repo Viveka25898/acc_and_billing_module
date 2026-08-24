@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
 
 import UploadPaymentFile from './UploadPaymentFile'
 import ConveyancePaymentTable from './ConveyancePaymentTable'
@@ -12,7 +10,11 @@ import ConveyancePaymentEntryModal from './ConveyancePaymentEntryModal'
 
 import { parseConveyanceExcelFile } from '../utils/excelHelpers'
 import { transformPendingConveyanceApiResponse } from '../utils/paymentHelpers'
-import { fetchPendingConveyancePayments } from '../../../store/slices/conveyanceSlice'
+import {
+  fetchPendingConveyancePayments,
+  generateConveyancePaymentFiles,
+} from '../../../store/slices/conveyanceSlice'
+import { downloadConveyanceFileBlob } from '../services/conveyancePaymentService'
 import { processConveyanceBankPayments } from '../../Master/utils/accountingHelpers'
 
 const Spinner = ({ size = 'md' }) => {
@@ -34,6 +36,9 @@ const ConveyancePaymentsSection = () => {
     pendingPaymentSummary,
     pendingPaymentsLoading: apiLoading,
     pendingPaymentsError: apiError,
+    conveyanceFileGenerating,
+    conveyanceBatchId,
+    conveyanceDownloads,
   } = useSelector((state) => state.conveyance || {})
 
   const [conveyanceData, setConveyanceData] = useState([])
@@ -43,7 +48,10 @@ const ConveyancePaymentsSection = () => {
   const [pendingAcceptedData, setPendingAcceptedData] = useState(null)
   const [showPaymentEntry, setShowPaymentEntry] = useState(false)
   const [paymentEntryData, setPaymentEntryData] = useState(null)
-  const [approvedPayments, setApprovedPayments] = useState([])
+
+  // Tracking Download Actions
+  const [filesDownloaded, setFilesDownloaded] = useState(false)
+  const [downloadingFiles, setDownloadingFiles] = useState(false)
 
   // Local Page State — Backend controls pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -93,55 +101,66 @@ const ConveyancePaymentsSection = () => {
     }
   }
 
-  const handleDownloadTemplate = () => {
-    if (approvedPayments.length === 0) {
-      toast.warning('No approved conveyance payments to download.')
+  // Manual download handler — Downloads files ONLY when user clicks "Download Files" button
+  const handleDownloadGeneratedFiles = async () => {
+    if (filesDownloaded) {
+      toast.info('Files have already been downloaded for this batch.')
+      return
+    }
+    if (!conveyanceDownloads?.bankFileUrl && !conveyanceDownloads?.systemFileUrl) {
+      toast.warning('No generated payment files available. Please approve selected requests first.')
       return
     }
 
+    setDownloadingFiles(true)
     try {
-      const ts = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')
-
-      const bankData = approvedPayments.map((r) => ({
-        'BENEFICIARY NAME': r['Employee Name'] || r.employeeName || '-',
-        'ACCOUNT NUMBER': r['Account No'] || r.accountNo || 'N/A',
-        'IFSC CODE': r['IFSC Code'] || r.ifscCode || 'N/A',
-        AMOUNT: r.Amount || r.amount || 0,
-        NARRATION: `Conveyance - ${r.Purpose || r.purpose || 'Payment'}`,
-      }))
-
-      const systemData = approvedPayments.map((r) => ({
-        'Employee Name': r['Employee Name'] || r.employeeName || '-',
-        'Employee ID': r['Employee ID'] || r.employeeId || '-',
-        'Paid Amount': r.Amount || r.amount || 0,
-        Client: r.Client || r.client || '-',
-        Purpose: r.Purpose || r.purpose || '-',
-        'UTR Number': '',
-        'Payment Date': new Date().toISOString().split('T')[0],
-      }))
-
-      const wb1 = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb1, XLSX.utils.json_to_sheet(bankData), 'Bank_Upload')
-      saveAs(
-        new Blob([XLSX.write(wb1, { bookType: 'xlsx', type: 'array' })], {
-          type: 'application/octet-stream',
-        }),
-        `Conveyance_Bank_File_${ts}.xlsx`
-      )
-
-      const wb2 = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(systemData), 'System_Upload')
-      saveAs(
-        new Blob([XLSX.write(wb2, { bookType: 'xlsx', type: 'array' })], {
-          type: 'application/octet-stream',
-        }),
-        `Conveyance_System_File_${ts}.xlsx`
-      )
-
-      setApprovedPayments([])
-      toast.success('Downloaded Bank + System files successfully.')
+      const batchTag = conveyanceBatchId || 'Batch'
+      if (conveyanceDownloads.bankFileUrl) {
+        toast.info('Downloading Bank Payment File…')
+        await downloadConveyanceFileBlob(
+          conveyanceDownloads.bankFileUrl,
+          `Conveyance_Bank_File_${batchTag}.xlsx`
+        )
+      }
+      if (conveyanceDownloads.systemFileUrl) {
+        toast.info('Downloading System Payment File…')
+        await downloadConveyanceFileBlob(
+          conveyanceDownloads.systemFileUrl,
+          `Conveyance_System_File_${batchTag}.xlsx`
+        )
+      }
+      toast.success('Downloaded generated payment files successfully.')
+      setFilesDownloaded(true) // Disable button after successful download
     } catch (err) {
-      toast.error('Failed to generate download files')
+      toast.error(typeof err === 'string' ? err : err?.message || 'Failed to download payment files from backend')
+    } finally {
+      setDownloadingFiles(false)
+    }
+  }
+
+  // Generate Conveyance Payment Files API Trigger
+  const handleConveyanceApproval = async (selectedRequests = []) => {
+    if (!Array.isArray(selectedRequests) || selectedRequests.length === 0) {
+      toast.warning('Please select at least one conveyance request to approve')
+      return
+    }
+
+    // Match backend spec payload: { selections: ["EXP/CONV/GEN/2026/..."] }
+    const selections = selectedRequests.map((r) => r.voucherNo || r.id)
+
+    try {
+      // 1. Call Generate Conveyance Payment Files API (POST /accounts/payments/conveyance/generate-payment-files)
+      const res = await dispatch(generateConveyancePaymentFiles({ selections })).unwrap()
+      setFilesDownloaded(false) // Enable download button for the new generated batch
+
+      toast.success(
+        res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
+      )
+
+      // 2. Refresh pending conveyance claim list from backend
+      loadPendingConveyancePayments(currentPage)
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to generate conveyance payment files')
     }
   }
 
@@ -218,6 +237,11 @@ const ConveyancePaymentsSection = () => {
     conveyanceData.reduce((sum, r) => sum + (parseFloat(r.Amount || r.amount) || 0), 0)
   const totalDepartments = Object.keys(pendingPaymentSummary?.byDepartment || {}).length
 
+  // Download Button State Logic
+  const hasFilesToDownload = conveyanceDownloads?.bankFileUrl || conveyanceDownloads?.systemFileUrl
+  const isDownloadBtnDisabled =
+    !hasFilesToDownload || filesDownloaded || downloadingFiles || conveyanceFileGenerating
+
   return (
     <div className="space-y-4">
       {/* Top Banner & Excel Upload */}
@@ -232,26 +256,44 @@ const ConveyancePaymentsSection = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => loadPendingConveyancePayments(activePage)}
-              disabled={apiLoading}
+              disabled={apiLoading || conveyanceFileGenerating}
               className="text-xs font-semibold px-3 py-1.5 rounded-full bg-purple-700/60 hover:bg-purple-700 text-white border border-purple-400/40 transition flex items-center gap-1"
               title="Refresh Pending Requests"
             >
               <span>🔄</span> Refresh
             </button>
             <button
-              onClick={handleDownloadTemplate}
-              disabled={approvedPayments.length === 0}
+              onClick={handleDownloadGeneratedFiles}
+              disabled={isDownloadBtnDisabled}
               className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${
-                approvedPayments.length > 0
-                  ? 'bg-white text-purple-700 hover:bg-purple-50 border border-purple-200'
-                  : 'bg-purple-400 text-purple-100 cursor-not-allowed border border-purple-300'
+                !isDownloadBtnDisabled
+                  ? 'bg-white text-purple-700 hover:bg-purple-50 border border-purple-200 cursor-pointer active:scale-95'
+                  : 'bg-purple-400/70 text-purple-100 cursor-not-allowed border border-purple-300/40 opacity-80'
               }`}
             >
-              ⬇ Download Files
-              {approvedPayments.length > 0 && (
-                <span className="bg-purple-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5">
-                  {approvedPayments.length}
-                </span>
+              {conveyanceFileGenerating ? (
+                <>
+                  <Spinner size="sm" />
+                  Generating Files…
+                </>
+              ) : downloadingFiles ? (
+                <>
+                  <Spinner size="sm" />
+                  Downloading…
+                </>
+              ) : filesDownloaded ? (
+                <>
+                  <span>✓</span> Files Downloaded
+                </>
+              ) : (
+                <>
+                  ⬇ Download Files
+                  {hasFilesToDownload && (
+                    <span className="bg-purple-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5 animate-pulse">
+                      Ready
+                    </span>
+                  )}
+                </>
               )}
             </button>
           </div>
@@ -338,13 +380,7 @@ const ConveyancePaymentsSection = () => {
           ) : (
             <ConveyancePaymentTable
               data={conveyanceData}
-              onApprove={(selected) => {
-                setApprovedPayments((prev) => {
-                  const map = new Map(prev.map((p) => [p.id, p]))
-                  selected.forEach((s) => map.set(s.id, s))
-                  return Array.from(map.values())
-                })
-              }}
+              onApprove={handleConveyanceApproval}
             />
           )}
         </div>
@@ -390,7 +426,7 @@ const ConveyancePaymentsSection = () => {
               className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
                 activePage < totalPages && !apiLoading
                   ? 'bg-white border border-gray-200 text-gray-700 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 shadow-sm'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-purple-100'
               }`}
             >
               Next ►
