@@ -191,6 +191,7 @@ export default function AEConveyanceApprovalPage() {
           <>
             <ManagerConveyanceTable
               claims={paginatedClaims}
+              currentPage={currentPage}
               onApprove={handleApprove}
               onReject={(id) => setRejection({ show: true, claimId: id })}
               onViewDocs={(docs) => setViewDocs(docs)}
@@ -243,18 +244,22 @@ export default function AEConveyanceApprovalPage() {
       />
 
       {/* Modal for receipts */}
-      <DocumentPreviewModal
-        url={viewDocs ? prepareDocumentUrl(viewDocs) : null}
-        onClose={() => setViewDocs(null)}
-        title="Transport Receipt"
-      />
+      {viewDocs && (
+        <DocumentPreviewModal
+          url={prepareDocumentUrl(viewDocs)}
+          onClose={() => setViewDocs(null)}
+          title="Transport Receipt"
+        />
+      )}
 
       {/* Modal for visit reports */}
-      <DocumentPreviewModal
-        url={viewReports ? prepareDocumentUrl(viewReports) : null}
-        onClose={() => setViewReports(null)}
-        title="Visit Report"
-      />
+      {viewReports && (
+        <DocumentPreviewModal
+          url={prepareDocumentUrl(viewReports)}
+          onClose={() => setViewReports(null)}
+          title="Visit Report"
+        />
+      )}
 
       {/* Expense Voucher Modal */}
       {showVoucher && selectedVoucherData && (

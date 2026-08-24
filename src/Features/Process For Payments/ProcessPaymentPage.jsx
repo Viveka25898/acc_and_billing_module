@@ -22,14 +22,14 @@ import { processVendorPayments } from '../Master/utils/accountingHelpers'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'vendor',     label: 'Vendor Payments',     color: 'green'  },
-  { id: 'reliever',   label: 'Reliever Payments',   color: 'blue'   },
+  { id: 'vendor', label: 'Vendor Payments', color: 'green' },
+  { id: 'reliever', label: 'Reliever Payments', color: 'blue' },
   { id: 'conveyance', label: 'Conveyance Payments', color: 'purple' },
 ]
 
 const TAB_ACTIVE_CLASSES = {
-  green:  'border-green-500 text-green-700 bg-green-50',
-  blue:   'border-blue-500 text-blue-700 bg-blue-50',
+  green: 'border-green-500 text-green-700 bg-green-50',
+  blue: 'border-blue-500 text-blue-700 bg-blue-50',
   purple: 'border-purple-500 text-purple-700 bg-purple-50',
 }
 
@@ -60,11 +60,10 @@ const PaymentTypeTabs = ({ activeTab, onTabChange }) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 sm:px-5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-            isActive
+          className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 sm:px-5 text-sm font-semibold rounded-lg transition-all duration-200 ${isActive
               ? `${TAB_ACTIVE_CLASSES[tab.color]} shadow-sm border`
               : 'text-gray-500 hover:text-gray-700 hover:bg-white'
-          }`}
+            }`}
         >
           {tab.label}
         </button>
@@ -343,31 +342,31 @@ const VendorPaymentsSection = ({
       const payments = []
       const approved = approvedInvoices || []
 
-      ;(pendingAcceptedData || []).forEach((row) => {
-        const vendorName = row['Vendor Name']
-        const invoiceNumbers = String(row['Invoice Numbers'] || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
+        ; (pendingAcceptedData || []).forEach((row) => {
+          const vendorName = row['Vendor Name']
+          const invoiceNumbers = String(row['Invoice Numbers'] || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
 
-        invoiceNumbers.forEach((invNo) => {
-          const match = approved.find(
-            (a) => a.vendorName === vendorName && a.invoiceNumber === invNo
-          )
-          const amount = match
-            ? parseFloat(match.paidAmount || 0)
-            : parseFloat(row['Payment Done'] || row['Total Amount'] || 0) /
+          invoiceNumbers.forEach((invNo) => {
+            const match = approved.find(
+              (a) => a.vendorName === vendorName && a.invoiceNumber === invNo
+            )
+            const amount = match
+              ? parseFloat(match.paidAmount || 0)
+              : parseFloat(row['Payment Done'] || row['Total Amount'] || 0) /
               Math.max(invoiceNumbers.length, 1)
 
-          payments.push({
-            vendorName,
-            invoiceNumber: invNo,
-            amount,
-            type: match?.type || match?.invoiceTypeLabel || 'Material',
-            vendorGLCode: match?.vendorGLCode,
+            payments.push({
+              vendorName,
+              invoiceNumber: invNo,
+              amount,
+              type: match?.type || match?.invoiceTypeLabel || 'Material',
+              vendorGLCode: match?.vendorGLCode,
+            })
           })
         })
-      })
 
       const result = processVendorPayments(payments, bank)
       if (!result.success) {
@@ -379,15 +378,15 @@ const VendorPaymentsSection = ({
       // Remove paid invoices from localStorage sources
       try {
         const paidNos = new Set(result.results.map((r) => r.invoiceNumber))
-        ;['processed_invoices', 'final_processed_invoices', 'oneTimeFinalProcessedInvoice'].forEach(
-          (key) => {
-            const arr = JSON.parse(localStorage.getItem(key) || '[]')
-            localStorage.setItem(
-              key,
-              JSON.stringify(arr.filter((inv) => !paidNos.has(inv.invoiceNo || inv.invoiceNumber)))
-            )
-          }
-        )
+          ;['processed_invoices', 'final_processed_invoices', 'oneTimeFinalProcessedInvoice'].forEach(
+            (key) => {
+              const arr = JSON.parse(localStorage.getItem(key) || '[]')
+              localStorage.setItem(
+                key,
+                JSON.stringify(arr.filter((inv) => !paidNos.has(inv.invoiceNo || inv.invoiceNumber)))
+              )
+            }
+          )
         toast.info(`Removed ${paidNos.size} invoice(s) from approval queues`)
       } catch {
         // non-critical cleanup
@@ -485,11 +484,10 @@ const VendorPaymentsSection = ({
           <button
             onClick={handleDownloadTemplate}
             disabled={approvedInvoices.length === 0}
-            className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition shadow-sm ${
-              approvedInvoices.length > 0
+            className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition shadow-sm ${approvedInvoices.length > 0
                 ? 'bg-white text-green-700 hover:bg-green-50 border border-green-200'
                 : 'bg-green-400 text-green-100 cursor-not-allowed border border-green-300'
-            }`}
+              }`}
           >
             ⬇ Download Files
             {approvedInvoices.length > 0 && (

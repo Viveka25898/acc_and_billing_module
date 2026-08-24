@@ -9,6 +9,8 @@ export default function ManagerConveyanceTable({
   onViewReports,
   actionLoadingId = null,
   showActions = true,
+  currentPage = 1,
+  pageSize = 10,
 }) {
   const getStatusBadge = (claim) => {
     const statusText = claim.status_display || claim.status || "Pending Approval";
@@ -40,7 +42,7 @@ export default function ManagerConveyanceTable({
       <table className="w-full min-w-[1200px] table-auto border-collapse text-left bg-white">
         <thead className="bg-gradient-to-r from-green-700 to-green-600 text-white text-xs font-semibold uppercase tracking-wider">
           <tr>
-            <th className="px-5 py-4 text-center w-12">#</th>
+            <th className="px-5 py-4 text-center whitespace-nowrap">Sr. No.</th>
             <th className="px-5 py-4">Claim ID</th>
             <th className="px-5 py-4">Emp ID</th>
             <th className="px-5 py-4">Employee Name</th>
@@ -65,6 +67,7 @@ export default function ManagerConveyanceTable({
             </tr>
           ) : (
             claims.map((claim, idx) => {
+              const srNo = (currentPage - 1) * pageSize + idx + 1;
               const claimIdDisplay = claim.claim_id || claim.requestId || claim.id || "-";
               const employeeId = claim.employeeId || claim.employee_id || claim.empId || "-";
               const employeeName = claim.employeeName || claim.employee_name || claim.submittedBy || "-";
@@ -82,8 +85,8 @@ export default function ManagerConveyanceTable({
 
               return (
                 <tr key={claim.id || idx} className="hover:bg-gray-50/60 transition-colors duration-150">
-                  <td className="px-5 py-4 text-center text-xs font-semibold text-gray-400">
-                    {idx + 1}
+                  <td className="px-5 py-4 text-center text-xs font-semibold text-gray-500 whitespace-nowrap">
+                    {srNo}
                   </td>
 
                   <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap text-xs">
