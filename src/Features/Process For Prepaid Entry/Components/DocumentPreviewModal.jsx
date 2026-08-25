@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiX, FiDownload, FiFileText, FiImage, FiFile } from "react-icons/fi";
+import { FiX, FiFileText, FiImage, FiFile } from "react-icons/fi";
 import { FaFileExcel } from "react-icons/fa";
 
 export default function DocumentPreviewModal({ url, document, onClose, title = "Document" }) {
@@ -15,7 +15,10 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
   });
 
   useEffect(() => {
-    if (!targetDoc) return;
+    if (!targetDoc) {
+      setLoading(false);
+      return;
+    }
 
     let isMounted = true;
     let createdBlobUrl = null;
@@ -37,7 +40,7 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
           fileName = targetDoc.name || targetDoc.fileName || "document";
 
           if (!fileLocation && (targetDoc.url === null || targetDoc.fileUrl === null)) {
-            throw new Error("Document URL is null on the backend server.");
+            throw new Error("Document URL is not available on the server (null).");
           }
         }
 
@@ -46,7 +49,6 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
         }
 
         let cleanPath = fileLocation ? fileLocation.replace(/^https?:\/\/[^\/]+/, '') : '';
-
         const filenameOnly = fileName.split('/').pop() || (fileLocation ? fileLocation.split('/').pop() : '');
         const candidateSet = new Set();
 
@@ -89,20 +91,25 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
         }
 
         const candidatePaths = Array.from(candidateSet);
-
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         let response = null;
         for (const candidate of candidatePaths) {
+          if (!isMounted) break;
           try {
-            const res = await fetch(candidate, { headers });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+            const res = await fetch(candidate, { headers, signal: controller.signal });
+            clearTimeout(timeoutId);
+
             if (res.ok) {
               response = res;
               break;
             }
           } catch (err) {
-            // Silently ignore candidate fetch errors
+            // Silently skip failed candidates
           }
         }
 
@@ -180,15 +187,8 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
     };
   }, [targetDoc]);
 
-  const handleDownload = () => {
-    if (!blobUrl) return;
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = fileMeta.name || "download";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
+  // Don't render modal at all if targetDoc is falsy
+  if (!targetDoc) return null;
 
   const renderIcon = () => {
     switch (fileMeta.type) {
@@ -220,16 +220,6 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            {blobUrl && (
-              <button
-                onClick={handleDownload}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition"
-                title="Download document"
-              >
-                <FiDownload className="w-4 h-4" />
-                <span>Download</span>
-              </button>
-            )}
             <button
               onClick={onClose}
               className="p-1.5 text-emerald-100 hover:text-white hover:bg-white/10 rounded-lg transition"
@@ -286,14 +276,7 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
                 <div className="text-center p-8 bg-white rounded-xl shadow-sm border border-gray-100">
                   <FaFileExcel className="w-16 h-16 text-green-600 mx-auto mb-3" />
                   <h4 className="text-base font-semibold text-gray-800 mb-1">Spreadsheet Document</h4>
-                  <p className="text-xs text-gray-500 mb-4">Preview not available for Excel files directly in browser.</p>
-                  <button
-                    onClick={handleDownload}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center space-x-2 mx-auto"
-                  >
-                    <FiDownload className="w-4 h-4" />
-                    <span>Download Excel File</span>
-                  </button>
+                  <p className="text-xs text-gray-500">Inline preview not available for Excel files directly in browser.</p>
                 </div>
               )}
 
@@ -301,14 +284,7 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
                 <div className="text-center p-8 bg-white rounded-xl shadow-sm border border-gray-100">
                   <FiFile className="w-16 h-16 text-blue-500 mx-auto mb-3" />
                   <h4 className="text-base font-semibold text-gray-800 mb-1">Binary Document</h4>
-                  <p className="text-xs text-gray-500 mb-4">Binary file format cannot be rendered inline.</p>
-                  <button
-                    onClick={handleDownload}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center space-x-2 mx-auto"
-                  >
-                    <FiDownload className="w-4 h-4" />
-                    <span>Download File</span>
-                  </button>
+                  <p className="text-xs text-gray-500">Binary file format cannot be rendered inline.</p>
                 </div>
               )}
             </div>
