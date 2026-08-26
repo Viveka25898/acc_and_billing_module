@@ -1,8 +1,11 @@
 // src/components/ExpenseHeadComponents/LedgerTable.jsx
 import React from 'react';
 
-const LedgerTable = ({ transactions }) => {
+const val = (v) => (v === undefined || v === null || String(v).trim() === "" ? "-" : String(v));
+
+const LedgerTable = ({ transactions = [] }) => {
   const getEntryTypeClass = (type) => {
+    const t = String(type || '').toLowerCase();
     const classes = {
       settlement: 'bg-blue-50 text-blue-700',
       journal: 'bg-purple-50 text-purple-700',
@@ -11,11 +14,12 @@ const LedgerTable = ({ transactions }) => {
       closing: 'bg-green-50 text-green-700',
       purchase: 'bg-indigo-50 text-indigo-700'
     };
-    return classes[type] || 'bg-gray-50 text-gray-700';
+    return classes[t] || 'bg-gray-50 text-gray-700';
   };
 
   const getStatusClass = (status) => {
-    return status === 'posted' 
+    const s = String(status || '').toLowerCase();
+    return s === 'posted' 
       ? 'bg-green-50 text-green-700' 
       : 'bg-yellow-50 text-orange-600';
   };
@@ -26,9 +30,11 @@ const LedgerTable = ({ transactions }) => {
     return 'hover:bg-gray-50';
   };
 
+  const list = Array.isArray(transactions) ? transactions : [];
+
   return (
     <div className="p-6 overflow-x-auto">
-      <table className="w-full min-w-[2000px]">
+      <table className="w-full min-w-[1600px]">
         <thead className="bg-gray-50 sticky top-0 z-10">
           <tr>
             <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
@@ -51,87 +57,99 @@ const LedgerTable = ({ transactions }) => {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {transactions.map((transaction) => (
-            <tr key={transaction.id} className={getRowClass(transaction.rowType)}>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">{transaction.date}</td>
-              <td className="px-3 py-3 text-sm whitespace-nowrap">
-                <span className="text-green-500 font-medium cursor-pointer hover:underline">
-                  {transaction.voucherNo}
-                </span>
-              </td>
-              <td className="px-3 py-3 text-sm whitespace-nowrap">
-                <span className={`inline-block px-2 py-1 rounded text-xs font-semibold uppercase ${getEntryTypeClass(transaction.entryType)}`}>
-                  {transaction.entryType}
-                </span>
-              </td>
-              <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
-                {transaction.debit !== '-' && transaction.debit !== '0.00' ? (
-                  <span className="font-semibold font-mono text-red-600">{transaction.debit}</span>
-                ) : (
-                  '-'
-                )}
-              </td>
-              <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
-                {transaction.credit !== '-' && transaction.credit !== '0.00' ? (
-                  <span className="font-semibold font-mono text-green-600">{transaction.credit}</span>
-                ) : (
-                  '-'
-                )}
-              </td>
-              <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
-                <span className="font-bold font-mono text-red-600">{transaction.balance}</span>
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 max-w-[350px] leading-relaxed">
-                {transaction.narration}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
-                {transaction.settlementRef}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap max-w-[180px]">
-                <div className="font-medium">{transaction.employee.name}</div>
-                {transaction.employee.id && (
-                  <div>
-                    <span className="inline-block px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 mt-1">
-                      {transaction.employee.id}
-                    </span>
-                  </div>
-                )}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
-                {transaction.glAccount}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
-                {transaction.costCenter}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
-                {transaction.customer || '-'}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
-                {transaction.site || '-'}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
-                {transaction.state || '-'}
-              </td>
-              <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
-                {transaction.approvedBy}
-              </td>
-              <td className="px-3 py-3 text-sm text-center whitespace-nowrap">
-                {transaction.attachments > 0 ? (
-                  <a href="#" className="text-green-500 text-xs cursor-pointer hover:underline">
-                    <span className="mr-1">📎</span>
-                    {transaction.attachments}
-                  </a>
-                ) : (
-                  '-'
-                )}
-              </td>
-              <td className="px-3 py-3 text-sm text-center whitespace-nowrap">
-                <span className={`inline-block px-2 py-1 rounded text-xs font-semibold uppercase ${getStatusClass(transaction.status)}`}>
-                  {transaction.status}
-                </span>
+          {list.length === 0 ? (
+            <tr>
+              <td colSpan="17" className="py-12 text-center text-gray-500 font-medium">
+                No transaction records found matching your filters.
               </td>
             </tr>
-          ))}
+          ) : (
+            list.map((transaction, idx) => {
+              const empName = transaction.employee?.name;
+              const empId = transaction.employee?.id;
+
+              return (
+                <tr key={transaction.id || idx} className={getRowClass(transaction.rowType)}>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">{val(transaction.date)}</td>
+                  <td className="px-3 py-3 text-sm whitespace-nowrap">
+                    <span className="text-green-600 font-medium font-mono">
+                      {val(transaction.voucherNo)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-sm whitespace-nowrap">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-semibold uppercase ${getEntryTypeClass(transaction.entryType)}`}>
+                      {val(transaction.entryType)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
+                    {transaction.debit && transaction.debit !== '-' && transaction.debit !== '0.00' ? (
+                      <span className="font-semibold font-mono text-red-600">{transaction.debit}</span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
+                    {transaction.credit && transaction.credit !== '-' && transaction.credit !== '0.00' ? (
+                      <span className="font-semibold font-mono text-green-600">{transaction.credit}</span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
+                    <span className="font-bold font-mono text-red-600">{val(transaction.balance)}</span>
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 max-w-[350px] leading-relaxed">
+                    {val(transaction.narration)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {val(transaction.settlementRef)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap max-w-[180px]">
+                    <div className="font-medium">{val(empName)}</div>
+                    {empId ? (
+                      <div>
+                        <span className="inline-block px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 mt-1">
+                          {empId}
+                        </span>
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {val(transaction.glAccount)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {val(transaction.costCenter)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {val(transaction.customer)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {val(transaction.site)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {val(transaction.state)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {val(transaction.approvedBy)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center whitespace-nowrap">
+                    {transaction.attachments > 0 ? (
+                      <span className="text-green-600 text-xs font-medium inline-flex items-center gap-1">
+                        📎 {transaction.attachments}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-center whitespace-nowrap">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-semibold uppercase ${getStatusClass(transaction.status)}`}>
+                      {val(transaction.status)}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>

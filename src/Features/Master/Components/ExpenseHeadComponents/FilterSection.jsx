@@ -1,14 +1,19 @@
 // src/components/FilterSection.jsx
 import React, { useState } from 'react';
 
-const FilterSection = ({ filterOptions, onFilterChange }) => {
+const FilterSection = ({ filterOptions = {}, onFilterChange }) => {
   const [filters, setFilters] = useState({
-    fromDate: '2024-04-01',
-    toDate: '2024-05-31',
+    fromDate: '',
+    toDate: '',
     employee: '',
     costCenter: '',
-    entryType: ''
+    entryType: '',
+    search: ''
   });
+
+  const employeesList = filterOptions?.employees || [{ value: '', label: 'All Employees' }];
+  const costCentersList = filterOptions?.costCenters || [{ value: '', label: 'All' }];
+  const entryTypesList = filterOptions?.entryTypes || [{ value: '', label: 'All' }];
 
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
@@ -20,82 +25,105 @@ const FilterSection = ({ filterOptions, onFilterChange }) => {
     onFilterChange(filters);
   };
 
+  const handleResetFilter = () => {
+    const reset = {
+      fromDate: '',
+      toDate: '',
+      employee: '',
+      costCenter: '',
+      entryType: '',
+      search: ''
+    };
+    setFilters(reset);
+    onFilterChange(reset);
+  };
+
   return (
     <div className="p-5 bg-gray-50 border-b border-gray-200 flex flex-wrap gap-4 items-center">
       <div className="flex flex-col">
-        <label className="text-xs text-gray-600 mb-1">From Date</label>
+        <label className="text-xs font-semibold text-gray-600 mb-1">From Date</label>
         <input
           type="date"
           value={filters.fromDate}
           onChange={(e) => handleFilterChange('fromDate', e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded text-sm"
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs text-gray-600 mb-1">To Date</label>
+        <label className="text-xs font-semibold text-gray-600 mb-1">To Date</label>
         <input
           type="date"
           value={filters.toDate}
           onChange={(e) => handleFilterChange('toDate', e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded text-sm"
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs text-gray-600 mb-1">Employee</label>
+        <label className="text-xs font-semibold text-gray-600 mb-1">Employee</label>
         <select
           value={filters.employee}
           onChange={(e) => handleFilterChange('employee', e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded text-sm"
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
         >
-          {filterOptions.employees.map(option => (
-            <option key={option.value} value={option.value}>
+          {employeesList.map((option, idx) => (
+            <option key={option.value || idx} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
       </div>
       <div className="flex flex-col">
-        <label className="text-xs text-gray-600 mb-1">Cost Center</label>
+        <label className="text-xs font-semibold text-gray-600 mb-1">Cost Center</label>
         <select
           value={filters.costCenter}
           onChange={(e) => handleFilterChange('costCenter', e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded text-sm"
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
         >
-          {filterOptions.costCenters.map(option => (
-            <option key={option.value} value={option.value}>
+          {costCentersList.map((option, idx) => (
+            <option key={option.value || idx} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
       </div>
       <div className="flex flex-col">
-        <label className="text-xs text-gray-600 mb-1">Entry Type</label>
+        <label className="text-xs font-semibold text-gray-600 mb-1">Entry Type</label>
         <select
           value={filters.entryType}
           onChange={(e) => handleFilterChange('entryType', e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded text-sm"
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
         >
-          {filterOptions.entryTypes.map(option => (
-            <option key={option.value} value={option.value}>
+          {entryTypesList.map((option, idx) => (
+            <option key={option.value || idx} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
       </div>
-      
-      <button 
-        onClick={handleApplyFilter}
-        className="px-4 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 self-end"
-      >
-        Apply Filter
-      </button>
-      
-      <div className="ml-auto flex gap-2">
-        <button className="px-4 py-2 bg-white text-green-500 border border-green-500 rounded text-sm hover:bg-green-50">
-          Export to Excel
+
+      <div className="flex flex-col">
+        <label className="text-xs font-semibold text-gray-600 mb-1">Search</label>
+        <input
+          type="text"
+          placeholder="Search voucher, narration..."
+          value={filters.search}
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+        />
+      </div>
+
+      <div className="flex items-center gap-2 self-end mt-2 sm:mt-0">
+        <button
+          onClick={handleApplyFilter}
+          className="px-4 py-2 bg-green-600 text-white rounded text-sm font-semibold hover:bg-green-700 transition cursor-pointer"
+        >
+          Apply Filter
         </button>
-        <button className="px-4 py-2 bg-white text-green-500 border border-green-500 rounded text-sm hover:bg-green-50">
-          Print
+        <button
+          onClick={handleResetFilter}
+          className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm font-semibold hover:bg-gray-300 transition cursor-pointer"
+        >
+          Reset
         </button>
       </div>
     </div>

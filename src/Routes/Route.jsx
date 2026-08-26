@@ -78,6 +78,7 @@ import LinemanagerConveyanceFormPage from '../Features/Process For Conveyance Bo
 import VPOperationsConveyanceApprovalPage from '../Features/Process For Conveyance Booking/Pages/VPOperationsConveyanceApprovalPage'
 import VPConveyanceFormPage from '../Features/Process For Conveyance Booking/Pages/VPConveyanceFormPage'
 import AEConveyanceApprovalPage from '../Features/Process For Conveyance Booking/Pages/AEConveyanceApprovalPage'
+import AVPConveyanceApprovalPage from '../Features/Process For Conveyance Booking/Pages/AVPConveyanceApprovalPage'
 import PHRequestApprovalPage from '../Features/Process For Prepaid Entry/Pages/PH/PHRequestsAprovalPage'
 import POForm from '../Features/Process For Prepaid Entry/Pages/PH/POForm'
 import PHGeneratePOPage from '../Features/Process For Prepaid Entry/Pages/PH/PhGeneratePOPage'
@@ -410,6 +411,9 @@ export const router = createBrowserRouter([
       { path: 'submit-advance-settlement', element: <AVPAdvanceSettlementForm /> },
       { path: 'my-settelment-requests', element: <MySettlements /> },
       { path: 'avp-reliever-approval', element: <AVPRelieverApprovalPage /> },
+      { path: 'conveyance-approval', element: <AVPConveyanceApprovalPage /> },
+      { path: 'conveyance-form', element: <SubmitConveyancePage /> },
+      { path: 'my-conveyance-requests', element: <MyConveyanceRequestsPage /> },
     ],
   },
   // *******************************VP Operations***********************************

@@ -354,7 +354,7 @@ const resolveConveyanceGLs = () => {
       const newExpenseLedger = {
         id: `AUTO_${Date.now()}_X2001003`,
         code: 'X2001003',
-        name: 'BRANCH CONVEYANCE EXPENSE',
+        name: 'Branch conveyance expense',
         type: 'ACCOUNT',
         parentAccount: 'BRANCH MANAGEMENT',
         parentCode: 'X2001',
@@ -451,7 +451,7 @@ const resolveConveyanceGLs = () => {
     console.error('❌ Error in resolveConveyanceGLs:', error);
     // Return safe fallbacks
     return {
-      expense: { code: 'X2001003', name: 'BRANCH CONVEYANCE EXPENSE' },
+      expense: { code: 'X2001003', name: 'Branch conveyance expense' },
       payable: { code: 'L2001001', name: 'CONVEYANCE PAYABLE' }
     };
   }

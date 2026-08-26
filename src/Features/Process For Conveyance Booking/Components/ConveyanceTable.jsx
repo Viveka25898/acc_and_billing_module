@@ -1,62 +1,107 @@
 import React from "react";
-import { FaEye } from "react-icons/fa";
+import { FiEye, FiClock, FiCheckCircle, FiXCircle, FiFileText } from "react-icons/fi";
 
-export default function ConveyanceTable({ requests, onEyeClick }) {
+export default function ConveyanceTable({ requests, onViewReason, onViewFile }) {
+  const getStatusBadge = (status) => {
+    const statusLower = (status || "").toLowerCase();
+
+    if (statusLower.includes("approved")) {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold bg-green-100 text-green-800 border border-green-200">
+          <FiCheckCircle size={12} /> {status}
+        </span>
+      );
+    }
+    if (statusLower.includes("rejected")) {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold bg-red-100 text-red-800 border border-red-200">
+          <FiXCircle size={12} /> {status}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
+        <FiClock size={12} /> {status || "Pending Approval"}
+      </span>
+    );
+  };
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border border-gray-200 bg-white rounded-lg text-sm">
-        <thead className="bg-gray-100 text-gray-700 border">
+    <div className="overflow-x-auto border border-gray-200 rounded-2xl bg-white shadow-sm">
+      <table className="w-full text-sm text-left border-collapse">
+        <thead className="bg-gradient-to-r from-green-700 to-green-600 text-white text-xs font-semibold uppercase tracking-wider">
           <tr>
-            <th className="p-2 border text-left">Date</th>
-            <th className="p-2 border text-left">Purpose</th>
-            <th className="p-2 border text-left">Client</th>
-            <th className="p-2 border text-left">Transport</th>
-            <th className="p-2 border text-left">Distance</th>
-            <th className="p-2 border text-left">Amount</th>
-            <th className="p-2 border text-left">Status</th>
+            <th className="px-4 py-3.5">Request ID / Date</th>
+            <th className="px-4 py-3.5">Client / Site</th>
+            <th className="px-4 py-3.5">Purpose</th>
+            <th className="px-4 py-3.5">Transport</th>
+            <th className="px-4 py-3.5">Distance</th>
+            <th className="px-4 py-3.5">Amount (₹)</th>
+            <th className="px-4 py-3.5">Status</th>
+            <th className="px-4 py-3.5 text-center">Action</th>
           </tr>
         </thead>
-        <tbody>
-          {requests.length === 0 && (
+        <tbody className="divide-y divide-gray-200 text-gray-700">
+          {requests.length === 0 ? (
             <tr>
-              <td colSpan="7" className="text-center p-4 text-gray-500">
-                No requests found.
+              <td colSpan="8" className="text-center py-10 text-gray-500 font-medium">
+                📭 No conveyance claims found.
               </td>
             </tr>
+          ) : (
+            requests.map((r) => {
+              const formattedDate = r.date ? r.date.split("T")[0] : "N/A";
+              const isRejected = (r.status || "").toLowerCase().includes("rejected");
+
+              return (
+                <tr key={r.id} className="hover:bg-gray-50/80 transition duration-150">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
+                    <div className="font-semibold text-gray-900 text-xs">{r.id}</div>
+                    <div className="text-xs text-gray-500 font-medium">{formattedDate}</div>
+                  </td>
+
+                  <td className="px-4 py-3.5 font-medium text-gray-800">
+                    {r.client || r.client_name || "N/A"}
+                  </td>
+
+                  <td className="px-4 py-3.5 max-w-[220px] truncate text-gray-600" title={r.purpose}>
+                    {r.purpose || "N/A"}
+                  </td>
+
+                  <td className="px-4 py-3.5 font-semibold text-xs uppercase text-green-700">
+                    {r.transport || r.transport_mode || "N/A"}
+                  </td>
+
+                  <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
+                    {r.distance ? `${r.distance} km` : "N/A"}
+                  </td>
+
+                  <td className="px-4 py-3.5 font-bold text-gray-900 whitespace-nowrap">
+                    ₹{Number(r.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </td>
+
+                  <td className="px-4 py-3.5 whitespace-nowrap">
+                    {getStatusBadge(r.status)}
+                  </td>
+
+                  <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-2">
+                      {isRejected && (
+                        <button
+                          onClick={() => onViewReason(r)}
+                          type="button"
+                          className="px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition duration-150 flex items-center gap-1 cursor-pointer border border-red-200"
+                          title="View Rejection Reason"
+                        >
+                          <FiEye size={12} /> Reason
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
           )}
-          {requests.map((r) => (
-            <tr key={r.id} className="border-t">
-              <td className="p-2 border">{r.date}</td>
-              <td className="p-2 border">{r.purpose}</td>
-              <td className="p-2 border">{r.client}</td>
-              <td className="p-2 border">{r.transport}</td>
-              <td className="p-2 border">{r.distance} km</td>
-              <td className="p-2 border">₹{r.amount}</td>
-              <td className="p-2 border">
-                <span
-                className={`text-xs px-2 border py-1 rounded-full font-medium
-                  ${r.status === "Approved"
-                    ? "bg-green-100 text-green-700"
-                    : r.status === "Pending VP Approval"
-                    ? "bg-blue-100 text-blue-700"
-                    : r.status.includes("Rejected")
-                    ? "bg-red-100 text-red-700"
-                    : "bg-yellow-100 text-yellow-800"}`}
-              >
-                {r.status}
-              </span>
-                {r.status === "Rejected" && r.rejectionReason && (
-                  <button
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                    onClick={() => onEyeClick(r.rejectionReason)}
-                    title="View Reason"
-                  >
-                    <FaEye />
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
         </tbody>
       </table>
     </div>

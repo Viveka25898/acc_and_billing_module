@@ -1,51 +1,72 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
 import ConveyanceFilter from "../Components/ConveyanceFilter";
 import ManagerConveyanceTable from "../Components/ManagerConveyanceTable";
 import DocumentPreviewModal from "../Components/DocumentPreviewModal";
 import RejectionModal from "../Components/RejectionModal";
+import {
+  fetchConveyanceQueue,
+  approveConveyanceRequest,
+  rejectConveyanceRequest,
+  selectConveyanceQueueRequests,
+  selectConveyanceQueueLoading,
+  selectConveyanceActionLoadingId,
+} from "../../../store/slices/conveyanceSlice";
+import { FiCheckSquare, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 export default function VPOperationsConveyanceApprovalPage() {
-  const [claims, setClaims] = useState([]);
-  const [filter, setFilter] = useState({ 
-    date: "", 
-    status: "Pending VP Approval", 
-    employee: "" 
+  const dispatch = useDispatch();
+
+  const queueRequests = useSelector(selectConveyanceQueueRequests);
+  const loading = useSelector(selectConveyanceQueueLoading);
+  const actionLoadingId = useSelector(selectConveyanceActionLoadingId);
+
+  const [filter, setFilter] = useState({
+    date: "",
+    status: "",
+    employee: "",
+    transport: "",
   });
-  const [rejection, setRejection] = useState({ 
-    show: false, 
-    claimId: null 
-  });
+
+  const [rejection, setRejection] = useState({ show: false, claimId: null });
   const [viewDocs, setViewDocs] = useState(null);
   const [viewReports, setViewReports] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-  const navigate = useNavigate();
-  const currentUser = JSON.parse(localStorage.getItem("user")) || {};
 
-  // Load only requests pending VP approval and assigned to current VP
+  const loadQueue = useCallback(() => {
+    dispatch(fetchConveyanceQueue());
+  }, [dispatch]);
+
   useEffect(() => {
-    try {
-      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-      const vpRequests = allRequests.filter(
-        request => request.status === "Pending VP Approval" && 
-                  request.assignedTo === currentUser.username
-      );
-      setClaims(vpRequests);
-    } catch (error) {
-      toast.error("Failed to load requests");
-      console.error("Loading error:", error);
-    }
-  }, [currentUser.username]);
+    loadQueue();
+  }, [loadQueue]);
 
-  // Filter claims based on filters
-  const filteredClaims = claims.filter((claim) => {
-    const employeeMatch = filter.employee === '' || 
-      claim.employeeName?.toLowerCase().includes(filter.employee.toLowerCase());
-    const dateMatch = filter.date === '' || 
-      claim.date.split('T')[0] === filter.date;
-    return employeeMatch && dateMatch;
+  // Enhanced filtering
+  const filteredClaims = queueRequests.filter((claim) => {
+    const employeeName = claim.employeeName || claim.employee_name || claim.submittedBy || "";
+    const employeeMatch =
+      filter.employee === "" ||
+      employeeName.toLowerCase().includes(filter.employee.toLowerCase());
+
+    const statusText = claim.status_display || claim.status || "";
+    const statusMatch =
+      filter.status === "" ||
+      filter.status === "Pending" ||
+      statusText.toLowerCase().includes(filter.status.toLowerCase());
+
+    const claimDate = claim.visit_date || claim.date || "";
+    const dateMatch =
+      filter.date === "" ||
+      claimDate.split("T")[0] === filter.date;
+
+    const transportMode = claim.transport_mode || claim.transport || "";
+    const transportMatch =
+      filter.transport === "" ||
+      transportMode.toLowerCase() === filter.transport.toLowerCase();
+
+    return employeeMatch && statusMatch && dateMatch && transportMatch;
   });
 
   // Pagination
@@ -55,179 +76,154 @@ export default function VPOperationsConveyanceApprovalPage() {
     Math.min(filteredClaims.length, currentPage * itemsPerPage)
   );
 
-  // VP Approves the request
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
     try {
-      const updatedRequests = JSON.parse(localStorage.getItem("conveyanceRequests")).map(
-        request => request.id === id ? {
-          ...request,
-          status: "Pending AE Approval",
-          assignedTo: "ae1", // Assign to Account Executive
-          vpApprovedAt: new Date().toISOString(),
-          vpApprovedBy: currentUser.username,
-          currentLevel: "ae",
-          approvers: [...(request.approvers || []), {
-            level: "vp",
-            user: currentUser.username,
-            action: "approved",
-            date: new Date().toISOString()
-          }]
-        } : request
-      );
-      
-      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
-      
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
-      
-      setClaims(prev => prev.filter(c => c.id !== id));
-      toast.success("Request approved and sent to Account Executive");
+      const result = await dispatch(
+        approveConveyanceRequest({
+          id,
+          comments: "Approved by VP Operations",
+        })
+      ).unwrap();
+
+      toast.success(result.message || `Claim request #${id.slice(-6)} approved by VP Operations`);
     } catch (error) {
-      toast.error("Approval failed");
-      console.error(error);
+      console.error("Approval failed:", error);
+      toast.error(error || "Approval failed. Please try again.");
     }
   };
 
-  // FIXED: VP Rejects the request with proper rejection reason storage
-  const handleReject = (id, reason) => {
+  const handleReject = async (id, reason) => {
+    if (!reason || !reason.trim()) {
+      toast.error("Rejection reason is mandatory");
+      return;
+    }
+
     try {
-      console.log("VP Rejecting request ID:", id, "with reason:", reason);
-      
-      const allRequests = JSON.parse(localStorage.getItem("conveyanceRequests")) || [];
-      const updatedRequests = allRequests.map(request => {
-        if (request.id === id) {
-          // Create rejection entry with all necessary information
-          const rejectionEntry = {
-            level: "vp",
-            user: currentUser.username,
-            reason: reason.trim(),
-            date: new Date().toISOString(),
-            rejectedBy: currentUser.username
-          };
+      const result = await dispatch(
+        rejectConveyanceRequest({
+          id,
+          comments: "Rejected by VP Operations",
+          rejectionReason: reason.trim(),
+        })
+      ).unwrap();
 
-          console.log("VP Creating rejection entry:", rejectionEntry);
-
-          return {
-            ...request,
-            status: "Rejected by VP",
-            assignedTo: request.submittedBy,
-            rejectedAt: new Date().toISOString(),
-            rejectedBy: currentUser.username,
-            rejectionReason: reason.trim(), // Store reason at top level
-            currentLevel: "rejected",
-            // Add to rejections array
-            rejections: [...(request.rejections || []), rejectionEntry]
-          };
-        }
-        return request;
-      });
-      
-      console.log("VP Updated requests after rejection:", updatedRequests.find(r => r.id === id));
-      
-      localStorage.setItem("conveyanceRequests", JSON.stringify(updatedRequests));
-      
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('conveyanceUpdated'));
-      
-      // Manually trigger state update
-      setClaims(prev => prev.filter(c => c.id !== id));
-      
-      // Dispatch storage event to sync across tabs
-      window.dispatchEvent(new Event('storage'));
-      
-      toast.warning("Request rejected and returned to employee");
+      toast.warning(result.message || `Claim request #${id.slice(-6)} rejected`);
+      setRejection({ show: false, claimId: null });
     } catch (error) {
-      toast.error("Rejection failed");
-      console.error("VP Rejection error:", error);
+      console.error("Rejection failed:", error);
+      toast.error(error || "Rejection failed. Please try again.");
     }
   };
 
-  // Helper function to convert file objects to URLs for viewing
   const prepareDocumentUrl = (documents) => {
     if (!documents || documents.length === 0) return null;
-    
-    const firstDoc = documents[0];
-    if (typeof firstDoc === 'string') {
-      return firstDoc; // If it's already a URL
-    }
-    
-    // If it's a file object, create a blob URL
-    if (firstDoc.type && firstDoc.size) {
-      // For demonstration purposes - in real app you'd have the actual file content
-      // This assumes you have the file data stored somewhere
-      return URL.createObjectURL(new Blob([''], { type: firstDoc.type }));
-    }
-    
-    return null;
+    return documents[0];
   };
 
   return (
-    <div className="p-4 max-w-7xl mx-auto bg-white rounded-md shadow-md">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-        <h2 className="text-xl md:text-2xl font-bold text-green-600">
-          VP Conveyance Approvals ({filteredClaims.length})
-        </h2>
-        <button
-          onClick={() => navigate("/dashboard/vp-operations/conveyance-form")}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-fit"
-        >
-          Conveyance Form
-        </button>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header Container */}
+      <div className="bg-gradient-to-r from-green-700 to-green-600 rounded-2xl shadow-lg p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <FiCheckSquare size={26} /> VP Operations - Conveyance Approvals
+          </h1>
+          <p className="text-green-100 text-sm mt-1 font-medium">
+            Review and approve or reject AVP-validated conveyance reimbursement claims ({filteredClaims.length} pending).
+          </p>
+        </div>
       </div>
 
-      <ConveyanceFilter 
-        filter={filter} 
-        setFilter={setFilter}
-        showEmployeeFilter={true}
-      />
+      {/* Filter Section */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <ConveyanceFilter
+          filter={filter}
+          setFilter={setFilter}
+          showEmployeeFilter={true}
+          showTransportFilter={true}
+        />
+      </div>
 
-      <ManagerConveyanceTable
-        claims={paginatedClaims}
-        onApprove={handleApprove}
-        onReject={(id) => setRejection({ show: true, claimId: id })}
-        onViewDocs={(docs) => setViewDocs(docs)}
-        onViewReports={(reports) => setViewReports(reports)}
-        currentUserRole="vp-operations"
-      />
+      {/* Approval Table Container */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3"></div>
+            <span className="text-gray-500 text-sm font-semibold">Loading VP approval queue...</span>
+          </div>
+        ) : (
+          <>
+            <ManagerConveyanceTable
+              claims={paginatedClaims}
+              currentPage={currentPage}
+              onApprove={handleApprove}
+              onReject={(id) => setRejection({ show: true, claimId: id })}
+              onViewDocs={(docs) => setViewDocs(docs)}
+              onViewReports={(reports) => setViewReports(reports)}
+              actionLoadingId={actionLoadingId}
+              showActions={true}
+            />
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex justify-center gap-2">
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i + 1)}
-              className={`px-3 py-1 rounded ${
-                currentPage === i + 1 
-                  ? "bg-blue-600 text-white" 
-                  : "bg-gray-100 hover:bg-gray-200"
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      )}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-sm">
+                <div className="text-gray-600">
+                  Page <span className="font-semibold text-gray-900">{currentPage}</span> of{" "}
+                  <span className="font-semibold text-gray-900">{totalPages}</span> ({filteredClaims.length} items)
+                </div>
 
-      {/* FIXED: RejectionModal with proper parameter passing */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage <= 1}
+                    className="p-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-xs text-gray-700"
+                  >
+                    <FiChevronLeft size={16} /> Previous
+                  </button>
+
+                  <span className="px-3 py-1 bg-green-50 text-green-700 font-bold text-xs rounded-xl border border-green-200">
+                    {currentPage}
+                  </span>
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="p-2 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-xs text-gray-700"
+                  >
+                    Next <FiChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Rejection Modal */}
       <RejectionModal
         isOpen={rejection.show}
         onClose={() => setRejection({ show: false, claimId: null })}
         onSubmit={(reason) => handleReject(rejection.claimId, reason)}
+        claimId={rejection.claimId}
       />
 
       {/* Modal for receipts */}
-      <DocumentPreviewModal 
-        url={viewDocs?.[0] ? prepareDocumentUrl(viewDocs) : null}
-        onClose={() => setViewDocs(null)}
-        title="Receipt"
-      />
+      {viewDocs && (
+        <DocumentPreviewModal
+          url={prepareDocumentUrl(viewDocs)}
+          onClose={() => setViewDocs(null)}
+          title="Transport Receipt"
+        />
+      )}
 
       {/* Modal for visit reports */}
-      <DocumentPreviewModal 
-        url={viewReports?.[0] ? prepareDocumentUrl(viewReports) : null}
-        onClose={() => setViewReports(null)}
-        title="Visit Report"
-      />
+      {viewReports && (
+        <DocumentPreviewModal
+          url={prepareDocumentUrl(viewReports)}
+          onClose={() => setViewReports(null)}
+          title="Visit Report"
+        />
+      )}
     </div>
   );
 }

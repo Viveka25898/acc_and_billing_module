@@ -1,4 +1,24 @@
+/* eslint-disable no-unused-vars */
 import axiosInstance from '../../../api/axiosInstance'
+
+const getWithFallback = async (endpoints, config = {}) => {
+  let lastError = null
+  for (const endpoint of endpoints) {
+    try {
+      const response = await axiosInstance.get(endpoint, config)
+      if (response && response.status === 200) {
+        return response
+      }
+    } catch (err) {
+      lastError = err
+      if (err.response && err.response.status === 404) {
+        continue
+      }
+      throw err
+    }
+  }
+  throw lastError
+}
 
 /**
  * Unified Expense Ledger Service - Integrates real REST endpoints and maintains Conveyance compatibility
@@ -9,11 +29,6 @@ export class ExpenseLedgerService {
    * Get ledger data for specific expense head
    */
   static async getExpenseLedgerData(expenseHeadCode, params = {}) {
-    // If it's conveyance, fallback to local storage logic to keep Conveyance page intact
-    if (expenseHeadCode === 'X2001003') {
-      return this.getLocalExpenseLedgerData(expenseHeadCode)
-    }
-
     try {
       console.log(`📊 API call for expense head: ${expenseHeadCode}`, params)
 
@@ -26,55 +41,110 @@ export class ExpenseLedgerService {
         }
       })
 
-      // Fetch header, entries, and footer in parallel
+      const headerEndpoints = [
+        `/ledger/expense/conveyance/header`,
+        `/account-master/ledger/expense/conveyance/header`,
+        `/account-master/ledger/expense/internal/${expenseHeadCode}/header`,
+        `/account-master/ledger/expense/${expenseHeadCode}/header`,
+        `/ledger/expense/internal/${expenseHeadCode}/header`,
+        `/ledger/expense/${expenseHeadCode}/header`,
+        `/accounts/ledger/expense/${expenseHeadCode}/header`
+      ]
+
+      const entriesEndpoints = [
+        `/ledger/expense/conveyance/entries`,
+        `/account-master/ledger/expense/conveyance/entries`,
+        `/account-master/ledger/expense/internal/${expenseHeadCode}/entries`,
+        `/account-master/ledger/expense/${expenseHeadCode}/entries`,
+        `/ledger/expense/internal/${expenseHeadCode}/entries`,
+        `/ledger/expense/${expenseHeadCode}/entries`,
+        `/accounts/ledger/expense/${expenseHeadCode}/entries`
+      ]
+
+      const footerEndpoints = [
+        `/ledger/expense/conveyance/footer`,
+        `/account-master/ledger/expense/conveyance/footer`,
+        `/account-master/ledger/expense/internal/${expenseHeadCode}/footer`,
+        `/account-master/ledger/expense/${expenseHeadCode}/footer`,
+        `/ledger/expense/internal/${expenseHeadCode}/footer`,
+        `/ledger/expense/${expenseHeadCode}/footer`,
+        `/accounts/ledger/expense/${expenseHeadCode}/footer`
+      ]
+
+      // Fetch header, entries, and footer in parallel with route fallback
       const [headerRes, entriesRes, footerRes] = await Promise.all([
-        axiosInstance.get(`/account-master/ledger/expense/internal/${expenseHeadCode}/header`),
-        axiosInstance.get(`/account-master/ledger/expense/internal/${expenseHeadCode}/entries`, { params: cleanParams }),
-        axiosInstance.get(`/account-master/ledger/expense/internal/${expenseHeadCode}/footer`, { params: cleanParams })
+        getWithFallback(headerEndpoints),
+        getWithFallback(entriesEndpoints, { params: cleanParams }),
+        getWithFallback(footerEndpoints, { params: cleanParams })
       ])
 
       const headerData = headerRes.data?.results || headerRes.data || {}
       const entriesData = entriesRes.data?.results || entriesRes.data || {}
       const footerData = footerRes.data?.results || footerRes.data || {}
 
-      const rawEntries = entriesData.entries || []
+      const rawEntries = entriesData.entries || (Array.isArray(entriesData) ? entriesData : [])
       const transformedTransactions = rawEntries.map((txn, index) => {
-        const dateFormatted = txn.date ? new Date(txn.date).toLocaleDateString('en-IN', {
-          day: '2-digit', month: 'short', year: 'numeric'
-        }) : '-'
+        let dateFormatted = '-'
+        if (txn.date) {
+          try {
+            dateFormatted = new Date(txn.date).toLocaleDateString('en-IN', {
+              day: '2-digit', month: 'short', year: 'numeric'
+            })
+          } catch {
+            dateFormatted = String(txn.date)
+          }
+        }
+
+        const debitFormatted = (txn.debit !== null && txn.debit !== undefined && txn.debit !== '')
+          ? (isNaN(txn.debit) ? String(txn.debit) : Number(txn.debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+          : '-'
+
+        const creditFormatted = (txn.credit !== null && txn.credit !== undefined && txn.credit !== '')
+          ? (isNaN(txn.credit) ? String(txn.credit) : Number(txn.credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+          : '-'
+
+        const balanceFormatted = (txn.balance !== null && txn.balance !== undefined)
+          ? this.formatBalance(txn.balance, txn.balanceType)
+          : '-'
+
+        const empObj = txn.employee
+          ? {
+              name: txn.employee.name || '-',
+              id: txn.employee.id || ''
+            }
+          : { name: '-', id: '' }
 
         return {
-          id: index + 2,
+          id: txn.id || `row-${index + 1}`,
           date: dateFormatted,
           voucherNo: txn.voucherNo || '-',
-          entryType: txn.entryType || 'expense',
-          debit: txn.debit ? Number(txn.debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-',
-          credit: txn.credit ? Number(txn.credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-',
-          balance: txn.balance ? this.formatBalance(txn.balance) : '-',
+          entryType: txn.entryType || 'Expense',
+          debit: debitFormatted,
+          credit: creditFormatted,
+          balance: balanceFormatted,
           narration: txn.narration || '-',
-          settlementRef: txn.settlementRef || '-',
-          employee: txn.employee ? {
-            name: txn.employee.name || '-',
-            id: txn.employee.id || ''
-          } : { name: '-', id: '' },
-          glAccount: txn.glAccount || '-',
-          costCenter: txn.costCenter || 'General',
+          settlementRef: txn.claimId || txn.settlementRef || '-',
+          employee: empObj,
+          glAccount: txn.counterparty || txn.glAccount || '-',
+          costCenter: txn.costCenter || '-',
           customer: txn.customer || '-',
           site: txn.site || '-',
           state: txn.state || '-',
           approvedBy: txn.approvedBy || '-',
-          attachments: txn.attachments || 0,
-          status: txn.status || 'posted',
-          rowType: txn.rowType || 'normal'
+          attachments: txn.attachmentBundleUrl ? 1 : (txn.attachments || 0),
+          status: txn.status || 'Posted',
+          rowType: txn.rowType || (txn.entryType === 'opening' ? 'opening' : 'normal')
         }
       })
 
-      // Add Opening Balance Row if it is page 1
+      // Check if opening balance is already in rawEntries
+      const hasOpeningInEntries = rawEntries.some(e => e.rowType === 'opening' || e.entryType === 'opening')
       const isPage1 = !params.page || Number(params.page) === 1
       const finalTransactions = []
-      if (isPage1) {
+
+      if (isPage1 && !hasOpeningInEntries && headerData.openingBalance) {
         finalTransactions.push({
-          id: 1,
+          id: 'opening-row',
           date: headerData.period?.split(' to ')[0] || '-',
           voucherNo: 'OB-FY',
           entryType: 'opening',
@@ -88,7 +158,7 @@ export class ExpenseLedgerService {
           costCenter: 'All',
           approvedBy: 'System',
           attachments: 0,
-          status: 'posted',
+          status: 'Posted',
           rowType: 'opening'
         })
       }
@@ -96,41 +166,18 @@ export class ExpenseLedgerService {
       // Append standard transactions
       finalTransactions.push(...transformedTransactions)
 
-      // Add Closing Balance Row if we are on the last page
-      const hasNextPage = entriesData.pagination?.hasNextPage ?? false
-      if (!hasNextPage && finalTransactions.length > 0) {
-        finalTransactions.push({
-          id: finalTransactions.length + 2,
-          date: headerData.period?.split(' to ')[1] || '-',
-          voucherNo: 'CL-FY',
-          entryType: 'closing',
-          debit: '-',
-          credit: '-',
-          balance: `${headerData.closingBalance ? Number(headerData.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00'} DR`,
-          narration: 'Closing Balance C/F',
-          settlementRef: '-',
-          employee: { name: '-', id: '' },
-          glAccount: '-',
-          costCenter: 'All',
-          approvedBy: 'System',
-          attachments: 0,
-          status: 'posted',
-          rowType: 'closing'
-        })
-      }
-
       // Format Balances for Balance Cards
       const balances = {
         opening: {
-          amount: headerData.openingBalance ? `₹${Number(headerData.openingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+          amount: headerData.openingBalance !== undefined ? `₹${Number(headerData.openingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
           type: headerData.openingBalanceType || 'Debit Balance'
         },
         periodExpenses: {
-          amount: headerData.periodExpenses ? `₹${Number(headerData.periodExpenses).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+          amount: headerData.periodExpenses !== undefined ? `₹${Number(headerData.periodExpenses || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
           type: 'Total Expenses'
         },
         closing: {
-          amount: headerData.closingBalance ? `₹${Number(headerData.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+          amount: headerData.closingBalance !== undefined ? `₹${Number(headerData.closingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
           type: 'Debit Balance'
         }
       }
@@ -140,14 +187,14 @@ export class ExpenseLedgerService {
         { label: 'Total Transactions', value: String(headerData.stats?.totalTransactions ?? 0) },
         { label: 'Settlements', value: String(headerData.stats?.settlements ?? 0) },
         { label: 'Average Per Transaction', value: headerData.stats?.avgPerTransaction || '₹0.00' },
-        { label: 'Employees Utilized', value: String(headerData.stats?.employees ?? 0) }
+        { label: 'Employees Utilized', value: String(headerData.stats?.employeesUtilized ?? headerData.stats?.employees ?? 0) }
       ]
 
       // Format Summary
       const summary = {
-        totalDebit: footerData.totalDebit || '₹0.00',
-        totalCredit: footerData.totalCredit || '₹0.00',
-        closingBalance: footerData.closingBalance || '₹0.00 DR'
+        totalDebit: footerData.totalDebit !== undefined ? `₹${Number(footerData.totalDebit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+        totalCredit: footerData.totalCredit !== undefined ? `₹${Number(footerData.totalCredit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+        closingBalance: footerData.closingBalance || (headerData.closingBalance ? `₹${Number(headerData.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} DR` : '₹0.00 DR')
       }
 
       // Filter options
@@ -525,22 +572,23 @@ export class ExpenseLedgerService {
       'X1001002001': { name: 'TRAVEL EXPENSE', parent: 'OTHER PRODUCTION COST (X1001002)', department: 'Operations' },
       'X1001003001': { name: 'FOOD & REFRESHMENT EXPENSE', parent: 'FOOD COST (X1001003)', department: 'Operations' },
       'X2001002001': { name: 'OFFICE SUPPLIES EXPENSE', parent: 'OTHER BRANCH EXPENSES (X2001002)', department: 'Administration' },
-      'X2001003': { name: 'BRANCH CONVEYANCE EXPENSE', parent: 'BRANCH MANAGEMENT (X2001)', department: 'Operations' }
+      'X2001003': { name: 'Branch conveyance expense', parent: 'BRANCH MANAGEMENT (X2001)', department: 'Operations' }
     }
     const config = expenseHeadConfig[expenseHeadCode] || {
-      name: expenseHead?.name || 'Expense Head',
+      name: expenseHead?.expenseHeadName || expenseHead?.ledgerName || expenseHead?.name || 'Expense Head',
       parent: expenseHead?.parentAccount || 'General Expenses',
       department: 'Various'
     }
     return {
       expenseHeadCode,
-      expenseHeadName: config.name,
-      parentAccount: config.parent,
-      accountType: 'EXPENSE - DIRECT',
-      financialYear: `${currentYear}-${nextYear.toString().slice(-2)}`,
-      period: `Apr ${currentYear} to ${new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`,
-      costCenter: 'All Operations',
-      department: config.department
+      expenseHeadName: expenseHead?.expenseHeadName || expenseHead?.ledgerName || config.name,
+      ledgerName: expenseHead?.ledgerName || expenseHead?.expenseHeadName || config.name,
+      parentAccount: expenseHead?.parentAccount || config.parent,
+      accountType: expenseHead?.accountType || 'EXPENSE - DIRECT',
+      financialYear: expenseHead?.financialYear || `${currentYear}-${nextYear.toString().slice(-2)}`,
+      period: expenseHead?.period || `Apr ${currentYear} to ${new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`,
+      costCenter: expenseHead?.costCenter || 'All Operations',
+      department: expenseHead?.department || config.department
     }
   }
 

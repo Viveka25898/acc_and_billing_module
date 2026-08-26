@@ -2,10 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(),],
+  plugins: [react(), tailwindcss()],
 
   optimizeDeps: {
     exclude: ['pdfjs-dist'],
@@ -36,9 +35,34 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         headers: {
-          // Make the request look same-origin to the backend's CORS middleware.
-          // Postman doesn't send Origin at all — backend trusts it.
-          // We spoof Origin to the backend's own domain to get the same behavior.
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
+      // ── Proxy file storage routes for document previews ─────────────────────
+      '/smarterp-accounts': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
+      '/uploads': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
+      '/accounts/uploads': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
           'origin':  'https://dev-int.ismart.org',
           'referer': 'https://dev-int.ismart.org/',
         },
@@ -46,5 +70,3 @@ export default defineConfig({
     },
   },
 })
-
-

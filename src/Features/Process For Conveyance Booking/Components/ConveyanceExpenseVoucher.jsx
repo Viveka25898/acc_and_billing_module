@@ -1,250 +1,311 @@
-import React from 'react';
+import React from "react";
+import { FiX, FiCheckCircle, FiFileText, FiUser, FiMapPin, FiCreditCard } from "react-icons/fi";
+import { FaBuilding } from "react-icons/fa";
 
-const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
-    console.log(data);
-  // Extract data from the approved request
-  const header = data.header || {
-    company: data.company || "Company Name",
-    voucherNo: data.voucherNo || `EXP-CONV-${new Date().getFullYear()}-001`,
-    financialYear: data.financialYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
-    date: data.date || new Date().toISOString().split('T')[0],
-    reference: data.reference || "Employee Conveyance Claims",
-    preparedBy: data.preparedBy || "Billing Manager",
-    expenseType: "Conveyance Expense",
-    department: data.department || "Department",
-    approvalChain: data.approvalChain || "Manager → VP → Account Executive"
+export default function ConveyanceExpenseVoucher({ data = {}, onClose }) {
+  // Extract API data payload cleanly
+  const rootData = data?.data || data || {};
+
+  const header = rootData.header || rootData.voucher || {};
+  const employee = rootData.employeeDetails || rootData.employee_details || {};
+  const conveyanceList = Array.isArray(rootData.conveyanceDetails)
+    ? rootData.conveyanceDetails
+    : Array.isArray(rootData.conveyance_details)
+    ? rootData.conveyance_details
+    : [];
+  const approvals = rootData.approvals || {};
+  const glEntries = Array.isArray(rootData.glEntries)
+    ? rootData.glEntries
+    : Array.isArray(rootData.gl_entries)
+    ? rootData.gl_entries
+    : [];
+  const totals = rootData.totals || {};
+
+  // Universal helper function to show '-' if data is missing or empty
+  const val = (v) => {
+    if (v === undefined || v === null || String(v).trim() === "") return "-";
+    return String(v);
   };
 
-  // Employee details from the approved request
-  const employeeDetails = data.employeeDetails || {
-    employeeId: data.employeeId || "EMP001",
-    employeeName: data.employeeName || "Employee Name",
-    designation: data.designation || "Designation",
-    department: data.department || "Department",
-    manager: data.manager || "Manager Name",
-    submissionDate: data.submissionDate || new Date().toISOString().split('T')[0],
-    approvalDate: data.approvalDate || new Date().toISOString().split('T')[0]
+  const formatCurrency = (amt) => {
+    if (amt === undefined || amt === null || amt === "" || isNaN(amt)) return "-";
+    const num = parseFloat(amt);
+    return `₹${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Conveyance details from the approved request
-  const conveyanceDetails = data.conveyanceDetails || [{
-    id: 1,
-    date: data.date || new Date().toISOString().split('T')[0],
-    clientName: data.client || "Client Name",
-    fromLocation: data.fromLocation || "From Location",
-    toLocation: data.toLocation || "To Location",
-    purpose: data.purpose || "Purpose of visit",
-    transport: data.transport || "Transport Mode",
-    distance: data.distance || "0 km",
-    amount: data.amount || 0,
-    billAttached: data.receipts && data.receipts.length > 0 ? "Yes" : "No"
-  }];
+  // Header Mappings
+  const company = val(header.company);
+  const voucherNo = val(header.voucherNo || header.voucher_no || rootData.voucher_no || rootData.voucherNo);
+  const financialYear = val(header.financialYear || header.financial_year);
+  const voucherDate = val(header.date);
+  const reference = val(header.reference);
+  const preparedBy = val(header.preparedBy || header.prepared_by);
+  const expenseType = val(header.expenseType || header.expense_type);
+  const department = val(header.department);
+  const approvalChain = val(header.approvalChain || header.approval_chain);
+  const voucherType = val(header.voucherType || header.voucher_type);
+  const transactionId = val(header.transactionId || header.transaction_id);
 
-  const totalConveyanceAmount = conveyanceDetails.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  // Employee Details Mappings
+  const employeeId = val(employee.employeeId || employee.employee_id);
+  const employeeName = val(employee.employeeName || employee.employee_name);
+  const designation = val(employee.designation);
+  const empDepartment = val(employee.department);
+  const manager = val(employee.manager);
+  const submissionDate = val(employee.submissionDate || employee.submission_date);
+  const approvalDate = val(employee.approvalDate || employee.approval_date);
 
-  // Get real GL entries from transaction or use provided glEntries
-  const glEntriesFromTransaction = data.glEntries || data.entries || [];
-  
-  // Get chart of accounts for GL names
-  const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-  const getGLName = (glCode) => {
-    const account = chartOfAccounts.find(acc => acc.code === glCode);
-    return account?.name || glCode || 'N/A';
-  };
+  // Approvals Section Mappings
+  const approverPreparer = val(approvals.preparer);
+  const approverReviewer = val(approvals.reviewer);
+  const approverApprover = val(approvals.approver);
+  const approvalSectionDate = val(approvals.date);
 
-  // Convert transaction entries to voucher lines format
-  const lines = glEntriesFromTransaction.length > 0 
-    ? glEntriesFromTransaction.map((entry, index) => ({
-        id: index + 1,
-        particulars: entry.glName || getGLName(entry.glCode) || 'Account',
-        gl: entry.glCode || 'N/A',
-        costCenter: entry.costCenter || 'General',
-        debit: parseFloat(entry.debit || 0),
-        credit: parseFloat(entry.credit || 0),
-        note: entry.narration || `Entry ${index + 1}`
-      }))
-    : [
-        // Fallback if no GL entries available
-        {
-          id: 1,
-          particulars: "Branch Conveyance Expense",
-          gl: "X2001003",
-          costCenter: employeeDetails.department || "General",
-          debit: totalConveyanceAmount,
-          credit: 0,
-          note: `Employee: ${employeeDetails.employeeName} (${employeeDetails.employeeId})`,
-        },
-        {
-          id: 2,
-          particulars: "Conveyance Payable",
-          gl: "L2001001",
-          costCenter: "",
-          debit: 0,
-          credit: totalConveyanceAmount,
-          note: "Reimbursement to employee for conveyance expenses",
-        }
-      ];
+  // Calculate totals fallback if totals object is empty
+  const calculatedDebit = glEntries.reduce((sum, item) => sum + (parseFloat(item.debit) || 0), 0);
+  const calculatedCredit = glEntries.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0);
 
-  const approvals = data.approvals || {
-    preparer: data.preparedBy || "Billing Executive",
-    reviewer: data.reviewer || "Finance Manager", 
-    approver: data.approver || "VP Operations",
-    date: new Date().toISOString().split('T')[0]
-  };
-
-  // Calculate totals correctly (using parseFloat for decimal support)
-  const totals = {
-    debit: lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0),
-    credit: lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0)
-  };
-
-  
-
-  // Format amount with proper decimals
-  const formatAmount = (amount) => {
-    if (!amount && amount !== 0) return "-";
-    const numAmount = parseFloat(amount);
-    return `₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const displayTotalDebit = totals.debit !== undefined ? formatCurrency(totals.debit) : formatCurrency(calculatedDebit);
+  const displayTotalCredit = totals.credit !== undefined ? formatCurrency(totals.credit) : formatCurrency(calculatedCredit);
+  const isBalanced = totals.balanced !== undefined ? totals.balanced : (calculatedDebit === calculatedCredit && calculatedDebit > 0);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="w-full max-w-5xl bg-white rounded-lg shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
-        {/* Modal Header */}
-        <div className="sticky top-0 bg-green-600 text-white p-3 sm:p-4 flex justify-between items-center">
-          <h2 className="text-lg sm:text-xl font-semibold">Expense Voucher - Conveyance Reimbursement</h2>
-          <div className="flex items-center space-x-2">
-            
-            <button 
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 z-50 animate-fadeIn">
+      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col border border-gray-100">
+        
+        {/* Top Action Header */}
+        <div className="bg-gradient-to-r from-green-700 via-green-600 to-emerald-700 text-white px-6 py-4 flex justify-between items-center shrink-0 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/10 rounded-xl">
+              <FiFileText size={24} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
+                {voucherType !== "-" ? voucherType : "Expense Voucher"}
+                <span className="text-xs font-semibold bg-white/20 px-2.5 py-0.5 rounded-full text-green-100">
+                  {expenseType}
+                </span>
+              </h2>
+              <p className="text-xs text-green-100 mt-0.5 font-mono">
+                Voucher #: {voucherNo} | Txn ID: {transactionId}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
               onClick={onClose}
-              className="ml-2 text-white hover:text-teal-200 text-xl font-bold"
+              className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-xl transition cursor-pointer"
               aria-label="Close"
             >
-              ×
+              <FiX size={22} />
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-6">
-          {/* Header Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 bg-gray-50 p-3 sm:p-4 rounded-lg">
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Company</p>
-              <p className="text-sm sm:text-base font-medium">{header.company}</p>
+        {/* Scrollable Printable Content */}
+        <div className="p-6 overflow-y-auto space-y-6 text-gray-700 text-xs sm:text-sm bg-gray-50/30">
+          
+          {/* Header Card */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-green-700 flex items-center gap-1">
+                  <FaBuilding className="text-green-600" /> {company}
+                </span>
+                <p className="text-base font-bold text-gray-900 mt-0.5">{reference}</p>
+              </div>
+              <div className="text-left sm:text-right">
+                <span className="text-xs text-gray-400 block font-medium">Financial Year</span>
+                <span className="font-bold text-gray-800 font-mono">{financialYear}</span>
+              </div>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Voucher No.</p>
-              <p className="text-sm sm:text-base font-medium">{header.voucherNo}</p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Expense Date</p>
-              <p className="text-sm sm:text-base font-medium">{header.date}</p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Financial Year</p>
-              <p className="text-sm sm:text-base font-medium">{header.financialYear}</p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Expense Type</p>
-              <p className="text-sm sm:text-base font-medium">{header.expenseType}</p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Department</p>
-              <p className="text-sm sm:text-base font-medium">{header.department}</p>
-            </div>
-            <div className="md:col-span-2">
-              <p className="text-xs sm:text-sm text-gray-500">Reference</p>
-              <p className="text-sm sm:text-base font-medium">{header.reference}</p>
-            </div>
-          </div>
 
-          {/* Employee Details */}
-          <div className="mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg">
-            <h3 className="text-sm sm:text-base font-semibold text-blue-800 mb-2">Employee Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs sm:text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <span className="text-gray-600">Employee ID:</span>
-                <div className="font-semibold">{employeeDetails.employeeId}</div>
+                <span className="text-xs text-gray-500 font-medium block">Voucher No.</span>
+                <span className="font-bold text-gray-900 font-mono text-xs">{voucherNo}</span>
               </div>
               <div>
-                <span className="text-gray-600">Employee Name:</span>
-                <div className="font-semibold">{employeeDetails.employeeName}</div>
+                <span className="text-xs text-gray-500 font-medium block">Transaction ID</span>
+                <span className="font-bold text-blue-700 font-mono text-xs">{transactionId}</span>
               </div>
               <div>
-                <span className="text-gray-600">Designation:</span>
-                <div className="font-semibold">{employeeDetails.designation}</div>
+                <span className="text-xs text-gray-500 font-medium block">Voucher Date</span>
+                <span className="font-semibold text-gray-800">{voucherDate}</span>
               </div>
               <div>
-                <span className="text-gray-600">Department:</span>
-                <div className="font-semibold">{employeeDetails.department}</div>
+                <span className="text-xs text-gray-500 font-medium block">Department</span>
+                <span className="font-semibold text-gray-800">{department}</span>
               </div>
               <div>
-                <span className="text-gray-600">Reporting Manager:</span>
-                <div className="font-semibold">{employeeDetails.manager}</div>
+                <span className="text-xs text-gray-500 font-medium block">Prepared By</span>
+                <span className="font-medium text-gray-700 truncate block">{preparedBy}</span>
               </div>
               <div>
-                <span className="text-gray-600">Submission Date:</span>
-                <div className="font-semibold">{employeeDetails.submissionDate}</div>
+                <span className="text-xs text-gray-500 font-medium block">Voucher Type</span>
+                <span className="font-semibold text-gray-800">{voucherType}</span>
               </div>
             </div>
           </div>
 
-          {/* Total Amount Display */}
-          <div className="mb-4 sm:mb-6 p-3 rounded-lg text-center bg-teal-50 text-teal-700">
-            <p className="text-sm">
-              Total Conveyance Amount: {formatAmount(totalConveyanceAmount)}
-            </p>
+          {/* Employee Details Card */}
+          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border border-blue-100 p-5 rounded-2xl">
+            <h3 className="text-xs font-bold text-blue-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <FiUser className="text-blue-700" size={16} /> Employee Details
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <span className="text-xs text-gray-500 block font-medium">Employee ID</span>
+                <span className="font-bold text-gray-900 font-mono">{employeeId}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block font-medium">Employee Name</span>
+                <span className="font-bold text-gray-900">{employeeName}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block font-medium">Designation</span>
+                <span className="font-semibold text-gray-800">{designation}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block font-medium">Department</span>
+                <span className="font-semibold text-gray-800">{empDepartment}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block font-medium">Submission Date</span>
+                <span className="font-semibold text-gray-800">{submissionDate}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block font-medium">Approval Date</span>
+                <span className="font-semibold text-gray-800">{approvalDate}</span>
+              </div>
+            </div>
           </div>
 
           {/* Conveyance Details Table */}
-          <div className="mb-4 sm:mb-6">
-            <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-3">Conveyance Details</h3>
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
+            <div className="px-5 py-3.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                <FiMapPin className="text-green-600" size={16} /> Conveyance Trip Details
+              </h3>
+              <span className="text-xs text-gray-500 font-medium">
+                Total Claims: {conveyanceList.length}
+              </span>
+            </div>
+
             <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-200 text-xs sm:text-sm">
-                <thead className="bg-teal-50">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-green-50/70 text-green-900 uppercase font-semibold border-b border-green-100">
                   <tr>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium text-gray-700 border">Date</th>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium text-gray-700 border">Client Name</th>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium text-gray-700 border">Route</th>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium text-gray-700 border">Purpose</th>
-                    <th className="px-2 sm:px-3 py-2 text-left font-medium text-gray-700 border">Transport</th>
-                    <th className="px-2 sm:px-3 py-2 text-center font-medium text-gray-700 border">Bill</th>
-                    <th className="px-2 sm:px-3 py-2 text-right font-medium text-gray-700 border">Amount (₹)</th>
+                    <th className="px-4 py-3 text-center w-10">#</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Visit Date</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Client / Site</th>
+                    <th className="px-4 py-3 whitespace-nowrap">From Location</th>
+                    <th className="px-4 py-3 whitespace-nowrap">To Location</th>
+                    <th className="px-4 py-3">Purpose</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Transport Mode</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Distance</th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap">Bill Attached</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap">Amount (₹)</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {conveyanceDetails.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-2 sm:px-3 py-2 border font-medium">{item.date}</td>
-                      <td className="px-2 sm:px-3 py-2 border">{item.clientName}</td>
-                      <td className="px-2 sm:px-3 py-2 border">
-                        <div className="text-xs">
-                          <div>From: {item.fromLocation}</div>
-                          <div>To: {item.toLocation}</div>
-                          <div className="text-gray-500">({item.distance})</div>
-                        </div>
-                      </td>
-                      <td className="px-2 sm:px-3 py-2 border text-xs">{item.purpose}</td>
-                      <td className="px-2 sm:px-3 py-2 border">{item.transport}</td>
-                      <td className="px-2 sm:px-3 py-2 border text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          item.billAttached === 'Yes' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {item.billAttached}
-                        </span>
-                      </td>
-                      <td className="px-2 sm:px-3 py-2 border text-right font-semibold">
-                        {formatAmount(item.amount)}
+                <tbody className="divide-y divide-gray-100">
+                  {conveyanceList.length === 0 ? (
+                    <tr>
+                      <td colSpan="10" className="px-4 py-6 text-center text-gray-400 font-medium">
+                        No conveyance details available.
                       </td>
                     </tr>
-                  ))}
-                  <tr className="bg-teal-50 font-bold">
-                    <td colSpan={6} className="px-2 sm:px-3 py-2 border text-right">Total Conveyance Amount:</td>
-                    <td className="px-2 sm:px-3 py-2 border text-right text-teal-700">
-                      {formatAmount(totalConveyanceAmount)}
+                  ) : (
+                    conveyanceList.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="px-4 py-3 text-center text-gray-400 font-semibold">{val(item.id || idx + 1)}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{val(item.date)}</td>
+                        <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">{val(item.clientName || item.client_name)}</td>
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{val(item.fromLocation || item.from_location)}</td>
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{val(item.toLocation || item.to_location)}</td>
+                        <td className="px-4 py-3 text-gray-700 max-w-[180px] truncate" title={item.purpose}>{val(item.purpose)}</td>
+                        <td className="px-4 py-3 font-bold text-green-700 uppercase whitespace-nowrap">{val(item.modeOfTransport || item.transport_mode)}</td>
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{val(item.distance)}</td>
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            String(item.billAttached).toLowerCase() === 'yes'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {val(item.billAttached)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap">
+                          {formatCurrency(item.amount)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Posted GL Entries Table */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
+            <div className="px-5 py-3.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                <FiCreditCard className="text-blue-600" size={16} /> Posted General Ledger (GL) Accounting Entries
+              </h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                isBalanced ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {isBalanced ? "✅ Balanced" : "⚠️ Unbalanced"}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-gray-100 text-gray-700 uppercase font-semibold border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-center w-12">Line</th>
+                    <th className="px-4 py-3 whitespace-nowrap">GL Code</th>
+                    <th className="px-4 py-3 whitespace-nowrap">GL Account Name</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Cost Center</th>
+                    <th className="px-4 py-3">Narration</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap">Debit (₹)</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap">Credit (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {glEntries.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-4 py-6 text-center text-gray-400 font-medium">
+                        No GL entries posted.
+                      </td>
+                    </tr>
+                  ) : (
+                    glEntries.map((line, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="px-4 py-3 text-center text-gray-400 font-bold">{val(line.lineNo || line.line_no || idx + 1)}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-blue-700 whitespace-nowrap">{val(line.glCode || line.gl_code)}</td>
+                        <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">{val(line.glName || line.gl_name)}</td>
+                        <td className="px-4 py-3 font-medium text-gray-700 whitespace-nowrap">{val(line.costCenter || line.cost_center)}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">{val(line.narration)}</td>
+                        <td className="px-4 py-3 text-right font-bold text-red-600 whitespace-nowrap">
+                          {line.debit !== undefined && line.debit !== null && line.debit !== "0" && Number(line.debit) > 0 ? formatCurrency(line.debit) : "₹0.00"}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 whitespace-nowrap">
+                          {line.credit !== undefined && line.credit !== null && line.credit !== "0" && Number(line.credit) > 0 ? formatCurrency(line.credit) : "₹0.00"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  <tr className="bg-gray-50 font-bold border-t-2 border-gray-200">
+                    <td colSpan="5" className="px-4 py-3 text-right uppercase text-xs tracking-wider text-gray-700">
+                      Total Ledger Balance:
+                    </td>
+                    <td className="px-4 py-3 text-right text-red-700 font-bold text-sm whitespace-nowrap">
+                      {displayTotalDebit}
+                    </td>
+                    <td className="px-4 py-3 text-right text-green-700 font-bold text-sm whitespace-nowrap">
+                      {displayTotalCredit}
                     </td>
                   </tr>
                 </tbody>
@@ -252,152 +313,28 @@ const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
             </div>
           </div>
 
-          {/* Accounting Entries Table */}
-          <div className="mb-4 sm:mb-6">
-            <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-3">Accounting Entries</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-200 text-xs sm:text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border">Particulars</th>
-                    <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">GL Code</th>
-                    <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">Cost Center</th>
-                    <th className="px-2 sm:px-4 py-2 text-right font-medium text-gray-700 border">Debit (₹)</th>
-                    <th className="px-2 sm:px-4 py-2 text-right font-medium text-gray-700 border">Credit (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((line, idx) => (
-                    <tr key={line.id || idx} className="hover:bg-gray-50">
-                      <td className="px-2 sm:px-4 py-2 border">
-                        <div className="font-medium">{line.particulars || "N/A"}</div>
-                        {line.note && (
-                          <div className="text-xs text-gray-500 mt-1">{line.note}</div>
-                        )}
-                      </td>
-                      <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">{line.gl || "N/A"}</td>
-                      <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">{line.costCenter || "-"}</td>
-                      <td className="px-2 sm:px-4 py-2 border text-right">
-                        {line.debit ? formatAmount(line.debit) : "-"}
-                      </td>
-                      <td className="px-2 sm:px-4 py-2 border text-right">
-                        {line.credit ? formatAmount(line.credit) : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-indigo-50 font-bold">
-                    <td colSpan={2} className="px-2 sm:px-4 py-2 border text-right hidden sm:table-cell"></td>
-                    <td className="px-2 sm:px-4 py-2 border text-right hidden sm:table-cell">Total</td>
-                    <td className="px-2 sm:px-4 py-2 border text-right text-red-700 font-semibold">{formatAmount(totals.debit)}</td>
-                    <td className="px-2 sm:px-4 py-2 border text-right text-green-700 font-semibold">{formatAmount(totals.credit)}</td>
-                  </tr>
-                  {lines.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-2 sm:px-4 py-2 border text-center text-gray-500 text-xs">
-                        No GL entries found. Transaction may not be posted yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          {/* Footer Voucher Seal */}
+          <div className="p-3 bg-green-50 text-green-800 text-xs text-center rounded-xl font-medium border border-green-200 flex items-center justify-center gap-2">
+            <FiCheckCircle size={16} className="text-green-600 shrink-0" />
+            <span>This is an official system-generated expense voucher. All GL transactions have been verified and posted into the ERP accounts system.</span>
           </div>
 
-          {/* GL Transaction Details */}
-          {glEntriesFromTransaction.length > 0 && (
-            <div className="mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
-              <div className="text-xs sm:text-sm">
-                <div className="font-semibold text-blue-800 mb-2 sm:mb-3">GL Transaction Details</div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Transaction ID:</span>
-                    <span className="font-medium font-mono text-blue-700">{data.header.transactionId || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Voucher Number:</span>
-                    <span className="font-medium font-mono text-blue-700">{header.voucherNo}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Debit:</span>
-                    <span className="font-medium text-red-600">{formatAmount(totals.debit)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Credit:</span>
-                    <span className="font-medium text-green-600">{formatAmount(totals.credit)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">GL Entries:</span>
-                    <span className="font-medium">{lines.length} entries</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Expense Analysis */}
-          <div className="mb-4 sm:mb-6 bg-slate-50 p-3 sm:p-4 rounded-lg border">
-            <div className="text-xs sm:text-sm">
-              <div className="font-semibold text-gray-700 mb-2 sm:mb-3">Conveyance Analysis</div>
-              
-              <div className="space-y-2 sm:space-y-3">
-                <div className="flex justify-between">
-                  <span>Total Entries:</span>
-                  <span className="font-medium">{conveyanceDetails.length} trips</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Bills Attached:</span>
-                  <span className="font-medium text-green-600">
-                    {conveyanceDetails.filter(item => item.billAttached === 'Yes').length} of {conveyanceDetails.length}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Amount:</span>
-                  <span className="font-medium text-teal-600">{formatAmount(totalConveyanceAmount)}</span>
-                </div>
-              </div>
-
-              {/* Approval Status */}
-              <div className="mt-3 sm:mt-4 pt-3 border-t">
-                <div className="font-semibold text-gray-700 mb-2 sm:mb-3">Approval Status</div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>Employee Request:</span>
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Submitted</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Manager Approval:</span>
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Approved</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Billing Verification:</span>
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Approved</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Approvals Section */}
-          <div className="border-t pt-3 sm:pt-4">
-            <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">Approvals & Authorization</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="text-center">
-                <div className="border-b border-gray-300 pb-1 sm:pb-2 mb-1 sm:mb-2 h-8 sm:h-10"></div>
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Account Executive</p>
-                <p className="text-2xs sm:text-xs text-gray-500">{approvals.preparer}</p>
-                <p className="text-2xs sm:text-xs text-gray-400">{approvals.date}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Note */}
-          <div className="mt-3 sm:mt-4 p-2 bg-teal-50 text-teal-700 text-2xs sm:text-xs text-center rounded">
-            This conveyance expense voucher has been approved through the complete approval workflow. All client visit reports and supporting documents have been verified.
-          </div>
         </div>
+
+        {/* Modal Bottom Action Footer */}
+        <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center shrink-0">
+          <span className="text-xs text-gray-400 font-semibold font-mono">
+            {company}
+          </span>
+          <button
+            onClick={onClose}
+            className="bg-green-700 hover:bg-green-800 text-white font-semibold text-xs px-6 py-2.5 rounded-xl transition shadow-sm cursor-pointer"
+          >
+            Close Voucher
+          </button>
+        </div>
+
       </div>
     </div>
   );
-};
-
-export default ConveyanceExpenseVoucher;
+}

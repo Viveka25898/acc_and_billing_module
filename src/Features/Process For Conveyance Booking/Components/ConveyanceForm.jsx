@@ -1,376 +1,461 @@
-/* eslint-disable no-unused-vars */
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { FiCalendar, FiMapPin, FiTruck, FiDollarSign, FiFileText, FiUploadCloud, FiTrash2, FiPlus, FiInfo } from "react-icons/fi";
 import { toast } from "react-toastify";
 
-export default function ConveyanceForm({ entries, setEntries, errors, onSubmit, resetForm }) {
+const initialForm = {
+  visit_date: "",
+  purpose: "",
+  client_name: "",
+  custom_client: "",
+  transport_mode: "",
+  distance_km: "",
+  amount: "",
+  remarks: "",
+};
+
+export default function ConveyanceForm({ onSubmit, submitLoading }) {
+  const [formData, setFormData] = useState(initialForm);
+  const [reportFiles, setReportFiles] = useState([null]);
+  const [receiptFiles, setReceiptFiles] = useState([null]);
+  const [errors, setErrors] = useState({});
+
   const reportRefs = useRef([]);
   const receiptRefs = useRef([]);
 
-  const handleChange = (index, field, value) => {
-    const updated = [...entries];
-    updated[index][field] = value;
-    
-    if (field === "transport" && shouldShowReceipt(value) && !updated[index].receipts) {
-      updated[index].receipts = [null];
-    }
-    
-    if (field === "client" && value !== "Other") {
-      updated[index].customClient = "";
-    }
-    
-    setEntries(updated);
+  const isReceiptMandatory = (transport) => {
+    return ["CAB", "BUS", "AUTO", "TRAIN"].includes((transport || "").toUpperCase());
   };
 
-const isWithinClaimWindow = (visitDateStr) => {
-  if (!visitDateStr) return false;
-  const visitDate = new Date(visitDateStr);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "client_name" && value !== "Other" ? { custom_client: "" } : {}),
+    }));
 
-  // 🔹 TESTING MODE: Set to current date to allow testing
-  const today = new Date();  // Using actual current date for testing
-
-  visitDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  // 🔹 FOR TESTING: Allow any date within last 30 days
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(today.getDate() - 30);
-  
-  const futureLimit = new Date(today);
-  futureLimit.setDate(today.getDate() + 7); // Allow up to 7 days in future for testing
-
-  // Return true if visit date is within the last 30 days or up to 7 days in future
-  return visitDate >= thirtyDaysAgo && visitDate <= futureLimit;
-
-  // 🔹 ORIGINAL LOGIC (commented out for testing):
-  /*
-  const todayDay = today.getDate();
-  const todayMonth = today.getMonth();
-  const todayYear = today.getFullYear();
-
-  const inClaimWeek = todayDay >= 1 && todayDay <= 7;
-
-  const visitMonth = visitDate.getMonth();
-  const visitYear = visitDate.getFullYear();
-
-  const visitBeforeCurrentMonth =
-    visitYear < todayYear ||
-    (visitYear === todayYear && visitMonth < todayMonth);
-
-  return inClaimWeek && visitBeforeCurrentMonth;
-  */
-};
-
-
-  const shouldShowReceipt = (transport) => {
-    return ["Cab", "Bus", "Auto", "Train"].includes(transport);
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
-  const handleFormSubmit = async (e) => {
+  const handleReportFileChange = (index, file) => {
+    if (file && file.size > 2 * 1024 * 1024) {
+      toast.error("File size must be 2 MB or less");
+      return;
+    }
+    const updated = [...reportFiles];
+    updated[index] = file;
+    setReportFiles(updated);
+    if (errors.report_files) {
+      setErrors((prev) => ({ ...prev, report_files: "" }));
+    }
+  };
+
+  const handleReceiptFileChange = (index, file) => {
+    if (file && file.size > 2 * 1024 * 1024) {
+      toast.error("File size must be 2 MB or less");
+      return;
+    }
+    const updated = [...receiptFiles];
+    updated[index] = file;
+    setReceiptFiles(updated);
+    if (errors.receipt_files) {
+      setErrors((prev) => ({ ...prev, receipt_files: "" }));
+    }
+  };
+
+  const addReportFileInput = () => {
+    if (reportFiles.length >= 5) {
+      toast.info("Maximum 5 report files allowed");
+      return;
+    }
+    setReportFiles((prev) => [...prev, null]);
+  };
+
+  const removeReportFileInput = (index) => {
+    if (reportFiles.length === 1) {
+      setReportFiles([null]);
+      if (reportRefs.current[0]) reportRefs.current[0].value = "";
+      return;
+    }
+    setReportFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addReceiptFileInput = () => {
+    if (receiptFiles.length >= 5) {
+      toast.info("Maximum 5 receipt files allowed");
+      return;
+    }
+    setReceiptFiles((prev) => [...prev, null]);
+  };
+
+  const removeReceiptFileInput = (index) => {
+    if (receiptFiles.length === 1) {
+      setReceiptFiles([null]);
+      if (receiptRefs.current[0]) receiptRefs.current[0].value = "";
+      return;
+    }
+    setReceiptFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.visit_date) {
+      newErrors.visit_date = "Date of visit is required";
+    }
+
+    if (!formData.purpose.trim()) {
+      newErrors.purpose = "Purpose of visit is required";
+    }
+
+    const selectedClient = formData.client_name === "Other" ? formData.custom_client : formData.client_name;
+    if (!selectedClient || !selectedClient.trim()) {
+      newErrors.client_name = "Client / Site name is required";
+    }
+
+    if (!formData.transport_mode) {
+      newErrors.transport_mode = "Mode of transport is required";
+    }
+
+    if (!formData.distance_km || isNaN(formData.distance_km) || Number(formData.distance_km) <= 0) {
+      newErrors.distance_km = "Valid distance (km) is required";
+    }
+
+    if (!formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
+      newErrors.amount = "Valid reimbursement amount is required";
+    }
+
+    // Check visit report files
+    const validReports = reportFiles.filter(Boolean);
+    if (validReports.length === 0) {
+      newErrors.report_files = "At least one visit report PDF/image is required";
+    }
+
+    // Check receipt files if mandatory
+    if (isReceiptMandatory(formData.transport_mode)) {
+      const validReceipts = receiptFiles.filter(Boolean);
+      if (validReceipts.length === 0) {
+        newErrors.receipt_files = `Receipt file is mandatory for ${formData.transport_mode} transport mode`;
+      }
+    }
+
+    return newErrors;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate claim window first
-    for (const entry of entries) {
-      if (!isWithinClaimWindow(entry.date)) {
-        toast.error(`Date ${entry.date} is outside the allowed claim window (last 30 days to next 7 days for testing)`);
-        return;
-      }
-    }
-    
-    // Validate designation limit
-    const user = JSON.parse(localStorage.getItem("user")) || {};
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const userData = users.find(u => u.username === user.username);
-    
-    if (userData?.designation) {
-      const designationLimits = {
-        'Junior': 5000,
-        'Senior': 10000,
-        'Manager': 15000
-      };
-      
-      const totalAmount = entries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
-      const limit = designationLimits[userData.designation] || 5000;
-      
-      if (totalAmount > limit) {
-        toast.error(`Total amount (₹${totalAmount}) exceeds your designation limit (₹${limit})`);
-        return;
-      }
-    }
-    
-    // Submit the form
-    const submissionSuccess = await onSubmit();
-    
-    // Reset form only if submission was successful
-    if (submissionSuccess) {
-      setEntries([{
-      date: "",
-      purpose: "",
-      client: "",
-      transport: "",
-      distance: "",
-      amount: "",
-      reports: [null],
-      receipts: [null],
-      remarks: ""
-    }]);
 
-    // Clear file inputs
-    reportRefs.current.forEach(group => {
-      group?.forEach(ref => ref && (ref.value = ""));
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error("Please fill in all required fields marked with *");
+      return;
+    }
+
+    // Prepare FormData payload matching backend contract
+    const data = new FormData();
+    data.append("visit_date", formData.visit_date);
+    data.append("purpose", formData.purpose.trim());
+
+    const clientFinal = formData.client_name === "Other" ? formData.custom_client.trim() : formData.client_name.trim();
+    data.append("client_name", clientFinal);
+    data.append("transport_mode", formData.transport_mode.toUpperCase());
+    data.append("distance_km", parseFloat(formData.distance_km).toString());
+    data.append("amount", parseFloat(formData.amount).toString());
+
+    if (formData.remarks.trim()) {
+      data.append("remarks", formData.remarks.trim());
+    }
+
+    // Append report files
+    reportFiles.forEach((file) => {
+      if (file) data.append("report_files", file);
     });
-    receiptRefs.current.forEach(group => {
-      group?.forEach(ref => ref && (ref.value = ""));
+
+    // Append receipt files
+    receiptFiles.forEach((file) => {
+      if (file) data.append("receipt_files", file);
     });
+
+    const success = await onSubmit(data);
+    if (success) {
+      setFormData(initialForm);
+      setReportFiles([null]);
+      setReceiptFiles([null]);
+      setErrors({});
+      if (reportRefs.current[0]) reportRefs.current[0].value = "";
+      if (receiptRefs.current[0]) receiptRefs.current[0].value = "";
     }
   };
 
   return (
-    <div>
-      {/* Testing Info Banner */}
-      <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-        <strong>Testing Mode:</strong> Date validation relaxed - you can submit forms with dates from the last 30 days to next 7 days.
-      </div>
-      
-      <form onSubmit={handleFormSubmit}>
-        {entries.map((entry, idx) => (
-          <div key={idx} className="border rounded-lg p-4 mb-4 space-y-2 bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Date Field */}
-              <div>
-                <label className="font-medium">Date of Visit</label>
-                <input
-                  type="date"
-                  value={entry.date}
-                  onChange={(e) => handleChange(idx, "date", e.target.value)}
-                  className="w-full border px-2 py-1 rounded"
-                />
-                {errors[idx]?.date && <p className="text-red-600 text-sm">{errors[idx].date}</p>}
-              </div>
-
-              {/* Purpose Field */}
-              <div>
-                <label className="font-medium">Purpose of Visit</label>
-                <input
-                  type="text"
-                  value={entry.purpose}
-                  onChange={(e) => handleChange(idx, "purpose", e.target.value)}
-                  className="w-full border px-2 py-1 rounded"
-                />
-                {errors[idx]?.purpose && <p className="text-red-600 text-sm">{errors[idx].purpose}</p>}
-              </div>
-
-              {/* Client Field */}
-              <div>
-                <label className="font-medium">Client Name / Site</label>
-                <select
-                  value={entry.client}
-                  onChange={(e) => handleChange(idx, "client", e.target.value)}
-                  className="w-full border px-2 py-1 rounded"
-                >
-                  <option value="">Select Site</option>
-                  <option value="Site A">Site A</option>
-                  <option value="Site B">Site B</option>
-                  <option value="Site C">Site C</option>
-                  <option value="Site D">Site D</option>
-                  <option value="Site E">Site E</option>
-                  <option value="Other">Other</option>
-                </select>
-                {errors[idx]?.client && <p className="text-red-600 text-sm">{errors[idx].client}</p>}
-                
-                {entry.client === "Other" && (
-                  <div className="mt-2">
-                    <input
-                      type="text"
-                      placeholder="Enter custom client/site name"
-                      value={entry.customClient || ""}
-                      onChange={(e) => handleChange(idx, "customClient", e.target.value)}
-                      className="w-full border px-2 py-1 rounded"
-                    />
-                    {errors[idx]?.customClient && <p className="text-red-600 text-sm">{errors[idx].customClient}</p>}
-                  </div>
-                )}
-              </div>
-
-              {/* Transport Field */}
-              <div>
-                <label className="font-medium">Mode of Transport</label>
-                <select
-                  value={entry.transport}
-                  onChange={(e) => handleChange(idx, "transport", e.target.value)}
-                  className="w-full border px-2 py-1 rounded"
-                >
-                  <option value="">Select</option>
-                  <option>Bike</option>
-                  <option>Cab</option>
-                  <option>Auto</option>
-                  <option>Bus</option>
-                  <option>Train</option>
-                </select>
-                {errors[idx]?.transport && <p className="text-red-600 text-sm">{errors[idx].transport}</p>}
-              </div>
-
-              {/* Distance Field */}
-              <div>
-                <label className="font-medium">Distance (km)</label>
-                <input
-                  type="number"
-                  value={entry.distance}
-                  onChange={(e) => handleChange(idx, "distance", e.target.value)}
-                  className="w-full border px-2 py-1 rounded"
-                />
-                {errors[idx]?.distance && <p className="text-red-600 text-sm">{errors[idx].distance}</p>}
-              </div>
-
-              {/* Amount Field */}
-              <div>
-                <label className="font-medium">Amount Claimed (₹)</label>
-                <input
-                  type="number"
-                  value={entry.amount}
-                  onChange={(e) => handleChange(idx, "amount", e.target.value)}
-                  className="w-full border px-2 py-1 rounded"
-                />
-                {errors[idx]?.amount && <p className="text-red-600 text-sm">{errors[idx].amount}</p>}
-              </div>
-
-              {/* Reports Field */}
-              <div>
-                <label className="font-medium">Upload Visit Report(s)</label>
-                {entry.reports.map((file, reportIdx) => (
-                  <div key={reportIdx} className="flex items-center gap-2 mb-2">
-                    <input
-                      type="file"
-                      accept="application/pdf,image/jpeg,image/png"
-                      onChange={(e) => {
-                        const updatedReports = [...entry.reports];
-                        updatedReports[reportIdx] = e.target.files[0];
-                        handleChange(idx, "reports", updatedReports);
-                      }}
-                      ref={(el) => {
-                        if (!reportRefs.current[idx]) reportRefs.current[idx] = [];
-                        reportRefs.current[idx][reportIdx] = el;
-                      }}
-                      className="w-full border rounded px-4 py-2"
-                    />
-                    {entry.reports.length > 1 && (
-                      <button
-                        type="button"
-                        className="text-red-600 font-bold"
-                        onClick={() => {
-                          const updatedReports = entry.reports.filter((_, i) => i !== reportIdx);
-                          handleChange(idx, "reports", updatedReports);
-                          if (reportRefs.current[idx]?.[reportIdx]) {
-                            reportRefs.current[idx][reportIdx].value = "";
-                          }
-                        }}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {entry.reports.length < 5 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updatedReports = [...entry.reports, null];
-                      handleChange(idx, "reports", updatedReports);
-                    }}
-                    className="text-blue-600 text-sm underline"
-                  >
-                    + Add another file
-                  </button>
-                ) : (
-                  <p className="text-gray-500 text-sm">Maximum 5 files allowed.</p>
-                )}
-
-                {errors[idx]?.report && (
-                  <p className="text-red-600 text-sm mt-1">{errors[idx].report}</p>
-                )}
-              </div>
-
-              {/* Receipts Field (conditionally shown) */}
-              {shouldShowReceipt(entry.transport) && (
-                <div>
-                  <label className="font-medium">Upload Ticket/Receipt(s)</label>
-                  {(entry.receipts || [null]).map((file, receiptIdx) => (
-                    <div key={receiptIdx} className="flex items-center gap-2 mb-2">
-                      <input
-                        type="file"
-                        accept="application/pdf,image/jpeg,image/png"
-                        onChange={(e) => {
-                          const updatedReceipts = [...(entry.receipts || [null])];
-                          updatedReceipts[receiptIdx] = e.target.files[0];
-                          handleChange(idx, "receipts", updatedReceipts);
-                        }}
-                        ref={(el) => {
-                          if (!receiptRefs.current[idx]) receiptRefs.current[idx] = [];
-                          receiptRefs.current[idx][receiptIdx] = el;
-                        }}
-                        className="w-full border rounded px-4 py-2"
-                      />
-                      {(entry.receipts || [null]).length > 1 && (
-                        <button
-                          type="button"
-                          className="text-red-600 font-bold"
-                          onClick={() => {
-                            const updatedReceipts = (entry.receipts || [null]).filter((_, i) => i !== receiptIdx);
-                            handleChange(idx, "receipts", updatedReceipts);
-                            if (receiptRefs.current[idx]?.[receiptIdx]) {
-                              receiptRefs.current[idx][receiptIdx].value = "";
-                            }
-                          }}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {(entry.receipts || [null]).length < 5 ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updatedReceipts = [...(entry.receipts || [null]), null];
-                        handleChange(idx, "receipts", updatedReceipts);
-                      }}
-                      className="text-blue-600 text-sm underline"
-                    >
-                      + Add another receipt
-                    </button>
-                  ) : (
-                    <p className="text-gray-500 text-sm">Maximum 5 receipts allowed.</p>
-                  )}
-
-                  {errors[idx]?.receipts && (
-                    <p className="text-red-600 text-sm mt-1">{errors[idx].receipts}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Remarks Field */}
-              <div>
-                <label className="font-medium">Remarks (Optional)</label>
-                <textarea
-                  value={entry.remarks}
-                  onChange={(e) => handleChange(idx, "remarks", e.target.value)}
-                  className="w-full border px-2 py-1 rounded"
-                ></textarea>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        <div className="flex gap-4 justify-between">
-          <button
-            type="submit"
-            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 cursor-pointer"
-          >
-            Submit to Manager
-          </button>
+    <form className="p-6 space-y-6 bg-white" onSubmit={handleSubmit}>
+      {/* Information Banner */}
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3 text-sm text-green-800">
+        <FiInfo className="text-green-600 mt-0.5 shrink-0" size={18} />
+        <div>
+          <span className="font-semibold text-green-900">Submission Guidelines:</span> Provide accurate visit details and distance. Visit report is mandatory. Transport receipt is required for <strong>Cab, Bus, Auto, & Train</strong>. Maximum file size is 2 MB per attachment.
         </div>
-      </form>
-    </div>
+      </div>
+
+      {/* Grid Inputs Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+        {/* Date of Visit */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+            <FiCalendar className="text-green-600" /> Date of Visit *
+          </label>
+          <input
+            type="date"
+            name="visit_date"
+            value={formData.visit_date}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
+          />
+          {errors.visit_date && <p className="text-red-600 text-xs mt-1 font-medium">{errors.visit_date}</p>}
+        </div>
+
+        {/* Client / Site Name */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+            <FiMapPin className="text-green-600" /> Client / Site Name *
+          </label>
+          <select
+            name="client_name"
+            value={formData.client_name}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
+          >
+            <option value="">-- Select Client / Site --</option>
+            <option value="Jindal group">Jindal group</option>
+            <option value="ABC Corporation">ABC Corporation</option>
+            <option value="Site A">Site A</option>
+            <option value="Site B">Site B</option>
+            <option value="Site C">Site C</option>
+            <option value="Site D">Site D</option>
+            <option value="Other">Other (Custom Entry)</option>
+          </select>
+          {errors.client_name && <p className="text-red-600 text-xs mt-1 font-medium">{errors.client_name}</p>}
+
+          {formData.client_name === "Other" && (
+            <div className="mt-2">
+              <input
+                type="text"
+                name="custom_client"
+                placeholder="Enter custom client/site name *"
+                value={formData.custom_client}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Purpose of Visit */}
+        <div className="md:col-span-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+            <FiFileText className="text-green-600" /> Purpose of Visit *
+          </label>
+          <input
+            type="text"
+            name="purpose"
+            placeholder="e.g. Client site inspection and security audit"
+            value={formData.purpose}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
+          />
+          {errors.purpose && <p className="text-red-600 text-xs mt-1 font-medium">{errors.purpose}</p>}
+        </div>
+
+        {/* Transport Mode */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+            <FiTruck className="text-green-600" /> Mode of Transport *
+          </label>
+          <select
+            name="transport_mode"
+            value={formData.transport_mode}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm uppercase font-medium"
+          >
+            <option value="">-- Select Transport Mode --</option>
+            <option value="AUTO">Auto</option>
+            <option value="CAB">Cab</option>
+            <option value="BIKE">Bike</option>
+            <option value="BUS">Bus</option>
+            <option value="TRAIN">Train</option>
+          </select>
+          {errors.transport_mode && <p className="text-red-600 text-xs mt-1 font-medium">{errors.transport_mode}</p>}
+        </div>
+
+        {/* Distance in KM */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+            <FiMapPin className="text-green-600" /> Distance Traveled (KM) *
+          </label>
+          <input
+            type="number"
+            name="distance_km"
+            placeholder="e.g. 22"
+            min="0.1"
+            step="0.1"
+            value={formData.distance_km}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
+          />
+          {errors.distance_km && <p className="text-red-600 text-xs mt-1 font-medium">{errors.distance_km}</p>}
+        </div>
+
+        {/* Amount Claimed */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+            <FiDollarSign className="text-green-600" /> Amount Claimed (₹) *
+          </label>
+          <input
+            type="number"
+            name="amount"
+            placeholder="e.g. 800"
+            min="1"
+            step="0.01"
+            value={formData.amount}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm font-semibold text-gray-800"
+          />
+          {errors.amount && <p className="text-red-600 text-xs mt-1 font-medium">{errors.amount}</p>}
+        </div>
+
+        {/* Remarks */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Remarks (Optional)
+          </label>
+          <input
+            type="text"
+            name="remarks"
+            placeholder="e.g. Return journey included"
+            value={formData.remarks}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white transition-all shadow-sm"
+          />
+        </div>
+      </div>
+
+      {/* Attachments Section */}
+      <div className="border-t border-gray-200 pt-6 space-y-6">
+        <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
+          <FiUploadCloud className="text-green-600" size={20} /> Attachment Uploads
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Visit Reports */}
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-semibold text-gray-800">
+                Visit Report PDF(s) *
+              </label>
+              <span className="text-xs text-gray-500">Max 2MB per file</span>
+            </div>
+
+            {reportFiles.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  onChange={(e) => handleReportFileChange(idx, e.target.files[0])}
+                  ref={(el) => (reportRefs.current[idx] = el)}
+                  className="w-full text-xs text-gray-600 border border-gray-300 rounded-xl p-2 bg-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeReportFileInput(idx)}
+                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                  title="Remove file"
+                >
+                  <FiTrash2 size={16} />
+                </button>
+              </div>
+            ))}
+
+            {reportFiles.length < 5 && (
+              <button
+                type="button"
+                onClick={addReportFileInput}
+                className="flex items-center gap-1 text-xs text-green-700 font-semibold hover:text-green-800 transition"
+              >
+                <FiPlus size={14} /> Add another report file
+              </button>
+            )}
+
+            {errors.report_files && (
+              <p className="text-red-600 text-xs font-medium">{errors.report_files}</p>
+            )}
+          </div>
+
+          {/* Transport Receipts */}
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-semibold text-gray-800">
+                Transport Receipt PDF(s) {isReceiptMandatory(formData.transport_mode) ? "*" : "(Optional)"}
+              </label>
+              <span className="text-xs text-gray-500">Max 2MB per file</span>
+            </div>
+
+            {receiptFiles.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  onChange={(e) => handleReceiptFileChange(idx, e.target.files[0])}
+                  ref={(el) => (receiptRefs.current[idx] = el)}
+                  className="w-full text-xs text-gray-600 border border-gray-300 rounded-xl p-2 bg-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeReceiptFileInput(idx)}
+                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                  title="Remove file"
+                >
+                  <FiTrash2 size={16} />
+                </button>
+              </div>
+            ))}
+
+            {receiptFiles.length < 5 && (
+              <button
+                type="button"
+                onClick={addReceiptFileInput}
+                className="flex items-center gap-1 text-xs text-blue-700 font-semibold hover:text-blue-800 transition"
+              >
+                <FiPlus size={14} /> Add another receipt file
+              </button>
+            )}
+
+            {errors.receipt_files && (
+              <p className="text-red-600 text-xs font-medium">{errors.receipt_files}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Action Footer */}
+      <div className="flex justify-end pt-4 border-t border-gray-100">
+        <button
+          type="submit"
+          disabled={submitLoading}
+          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-8 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+        >
+          {submitLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              <span>Submitting Claim...</span>
+            </>
+          ) : (
+            <span>Submit to Manager</span>
+          )}
+        </button>
+      </div>
+    </form>
   );
 }

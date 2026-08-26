@@ -1,17 +1,27 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 import LedgerHeader from '../Components/LedgerHeader'
 import FilterSection from '../Components/FilterSection'
 import TransactionTable from '../Components/TransactionTable'
 import SummarySection from '../Components/SummerySection'
+import { ConveyancePayableService } from '../../utils/conveyancePayableService'
 
 const ConveyancePayblePage = () => {
+  const { glCode: paramGlCode } = useParams()
+  const glCode = paramGlCode || 'L2001001'
+
   const [filters, setFilters] = useState({
-    fromDate: new Date(new Date().getFullYear(), 3, 1).toISOString().split('T')[0], // April 1 of current year
-    toDate: new Date().toISOString().split('T')[0],
+    fromDate: '',
+    toDate: '',
     entryType: 'All',
     status: 'All',
+    search: '',
   })
+
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [transactions, setTransactions] = useState([])
   const [employeeInfo, setEmployeeInfo] = useState(null)
@@ -22,211 +32,204 @@ const ConveyancePayblePage = () => {
     outstanding: 0,
   })
 
-  // Load real data from localStorage
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    totalItems: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  })
+
   useEffect(() => {
-    loadConveyanceLedgerData()
+    loadConveyanceLedgerData(1, filters)
+  }, [glCode])
 
-    // Listen for conveyance updates
-    const handleConveyanceUpdate = () => {
-      loadConveyanceLedgerData()
-    }
-    window.addEventListener('conveyanceUpdated', handleConveyanceUpdate)
-
-    return () => {
-      window.removeEventListener('conveyanceUpdated', handleConveyanceUpdate)
-    }
-  }, [])
-
-  const loadConveyanceLedgerData = () => {
+  const loadConveyanceLedgerData = async (targetPage = page, activeFilters = filters) => {
     try {
-      // Get all transactions from localStorage
-      const allTransactions = JSON.parse(localStorage.getItem('transactions')) || []
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || []
-      const conveyanceRequests = JSON.parse(localStorage.getItem('conveyanceRequests')) || []
-      const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {}
+      setLoading(true)
+      setError(null)
 
-      // Find Conveyance Payable GL code (L2001001)
-      const payableGLCode = 'L2001001'
-      const payableAccount = chartOfAccounts.find((acc) => acc.code === payableGLCode)
-
-      // Filter transactions involving L2001001
-      const conveyanceTransactions = allTransactions.filter((txn) =>
-        txn.entries?.some((entry) => entry.glCode === payableGLCode)
-      )
-
-      // Sort by date
-      conveyanceTransactions.sort((a, b) => new Date(a.date) - new Date(b.date))
-
-      // Convert to ledger format
-      const ledgerEntries = []
-      let runningBalance = 0
-
-      // Opening balance entry
-      const openingBalance = ledgerBalances[payableGLCode]?.balance || 0
-      runningBalance = openingBalance
-
-      if (openingBalance !== 0 || conveyanceTransactions.length === 0) {
-        ledgerEntries.push({
-          id: 'opening',
-          date: new Date(new Date().getFullYear(), 3, 1).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: '2-digit',
-          }),
-          voucherNo: 'OB-' + new Date().getFullYear(),
-          entryType: 'opening',
-          debit: null,
-          credit: null,
-          balance: Math.abs(openingBalance),
-          balanceType: openingBalance === 0 ? 'zero' : openingBalance > 0 ? 'credit' : 'debit',
-          narration: `Opening Balance B/F FY ${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`,
-          claimId: '-',
-          visits: '-',
-          period: '-',
-          counterparty: '-',
-          approvedBy: '-',
-          hasAttachment: false,
-          status: 'posted',
-          rowClass: 'opening-row',
-        })
+      const queryParams = {
+        page: targetPage,
+        limit: 20,
+        ...activeFilters,
       }
 
-      // Process each transaction
-      conveyanceTransactions.forEach((txn, index) => {
-        const payableEntry = txn.entries.find((entry) => entry.glCode === payableGLCode)
-        const expenseEntry = txn.entries.find(
-          (entry) => entry.glCode.startsWith('X2001003') || entry.glCode.startsWith('X2001')
-        )
+      // Fetch Header, Entries, and Footer in parallel
+      const [headerRes, entriesRes, footerRes] = await Promise.all([
+        ConveyancePayableService.getHeader(glCode),
+        ConveyancePayableService.getEntries(glCode, queryParams),
+        ConveyancePayableService.getFooter(glCode, activeFilters),
+      ])
 
-        if (payableEntry) {
-          const debit = payableEntry.debit || 0
-          const credit = payableEntry.credit || 0
-          runningBalance += credit - debit // Credit increases payable, debit decreases
+      // Format Header Data
+      const openingBalanceVal = parseFloat(headerRes.openingBalance || 0)
+      const formattedOpeningBalance =
+        openingBalanceVal === 0
+          ? '₹0.00 (No Outstanding)'
+          : `₹${Math.abs(openingBalanceVal).toLocaleString('en-IN', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })} ${openingBalanceVal > 0 ? 'CR' : 'DR'}`
 
-          // Find corresponding conveyance request
-          const conveyanceRequest = conveyanceRequests.find(
-            (req) => req.transactionId === txn.id || req.voucherNumber === txn.voucherNo
-          )
-
-          const dateFormatted = new Date(txn.date).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: '2-digit',
-          })
-
-          ledgerEntries.push({
-            id: txn.id || `txn_${index}`,
-            date: dateFormatted,
-            voucherNo: txn.voucherNo || txn.voucherNumber,
-            entryType: credit > 0 ? 'expense' : 'payment',
-            debit: debit > 0 ? debit : null,
-            credit: credit > 0 ? credit : null,
-            balance: Math.abs(runningBalance),
-            balanceType: runningBalance === 0 ? 'zero' : runningBalance > 0 ? 'credit' : 'debit',
-            narration: payableEntry.narration || txn.narration || 'Conveyance expense',
-            claimId: conveyanceRequest?.id ? `CONV-${conveyanceRequest.id.slice(-6)}` : '-',
-            visits: conveyanceRequest ? 1 : '-',
-            period: new Date(txn.date).toLocaleDateString('en-GB', {
-              month: 'short',
-              year: '2-digit',
-            }),
-            counterparty: expenseEntry?.glName || expenseEntry?.glCode || 'Expense Account',
-            approvedBy: txn.approvedBy || conveyanceRequest?.aeApprovedBy || '-',
-            hasAttachment:
-              !!conveyanceRequest?.reports?.length || !!conveyanceRequest?.receipts?.length,
-            status: txn.status || 'posted',
-            rowClass: credit > 0 ? 'expense-row' : 'payment-row',
-            costCenter: payableEntry.costCenter || expenseEntry?.costCenter || txn.costCenter || '-',
-            customer: txn.customer || txn.clientName || '-',
-            site: payableEntry.site || expenseEntry?.site || txn.site || '-',
-            state: txn.state || '-',
-            city: txn.city || '-',
-            branch: txn.branch || '-',
-          })
-        }
-      })
-
-      // Calculate summary
-      const totalClaims = ledgerEntries
-        .filter((e) => e.credit > 0)
-        .reduce((sum, e) => sum + (e.credit || 0), 0)
-
-      const totalPayments = ledgerEntries
-        .filter((e) => e.debit > 0)
-        .reduce((sum, e) => sum + (e.debit || 0), 0)
-
-      const totalVisits = conveyanceTransactions.length
-      const outstanding = runningBalance
-
-      setTransactions(ledgerEntries)
-      setSummaryData({
-        totalClaims,
-        totalPayments,
-        totalVisits,
-        outstanding,
-      })
-
-      // Set employee info (this is a shared account, so show account info)
       setEmployeeInfo({
-        name: payableAccount?.name || 'CONVEYANCE PAYABLE',
-        code: payableGLCode,
-        glAccount: payableGLCode,
-        department: 'Finance',
-        designation: 'Shared Liability Account',
-        accountType: 'Current Liability',
-        financialYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`,
-        period: `Apr-${new Date().getFullYear()} to ${new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`,
-        openingBalance:
-          openingBalance === 0
-            ? '₹0.00 (No Outstanding)'
-            : `₹${Math.abs(openingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${openingBalance > 0 ? 'CR' : 'DR'}`,
+        name: headerRes.name || 'Conveyance payable',
+        code: headerRes.glCode || glCode,
+        glAccount: headerRes.glCode || glCode,
+        department: headerRes.department || 'Finance',
+        designation: headerRes.designation || 'Shared Liability Account',
+        accountType: headerRes.accountType || 'Liability',
+        financialYear: headerRes.financialYear || 'FY2024-25',
+        period:
+          headerRes.period !== '-'
+            ? headerRes.period
+            : `Apr-${new Date().getFullYear()} to ${new Date().toLocaleDateString('en-GB', {
+                month: 'short',
+                year: 'numeric',
+              })}`,
+        openingBalance: formattedOpeningBalance,
       })
-    } catch (error) {
-      console.error('Error loading conveyance ledger data:', error)
+
+      // Set Entries & Pagination
+      setTransactions(entriesRes.entries || [])
+      if (entriesRes.pagination) {
+        setPagination(entriesRes.pagination)
+      }
+
+      // Set Footer Summary
+      setSummaryData({
+        totalClaims: footerRes.totalClaims || 0,
+        totalPayments: footerRes.totalPayments || 0,
+        totalVisits: footerRes.totalVisits || 0,
+        outstanding: footerRes.outstanding || 0,
+      })
+    } catch (err) {
+      console.error('❌ Error loading conveyance payable ledger data:', err)
+      setError(err.message || 'Failed to load Conveyance Payable ledger data from server.')
       setTransactions([])
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters)
-    // Apply filters to transactions
-    loadConveyanceLedgerData()
+    setPage(1)
+    loadConveyanceLedgerData(1, newFilters)
+  }
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage)
+    loadConveyanceLedgerData(newPage, filters)
+  }
+
+  const handleRefresh = () => {
+    loadConveyanceLedgerData(page, filters)
   }
 
   const handleExportPDF = () => {
-    console.log('Exporting PDF...')
-    // PDF export logic
+    console.log('Exporting Conveyance Payable PDF...')
   }
 
   const handlePrint = () => {
-    console.log('Printing...')
     window.print()
   }
 
-  if (!employeeInfo) {
+  if (loading && !employeeInfo) {
     return (
-      <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <p className="text-gray-600">Loading ledger data...</p>
-          </div>
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading Conveyance Payable Ledger...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <LedgerHeader employeeInfo={employeeInfo} />
+    <div className="min-h-screen bg-gray-50 py-6 px-3 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* Error Notification */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-center justify-between shadow-sm">
+            <div className="flex items-center space-x-2">
+              <span className="text-red-600 font-bold text-lg">⚠️</span>
+              <p className="text-sm text-red-700 font-medium">{error}</p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="px-3 py-1 bg-red-600 text-white text-xs font-semibold rounded hover:bg-red-700 transition"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+          {/* Header Metadata */}
+          {employeeInfo && <LedgerHeader employeeInfo={employeeInfo} />}
+
+          {/* Filters Bar */}
           <FilterSection
             filters={filters}
             onFilterChange={handleFilterChange}
             onExportPDF={handleExportPDF}
             onPrint={handlePrint}
           />
-          <TransactionTable transactions={transactions} />
+
+          {/* Refresh & Pagination Toolbar */}
+          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-600">
+            <div>
+              Showing Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> ({pagination.totalItems} total transactions)
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 disabled:opacity-50 transition"
+            >
+              <span>🔄</span> Refresh
+            </button>
+          </div>
+
+          {/* Transactions List / Spinner */}
+          {loading ? (
+            <div className="py-16 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3"></div>
+              <p className="text-sm text-gray-500 font-medium">Fetching transaction records...</p>
+            </div>
+          ) : (
+            <>
+              <TransactionTable transactions={transactions} />
+
+              {/* Server-Side Pagination Bar */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 bg-white">
+                  <span className="text-xs sm:text-sm text-gray-500">
+                    Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong>
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      disabled={!pagination.hasPreviousPage && pagination.page <= 1}
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-xs sm:text-sm font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={!pagination.hasNextPage && pagination.page >= pagination.totalPages}
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs sm:text-sm font-medium hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Footer Summary Cards */}
           <SummarySection summaryData={summaryData} />
         </div>
       </div>

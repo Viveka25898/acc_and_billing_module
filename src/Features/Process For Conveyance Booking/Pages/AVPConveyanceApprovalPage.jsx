@@ -15,7 +15,7 @@ import {
 } from "../../../store/slices/conveyanceSlice";
 import { FiCheckSquare, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
-export default function ManagerConveyanceApprovalsPage() {
+export default function AVPConveyanceApprovalPage() {
   const dispatch = useDispatch();
 
   const queueRequests = useSelector(selectConveyanceQueueRequests);
@@ -81,11 +81,11 @@ export default function ManagerConveyanceApprovalsPage() {
       const result = await dispatch(
         approveConveyanceRequest({
           id,
-          comments: "Distance and amount verified against Google Maps",
+          comments: "Approved by AVP Operations",
         })
       ).unwrap();
 
-      toast.success(result.message || `Claim request #${id.slice(-6)} approved successfully`);
+      toast.success(result.message || `Claim request #${id.slice(-6)} approved by AVP Operations`);
     } catch (error) {
       console.error("Approval failed:", error);
       toast.error(error || "Approval failed. Please try again.");
@@ -102,7 +102,7 @@ export default function ManagerConveyanceApprovalsPage() {
       const result = await dispatch(
         rejectConveyanceRequest({
           id,
-          comments: reason.trim(),
+          comments: "Rejected by AVP Operations",
           rejectionReason: reason.trim(),
         })
       ).unwrap();
@@ -126,10 +126,10 @@ export default function ManagerConveyanceApprovalsPage() {
       <div className="bg-gradient-to-r from-green-700 to-green-600 rounded-2xl shadow-lg p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <FiCheckSquare size={26} /> Regional Head - Conveyance Approvals
+            <FiCheckSquare size={26} /> AVP Operations - Conveyance Approvals
           </h1>
           <p className="text-green-100 text-sm mt-1 font-medium">
-            Review and approve or reject employee conveyance reimbursement claims ({filteredClaims.length} pending).
+            Review and approve or reject regional manager conveyance reimbursement claims ({filteredClaims.length} pending).
           </p>
         </div>
       </div>
@@ -149,7 +149,7 @@ export default function ManagerConveyanceApprovalsPage() {
         {loading ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3"></div>
-            <span className="text-gray-500 text-sm font-semibold">Loading approval queue...</span>
+            <span className="text-gray-500 text-sm font-semibold">Loading AVP approval queue...</span>
           </div>
         ) : (
           <>

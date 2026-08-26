@@ -8,6 +8,7 @@ import chartOfAccountsReducer from './store/slices/chartOfAccountsSlice'
 import aeInvoiceReducer from './store/slices/aeInvoiceSlice'
 import amInvoiceReducer from './store/slices/amInvoiceSlice'
 import relieverReducer from './store/slices/relieverSlice'
+import conveyanceReducer from './store/slices/conveyanceSlice'
 
 const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ const store = configureStore({
     aeInvoice: aeInvoiceReducer,
     amInvoice: amInvoiceReducer,
     reliever: relieverReducer,
+    conveyance: conveyanceReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -28,6 +30,7 @@ const store = configureStore({
           'advanceSettlement/submitSettlement/pending',
           'advanceSettlement/submitSettlement/fulfilled',
           'advanceSettlement/submitSettlement/rejected',
+          'conveyance/submitConveyanceClaim/pending',
         ],
         ignoredActionPaths: ['payload.blob', 'meta.arg'],
       },
