@@ -93,7 +93,7 @@ export const INITIAL_CHART_OF_ACCOUNTS = [
     { code: "X2001002", name: "OTHER BRANCH EXPENSES", type: "SUB_FOLDER", parentAccount: "BRANCH MANAGEMENT", parentCode: "X2001" },
     { code: "X2001002001", name: "OFFICE SUPPLIES", type: "ACCOUNT", parentAccount: "OTHER BRANCH EXPENSES", parentCode: "X2001002" },
     { code: "X2001002002", name: "BRANCH OFFICE RENT", type: "ACCOUNT", parentAccount: "OTHER BRANCH EXPENSES", parentCode: "X2001002" },
-    { code: "X2001003", name: "BRANCH CONVEYANCE EXPENSE", type: "ACCOUNT", parentAccount: "BRANCH MANAGEMENT", parentCode: "X2001" },
+    { code: "X2001003", name: "Branch conveyance expense", type: "ACCOUNT", parentAccount: "BRANCH MANAGEMENT", parentCode: "X2001" },
     { code: "X2001004", name: "UNIFORM EXPENSE", type: "ACCOUNT", parentAccount: "BRANCH MANAGEMENT", parentCode: "X2001" },
 
     // Corporate Expenses

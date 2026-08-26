@@ -572,22 +572,23 @@ export class ExpenseLedgerService {
       'X1001002001': { name: 'TRAVEL EXPENSE', parent: 'OTHER PRODUCTION COST (X1001002)', department: 'Operations' },
       'X1001003001': { name: 'FOOD & REFRESHMENT EXPENSE', parent: 'FOOD COST (X1001003)', department: 'Operations' },
       'X2001002001': { name: 'OFFICE SUPPLIES EXPENSE', parent: 'OTHER BRANCH EXPENSES (X2001002)', department: 'Administration' },
-      'X2001003': { name: 'BRANCH CONVEYANCE EXPENSE', parent: 'BRANCH MANAGEMENT (X2001)', department: 'Operations' }
+      'X2001003': { name: 'Branch conveyance expense', parent: 'BRANCH MANAGEMENT (X2001)', department: 'Operations' }
     }
     const config = expenseHeadConfig[expenseHeadCode] || {
-      name: expenseHead?.name || 'Expense Head',
+      name: expenseHead?.expenseHeadName || expenseHead?.ledgerName || expenseHead?.name || 'Expense Head',
       parent: expenseHead?.parentAccount || 'General Expenses',
       department: 'Various'
     }
     return {
       expenseHeadCode,
-      expenseHeadName: config.name,
-      parentAccount: config.parent,
-      accountType: 'EXPENSE - DIRECT',
-      financialYear: `${currentYear}-${nextYear.toString().slice(-2)}`,
-      period: `Apr ${currentYear} to ${new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`,
-      costCenter: 'All Operations',
-      department: config.department
+      expenseHeadName: expenseHead?.expenseHeadName || expenseHead?.ledgerName || config.name,
+      ledgerName: expenseHead?.ledgerName || expenseHead?.expenseHeadName || config.name,
+      parentAccount: expenseHead?.parentAccount || config.parent,
+      accountType: expenseHead?.accountType || 'EXPENSE - DIRECT',
+      financialYear: expenseHead?.financialYear || `${currentYear}-${nextYear.toString().slice(-2)}`,
+      period: expenseHead?.period || `Apr ${currentYear} to ${new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`,
+      costCenter: expenseHead?.costCenter || 'All Operations',
+      department: expenseHead?.department || config.department
     }
   }
 
