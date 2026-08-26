@@ -14,12 +14,14 @@ import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchRentalSites,
   fetchRentAgreementById,
+  terminateRentAgreement,
   clearActiveAgreementDetails,
   selectRentalSites,
   selectRentPagination,
   selectRentSummary,
   selectRentLoading,
   selectRentError,
+  selectTerminateLoading,
 } from '../../../store/slices/rentExpenseSlice'
 
 const val = (v) => (v === undefined || v === null || String(v).trim() === '' ? '-' : String(v))
@@ -31,13 +33,9 @@ export default function RentExpenseBookingPage() {
   const summary = useSelector(selectRentSummary)
   const loading = useSelector(selectRentLoading)
   const error = useSelector(selectRentError)
+  const terminateLoading = useSelector(selectTerminateLoading)
 
   const [selectedSite, setSelectedSite] = useState(null)
-  const [vouchers, setVouchers] = useState(() => {
-    const stored = localStorage.getItem('vouchers')
-    return stored ? JSON.parse(stored) : []
-  })
-
   const [filters, setFilters] = useState({ owner: '', city: '', state: '' })
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
   const [showAgreementModal, setShowAgreementModal] = useState(false)
@@ -52,10 +50,6 @@ export default function RentExpenseBookingPage() {
   const [expenseVoucherData, setExpenseVoucherData] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [pendingRentVoucher, setPendingRentVoucher] = useState(null)
-  const [vendorVouchers, setVendorVouchers] = useState(() => {
-    const stored = localStorage.getItem('vendorVouchers')
-    return stored ? JSON.parse(stored) : []
-  })
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -76,10 +70,6 @@ export default function RentExpenseBookingPage() {
     setShowAddSiteModal(false)
     dispatch(fetchRentalSites({ page: 1, limit: itemsPerPage }))
   }
-
-  useEffect(() => {
-    localStorage.setItem('vouchers', JSON.stringify(vouchers))
-  }, [vouchers])
 
   const handleAddSite = () => {
     dispatch(fetchRentalSites({ page: 1, limit: itemsPerPage }))
@@ -107,56 +97,51 @@ export default function RentExpenseBookingPage() {
     const agrId =
       siteObj.currentAgreementId ||
       siteObj.agreementId ||
-      getAgreementForSite(siteObj.siteId)?.agreementId
+      siteObj.agreement?.agreementId
     if (agrId) {
       dispatch(fetchRentAgreementById(agrId))
     }
   }
 
-  const handleTerminateSubmit = (siteId, data) => {
+  const handleTerminateSubmit = async (siteId, data) => {
     try {
-      const site = reduxSites.find((s) => s.siteId === siteId)
-      if (!site || !site.hasActiveAgreement) {
-        toast.error('No active agreement found for this site.')
+      const site = reduxSites.find((s) => s.siteId === siteId || s.id === siteId) || terminateSite
+      const agreementId =
+        site?.currentAgreementId ||
+        site?.agreementId ||
+        site?.agreement?.agreementId
+
+      if (!agreementId) {
+        toast.error('No active agreement ID found for this site.')
         return
       }
 
-      // If user chose to cancel unpaid future vouchers
-      if (data.cancelUnpaid) {
-        // Update general vouchers
-        const updatedVouchers = vouchers.map((v) => {
-          if (v.siteId === siteId && v.paymentStatus !== 'Paid' && v.month > data.effectiveMonth) {
-            return {
-              ...v,
-              status: 'Cancelled',
-              paymentStatus: 'Cancelled',
-            }
-          }
-          return v
-        })
-        setVouchers(updatedVouchers)
-        localStorage.setItem('vouchers', JSON.stringify(updatedVouchers))
-
-        // Update vendor vouchers (pending payments queue)
-        const updatedVendorVouchers = vendorVouchers.map((v) => {
-          if (v.siteId === siteId && v.paymentStatus !== 'Paid' && v.month > data.effectiveMonth) {
-            return {
-              ...v,
-              status: 'Cancelled',
-              paymentStatus: 'Cancelled',
-            }
-          }
-          return v
-        })
-        setVendorVouchers(updatedVendorVouchers)
+      const payload = {
+        terminationDate: data.effectiveDate || data.terminationDate,
+        effectiveMonth: data.effectiveMonth,
+        reason: data.reason || 'Office Premises Closed',
+        cancelUnpaid: data.cancelUnpaid ?? true,
       }
 
-      toast.success('Rent agreement terminated prematurely and future vouchers blocked!')
+      const result = await dispatch(terminateRentAgreement({ agreementId, payload })).unwrap()
+      toast.success(result?.message || 'Rent agreement terminated successfully and future payments have been stopped.')
+
       setShowTerminateModal(false)
       setTerminateSite(null)
-    } catch (error) {
-      console.error('Error terminating agreement:', error)
-      toast.error('Failed to terminate rent agreement')
+
+      dispatch(
+        fetchRentalSites({
+          page: currentPage,
+          limit: itemsPerPage,
+          city: filters.city,
+          state: filters.state,
+          search: filters.owner,
+        })
+      )
+    } catch (err) {
+      console.error('Error terminating agreement:', err)
+      const errMsg = err?.message || err?.responseData?.message || 'Failed to terminate rent agreement.'
+      toast.error(errMsg)
     }
   }
 

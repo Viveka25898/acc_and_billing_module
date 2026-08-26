@@ -94,6 +94,22 @@ export const fetchSiteVouchers = createAsyncThunk(
   }
 );
 
+export const terminateRentAgreement = createAsyncThunk(
+  'rentExpense/terminateRentAgreement',
+  async ({ agreementId, payload }, { rejectWithValue }) => {
+    try {
+      const data = await service.terminateRentAgreement(agreementId, payload);
+      return data;
+    } catch (err) {
+      const errorPayload = err.responseData || err.response?.data || {
+        message: err.message || 'Failed to terminate rent agreement',
+        details: [err.message]
+      };
+      return rejectWithValue(errorPayload);
+    }
+  }
+);
+
 const initialState = {
   sites: [],
   pagination: {
@@ -119,6 +135,10 @@ const initialState = {
   voucherGenError: null,
   voucherGenSuccess: false,
   lastGeneratedVoucher: null,
+  terminateLoading: false,
+  terminateError: null,
+  terminateSuccess: false,
+  lastTerminatedData: null,
   loading: false,
   createLoading: false,
   agreementLoading: false,
@@ -149,22 +169,25 @@ const rentExpenseSlice = createSlice({
       state.voucherGenSuccess = false;
       state.lastGeneratedVoucher = null;
     },
+    resetTerminateStatus: (state) => {
+      state.terminateLoading = false;
+      state.terminateError = null;
+      state.terminateSuccess = false;
+      state.lastTerminatedData = null;
+    },
     clearActiveAgreementDetails: (state) => {
       state.activeAgreementDetails = null;
-      state.agreementDetailsLoading = false;
     },
     clearSiteVouchers: (state) => {
       state.siteVouchers = [];
       state.vouchersSummary = null;
-      state.vouchersLoading = false;
-      state.vouchersError = null;
     },
     clearRentErrors: (state) => {
       state.error = null;
       state.createError = null;
       state.agreementError = null;
       state.voucherGenError = null;
-      state.vouchersError = null;
+      state.terminateError = null;
     },
   },
   extraReducers: (builder) => {
@@ -191,14 +214,9 @@ const rentExpenseSlice = createSlice({
         state.createError = null;
         state.createSuccess = false;
       })
-      .addCase(createRentalSite.fulfilled, (state, action) => {
+      .addCase(createRentalSite.fulfilled, (state) => {
         state.createLoading = false;
         state.createSuccess = true;
-        if (action.payload && action.payload.siteId) {
-          state.sites.unshift(action.payload);
-          state.summary.totalSites += 1;
-          state.summary.activeSites += 1;
-        }
       })
       .addCase(createRentalSite.rejected, (state, action) => {
         state.createLoading = false;
@@ -212,26 +230,9 @@ const rentExpenseSlice = createSlice({
         state.agreementError = null;
         state.agreementSuccess = false;
       })
-      .addCase(createRentAgreement.fulfilled, (state, action) => {
+      .addCase(createRentAgreement.fulfilled, (state) => {
         state.agreementLoading = false;
         state.agreementSuccess = true;
-        const agreementData = action.payload;
-        const targetSiteId = agreementData?.siteId;
-        if (targetSiteId) {
-          state.sites = state.sites.map(site => {
-            if (site.siteId === targetSiteId) {
-              return {
-                ...site,
-                hasActiveAgreement: true,
-                agreementId: agreementData.agreementId || site.agreementId,
-                monthlyRent: agreementData.calculations?.monthlyTotal || agreementData.amount || site.monthlyRent,
-                agreement: agreementData,
-              };
-            }
-            return site;
-          });
-          state.summary.sitesWithAgreements = state.sites.filter(s => s.hasActiveAgreement).length;
-        }
       })
       .addCase(createRentAgreement.rejected, (state, action) => {
         state.agreementLoading = false;
@@ -287,11 +288,50 @@ const rentExpenseSlice = createSlice({
       .addCase(fetchSiteVouchers.rejected, (state, action) => {
         state.vouchersLoading = false;
         state.vouchersError = action.payload;
+      })
+
+      // terminateRentAgreement
+      .addCase(terminateRentAgreement.pending, (state) => {
+        state.terminateLoading = true;
+        state.terminateError = null;
+        state.terminateSuccess = false;
+      })
+      .addCase(terminateRentAgreement.fulfilled, (state, action) => {
+        state.terminateLoading = false;
+        state.terminateSuccess = true;
+        state.lastTerminatedData = action.payload;
+
+        const termSiteId = action.payload?.siteId;
+        if (termSiteId) {
+          const site = state.sites.find(s => s.siteId === termSiteId || s.id === termSiteId);
+          if (site) {
+            site.status = 'inactive';
+            site.hasActiveAgreement = false;
+            site.agreementStatus = 'terminated';
+            if (site.agreement) {
+              site.agreement.status = 'terminated';
+              site.agreement.effectiveMonth = action.payload.effectiveMonth;
+            }
+          }
+        }
+      })
+      .addCase(terminateRentAgreement.rejected, (state, action) => {
+        state.terminateLoading = false;
+        state.terminateError = action.payload;
+        state.terminateSuccess = false;
       });
   },
 });
 
-export const { resetCreateStatus, resetAgreementStatus, resetVoucherGenStatus, clearActiveAgreementDetails, clearSiteVouchers, clearRentErrors } = rentExpenseSlice.actions;
+export const {
+  resetCreateStatus,
+  resetAgreementStatus,
+  resetVoucherGenStatus,
+  resetTerminateStatus,
+  clearActiveAgreementDetails,
+  clearSiteVouchers,
+  clearRentErrors
+} = rentExpenseSlice.actions;
 
 // Selectors
 export const selectRentalSites = (state) => state.rentExpense?.sites || [];
@@ -315,5 +355,9 @@ export const selectSiteVouchers = (state) => state.rentExpense?.siteVouchers || 
 export const selectVouchersSummary = (state) => state.rentExpense?.vouchersSummary || null;
 export const selectVouchersLoading = (state) => state.rentExpense?.vouchersLoading || false;
 export const selectVouchersError = (state) => state.rentExpense?.error || null;
+export const selectTerminateLoading = (state) => state.rentExpense?.terminateLoading || false;
+export const selectTerminateError = (state) => state.rentExpense?.terminateError || null;
+export const selectTerminateSuccess = (state) => state.rentExpense?.terminateSuccess || false;
+export const selectLastTerminatedData = (state) => state.rentExpense?.lastTerminatedData || null;
 
 export default rentExpenseSlice.reducer;

@@ -16,7 +16,7 @@ const TerminateAgreementModal = ({ site, agreement, onClose, onSubmit }) => {
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!effectiveDate || !effectiveMonth) {
       toast.error('Please select effective termination date and month of closure.')
@@ -24,7 +24,7 @@ const TerminateAgreementModal = ({ site, agreement, onClose, onSubmit }) => {
     }
 
     // Validate that the effective date is within the agreement range
-    if (agreement) {
+    if (agreement?.startDate && agreement?.endDate) {
       const selected = new Date(effectiveDate)
       const start = new Date(agreement.startDate)
       const end = new Date(agreement.endDate)
@@ -35,11 +35,14 @@ const TerminateAgreementModal = ({ site, agreement, onClose, onSubmit }) => {
       }
     }
 
-    setIsSubmitting(true)
-    setTimeout(() => {
-      onSubmit({ effectiveDate, effectiveMonth, reason, cancelUnpaid })
+    try {
+      setIsSubmitting(true)
+      await onSubmit({ effectiveDate, effectiveMonth, reason, cancelUnpaid })
+    } catch (err) {
+      console.error("Error in agreement termination form submit:", err);
+    } finally {
       setIsSubmitting(false)
-    }, 600)
+    }
   }
 
   return (

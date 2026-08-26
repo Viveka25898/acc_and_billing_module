@@ -16,6 +16,19 @@ const MonthlyVoucherGenerator = ({ site, agreement, onSuccess, onCancel }) => {
   const [amount, setAmount] = useState("");
   const [validationError, setValidationError] = useState("");
 
+  const effectiveMonth =
+    agreement?.effectiveMonth ||
+    site?.effectiveMonth ||
+    site?.agreement?.effectiveMonth ||
+    (site?.agreementStatus === 'terminated' && agreement?.endDate ? agreement.endDate.slice(0, 7) : null);
+
+  const isTerminated =
+    agreement?.status === 'terminated' ||
+    site?.status === 'inactive' ||
+    site?.hasActiveAgreement === false ||
+    site?.agreementStatus === 'terminated' ||
+    !!effectiveMonth;
+
   // Auto-populate month to current month or agreement start month
   useEffect(() => {
     if (agreement?.startDate) {
@@ -41,11 +54,18 @@ const MonthlyVoucherGenerator = ({ site, agreement, onSuccess, onCancel }) => {
     }
   }, [agreement, site]);
 
-  // Validate selected month
+  // Validate selected month against agreement term and termination effective month
   const validateMonth = (selectedMonth) => {
     if (!selectedMonth) {
       setValidationError("");
       return true;
+    }
+
+    if (isTerminated && effectiveMonth) {
+      if (selectedMonth > effectiveMonth) {
+        setValidationError(`This agreement was terminated effective ${effectiveMonth}. Monthly vouchers cannot be generated for subsequent months.`);
+        return false;
+      }
     }
 
     if (agreement?.startDate && agreement?.endDate) {
@@ -62,7 +82,7 @@ const MonthlyVoucherGenerator = ({ site, agreement, onSuccess, onCancel }) => {
         return false;
       }
 
-      if (selectedFirstDay > endFirstDay) {
+      if (!isTerminated && selectedFirstDay > endFirstDay) {
         setValidationError(`Selected month is after agreement end date (${agreement.endDate})`);
         return false;
       }
@@ -161,6 +181,19 @@ const MonthlyVoucherGenerator = ({ site, agreement, onSuccess, onCancel }) => {
 
       {/* Form Content */}
       <form onSubmit={handleSubmit} className="p-5 sm:p-7 space-y-5 overflow-y-auto max-h-[calc(92vh-130px)]">
+        {/* Terminated Notice Banner */}
+        {isTerminated && (
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl shadow-2xs text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <h4 className="font-bold text-amber-900 text-xs sm:text-sm">Agreement Terminated</h4>
+            </div>
+            <p className="text-xs text-amber-800 mt-1">
+              This rent agreement was terminated effective <strong className="font-bold">{effectiveMonth || 'closure date'}</strong>. You cannot generate monthly rent vouchers for any month after {effectiveMonth || 'the termination effective month'}.
+            </p>
+          </div>
+        )}
+
         {/* Site Overview Badge */}
         {site && (
           <div className="bg-gradient-to-r from-slate-50 via-emerald-50/30 to-teal-50/20 border border-emerald-100 rounded-xl p-4 shadow-2xs">
@@ -199,7 +232,7 @@ const MonthlyVoucherGenerator = ({ site, agreement, onSuccess, onCancel }) => {
                 value={month}
                 onChange={handleMonthChange}
                 min={agreement?.startDate ? agreement.startDate.slice(0, 7) : undefined}
-                max={agreement?.endDate ? agreement.endDate.slice(0, 7) : undefined}
+                max={effectiveMonth || (agreement?.endDate ? agreement.endDate.slice(0, 7) : undefined)}
                 className={`w-full px-4 py-3 bg-slate-50/50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 transition-all text-sm font-bold text-slate-800 ${
                   validationError ? "border-red-500 focus:ring-red-500/30" : "border-slate-200 focus:ring-emerald-500/30 focus:border-emerald-600"
                 }`}

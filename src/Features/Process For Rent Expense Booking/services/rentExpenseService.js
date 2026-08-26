@@ -254,6 +254,36 @@ export const fetchSiteVouchers = async (siteId, params = {}) => {
   }
 };
 
+/**
+ * terminateRentAgreement
+ * Prematurely terminates a rent agreement and cancels unpaid future vouchers on backend.
+ * @param {string} agreementId Agreement ID (e.g. AGR-1787243934808)
+ * @param {Object} payload { terminationDate, effectiveMonth, reason, cancelUnpaid }
+ * @returns {Promise<Object>} Terminated agreement response details
+ */
+export const terminateRentAgreement = async (agreementId, payload) => {
+  try {
+    const endpoints = [
+      `/accounts/rent-expense/agreements/${agreementId}/terminate`,
+      `/rent-expense/agreements/${agreementId}/terminate`,
+      `/rent/agreements/${agreementId}/terminate`,
+    ];
 
+    const response = await postWithFallback(endpoints, payload);
+    const body = response.data;
 
+    if (!body || body.success === false) {
+      const errObj = new Error(body?.message || 'Failed to terminate rent agreement.');
+      errObj.responseData = body;
+      throw errObj;
+    }
 
+    return body.data || body.results || body;
+  } catch (error) {
+    console.error('❌ Error in terminateRentAgreement:', error);
+    if (error.response?.data) {
+      error.responseData = error.response.data;
+    }
+    throw error;
+  }
+};
