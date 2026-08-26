@@ -103,12 +103,12 @@ const AESidebar = () => {
           <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/ae/salaries-pending-approvals">Salaries Pending Approvals</NavLink>
           </li>
-          <hr className="border-white mx-4" />
+          <hr className="border-white mx-4" />*/}
 
           <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm ">
             <NavLink to="/dashboard/ae/conveyance-approval">Conveyance Approval</NavLink>
           </li>
-          <hr className="border-white mx-4" />*/}
+          <hr className="border-white mx-4" />
 
            <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm mb-10">
             <NavLink to="/dashboard/ae/reliever-approval">Reliever Approval</NavLink>
