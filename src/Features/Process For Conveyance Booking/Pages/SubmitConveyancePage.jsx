@@ -11,9 +11,15 @@ const getMyRequestsPath = (role) => {
   const normRole = (role || "").toLowerCase().replace(/_/g, "-");
   if (normRole === "regional-head") return "/dashboard/regional-head/my-conveyance-requests";
   if (normRole === "line-manager") return "/dashboard/line-manager/my-conveyance-requests";
+  if (normRole === "manager" || normRole === "operation-manager" || normRole === "facility-manager") return "/dashboard/manager/my-conveyance-requests";
   if (normRole === "avp-operations" || normRole === "avp") return "/dashboard/avp-operations/my-conveyance-requests";
   if (normRole === "vp-operations" || normRole === "vp") return "/dashboard/vp-operations/my-conveyance-requests";
+  if (normRole === "operation-executive") return "/dashboard/operation-executive/my-conveyance-requests";
   if (normRole === "account-executive" || normRole === "ae") return "/dashboard/ae/my-conveyance-requests";
+  if (normRole === "supervisor" || normRole === "site-supervisor") return "/dashboard/supervisor/my-conveyance-requests";
+  if (normRole === "compliance-team") return "/dashboard/compliance-team/my-conveyance-requests";
+  if (normRole === "compliance-manager") return "/dashboard/compliance-manager/my-conveyance-requests";
+  if (normRole === "payroll-team" || normRole === "payroll-executive") return "/dashboard/payroll-team/my-conveyance-requests";
   return "/dashboard/employee/my-conveyance-requests";
 };
 

@@ -14,6 +14,28 @@ export default defineConfig({
     global: 'globalThis',
   },
 
+  build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('pdfjs-dist')) return 'vendor-pdfjs';
+            if (id.includes('xlsx') || id.includes('exceljs') || id.includes('file-saver')) return 'vendor-excel';
+            if (id.includes('recharts') || id.includes('d3')) return 'vendor-charts';
+            if (id.includes('react-icons') || id.includes('lucide-react')) return 'vendor-icons';
+            if (id.includes('@reduxjs') || id.includes('react-redux')) return 'vendor-redux';
+            if (id.includes('react-dom') || id.includes('react-router')) return 'vendor-core';
+            return 'vendor-libs';
+          }
+        },
+      },
+    },
+  },
+
   server: {
     port: 5173,
 

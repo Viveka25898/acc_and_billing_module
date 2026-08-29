@@ -1,258 +1,279 @@
+import React, { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import AuthLayout from '../Auth/AuthLayout'
 import Login from '../Auth/Pages/Login'
 import ProtectedRoute from './ProtectedRoute'
-import EmployeeDashboard from '../Roles/Employee/Pages/EmployeeDashboard'
-import EmployeeHome from '../Roles/Employee/Components/EmployeeHome'
-import AdvanceRequestForm from '../Features/Advance Request/AdvanceRequestForm'
-import LineManagerHome from '../Roles/Line Manager/Components/LineManagerHome'
-import LineManagerDashboard from '../Roles/Line Manager/Pages/LineManagerDashboard'
-import ManagerApproval from '../Features/Advance Request/ManagerApproal'
-import VPDashboard from '../Roles/VP Operations/Pages/VPDashboard'
-import VPHome from '../Roles/VP Operations/Components/VPHome'
-import VPApproval from '../Features/Advance Request/VPApproval'
-import EmployeeMyRequests from '../Features/Advance Request/Pages/EmployeeMyRequests'
-import EmployeeAdvanceSettlementPage from '../Features/Advance Settlement/Pages/EmployeeAdvanceSettlementPage'
-import ExpenseRequestsPage from '../Features/Advance Settlement/Pages/ExpenseRequestsPage'
-import MySettlements from '../Features/Advance Settlement/Components/MySettlements'
-import SupervisorDashboard from '../Roles/Supervisor/Pages/SupervisorDashboard'
-import SupervisorHome from '../Roles/Supervisor/Components/SupervisorHome'
-import MaterialRequestForm from '../Features/PurchaseBookingHKMaterial/MaterialRequestsForm'
-import ManagerDashboard from '../Roles/Manager/Pages/ManagerDashboard'
-import ManagerHome from '../Roles/Manager/Components/ManagerHome'
-import MaterialRequestApprovalTable from '../Features/PurchaseBookingHKMaterial/MaterialRequestApproval'
-import PHDashboard from '../Roles/PH/Pages/PHDashboard'
-import PHHome from '../Roles/PH/Components/PHHome'
-import ProjectHeadApprovalTable from '../Features/PurchaseBookingHKMaterial/ProjectHeadApprovalTable'
-import PurchaseOrderForm from '../Features/PurchaseBookingHKMaterial/POForm'
-import VendorDashboard from '../Roles/Vendor/Pages/VendorDashboard'
-import VendorHome from '../Roles/Vendor/Components/VendorHome'
-import MaterialRequestTable from '../Features/PurchaseBookingHKMaterial/MaterialRequestTable'
-import GenerateDCForm from '../Features/PurchaseBookingHKMaterial/GenerateDCForm'
-import VendorDCPage from '../Features/PurchaseBookingHKMaterial/VendorDCPage'
-import DCUpload from '../Features/PurchaseBookingHKMaterial/DCUpload'
-import VendorInvoiceUpload from '../Features/PurchaseBookingHKMaterial/VendorInvoiceUpload'
-import MyInvoiceUpload from '../Features/PurchaseBookingHKMaterial/MyInvoiceUpload'
-import PHInvoiceReview from '../Features/PurchaseBookingHKMaterial/PHInvoiceReview'
-import AEDashboard from '../Roles/AE/Pages/AEDashboard'
-import AEHome from '../Roles/AE/Components/AEHome'
-import AEInvoiceReviewPage from '../Features/PurchaseBookingHKMaterial/AEInvoiceReviewPage'
-import AEInvoiceApproval from '../Features/PurchaseBookingHKMaterial/AEInvoiceApproval'
-import VendorCreationForm from '../Features/Vendor Creation Process/VendorCreationForm'
-import VendorTable from '../Features/Vendor Creation Process/VendorsTable'
-import ProcessPaymentPage from '../Features/Process For Payments/ProcessPaymentPage'
-import TDSMapping from '../Features/Process of Auto JV for TDS Booking/Pages/TDSMapping'
-import StatutorySetup from '../Features/Process of Auto JV for TDS Booking/Pages/StatutorySetup'
-import ExpenseBookingPage from '../Features/Process of Auto JV for TDS Booking/Pages/ExpenseBooking'
-import VendorLedger from '../Features/Process of Auto JV for TDS Booking/Pages/VendorLedger'
-import FixedAssetPOsTable from '../Features/Process for Fixed Assets/Pages/FixedAssetsPOsTable'
-import PHInvoiceHistory from '../Features/PurchaseBookingHKMaterial/PHInvoiceHistory'
-import FixedAssetEntryPage from '../Features/Process for Fixed Assets/Pages/FixedAssetEntryPage'
-import ComplianceTeamDashboard from '../Roles/Compliance Team/Pages/ComplianceTeamDashboard'
-import ComplianceTeamHome from '../Roles/Compliance Team/Components/ComplianceTeamHome'
-import ComplianceEntryPage from '../Features/Payment Entry For Statutory Compliances/Pages/ComplianceEntryPage'
-import ComplianceTeamSubmittedEntries from '../Features/Payment Entry For Statutory Compliances/Pages/ComplianceTeamSubmittedEntries'
-import ComplianceManagerHome from '../Roles/Compliance Manager/Components/ComplianceManagerHome'
-import ComplianceManagerDashboard from '../Roles/Compliance Manager/Pages/ComplianceManagerDashboard'
-import ComplianceManagerApprovalPage from '../Features/Payment Entry For Statutory Compliances/Pages/ComplianceManagerAprovalPage'
-import AEPendingCompliancePage from '../Features/Payment Entry For Statutory Compliances/Pages/AEPendingCompliancePage'
-import AEPaidCompliancePage from '../Features/Payment Entry For Statutory Compliances/Pages/AEPaidCompliancePage'
-import PayrollTeamDashboard from '../Roles/Payroll Team/Pages/PayrollTeamDashboard'
-import PayrollTeamHome from '../Roles/Payroll Team/Components/PayrollTeamHome'
-import PayrollPaymentEntryPage from '../Features/Payment Entry for Salaries/Pages/PayrollPaymentEntryPage'
-import PayrollTeamSubmittedEntriesPage from '../Features/Payment Entry for Salaries/Components/PayrollTeamSubmittedEntriesPage'
-import AEPendingRequestsPage from '../Features/Payment Entry for Salaries/Pages/AEPendingRequestPage'
-import GeneratePOPage from '../Features/Expense Booking other than Uniform and Materials/Pages/GeneratePOPage'
-import MyPOsList from '../Features/Expense Booking other than Uniform and Materials/Pages/MyPOList'
-import VendorUploadInvoicePage from '../Features/Expense Booking other than Uniform and Materials/Pages/VendorUploadInvoicePage'
-import VendorPOListPage from '../Features/Expense Booking other than Uniform and Materials/Pages/VendorPoListPage'
-import VendorMyInvoicesPage from '../Features/Expense Booking other than Uniform and Materials/Pages/VendorMyInvoicePage'
-import InvoiceVerificationPage from '../Features/Expense Booking other than Uniform and Materials/Pages/InvoiceVerificationPage'
-import FinancialHeadDashboard from '../Roles/Financial Head/Pages/FinancialHeadDashboard'
-import FinancialHeadHome from '../Roles/Financial Head/Components/FinancialHeadHome'
-import FinancialHeadInvoiceApprovalPage from '../Features/Expense Booking other than Uniform and Materials/Pages/FinancialHeadInvoiceApprovalPage'
-import SubmitConveyancePage from '../Features/Process For Conveyance Booking/Pages/SubmitConveyancePage'
-import MyConveyanceRequestsPage from '../Features/Process For Conveyance Booking/Pages/MyConveyanceRequestPage'
-import ManagerConveyanceApprovalsPage from '../Features/Process For Conveyance Booking/Pages/ConveyanceApprovalPage'
-import LinemanagerConveyanceFormPage from '../Features/Process For Conveyance Booking/Pages/LineManagerConveyanceFormPage'
-import VPOperationsConveyanceApprovalPage from '../Features/Process For Conveyance Booking/Pages/VPOperationsConveyanceApprovalPage'
-import VPConveyanceFormPage from '../Features/Process For Conveyance Booking/Pages/VPConveyanceFormPage'
-import AEConveyanceApprovalPage from '../Features/Process For Conveyance Booking/Pages/AEConveyanceApprovalPage'
-import AVPConveyanceApprovalPage from '../Features/Process For Conveyance Booking/Pages/AVPConveyanceApprovalPage'
-import PHRequestApprovalPage from '../Features/Process For Prepaid Entry/Pages/PH/PHRequestsAprovalPage'
-import POForm from '../Features/Process For Prepaid Entry/Pages/PH/POForm'
-import PHGeneratePOPage from '../Features/Process For Prepaid Entry/Pages/PH/PhGeneratePOPage'
-import InvoiceUploadForm from '../Features/Process For Prepaid Entry/Pages/Vendor/InvoiceUploadForm'
-import VendorRequestsPage from '../Features/Process For Prepaid Entry/Pages/Vendor/VendorRequestsPage'
-import VendorGenerateDCPage from '../Features/Process For Prepaid Entry/Pages/Vendor/VendorGenerateDCPage'
-import DCPreviewPage from '../Features/Process For Prepaid Entry/Pages/Vendor/DCPreviewPage'
-import POSummary from '../Features/Process For Prepaid Entry/Pages/PH/PoSummery'
-import PInvoiceUploadForm from '../Features/Process For Prepaid Entry/Pages/Vendor/InvoiceUploadForm'
-import VendorInvoiceForm from '../Features/Process For Prepaid Entry/Components/VendorInvoiceForm'
-import VendorInvoicePage from '../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoicePage'
-import VendorInvoicePreviewPage from '../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoicePreviewPage'
-import MyInvoicesPage from '../Features/Process For Prepaid Entry/Pages/Vendor/MyInvoiceTable'
-import PHInvoiceApprovalPage from '../Features/Process For Prepaid Entry/Pages/PH/PHInvoiceApprovalPage'
-import BillingManagerHome from '../Roles/Billing Manager/Components/BillingManagerHome'
-import BillngManagerDashboard from '../Roles/Billing Manager/Pages/BillingManagerDashboard'
-import BillingManagerApprovalPage from '../Features/Process For Prepaid Entry/Pages/Billing Manager/BillingMnagerApprovalPage'
+
+// Component Loading Spinner Fallback for smooth route transitions
+const PageLoader = () => (
+  <div className="min-h-[400px] w-full flex items-center justify-center p-8 bg-gray-50/50">
+    <div className="flex flex-col items-center space-y-3">
+      <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-600 border-t-transparent"></div>
+      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Loading Module...</span>
+    </div>
+  </div>
+)
+
+// Helper to load components lazily wrapped in Suspense
+const load = (factory) => {
+  const Component = lazy(factory)
+  return (props) => (
+    <Suspense fallback={<PageLoader />}>
+      <Component {...props} />
+    </Suspense>
+  )
+}
+
+// ============== LAZY LOADED ROUTE COMPONENTS ==============
+const EmployeeDashboard = load(() => import('../Roles/Employee/Pages/EmployeeDashboard'))
+const EmployeeHome = load(() => import('../Roles/Employee/Components/EmployeeHome'))
+const AdvanceRequestForm = load(() => import('../Features/Advance Request/AdvanceRequestForm'))
+const LineManagerHome = load(() => import('../Roles/Line Manager/Components/LineManagerHome'))
+const LineManagerDashboard = load(() => import('../Roles/Line Manager/Pages/LineManagerDashboard'))
+const ManagerApproval = load(() => import('../Features/Advance Request/ManagerApproal'))
+const VPDashboard = load(() => import('../Roles/VP Operations/Pages/VPDashboard'))
+const VPHome = load(() => import('../Roles/VP Operations/Components/VPHome'))
+const VPApproval = load(() => import('../Features/Advance Request/VPApproval'))
+const EmployeeMyRequests = load(() => import('../Features/Advance Request/Pages/EmployeeMyRequests'))
+const EmployeeAdvanceSettlementPage = load(() => import('../Features/Advance Settlement/Pages/EmployeeAdvanceSettlementPage'))
+const ExpenseRequestsPage = load(() => import('../Features/Advance Settlement/Pages/ExpenseRequestsPage'))
+const MySettlements = load(() => import('../Features/Advance Settlement/Components/MySettlements'))
+const SupervisorDashboard = load(() => import('../Roles/Supervisor/Pages/SupervisorDashboard'))
+const SupervisorHome = load(() => import('../Roles/Supervisor/Components/SupervisorHome'))
+const MaterialRequestForm = load(() => import('../Features/PurchaseBookingHKMaterial/MaterialRequestsForm'))
+const ManagerDashboard = load(() => import('../Roles/Manager/Pages/ManagerDashboard'))
+const ManagerHome = load(() => import('../Roles/Manager/Components/ManagerHome'))
+const MaterialRequestApprovalTable = load(() => import('../Features/PurchaseBookingHKMaterial/MaterialRequestApproval'))
+const PHDashboard = load(() => import('../Roles/PH/Pages/PHDashboard'))
+const PHHome = load(() => import('../Roles/PH/Components/PHHome'))
+const ProjectHeadApprovalTable = load(() => import('../Features/PurchaseBookingHKMaterial/ProjectHeadApprovalTable'))
+const PurchaseOrderForm = load(() => import('../Features/PurchaseBookingHKMaterial/POForm'))
+const VendorDashboard = load(() => import('../Roles/Vendor/Pages/VendorDashboard'))
+const VendorHome = load(() => import('../Roles/Vendor/Components/VendorHome'))
+const MaterialRequestTable = load(() => import('../Features/PurchaseBookingHKMaterial/MaterialRequestTable'))
+const GenerateDCForm = load(() => import('../Features/PurchaseBookingHKMaterial/GenerateDCForm'))
+const VendorDCPage = load(() => import('../Features/PurchaseBookingHKMaterial/VendorDCPage'))
+const DCUpload = load(() => import('../Features/PurchaseBookingHKMaterial/DCUpload'))
+const VendorInvoiceUpload = load(() => import('../Features/PurchaseBookingHKMaterial/VendorInvoiceUpload'))
+const MyInvoiceUpload = load(() => import('../Features/PurchaseBookingHKMaterial/MyInvoiceUpload'))
+const PHInvoiceReview = load(() => import('../Features/PurchaseBookingHKMaterial/PHInvoiceReview'))
+const AEDashboard = load(() => import('../Roles/AE/Pages/AEDashboard'))
+const AEHome = load(() => import('../Roles/AE/Components/AEHome'))
+const AEInvoiceReviewPage = load(() => import('../Features/PurchaseBookingHKMaterial/AEInvoiceReviewPage'))
+const AEInvoiceApproval = load(() => import('../Features/PurchaseBookingHKMaterial/AEInvoiceApproval'))
+const VendorCreationForm = load(() => import('../Features/Vendor Creation Process/VendorCreationForm'))
+const VendorTable = load(() => import('../Features/Vendor Creation Process/VendorsTable'))
+const ProcessPaymentPage = load(() => import('../Features/Process For Payments/ProcessPaymentPage'))
+const TDSMapping = load(() => import('../Features/Process of Auto JV for TDS Booking/Pages/TDSMapping'))
+const StatutorySetup = load(() => import('../Features/Process of Auto JV for TDS Booking/Pages/StatutorySetup'))
+const ExpenseBookingPage = load(() => import('../Features/Process of Auto JV for TDS Booking/Pages/ExpenseBooking'))
+const VendorLedger = load(() => import('../Features/Process of Auto JV for TDS Booking/Pages/VendorLedger'))
+const FixedAssetPOsTable = load(() => import('../Features/Process for Fixed Assets/Pages/FixedAssetsPOsTable'))
+const PHInvoiceHistory = load(() => import('../Features/PurchaseBookingHKMaterial/PHInvoiceHistory'))
+const FixedAssetEntryPage = load(() => import('../Features/Process for Fixed Assets/Pages/FixedAssetEntryPage'))
+const ComplianceTeamDashboard = load(() => import('../Roles/Compliance Team/Pages/ComplianceTeamDashboard'))
+const ComplianceTeamHome = load(() => import('../Roles/Compliance Team/Components/ComplianceTeamHome'))
+const ComplianceEntryPage = load(() => import('../Features/Payment Entry For Statutory Compliances/Pages/ComplianceEntryPage'))
+const ComplianceTeamSubmittedEntries = load(() => import('../Features/Payment Entry For Statutory Compliances/Pages/ComplianceTeamSubmittedEntries'))
+const ComplianceManagerHome = load(() => import('../Roles/Compliance Manager/Components/ComplianceManagerHome'))
+const ComplianceManagerDashboard = load(() => import('../Roles/Compliance Manager/Pages/ComplianceManagerDashboard'))
+const ComplianceManagerApprovalPage = load(() => import('../Features/Payment Entry For Statutory Compliances/Pages/ComplianceManagerAprovalPage'))
+const AEPendingCompliancePage = load(() => import('../Features/Payment Entry For Statutory Compliances/Pages/AEPendingCompliancePage'))
+const AEPaidCompliancePage = load(() => import('../Features/Payment Entry For Statutory Compliances/Pages/AEPaidCompliancePage'))
+const PayrollTeamDashboard = load(() => import('../Roles/Payroll Team/Pages/PayrollTeamDashboard'))
+const PayrollTeamHome = load(() => import('../Roles/Payroll Team/Components/PayrollTeamHome'))
+const PayrollPaymentEntryPage = load(() => import('../Features/Payment Entry for Salaries/Pages/PayrollPaymentEntryPage'))
+const PayrollTeamSubmittedEntriesPage = load(() => import('../Features/Payment Entry for Salaries/Components/PayrollTeamSubmittedEntriesPage'))
+const AEPendingRequestsPage = load(() => import('../Features/Payment Entry for Salaries/Pages/AEPendingRequestPage'))
+const GeneratePOPage = load(() => import('../Features/Expense Booking other than Uniform and Materials/Pages/GeneratePOPage'))
+const MyPOsList = load(() => import('../Features/Expense Booking other than Uniform and Materials/Pages/MyPOList'))
+const VendorUploadInvoicePage = load(() => import('../Features/Expense Booking other than Uniform and Materials/Pages/VendorUploadInvoicePage'))
+const VendorPOListPage = load(() => import('../Features/Expense Booking other than Uniform and Materials/Pages/VendorPoListPage'))
+const VendorMyInvoicesPage = load(() => import('../Features/Expense Booking other than Uniform and Materials/Pages/VendorMyInvoicePage'))
+const InvoiceVerificationPage = load(() => import('../Features/Expense Booking other than Uniform and Materials/Pages/InvoiceVerificationPage'))
+const FinancialHeadDashboard = load(() => import('../Roles/Financial Head/Pages/FinancialHeadDashboard'))
+const FinancialHeadHome = load(() => import('../Roles/Financial Head/Components/FinancialHeadHome'))
+const FinancialHeadInvoiceApprovalPage = load(() => import('../Features/Expense Booking other than Uniform and Materials/Pages/FinancialHeadInvoiceApprovalPage'))
+const SubmitConveyancePage = load(() => import('../Features/Process For Conveyance Booking/Pages/SubmitConveyancePage'))
+const MyConveyanceRequestsPage = load(() => import('../Features/Process For Conveyance Booking/Pages/MyConveyanceRequestPage'))
+const ManagerConveyanceApprovalsPage = load(() => import('../Features/Process For Conveyance Booking/Pages/ConveyanceApprovalPage'))
+const LinemanagerConveyanceFormPage = load(() => import('../Features/Process For Conveyance Booking/Pages/LineManagerConveyanceFormPage'))
+const VPOperationsConveyanceApprovalPage = load(() => import('../Features/Process For Conveyance Booking/Pages/VPOperationsConveyanceApprovalPage'))
+const VPConveyanceFormPage = load(() => import('../Features/Process For Conveyance Booking/Pages/VPConveyanceFormPage'))
+const AEConveyanceApprovalPage = load(() => import('../Features/Process For Conveyance Booking/Pages/AEConveyanceApprovalPage'))
+const AVPConveyanceApprovalPage = load(() => import('../Features/Process For Conveyance Booking/Pages/AVPConveyanceApprovalPage'))
+const PHRequestApprovalPage = load(() => import('../Features/Process For Prepaid Entry/Pages/PH/PHRequestsAprovalPage'))
+const POForm = load(() => import('../Features/Process For Prepaid Entry/Pages/PH/POForm'))
+const PHGeneratePOPage = load(() => import('../Features/Process For Prepaid Entry/Pages/PH/PhGeneratePOPage'))
+const InvoiceUploadForm = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/InvoiceUploadForm'))
+const VendorRequestsPage = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/VendorRequestsPage'))
+const VendorGenerateDCPage = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/VendorGenerateDCPage'))
+const DCPreviewPage = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/DCPreviewPage'))
+const POSummary = load(() => import('../Features/Process For Prepaid Entry/Pages/PH/PoSummery'))
+const PInvoiceUploadForm = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/InvoiceUploadForm'))
+const VendorInvoiceForm = load(() => import('../Features/Process For Prepaid Entry/Components/VendorInvoiceForm'))
+const VendorInvoicePage = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoicePage'))
+const VendorInvoicePreviewPage = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/VendorInvoicePreviewPage'))
+const MyInvoicesPage = load(() => import('../Features/Process For Prepaid Entry/Pages/Vendor/MyInvoiceTable'))
+const PHInvoiceApprovalPage = load(() => import('../Features/Process For Prepaid Entry/Pages/PH/PHInvoiceApprovalPage'))
+const BillingManagerHome = load(() => import('../Roles/Billing Manager/Components/BillingManagerHome'))
+const BillngManagerDashboard = load(() => import('../Roles/Billing Manager/Pages/BillingManagerDashboard'))
+const BillingManagerApprovalPage = load(() => import('../Features/Process For Prepaid Entry/Pages/Billing Manager/BillingMnagerApprovalPage'))
 
 // ============== BILLING MODULE IMPORTS ==============
-import BillingLayout from '../Features/Billing/Components/BillingLayout'
-import BillingDashboard from '../Features/Billing/Pages/BillingDashboard'
-import AutoBillingWizard from '../Features/Billing/Pages/AutoBilling/AutoBillingWizard'
-import ProformaInvoices from '../Features/Billing/Pages/ProformaInvoices'
-import ManualBilling from '../Features/Billing/Pages/ManualBilling/ManualBilling'
-import RateCardPage from '../Features/Billing/Pages/RateCardPage'
-import ArrearBillingPage from '../Features/Billing/Pages/ArrearBillingPage'
-import ArrearBillingForm from '../Features/Billing/Pages/ArrearBillingForm'
-import ArrearBillingInvoicePreview from '../Features/Billing/Pages/ArrearBillingInvoicePreview'
-import BonusLeaveEncashmentList from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentList'
-import BonusLeaveEncashmentForm from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentForm'
-import BonusLeaveEncashmentCalculation from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentCalculation'
-import BonusLeaveEncashmentInvoicePreview from '../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentInvoicePreview'
-import IRNInvoices from '../Features/Billing/Pages/IRNInvoices'
-// Placeholder imports for pages we'll build next
+const BillingLayout = load(() => import('../Features/Billing/Components/BillingLayout'))
+const BillingDashboard = load(() => import('../Features/Billing/Pages/BillingDashboard'))
+const AutoBillingWizard = load(() => import('../Features/Billing/Pages/AutoBilling/AutoBillingWizard'))
+const ProformaInvoices = load(() => import('../Features/Billing/Pages/ProformaInvoices'))
+const ManualBilling = load(() => import('../Features/Billing/Pages/ManualBilling/ManualBilling'))
+const RateCardPage = load(() => import('../Features/Billing/Pages/RateCardPage'))
+const ArrearBillingPage = load(() => import('../Features/Billing/Pages/ArrearBillingPage'))
+const ArrearBillingForm = load(() => import('../Features/Billing/Pages/ArrearBillingForm'))
+const ArrearBillingInvoicePreview = load(() => import('../Features/Billing/Pages/ArrearBillingInvoicePreview'))
+const BonusLeaveEncashmentList = load(() => import('../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentList'))
+const BonusLeaveEncashmentForm = load(() => import('../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentForm'))
+const BonusLeaveEncashmentCalculation = load(() => import('../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentCalculation'))
+const BonusLeaveEncashmentInvoicePreview = load(() => import('../Features/Billing/Bonus Leave Encashment/Pages/BonusLeaveEncashmentInvoicePreview'))
+const IRNInvoices = load(() => import('../Features/Billing/Pages/IRNInvoices'))
+
 const InvoiceListPage = () => <div className="p-6">Invoice List - Coming Soon</div>
-// ===================================================
 
-import UploadStatementPage from '../Features/Process For Bank Reconcilation/Pages/UploadStatementPage'
-import ReconciliationHistoryPage from '../Features/Process For Bank Reconcilation/Pages/ReconcilationHistoryPage'
-import ViewReconciliationReportPage from '../Features/Process For Bank Reconcilation/Pages/ViewReconciliationReportPage'
-import RentExpenseBookingPage from '../Features/Process For Rent Expense Booking/Pages/RentExpenseBookingPage'
-import OperationExecutiveDashboard from '../Roles/Operation Executive/Pages/OperationExecutiveDashboard'
-import OperationExecutiveHome from '../Roles/Operation Executive/Components/OperationExecutiveHome'
-import OperationExecutiveReliverPage from '../Features/Process For Reliver Payments/Pages/OperationExecutiveReliverPage'
-import OperationExecutiveMyRequestsPage from '../Features/Process For Reliver Payments/Pages/OperationExecutiveMyRequestsPage'
-import LineManagerRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/LineManagerRelieverApprovalPage'
-import AVPRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/AVPRelieverApprovalPage'
-import VPRelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/VPRelieverApprovalPage'
-import AERelieverApprovalPage from '../Features/Process For Reliver Payments/Pages/AERelieverApprovalPage'
-import GSTR2BRecoPage from '../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BReco'
-import GSTR2BRecoHistoryPage from '../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BHistory'
-import GSTR2BRecoReportPage from '../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BRecoReportPage'
-import ReconciliationStatement from '../Features/Process For Bank Reconcilation/Components/ReconciliationStatement'
-import ReconciliationStatementPage from '../Features/Process For Bank Reconcilation/Pages/ReconciliationStatementPage'
-import AttendanceUpload from '../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Components/AttendenceUpload'
-import AttendanceUploadPage from '../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendenceuploadPage'
-import MyUploadedAttendance from '../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/MyUploadAttendence'
-import AttendencePayrollDashboard from '../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePayrollDashboard'
-import AttendancePunchingList from '../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePunchingList'
-import AttendanceDetails from '../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendenceDetails'
-import ManagerAdvanceRequest from '../Features/Advance Request/Pages/ManagerAdvanceRequest'
-import ManagerMyRequests from '../Features/Advance Request/Pages/ManagerMyRequests'
-import VPAdvanceRequestForm from '../Features/Advance Request/Pages/VPAdvanceRequestForm'
-import VPMyRequest from '../Features/Advance Request/Pages/VPMyRequest'
-import AEAdvanceApprovalPage from '../Features/Advance Request/Pages/AEAdvanceApprovalPage'
-import VPReview from '../Features/Advance Settlement/Pages/VPReview'
-import AEAdvanceSettlementApproval from '../Features/Advance Settlement/Pages/AEAdvanaceSettlementApprovalPage'
-import AMAdvanceSettlementApproval from '../Features/Advance Settlement/Pages/AMAdvanceSettlementApprovalPage'
-import LineManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/LineManagerAdvanceSettlementForm'
-import VPAdvanceSettlementForm from '../Features/Advance Settlement/Pages/VPAdvanceSettlementForm'
-import ManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ManagerAdvanceSettlementForm'
-import ComplianceTeamAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ComplianceTeamAdvanceSettlementForm'
-import ComplianceManagerAdvanceSettlementForm from '../Features/Advance Settlement/Pages/ComplianceManagerAdvanceSettlementForm'
-import OperationExecutiveAdvanceSettlementForm from '../Features/Advance Settlement/Pages/OperationExecutiveAdvanceSettlementForm'
-import AVPExpenseRequestsPage from '../Features/Advance Settlement/Pages/AVPExpenseRequestsPage'
-import AVPAdvanceSettlementForm from '../Features/Advance Settlement/Pages/AVPAdvanceSettlementForm'
-import ManagerAdvanceRequestForm from '../Features/Advance Request/Pages/ManagerAdvanceRequestForm'
-import LineManagerMyRequests from '../Features/Advance Request/Pages/LineManagerMyRequests'
-import ComplianceTeamAdvanceRequestForm from '../Features/Advance Request/Pages/ComplainceTeamAdvanceRequestForm'
-import ComplianceTeamMyRequests from '../Features/Advance Request/Pages/ComplianceTeamMyRequests'
-import ComplianceManagerAdvanceRequestForm from '../Features/Advance Request/Pages/ComplainceManagerAdvanceRquestForm'
-import ComplianceManagerMyRequests from '../Features/Advance Request/Pages/ComplianceManagerMyRequests'
-import PayrollTeamAdvanceRequestForm from '../Features/Advance Request/Pages/PayrollTeamAdvanceRequestform'
-import PayrollTeamMyRequests from '../Features/Advance Request/Pages/PayrollTeamMyRequests'
-import OperationExecutiveAdvanceRequestForm from '../Features/Advance Request/Pages/OperationExecutiveAdvanceRequestForm'
-import OperationExecutiveMyRequests from '../Features/Advance Request/Pages/OperationExecutiveMyRequests'
-import OperationExecutiveMyAdvanceRequests from '../Features/Advance Request/Pages/OperationExecutiveMyRequests'
-import AccountManagerDashboard from '../Roles/Account Manager/Pages/AccountManagerDashboard'
-import AccountManagerHome from '../Roles/Account Manager/Components/AccountManagerHome'
+const UploadStatementPage = load(() => import('../Features/Process For Bank Reconcilation/Pages/UploadStatementPage'))
+const ReconciliationHistoryPage = load(() => import('../Features/Process For Bank Reconcilation/Pages/ReconcilationHistoryPage'))
+const ViewReconciliationReportPage = load(() => import('../Features/Process For Bank Reconcilation/Pages/ViewReconciliationReportPage'))
+const RentExpenseBookingPage = load(() => import('../Features/Process For Rent Expense Booking/Pages/RentExpenseBookingPage'))
+const OperationExecutiveDashboard = load(() => import('../Roles/Operation Executive/Pages/OperationExecutiveDashboard'))
+const OperationExecutiveHome = load(() => import('../Roles/Operation Executive/Components/OperationExecutiveHome'))
+const OperationExecutiveReliverPage = load(() => import('../Features/Process For Reliver Payments/Pages/OperationExecutiveReliverPage'))
+const OperationExecutiveMyRequestsPage = load(() => import('../Features/Process For Reliver Payments/Pages/OperationExecutiveMyRequestsPage'))
+const LineManagerRelieverApprovalPage = load(() => import('../Features/Process For Reliver Payments/Pages/LineManagerRelieverApprovalPage'))
+const AVPRelieverApprovalPage = load(() => import('../Features/Process For Reliver Payments/Pages/AVPRelieverApprovalPage'))
+const VPRelieverApprovalPage = load(() => import('../Features/Process For Reliver Payments/Pages/VPRelieverApprovalPage'))
+const AERelieverApprovalPage = load(() => import('../Features/Process For Reliver Payments/Pages/AERelieverApprovalPage'))
+const GSTR2BRecoPage = load(() => import('../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BReco'))
+const GSTR2BRecoHistoryPage = load(() => import('../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BHistory'))
+const GSTR2BRecoReportPage = load(() => import('../Features/Process for GSTR2B Reconciliation Process/Pages/GSTR2BRecoReportPage'))
+const ReconciliationStatement = load(() => import('../Features/Process For Bank Reconcilation/Components/ReconciliationStatement'))
+const ReconciliationStatementPage = load(() => import('../Features/Process For Bank Reconcilation/Pages/ReconciliationStatementPage'))
+const AttendanceUpload = load(() => import('../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Components/AttendenceUpload'))
+const AttendanceUploadPage = load(() => import('../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendenceuploadPage'))
+const MyUploadedAttendance = load(() => import('../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/MyUploadAttendence'))
+const AttendencePayrollDashboard = load(() => import('../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePayrollDashboard'))
+const AttendancePunchingList = load(() => import('../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendencePunchingList'))
+const AttendanceDetails = load(() => import('../Features/Billing/ATTENDANCE VERIFICATION AND STARTING PROCESS/Pages/AttendenceDetails'))
+const ManagerAdvanceRequest = load(() => import('../Features/Advance Request/Pages/ManagerAdvanceRequest'))
+const ManagerMyRequests = load(() => import('../Features/Advance Request/Pages/ManagerMyRequests'))
+const VPAdvanceRequestForm = load(() => import('../Features/Advance Request/Pages/VPAdvanceRequestForm'))
+const VPMyRequest = load(() => import('../Features/Advance Request/Pages/VPMyRequest'))
+const AEAdvanceApprovalPage = load(() => import('../Features/Advance Request/Pages/AEAdvanceApprovalPage'))
+const VPReview = load(() => import('../Features/Advance Settlement/Pages/VPReview'))
+const AEAdvanceSettlementApproval = load(() => import('../Features/Advance Settlement/Pages/AEAdvanaceSettlementApprovalPage'))
+const AMAdvanceSettlementApproval = load(() => import('../Features/Advance Settlement/Pages/AMAdvanceSettlementApprovalPage'))
+const LineManagerAdvanceSettlementForm = load(() => import('../Features/Advance Settlement/Pages/LineManagerAdvanceSettlementForm'))
+const VPAdvanceSettlementForm = load(() => import('../Features/Advance Settlement/Pages/VPAdvanceSettlementForm'))
+const ManagerAdvanceSettlementForm = load(() => import('../Features/Advance Settlement/Pages/ManagerAdvanceSettlementForm'))
+const ComplianceTeamAdvanceSettlementForm = load(() => import('../Features/Advance Settlement/Pages/ComplianceTeamAdvanceSettlementForm'))
+const ComplianceManagerAdvanceSettlementForm = load(() => import('../Features/Advance Settlement/Pages/ComplianceManagerAdvanceSettlementForm'))
+const OperationExecutiveAdvanceSettlementForm = load(() => import('../Features/Advance Settlement/Pages/OperationExecutiveAdvanceSettlementForm'))
+const AVPExpenseRequestsPage = load(() => import('../Features/Advance Settlement/Pages/AVPExpenseRequestsPage'))
+const AVPAdvanceSettlementForm = load(() => import('../Features/Advance Settlement/Pages/AVPAdvanceSettlementForm'))
+const ManagerAdvanceRequestForm = load(() => import('../Features/Advance Request/Pages/ManagerAdvanceRequestForm'))
+const LineManagerMyRequests = load(() => import('../Features/Advance Request/Pages/LineManagerMyRequests'))
+const ComplianceTeamAdvanceRequestForm = load(() => import('../Features/Advance Request/Pages/ComplainceTeamAdvanceRequestForm'))
+const ComplianceTeamMyRequests = load(() => import('../Features/Advance Request/Pages/ComplianceTeamMyRequests'))
+const ComplianceManagerAdvanceRequestForm = load(() => import('../Features/Advance Request/Pages/ComplainceManagerAdvanceRquestForm'))
+const ComplianceManagerMyRequests = load(() => import('../Features/Advance Request/Pages/ComplianceManagerMyRequests'))
+const PayrollTeamAdvanceRequestForm = load(() => import('../Features/Advance Request/Pages/PayrollTeamAdvanceRequestform'))
+const PayrollTeamMyRequests = load(() => import('../Features/Advance Request/Pages/PayrollTeamMyRequests'))
+const OperationExecutiveAdvanceRequestForm = load(() => import('../Features/Advance Request/Pages/OperationExecutiveAdvanceRequestForm'))
+const OperationExecutiveMyRequests = load(() => import('../Features/Advance Request/Pages/OperationExecutiveMyRequests'))
+const OperationExecutiveMyAdvanceRequests = load(() => import('../Features/Advance Request/Pages/OperationExecutiveMyRequests'))
+const AccountManagerDashboard = load(() => import('../Roles/Account Manager/Pages/AccountManagerDashboard'))
+const AccountManagerHome = load(() => import('../Roles/Account Manager/Components/AccountManagerHome'))
 
-import ReportsDashboard from '../Features/Reports/Pages/ReportsDashboard'
-import PLReportPage from '../Features/Reports/ProfitAndLossReports/Pages/PLReportPage'
-import TDS26ASRecoPage from '../Features/Reports/26 AS Reco/Pages/TDS26ASRecoPage'
-import AMInvoiceReviewPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerInvoiceReviewPage'
-import AMInvoiceApproval from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage'
-import AMFixedAssetEntryPage from '../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage'
-import ChartOfAccountsDashboard from '../Features/Master/Pages/ChartOfAccountsDashboard'
-import ClientLedgerPage from '../Features/Master/Billing Masters/Client Ledgers/Pages/ClientLedgerPage'
-import HouseKeepingRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingRevenueLedgerPage'
-import HouseKeepingExemptRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingExemptRevenueLedgerPage'
-import ServiceChargesRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/ServiceChargesRevenueLedgerPage'
-import OverseasConsultancyRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/OverseasConsultancyRevenueLedgerPage'
-import HKMaterialRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/HKMaterialRevenueLedgerPage'
-import CleaningConsumableRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/CleaningConsumableRevenueLedgerPage'
-import DeepCleaningRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/DeepCleaningRevenueLedgerPage'
-import RentOnMachineryRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/RentOnMachineryRevenueLedgerPage'
-import ManpowerServicesRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/ManpowerServicesRevenueLedgerPage'
-import PestControlRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/PestControlRevenueLedgerPage'
-import RoundOffRevenueLedgerPage from '../Features/Master/Billing Masters/Revenue Ledger/Pages/RoundOffRevenueLedgerPage'
-import EmployeeLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage'
-import ProcessOfPaymentVendorPage from '../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage'
-import TDSLedgerPage from '../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage'
-import BankLedgerPage from '../Features/Master/Bank Ledger/Pages/BankLedgerPage'
-import TravelExpenseLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Travel Expense/Pages/TravelExpenseLedgerPage'
-import FoodRefreshmentLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/FoodsAndRefreshments/Pages/FoodRefreshmentLedgerPage'
-import OfficeSuppliesLedgerPage from '../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Office Supplies/Pages/OfficeSuppliesLedgerPage'
-import ConveyancePayblePage from '../Features/Master/Conveyance/Pages/ConveyancePayblePage'
-import ConveyanceExpenseLedgerPage from '../Features/Master/Conveyance/Pages/ConveyanceExpenseLedgerPage'
-import RelieverPaymentPage from '../Features/Master/Reliever/Pages/RelieverPaymentPage'
-import RelieverLiabilityLedgerPage from '../Features/Master/Reliever/Pages/RelieverLiabilityLedgerPage'
-import RentExpenseBookingLedgerPage from '../Features/Master/Rent Expense/Pages/RentExpenseBookingLedgerPage'
-import GSTLedgersPage from '../Features/Master/GST/Pages/GSTLedgerPage'
-import CGSTInputLedgerPage from '../Features/Master/GST/Pages/CGSTInputLedgerPage'
-import SGSTInputLedgerPage from '../Features/Master/GST/Pages/SGSTInputLedgerPage'
-import IGSTInputLedgerPage from '../Features/Master/GST/Pages/IGSTInputLedgerPage'
-import RentVendorLedgerPage from '../Features/Master/Rent Vendor/Pages/RentVendorLedgerPage'
-import HKVendorLedgerPage from '../Features/Master/Process For HK Material/Pages/HKVendorLedgerPage'
-import FixedAssetLedgerPage from '../Features/Master/Process for Fixed Assets/Pages/FixedAssetLedgerPage'
-import FAVendorLedgerPage from '../Features/Master/Process for Fixed Assets/Pages/FAVendorLedgerPage'
-import UniformPrepaidExpenseLedger from '../Features/Master/Process of Prepaid/Pages/UniformPrepaidExpenseLedgerPage'
-import UniformExpenseLedgerPage from '../Features/Master/Process of Prepaid/Pages/UniformExpenseLedgerPage'
-import PrepaidUniformVendorLedgerPage from '../Features/Master/Process of Prepaid/Pages/PrepaidUniformVendorLedgerPage'
-import UnifiedVendorLedgerPage from '../Features/Master/Pages/UnifiedVendorLedgerPage'
-import HKMaterialsExpenseLedgerPage from '../Features/Master/Components/HKMaterialExpenseLedgerPage'
-import TdsLedgerPage from '../Features/Master/TDSLedger/Page/TDSLedgerPage'
-import GenericExpenseLedger from '../Features/Master/Professional Fes and Other Fees Ledger/Pages/GenericLedgerPage'
-import SalaryWagesLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/SalaryWagesLedger'
-import SalaryPayableLedger from '../Features/Master/Payment Entry For Salaries/Liability/Pages/SalaryPaybleLedger'
-import PFContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/PFContributionLedgerPage'
-import PFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/PFPayableLedgerPage'
-import ESICContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/ESICContributionLedgerPage'
-import ESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ESICPayableLedgerPage'
-import LWFContributionLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/LWFContributionLedgerPage'
-import LWFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/LWFPayableLedgerPage'
-import LeaveProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/LeaveProvisionExpenseLedgerPage'
-import LeaveEncashmentProvisionLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/LeaveEncashmentProvisionLedger'
-import OtherDeductionsLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/OtherDeductionsLedgerPage'
-import EmployeePFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeePFPayableLedgerPage'
-import EmployeeESICPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeESICPayableLedgerPage'
-import EmployeeLWFPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeLWFPayableLedgerPage'
-import ProfessionalTaxPayableLedgerPage from '../Features/Master/Payment Entry For Salaries/Liability/Pages/ProfessionalTaxPayableLedgerPage'
-import BonusProvisionExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
-import BonusExpenseLedgerPage from '../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'
-import TDSReceivableAssetLedgerPage from '../Features/Master/TDS Receivable/Pages/TDSReceivableLedgerPage'
-import AVPAdvanceRequestForm from '../Features/Advance Request/Pages/AVPAdvanceRequestForm'
-import AVPMyAdvanceRequests from '../Features/Advance Request/Pages/AVPMyAdvanceRequests'
-import AVPAdvanceRequestApproval from '../Features/Advance Request/AVPAdvanceRequestApproval'
-// ============== BILLING LEDGERS IMPORTS (11 Ledgers) ==============
-import {
-  HKChargesLedgerPage,
-  ManpowerLedgerPage,
-  HKMaterialLedgerPage,
-  MachineryRentLedgerPage,
-  CGSTLedgerPage,
-  SGSTLedgerPage,
-  IGSTLedgerPage,
-  TDSPayableLedgerPage,
-  TDSReceivableLedgerPage,
-  ServiceTaxLedgerPage,
-  RoundOffLedgerPage,
-} from '../Features/Billing/Ledgers'
-import AVPDashboard from '../Roles/AVP Opearations/Pages/AVPDashboard'
-import AVPHome from './../Roles/AVP Opearations/Components/AVPHome';
-// =================================================================
+const ReportsDashboard = load(() => import('../Features/Reports/Pages/ReportsDashboard'))
+const PLReportPage = load(() => import('../Features/Reports/ProfitAndLossReports/Pages/PLReportPage'))
+const TDS26ASRecoPage = load(() => import('../Features/Reports/26 AS Reco/Pages/TDS26ASRecoPage'))
+const AMInvoiceReviewPage = load(() => import('../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerInvoiceReviewPage'))
+const AMInvoiceApproval = load(() => import('../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerPurchaseEntryPage'))
+const AMFixedAssetEntryPage = load(() => import('../Features/PurchaseBookingHKMaterial/Account Manager/AccountManagerFixedAssetEntryPage'))
+const ChartOfAccountsDashboard = load(() => import('../Features/Master/Pages/ChartOfAccountsDashboard'))
+const ClientLedgerPage = load(() => import('../Features/Master/Billing Masters/Client Ledgers/Pages/ClientLedgerPage'))
+const HouseKeepingRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingRevenueLedgerPage'))
+const HouseKeepingExemptRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/HouseKeepingExemptRevenueLedgerPage'))
+const ServiceChargesRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/ServiceChargesRevenueLedgerPage'))
+const OverseasConsultancyRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/OverseasConsultancyRevenueLedgerPage'))
+const HKMaterialRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/HKMaterialRevenueLedgerPage'))
+const CleaningConsumableRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/CleaningConsumableRevenueLedgerPage'))
+const DeepCleaningRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/DeepCleaningRevenueLedgerPage'))
+const RentOnMachineryRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/RentOnMachineryRevenueLedgerPage'))
+const ManpowerServicesRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/ManpowerServicesRevenueLedgerPage'))
+const PestControlRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/PestControlRevenueLedgerPage'))
+const RoundOffRevenueLedgerPage = load(() => import('../Features/Master/Billing Masters/Revenue Ledger/Pages/RoundOffRevenueLedgerPage'))
+const EmployeeLedgerPage = load(() => import('../Features/Master/EmployeeAdvanceAndSettlement/Pages/EmployeeLedgerPage'))
+const ProcessOfPaymentVendorPage = load(() => import('../Features/Master/Process Of Payments/Pages/ProcessOfPaymentVendorPage'))
+const TDSLedgerPage = load(() => import('../Features/Master/Auto JV for TDS Booking/Pages/TDSLedgerPage'))
+const BankLedgerPage = load(() => import('../Features/Master/Bank Ledger/Pages/BankLedgerPage'))
+const TravelExpenseLedgerPage = load(() => import('../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Travel Expense/Pages/TravelExpenseLedgerPage'))
+const FoodRefreshmentLedgerPage = load(() => import('../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/FoodsAndRefreshments/Pages/FoodRefreshmentLedgerPage'))
+const OfficeSuppliesLedgerPage = load(() => import('../Features/Master/EmployeeAdvanceAndSettlement/Expense Heads/Office Supplies/Pages/OfficeSuppliesLedgerPage'))
+const ConveyancePayblePage = load(() => import('../Features/Master/Conveyance/Pages/ConveyancePayblePage'))
+const ConveyanceExpenseLedgerPage = load(() => import('../Features/Master/Conveyance/Pages/ConveyanceExpenseLedgerPage'))
+const RelieverPaymentPage = load(() => import('../Features/Master/Reliever/Pages/RelieverPaymentPage'))
+const RelieverLiabilityLedgerPage = load(() => import('../Features/Master/Reliever/Pages/RelieverLiabilityLedgerPage'))
+const RentExpenseBookingLedgerPage = load(() => import('../Features/Master/Rent Expense/Pages/RentExpenseBookingLedgerPage'))
+const GSTLedgersPage = load(() => import('../Features/Master/GST/Pages/GSTLedgerPage'))
+const CGSTInputLedgerPage = load(() => import('../Features/Master/GST/Pages/CGSTInputLedgerPage'))
+const SGSTInputLedgerPage = load(() => import('../Features/Master/GST/Pages/SGSTInputLedgerPage'))
+const IGSTInputLedgerPage = load(() => import('../Features/Master/GST/Pages/IGSTInputLedgerPage'))
+const RentVendorLedgerPage = load(() => import('../Features/Master/Rent Vendor/Pages/RentVendorLedgerPage'))
+const HKVendorLedgerPage = load(() => import('../Features/Master/Process For HK Material/Pages/HKVendorLedgerPage'))
+const FixedAssetLedgerPage = load(() => import('../Features/Master/Process for Fixed Assets/Pages/FixedAssetLedgerPage'))
+const FAVendorLedgerPage = load(() => import('../Features/Master/Process for Fixed Assets/Pages/FAVendorLedgerPage'))
+const UniformPrepaidExpenseLedger = load(() => import('../Features/Master/Process of Prepaid/Pages/UniformPrepaidExpenseLedgerPage'))
+const UniformExpenseLedgerPage = load(() => import('../Features/Master/Process of Prepaid/Pages/UniformExpenseLedgerPage'))
+const PrepaidUniformVendorLedgerPage = load(() => import('../Features/Master/Process of Prepaid/Pages/PrepaidUniformVendorLedgerPage'))
+const UnifiedVendorLedgerPage = load(() => import('../Features/Master/Pages/UnifiedVendorLedgerPage'))
+const HKMaterialsExpenseLedgerPage = load(() => import('../Features/Master/Components/HKMaterialExpenseLedgerPage'))
+const TdsLedgerPage = load(() => import('../Features/Master/TDSLedger/Page/TDSLedgerPage'))
+const GenericExpenseLedger = load(() => import('../Features/Master/Professional Fes and Other Fees Ledger/Pages/GenericLedgerPage'))
+const SalaryWagesLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/SalaryWagesLedger'))
+const SalaryPayableLedger = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/SalaryPaybleLedger'))
+const PFContributionLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/PFContributionLedgerPage'))
+const PFPayableLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/PFPayableLedgerPage'))
+const ESICContributionLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/ESICContributionLedgerPage'))
+const ESICPayableLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/ESICPayableLedgerPage'))
+const LWFContributionLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/LWFContributionLedgerPage'))
+const LWFPayableLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/LWFPayableLedgerPage'))
+const LeaveProvisionExpenseLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/LeaveProvisionExpenseLedgerPage'))
+const LeaveEncashmentProvisionLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/LeaveEncashmentProvisionLedger'))
+const OtherDeductionsLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/OtherDeductionsLedgerPage'))
+const EmployeePFPayableLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeePFPayableLedgerPage'))
+const EmployeeESICPayableLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeESICPayableLedgerPage'))
+const EmployeeLWFPayableLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/EmployeeLWFPayableLedgerPage'))
+const ProfessionalTaxPayableLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Liability/Pages/ProfessionalTaxPayableLedgerPage'))
+const BonusProvisionExpenseLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'))
+const BonusExpenseLedgerPage = load(() => import('../Features/Master/Payment Entry For Salaries/Expense/Pages/BonusProvisionExpenseLedgerPage'))
+const TDSReceivableAssetLedgerPage = load(() => import('../Features/Master/TDS Receivable/Pages/TDSReceivableLedgerPage'))
+const AVPAdvanceRequestForm = load(() => import('../Features/Advance Request/Pages/AVPAdvanceRequestForm'))
+const AVPMyAdvanceRequests = load(() => import('../Features/Advance Request/Pages/AVPMyAdvanceRequests'))
+const AVPAdvanceRequestApproval = load(() => import('../Features/Advance Request/AVPAdvanceRequestApproval'))
+
+// ============== BILLING LEDGERS (11 Ledgers) ==============
+const HKChargesLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.HKChargesLedgerPage })))
+const ManpowerLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.ManpowerLedgerPage })))
+const HKMaterialLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.HKMaterialLedgerPage })))
+const MachineryRentLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.MachineryRentLedgerPage })))
+const CGSTLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.CGSTLedgerPage })))
+const SGSTLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.SGSTLedgerPage })))
+const IGSTLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.IGSTLedgerPage })))
+const TDSPayableLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.TDSPayableLedgerPage })))
+const TDSReceivableLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.TDSReceivableLedgerPage })))
+const ServiceTaxLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.ServiceTaxLedgerPage })))
+const RoundOffLedgerPage = load(() => import('../Features/Billing/Ledgers').then(m => ({ default: m.RoundOffLedgerPage })))
+
+const AVPDashboard = load(() => import('../Roles/AVP Opearations/Pages/AVPDashboard'))
+const AVPHome = load(() => import('../Roles/AVP Opearations/Components/AVPHome'))
 
 export const router = createBrowserRouter([
   {
@@ -310,17 +331,25 @@ export const router = createBrowserRouter([
         element: <OperationExecutiveReliverPage />,
       },
       {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
         path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
         element: <OperationExecutiveMyRequestsPage />,
       },
     ],
   },
 
-  // ****************************Line Manager*********************************
+  // ****************************Line Manager & Regional Head*********************************
   {
     path: '/dashboard/line-manager',
     element: (
-      <ProtectedRoute allowedRoles={['line-manager']}>
+      <ProtectedRoute allowedRoles={['line-manager', 'manager', 'operation-manager', 'regional-head']}>
         <LineManagerDashboard />
       </ProtectedRoute>
     ),
@@ -330,19 +359,35 @@ export const router = createBrowserRouter([
         element: <LineManagerHome />,
       },
       {
-        path: 'advance-request',
-        element: <ManagerAdvanceRequest />,
-      },
-      {
-        path: 'my-requests',
-        element: <LineManagerMyRequests />,
+        path: 'manager-approval',
+        element: <ManagerApproval />,
       },
       {
         path: 'advance-approval',
         element: <ManagerApproval />,
       },
       {
+        path: 'advance-request',
+        element: <AdvanceRequestForm />,
+      },
+      {
+        path: 'my-requests',
+        element: <LineManagerMyRequests />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <LineManagerAdvanceSettlementForm />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <LineManagerAdvanceSettlementForm />,
+      },
+      {
         path: 'advance-settelment',
+        element: <ExpenseRequestsPage />,
+      },
+      {
+        path: 'my-settelment-requests',
         element: <ExpenseRequestsPage />,
       },
       {
@@ -358,69 +403,127 @@ export const router = createBrowserRouter([
         element: <MyConveyanceRequestsPage />,
       },
       {
+        path: 'reliver-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+      {
+        path: 'reliever-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+      {
         path: 'line-manager-reliever-approval',
         element: <LineManagerRelieverApprovalPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+    ],
+  },
+  {
+    path: '/dashboard/regional-head',
+    element: (
+      <ProtectedRoute allowedRoles={['regional-head', 'line-manager', 'manager', 'operation-manager']}>
+        <LineManagerDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <LineManagerHome />,
+      },
+      {
+        path: 'manager-approval',
+        element: <ManagerApproval />,
+      },
+      {
+        path: 'advance-approval',
+        element: <ManagerApproval />,
+      },
+      {
+        path: 'advance-request',
+        element: <AdvanceRequestForm />,
+      },
+      {
+        path: 'my-requests',
+        element: <LineManagerMyRequests />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <LineManagerAdvanceSettlementForm />,
       },
       {
         path: 'submit-advance-settlement',
         element: <LineManagerAdvanceSettlementForm />,
       },
       {
+        path: 'advance-settelment',
+        element: <ExpenseRequestsPage />,
+      },
+      {
         path: 'my-settelment-requests',
-        element: <MySettlements />,
+        element: <ExpenseRequestsPage />,
+      },
+      {
+        path: 'conveyance-approval',
+        element: <ManagerConveyanceApprovalsPage />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <LinemanagerConveyanceFormPage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+      {
+        path: 'reliver-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+      {
+        path: 'reliever-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+      {
+        path: 'line-manager-reliever-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
       },
     ],
   },
-  // *******************************Regional Head*********************************
-  {
-    path: '/dashboard/regional-head',
-    element: (
-      <ProtectedRoute allowedRoles={['regional-head']}>
-        <LineManagerDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
-      { index: true, element: <LineManagerHome /> },
-      { path: 'advance-request', element: <ManagerAdvanceRequest /> },
-      { path: 'my-requests', element: <LineManagerMyRequests /> },
-      { path: 'advance-approval', element: <ManagerApproval /> },
-      { path: 'advance-settelment', element: <ExpenseRequestsPage /> },
-      { path: 'conveyance-approval', element: <ManagerConveyanceApprovalsPage /> },
-      { path: 'conveyance-form', element: <LinemanagerConveyanceFormPage /> },
-      { path: 'my-conveyance-requests', element: <MyConveyanceRequestsPage /> },
-      { path: 'line-manager-reliever-approval', element: <LineManagerRelieverApprovalPage /> },
-      { path: 'submit-advance-settlement', element: <LineManagerAdvanceSettlementForm /> },
-      { path: 'my-settelment-requests', element: <MySettlements /> },
-    ],
-  },
 
-  // *******************************AVP Operations*********************************
-  {
-    path: '/dashboard/avp-operations',
-    element: (
-      <ProtectedRoute allowedRoles={['avp-operations']}>
-        <AVPDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
-      { index: true, element: <AVPHome /> },
-      { path: 'advance-request', element: <AVPAdvanceRequestForm /> },
-      { path: 'my-requests', element: <AVPMyAdvanceRequests /> },
-      { path: 'advance-approval', element: <AVPAdvanceRequestApproval /> },
-      { path: 'advance-settelment', element: <AVPExpenseRequestsPage /> },
-      { path: 'submit-advance-settlement', element: <AVPAdvanceSettlementForm /> },
-      { path: 'my-settelment-requests', element: <MySettlements /> },
-      { path: 'avp-reliever-approval', element: <AVPRelieverApprovalPage /> },
-      { path: 'conveyance-approval', element: <AVPConveyanceApprovalPage /> },
-      { path: 'conveyance-form', element: <SubmitConveyancePage /> },
-      { path: 'my-conveyance-requests', element: <MyConveyanceRequestsPage /> },
-    ],
-  },
-  // *******************************VP Operations***********************************
+  // ****************************VP Operations*********************************
   {
     path: '/dashboard/vp-operations',
     element: (
-      <ProtectedRoute allowedRoles={['vp-operations']}>
+      <ProtectedRoute allowedRoles={['vp-operations', 'vp', 'operation-head']}>
         <VPDashboard />
       </ProtectedRoute>
     ),
@@ -430,20 +533,48 @@ export const router = createBrowserRouter([
         element: <VPHome />,
       },
       {
-        path: 'advance-request',
-        element: <VPAdvanceRequestForm />,
+        path: 'vp-approval',
+        element: <VPApproval />,
       },
       {
-        path: 'advance-settlement-approval',
-        element: <VPReview />,
+        path: 'vp-advance-approval',
+        element: <VPApproval />,
+      },
+      {
+        path: 'advance-approval',
+        element: <VPApproval />,
+      },
+      {
+        path: 'advance-request',
+        element: <VPAdvanceRequestForm />,
       },
       {
         path: 'my-requests',
         element: <VPMyRequest />,
       },
       {
-        path: 'vp-advance-approval',
-        element: <VPApproval />,
+        path: 'advance-settlement-approval',
+        element: <VPReview />,
+      },
+      {
+        path: 'advance-settelment',
+        element: <VPReview />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <VPAdvanceSettlementForm />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <VPAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <ExpenseRequestsPage />,
+      },
+      {
+        path: 'conveyance-approval',
+        element: <VPOperationsConveyanceApprovalPage />,
       },
       {
         path: 'vp-conveyance-approval',
@@ -458,24 +589,133 @@ export const router = createBrowserRouter([
         element: <MyConveyanceRequestsPage />,
       },
       {
+        path: 'reliver-approval',
+        element: <VPRelieverApprovalPage />,
+      },
+      {
+        path: 'reliever-approval',
+        element: <VPRelieverApprovalPage />,
+      },
+      {
         path: 'reliever-approval-vp-operation-page',
         element: <VPRelieverApprovalPage />,
       },
       {
-        path: 'submit-advance-settlement',
-        element: <VPAdvanceSettlementForm />,
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
       },
       {
-        path: 'my-settelment-requests',
-        element: <MySettlements />,
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
       },
     ],
   },
-  // ************************************Supervisor********************************************
+
+  // ****************************AVP Operations*********************************
+  {
+    path: '/dashboard/avp-operations',
+    element: (
+      <ProtectedRoute allowedRoles={['avp-operations', 'avp']}>
+        <AVPDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <AVPHome />,
+      },
+      {
+        path: 'avp-approval',
+        element: <AVPAdvanceRequestApproval />,
+      },
+      {
+        path: 'advance-approval',
+        element: <AVPAdvanceRequestApproval />,
+      },
+      {
+        path: 'advance-request',
+        element: <AVPAdvanceRequestForm />,
+      },
+      {
+        path: 'my-requests',
+        element: <AVPMyAdvanceRequests />,
+      },
+      {
+        path: 'advance-settlement-approval',
+        element: <AVPExpenseRequestsPage />,
+      },
+      {
+        path: 'advance-settelment',
+        element: <AVPExpenseRequestsPage />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <AVPAdvanceSettlementForm />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <AVPAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <ExpenseRequestsPage />,
+      },
+      {
+        path: 'conveyance-approval',
+        element: <AVPConveyanceApprovalPage />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <VPConveyanceFormPage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+      {
+        path: 'reliver-approval',
+        element: <AVPRelieverApprovalPage />,
+      },
+      {
+        path: 'reliever-approval',
+        element: <AVPRelieverApprovalPage />,
+      },
+      {
+        path: 'avp-reliever-approval',
+        element: <AVPRelieverApprovalPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+    ],
+  },
+
+  // ****************************Supervisor*********************************
   {
     path: '/dashboard/supervisor',
     element: (
-      <ProtectedRoute allowedRoles={['supervisor']}>
+      <ProtectedRoute allowedRoles={['supervisor', 'site-supervisor']}>
         <SupervisorDashboard />
       </ProtectedRoute>
     ),
@@ -485,16 +725,77 @@ export const router = createBrowserRouter([
         element: <SupervisorHome />,
       },
       {
+        path: 'material-request',
+        element: <MaterialRequestForm />,
+      },
+      {
         path: 'material-request-form',
         element: <MaterialRequestForm />,
       },
+      {
+        path: 'my-requests',
+        element: <MaterialRequestTable />,
+      },
+      {
+        path: 'dc-upload',
+        element: <DCUpload />,
+      },
+      {
+        path: 'my-invoices',
+        element: <MyInvoiceUpload />,
+      },
+      {
+        path: 'advance-request',
+        element: <AdvanceRequestForm />,
+      },
+      {
+        path: 'my-advance-requests',
+        element: <EmployeeMyRequests />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <EmployeeAdvanceSettlementPage />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <EmployeeAdvanceSettlementPage />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <SubmitConveyancePage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
     ],
   },
-  // *************************************Manager********************************************
+
+  // ****************************Manager*********************************
   {
     path: '/dashboard/manager',
     element: (
-      <ProtectedRoute allowedRoles={['manager']}>
+      <ProtectedRoute allowedRoles={['manager', 'operation-manager', 'facility-manager']}>
         <ManagerDashboard />
       </ProtectedRoute>
     ),
@@ -504,32 +805,36 @@ export const router = createBrowserRouter([
         element: <ManagerHome />,
       },
       {
-        path: 'advance-request',
-        element: <ManagerAdvanceRequestForm />,
-      },
-      {
-        path: 'my-requests',
-        element: <ManagerMyRequests />,
+        path: 'material-approval',
+        element: <MaterialRequestApprovalTable />,
       },
       {
         path: 'material-request-approval',
         element: <MaterialRequestApprovalTable />,
       },
       {
-        path: 'create-statutory-details',
-        element: <StatutorySetup />,
+        path: 'material-request',
+        element: <MaterialRequestForm />,
       },
       {
-        path: 'generate-po',
-        element: <GeneratePOPage />,
+        path: 'my-requests',
+        element: <MaterialRequestTable />,
       },
       {
-        path: 'my-po',
-        element: <MyPOsList />,
+        path: 'advance-request',
+        element: <ManagerAdvanceRequestForm />,
       },
       {
-        path: 'invoice-verification',
-        element: <InvoiceVerificationPage />,
+        path: 'my-advance-requests',
+        element: <ManagerMyRequests />,
+      },
+      {
+        path: 'advance-request-approval',
+        element: <ManagerApproval />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <ManagerAdvanceSettlementForm />,
       },
       {
         path: 'submit-advance-settlement',
@@ -537,15 +842,52 @@ export const router = createBrowserRouter([
       },
       {
         path: 'my-settelment-requests',
-        element: <MySettlements />,
+        element: <ExpenseRequestsPage />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <LinemanagerConveyanceFormPage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+      {
+        path: 'conveyance-approval',
+        element: <ManagerConveyanceApprovalsPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'reliver-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+      {
+        path: 'reliever-approval',
+        element: <LineManagerRelieverApprovalPage />,
       },
     ],
   },
-  // *************************************Project Head********************************************
+
+  // ****************************PH (Project Head)*********************************
   {
     path: '/dashboard/ph',
     element: (
-      <ProtectedRoute allowedRoles={['ph']}>
+      <ProtectedRoute allowedRoles={['ph', 'project-head', 'operations-head']}>
         <PHDashboard />
       </ProtectedRoute>
     ),
@@ -555,11 +897,19 @@ export const router = createBrowserRouter([
         element: <PHHome />,
       },
       {
+        path: 'material-approval',
+        element: <ProjectHeadApprovalTable />,
+      },
+      {
         path: 'material-approval-requests',
         element: <ProjectHeadApprovalTable />,
       },
       {
-        path: 'po-form',
+        path: 'procurement-approval-requests',
+        element: <ProjectHeadApprovalTable />,
+      },
+      {
+        path: 'create-po',
         element: <PurchaseOrderForm />,
       },
       {
@@ -567,28 +917,37 @@ export const router = createBrowserRouter([
         element: <PHInvoiceReview />,
       },
       {
+        path: 'procurement-invoice-review',
+        element: <PHInvoiceReview />,
+      },
+      {
         path: 'invoice-history',
         element: <PHInvoiceHistory />,
       },
       {
-        path: 'procurement-approval-requests',
+        path: 'prepaid-approval',
         element: <PHRequestApprovalPage />,
       },
       {
-        path: 'procurement-po-form',
+        path: 'create-prepaid-po',
         element: <PHGeneratePOPage />,
       },
       {
-        path: 'procurement-invoice-review',
+        path: 'po-summary',
+        element: <POSummary />,
+      },
+      {
+        path: 'prepaid-invoice-approval',
         element: <PHInvoiceApprovalPage />,
       },
     ],
   },
-  // *************************************Vendor********************************************
+
+  // ****************************Vendor*********************************
   {
     path: '/dashboard/vendor',
     element: (
-      <ProtectedRoute allowedRoles={['vendor']}>
+      <ProtectedRoute allowedRoles={['vendor', 'supplier']}>
         <VendorDashboard />
       </ProtectedRoute>
     ),
@@ -598,84 +957,85 @@ export const router = createBrowserRouter([
         element: <VendorHome />,
       },
       {
-        path: 'material-requests',
-        element: <MaterialRequestTable />,
-      },
-      {
-        path: 'dc-form',
-        element: <GenerateDCForm />,
-      },
-      {
-        path: 'my-dc',
+        path: 'generate-dc',
         element: <VendorDCPage />,
       },
       {
         path: 'dc-upload',
-        element: <DCUpload />,
+        element: <VendorDCPage />,
+      },
+      {
+        path: 'material-requests',
+        element: <MaterialRequestTable />,
+      },
+      {
+        path: 'upload-invoice',
+        element: <VendorInvoiceUpload />,
       },
       {
         path: 'invoice-upload',
         element: <VendorInvoiceUpload />,
       },
       {
-        path: 'my-invoices',
-        element: <MyInvoiceUpload />,
+        path: 'invoice-upload-form',
+        element: <VendorInvoiceUpload />,
       },
       {
-        path: 'fixed-assets-purchase-orders',
-        element: <FixedAssetPOsTable />,
+        path: 'prepaid-upload-invoice',
+        element: <InvoiceUploadForm />,
       },
       {
-        path: 'onetime-expense-professional-fees-po',
-        element: <VendorPOListPage />,
-      },
-      {
-        path: 'onetime-expense-professional-fees-upload-invoice',
-        element: <VendorUploadInvoicePage />,
-      },
-      {
-        path: 'my-invoice-page',
-        element: <VendorMyInvoicesPage />,
-      },
-      {
-        path: 'procurement-po',
+        path: 'prepaid-my-requests',
         element: <VendorRequestsPage />,
       },
       {
-        path: 'generate-dc-procurement',
+        path: 'prepaid-generate-dc',
         element: <VendorGenerateDCPage />,
       },
       {
-        path: 'dc-preview-page',
+        path: 'prepaid-dc-preview',
         element: <DCPreviewPage />,
       },
       {
-        path: 'po-preview',
-        element: <POSummary />,
+        path: 'prepaid-invoice-form',
+        element: <VendorInvoiceForm />,
       },
       {
-        path: 'procurement-my-dc',
-        element: <VendorDCPage />,
-      },
-      {
-        path: 'invoice-upload-form',
+        path: 'prepaid-invoice-page',
         element: <VendorInvoicePage />,
       },
       {
-        path: 'vendor-invoice-preview',
+        path: 'prepaid-invoice-preview',
         element: <VendorInvoicePreviewPage />,
       },
       {
-        path: 'procurement-my-invoiice-table',
+        path: 'prepaid-my-invoices',
         element: <MyInvoicesPage />,
+      },
+      {
+        path: 'other-generate-po',
+        element: <GeneratePOPage />,
+      },
+      {
+        path: 'other-upload-invoice',
+        element: <VendorUploadInvoicePage />,
+      },
+      {
+        path: 'other-po-list',
+        element: <VendorPOListPage />,
+      },
+      {
+        path: 'other-my-invoices',
+        element: <VendorMyInvoicesPage />,
       },
     ],
   },
-  // ****************************************AE************************************************************
+
+  // ****************************AE (Accounts Executive)*********************************
   {
-    path: 'dashboard/ae',
+    path: '/dashboard/ae',
     element: (
-      <ProtectedRoute allowedRoles={['ae']}>
+      <ProtectedRoute allowedRoles={['ae', 'account-executive', 'finance-executive']}>
         <AEDashboard />
       </ProtectedRoute>
     ),
@@ -685,51 +1045,92 @@ export const router = createBrowserRouter([
         element: <AEHome />,
       },
       {
-        path: 'advance-approval-requests',
-        element: <AEAdvanceApprovalPage />,
-      },
-      {
-        path: 'advance-settlement-requests',
-        element: <AEAdvanceSettlementApproval />,
-      },
-      {
         path: 'invoice-review',
         element: <AEInvoiceReviewPage />,
       },
-
+      {
+        path: 'invoice-approval',
+        element: <AEInvoiceApproval />,
+      },
       {
         path: 'vendor-creation',
         element: <VendorCreationForm />,
       },
       {
-        path: 'vendor-list',
+        path: 'vendors-list',
         element: <VendorTable />,
       },
       {
         path: 'process-payments',
         element: <ProcessPaymentPage />,
       },
-
       {
-        path: 'map-tds',
+        path: 'tds-mapping',
         element: <TDSMapping />,
+      },
+      {
+        path: 'statutory-setup',
+        element: <StatutorySetup />,
       },
       {
         path: 'expense-booking',
         element: <ExpenseBookingPage />,
       },
       {
-        path: 'vendor-ledger-page',
+        path: 'vendor-ledger',
         element: <VendorLedger />,
       },
-
       {
-        path: 'pending-compliance-requests',
+        path: 'fixed-assets-pos',
+        element: <FixedAssetPOsTable />,
+      },
+      {
+        path: 'fixed-assets-entry',
+        element: <FixedAssetEntryPage />,
+      },
+      {
+        path: 'compliance-pending',
         element: <AEPendingCompliancePage />,
       },
       {
-        path: 'paid-compliance-page',
+        path: 'compliance-paid',
         element: <AEPaidCompliancePage />,
+      },
+      {
+        path: 'payroll-pending',
+        element: <AEPendingRequestsPage />,
+      },
+      {
+        path: 'other-invoice-verification',
+        element: <InvoiceVerificationPage />,
+      },
+      {
+        path: 'advance-approval',
+        element: <AEAdvanceApprovalPage />,
+      },
+      {
+        path: 'advance-approval-requests',
+        element: <AEAdvanceApprovalPage />,
+      },
+      {
+        path: 'advance-settlement-approval',
+        element: <AEAdvanceSettlementApproval />,
+      },
+      {
+        path: 'advance-settlement-requests',
+        element: <AEAdvanceSettlementApproval />,
+      },
+      {
+        path: 'vendor-ledger-page',
+        element: <VendorLedger />,
+      },
+      {
+        path: 'map-tds',
+        element: <TDSMapping />,
+      },
+      {
+        path: 'pending-compliance-requests',
+        element: <AEPendingCompliancePage />,
       },
       {
         path: 'salaries-pending-approvals',
@@ -740,170 +1141,15 @@ export const router = createBrowserRouter([
         element: <AEConveyanceApprovalPage />,
       },
       {
+        path: 'reliver-approval',
+        element: <AERelieverApprovalPage />,
+      },
+      {
         path: 'reliever-approval',
         element: <AERelieverApprovalPage />,
       },
-    ],
-  },
-
-  // *********************************************Compliance Team*********************************
-
-  {
-    path: 'dashboard/compliance-team',
-    element: (
-      <ProtectedRoute allowedRoles={['compliance-team']}>
-        <ComplianceTeamDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
       {
-        index: true,
-        element: <ComplianceTeamHome />,
-      },
-      {
-        path: 'advance-request',
-        element: <ComplianceTeamAdvanceRequestForm />,
-      },
-      {
-        path: 'my-requests',
-        element: <ComplianceTeamMyRequests />,
-      },
-      {
-        path: 'compliance-entry-form',
-        element: <ComplianceEntryPage />,
-      },
-      {
-        path: 'submitted-entries',
-        element: <ComplianceTeamSubmittedEntries />,
-      },
-      {
-        path: 'submit-advance-settlement',
-        element: <ComplianceTeamAdvanceSettlementForm />,
-      },
-      {
-        path: 'my-settelment-requests',
-        element: <MySettlements />,
-      },
-    ],
-  },
-
-  // *************************************Compliance Manager******************************************
-
-  {
-    path: 'dashboard/compliance-manager',
-    element: (
-      <ProtectedRoute allowedRoles={['compliance-manager']}>
-        <ComplianceManagerDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <ComplianceManagerHome />,
-      },
-      {
-        path: 'advance-request',
-        element: <ComplianceManagerAdvanceRequestForm />,
-      },
-      {
-        path: 'my-request',
-        element: <ComplianceManagerMyRequests />,
-      },
-      {
-        path: 'statutory-compliances-requests',
-        element: <ComplianceManagerApprovalPage />,
-      },
-      {
-        path: 'submit-advance-settlement',
-        element: <ComplianceManagerAdvanceSettlementForm />,
-      },
-      {
-        path: 'my-settelment-requests',
-        element: <MySettlements />,
-      },
-    ],
-  },
-  // ******************************************Payroll Team***********************************************
-  {
-    path: 'dashboard/payroll-team',
-    element: (
-      <ProtectedRoute allowedRoles={['payroll-team']}>
-        <PayrollTeamDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <PayrollTeamHome />,
-      },
-      {
-        path: 'advance-request',
-        element: <PayrollTeamAdvanceRequestForm />,
-      },
-      {
-        path: 'my-request',
-        element: <PayrollTeamMyRequests />,
-      },
-      {
-        path: 'payroll-payment-entry',
-        element: <PayrollPaymentEntryPage />,
-      },
-      {
-        path: 'my-entries',
-        element: <PayrollTeamSubmittedEntriesPage />,
-      },
-      {
-        path: 'attendence-dashboard',
-        element: <AttendencePayrollDashboard />,
-      },
-      {
-        path: 'attendence-puncing-list/:siteId/:month',
-        element: <AttendancePunchingList />,
-      },
-      {
-        path: 'punching-list/:siteId/:month',
-        element: <AttendanceDetails />,
-      },
-    ],
-  },
-  // ****************************************Financial Head*********************************************
-  {
-    path: 'dashboard/financial-head',
-    element: (
-      <ProtectedRoute allowedRoles={['financial-head']}>
-        <FinancialHeadDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <FinancialHeadHome />,
-      },
-      {
-        path: 'invoice-approval',
-        element: <FinancialHeadInvoiceApprovalPage />,
-      },
-    ],
-  },
-  // ***********************************Billing Manager**********************************************
-  {
-    path: 'dashboard/billing-manager',
-    element: (
-      <ProtectedRoute allowedRoles={['billing-manager']}>
-        <BillngManagerDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <BillingManagerHome />,
-      },
-      {
-        path: 'procurement-invoice-approval',
-        element: <BillingManagerApprovalPage />,
-      },
-      {
-        path: 'upload-statement-page',
+        path: 'upload-bank-statement',
         element: <UploadStatementPage />,
       },
       {
@@ -911,140 +1157,328 @@ export const router = createBrowserRouter([
         element: <ReconciliationHistoryPage />,
       },
       {
-        path: 'reconciliation-report-page/:id',
+        path: 'reconciliation-report',
         element: <ViewReconciliationReportPage />,
       },
       {
-        path: 'rent-expense-booking',
-        element: <RentExpenseBookingPage />,
+        path: 'reconciliation-statement',
+        element: <ReconciliationStatementPage />,
       },
       {
-        path: 'gstr-reco-process',
+        path: 'gstr2b-reco',
         element: <GSTR2BRecoPage />,
       },
       {
-        path: 'gsr2b-history-page',
+        path: 'gstr2b-history',
         element: <GSTR2BRecoHistoryPage />,
       },
       {
         path: 'gstr2b-report',
         element: <GSTR2BRecoReportPage />,
       },
+
+      // ================= MASTER PATHS =================
       {
-        path: 'bank-reconciliation-page',
-        element: <ReconciliationStatementPage />,
-      },
-      // ============== BILLING MODULE ROUTES ==============
-      {
-        path: 'billing-dashboard',
-        element: <BillingDashboard />,
+        path: 'master/chart-of-accounts',
+        element: <ChartOfAccountsDashboard />,
       },
       {
-        path: 'auto-billing',
-        element: <AutoBillingWizard />,
+        path: 'master/billing/client-ledgers',
+        element: <ClientLedgerPage />,
       },
       {
-        path: 'manual-billing',
-        element: <ManualBilling />,
+        path: 'master/billing/revenue/house-keeping',
+        element: <HouseKeepingRevenueLedgerPage />,
       },
       {
-        path: 'arrear-billing',
-        element: <ArrearBillingPage />,
+        path: 'master/billing/revenue/house-keeping-exempt',
+        element: <HouseKeepingExemptRevenueLedgerPage />,
       },
       {
-        path: 'arrear-billing/form',
-        element: <ArrearBillingForm />,
+        path: 'master/billing/revenue/service-charges',
+        element: <ServiceChargesRevenueLedgerPage />,
       },
       {
-        path: 'arrear-billing/invoice-preview',
-        element: <ArrearBillingInvoicePreview />,
+        path: 'master/billing/revenue/overseas-consultancy',
+        element: <OverseasConsultancyRevenueLedgerPage />,
       },
       {
-        path: 'bonus-leave-encashment',
-        element: <BonusLeaveEncashmentList />,
+        path: 'master/billing/revenue/hk-material',
+        element: <HKMaterialRevenueLedgerPage />,
       },
       {
-        path: 'bonus-leave-encashment/form',
-        element: <BonusLeaveEncashmentForm />,
+        path: 'master/billing/revenue/cleaning-consumable',
+        element: <CleaningConsumableRevenueLedgerPage />,
       },
       {
-        path: 'bonus-leave-encashment/calculation',
-        element: <BonusLeaveEncashmentCalculation />,
+        path: 'master/billing/revenue/deep-cleaning',
+        element: <DeepCleaningRevenueLedgerPage />,
       },
       {
-        path: 'bonus-leave-encashment/invoice-preview',
-        element: <BonusLeaveEncashmentInvoicePreview />,
+        path: 'master/billing/revenue/rent-on-machinery',
+        element: <RentOnMachineryRevenueLedgerPage />,
       },
       {
-        path: 'rate-card',
-        element: <RateCardPage />,
+        path: 'master/billing/revenue/manpower-services',
+        element: <ManpowerServicesRevenueLedgerPage />,
       },
       {
-        path: 'proforma-invoices',
-        element: <ProformaInvoices />,
+        path: 'master/billing/revenue/pest-control',
+        element: <PestControlRevenueLedgerPage />,
       },
       {
-        path: 'irn-invoices',
-        element: <IRNInvoices />,
+        path: 'master/billing/revenue/round-off',
+        element: <RoundOffRevenueLedgerPage />,
       },
       {
-        path: 'invoice-list',
-        element: <InvoiceListPage />,
+        path: 'master/advance/employee-ledger',
+        element: <EmployeeLedgerPage />,
+      },
+      {
+        path: 'master/process-of-payments/vendor-ledger',
+        element: <ProcessOfPaymentVendorPage />,
+      },
+      {
+        path: 'master/tds-booking/tds-ledger',
+        element: <TDSLedgerPage />,
+      },
+      {
+        path: 'master/bank-ledger',
+        element: <BankLedgerPage />,
+      },
+      {
+        path: 'master/advance/travel-expense',
+        element: <TravelExpenseLedgerPage />,
+      },
+      {
+        path: 'master/advance/food-refreshment-expense',
+        element: <FoodRefreshmentLedgerPage />,
+      },
+      {
+        path: 'master/advance/office-supplies-expense',
+        element: <OfficeSuppliesLedgerPage />,
+      },
+      {
+        path: 'master/conveyance/payable-ledger',
+        element: <ConveyancePayblePage />,
+      },
+      {
+        path: 'master/conveyance/expense-ledger',
+        element: <ConveyanceExpenseLedgerPage />,
+      },
+      {
+        path: 'master/reliever/payment-ledger',
+        element: <RelieverPaymentPage />,
+      },
+      {
+        path: 'master/reliever/liability-ledger',
+        element: <RelieverLiabilityLedgerPage />,
+      },
+      {
+        path: 'master/rent/expense-ledger',
+        element: <RentExpenseBookingLedgerPage />,
+      },
+      {
+        path: 'master/gst/ledgers',
+        element: <GSTLedgersPage />,
+      },
+      {
+        path: 'master/gst/cgst-input',
+        element: <CGSTInputLedgerPage />,
+      },
+      {
+        path: 'master/gst/sgst-input',
+        element: <SGSTInputLedgerPage />,
+      },
+      {
+        path: 'master/gst/igst-input',
+        element: <IGSTInputLedgerPage />,
+      },
+      {
+        path: 'master/rent-vendor/ledger',
+        element: <RentVendorLedgerPage />,
+      },
+      {
+        path: 'master/hk-vendor/ledger',
+        element: <HKVendorLedgerPage />,
+      },
+      {
+        path: 'master/fixed-asset/ledger',
+        element: <FixedAssetLedgerPage />,
+      },
+      {
+        path: 'master/fa-vendor/ledger',
+        element: <FAVendorLedgerPage />,
+      },
+      {
+        path: 'master/prepaid/uniform-prepaid-expense',
+        element: <UniformPrepaidExpenseLedger />,
+      },
+      {
+        path: 'master/prepaid/uniform-expense',
+        element: <UniformExpenseLedgerPage />,
+      },
+      {
+        path: 'master/prepaid/vendor-ledger',
+        element: <PrepaidUniformVendorLedgerPage />,
+      },
+      {
+        path: 'master/unified-vendor-ledger',
+        element: <UnifiedVendorLedgerPage />,
+      },
+      {
+        path: 'master/hk-material-expense-ledger',
+        element: <HKMaterialsExpenseLedgerPage />,
+      },
+      {
+        path: 'master/tds-ledger',
+        element: <TdsLedgerPage />,
+      },
+      {
+        path: 'master/professional-fees-ledger',
+        element: <GenericExpenseLedger />,
+      },
+
+      // Salary Master Ledgers
+      {
+        path: 'master/salary/wages-ledger',
+        element: <SalaryWagesLedgerPage />,
+      },
+      {
+        path: 'master/salary/payable-ledger',
+        element: <SalaryPayableLedger />,
+      },
+      {
+        path: 'master/salary/pf-contribution-ledger',
+        element: <PFContributionLedgerPage />,
+      },
+      {
+        path: 'master/salary/pf-payable-ledger',
+        element: <PFPayableLedgerPage />,
+      },
+      {
+        path: 'master/salary/esic-contribution-ledger',
+        element: <ESICContributionLedgerPage />,
+      },
+      {
+        path: 'master/salary/esic-payable-ledger',
+        element: <ESICPayableLedgerPage />,
+      },
+      {
+        path: 'master/salary/lwf-contribution-ledger',
+        element: <LWFContributionLedgerPage />,
+      },
+      {
+        path: 'master/salary/lwf-payable-ledger',
+        element: <LWFPayableLedgerPage />,
+      },
+      {
+        path: 'master/salary/leave-provision-expense-ledger',
+        element: <LeaveProvisionExpenseLedgerPage />,
+      },
+      {
+        path: 'master/salary/leave-encashment-provision-ledger',
+        element: <LeaveEncashmentProvisionLedgerPage />,
+      },
+      {
+        path: 'master/salary/other-deductions-ledger',
+        element: <OtherDeductionsLedgerPage />,
+      },
+      {
+        path: 'master/salary/employee-pf-payable-ledger',
+        element: <EmployeePFPayableLedgerPage />,
+      },
+      {
+        path: 'master/salary/employee-esic-payable-ledger',
+        element: <EmployeeESICPayableLedgerPage />,
+      },
+      {
+        path: 'master/salary/employee-lwf-payable-ledger',
+        element: <EmployeeLWFPayableLedgerPage />,
+      },
+      {
+        path: 'master/salary/pt-payable-ledger',
+        element: <ProfessionalTaxPayableLedgerPage />,
+      },
+      {
+        path: 'master/salary/bonus-provision-expense-ledger',
+        element: <BonusProvisionExpenseLedgerPage />,
+      },
+      {
+        path: 'master/salary/bonus-expense-ledger',
+        element: <BonusExpenseLedgerPage />,
+      },
+
+      {
+        path: 'master/tds-receivable-asset-ledger',
+        element: <TDSReceivableAssetLedgerPage />,
+      },
+
+      // Billing Ledgers (11 Ledgers)
+      {
+        path: 'master/billing/hk-charges-ledger',
+        element: <HKChargesLedgerPage />,
+      },
+      {
+        path: 'master/billing/manpower-ledger',
+        element: <ManpowerLedgerPage />,
+      },
+      {
+        path: 'master/billing/hk-material-ledger',
+        element: <HKMaterialLedgerPage />,
+      },
+      {
+        path: 'master/billing/machinery-rent-ledger',
+        element: <MachineryRentLedgerPage />,
+      },
+      {
+        path: 'master/billing/cgst-ledger',
+        element: <CGSTLedgerPage />,
+      },
+      {
+        path: 'master/billing/sgst-ledger',
+        element: <SGSTLedgerPage />,
+      },
+      {
+        path: 'master/billing/igst-ledger',
+        element: <IGSTLedgerPage />,
+      },
+      {
+        path: 'master/billing/tds-payable-ledger',
+        element: <TDSPayableLedgerPage />,
+      },
+      {
+        path: 'master/billing/tds-receivable-ledger',
+        element: <TDSReceivableLedgerPage />,
+      },
+      {
+        path: 'master/billing/service-tax-ledger',
+        element: <ServiceTaxLedgerPage />,
+      },
+      {
+        path: 'master/billing/round-off-ledger',
+        element: <RoundOffLedgerPage />,
+      },
+      {
+        path: 'reports-dashboard',
+        element: <ReportsDashboard />,
+      },
+      {
+        path: 'reports/profit-loss',
+        element: <PLReportPage />,
+      },
+      {
+        path: 'reports/26as-reco',
+        element: <TDS26ASRecoPage />,
       },
     ],
   },
-  // ****************************Operation Executive***************************
+
+  // ****************************AM (Account Manager)*********************************
   {
-    path: 'dashboard/operation-executive',
+    path: '/dashboard/am',
     element: (
-      <ProtectedRoute allowedRoles={['operation-executive']}>
-        <OperationExecutiveDashboard />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <OperationExecutiveHome />,
-      },
-      {
-        path: 'advance-request',
-        element: <OperationExecutiveAdvanceRequestForm />,
-      },
-      {
-        path: 'my-request',
-        element: <OperationExecutiveMyAdvanceRequests />,
-      },
-      {
-        path: 'oe-reliver-form',
-        element: <OperationExecutiveReliverPage />,
-      },
-      {
-        path: 'my-requests',
-        element: <OperationExecutiveMyRequestsPage />,
-      },
-      {
-        path: 'attendence-upload',
-        element: <AttendanceUploadPage />,
-      },
-      {
-        path: 'my-uploaded-attendence',
-        element: <MyUploadedAttendance />,
-      },
-      {
-        path: 'submit-advance-settlement',
-        element: <OperationExecutiveAdvanceSettlementForm />,
-      },
-      {
-        path: 'my-settelment-requests',
-        element: <MySettlements />,
-      },
-    ],
-  },
-  // *************************Account Manager***************************************
-  {
-    path: '/dashboard/account-manager',
-    element: (
-      <ProtectedRoute allowedRoles={['account-manager']}>
+      <ProtectedRoute allowedRoles={['am', 'account-manager']}>
         <AccountManagerDashboard />
       </ProtectedRoute>
     ),
@@ -1058,310 +1492,476 @@ export const router = createBrowserRouter([
         element: <AMInvoiceReviewPage />,
       },
       {
-        path: 'invoice-purchase-entry/:id',
+        path: 'invoice-approval',
         element: <AMInvoiceApproval />,
       },
       {
-        path: 'fixed-asset-entry/:invoiceId',
+        path: 'fixed-assets-entry',
         element: <AMFixedAssetEntryPage />,
       },
       {
-        path: 'gl-master',
-        element: <ChartOfAccountsDashboard />,
-      },
-      {
-        path: 'reports',
-        element: <ReportsDashboard />,
-      },
-      {
-        path: 'tds-26as-reco',
-        element: <TDS26ASRecoPage />,
-      },
-      {
-        path: 'advance-settlement-requests',
+        path: 'advance-settlement-approval',
         element: <AMAdvanceSettlementApproval />,
       },
-      // ************************************Master Dummy********************************************
-      // Client Ledger Route
-      {
-        path: 'client-ledger/:clientCode',
-        element: <ClientLedgerPage />,
-      },
-      // Revenue Ledger Routes
-      {
-        path: 'revenue-ledger/R1001001',
-        element: <HouseKeepingRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001002',
-        element: <HouseKeepingExemptRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001003',
-        element: <ServiceChargesRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001004',
-        element: <OverseasConsultancyRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001005001',
-        element: <HKMaterialRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001005002',
-        element: <CleaningConsumableRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001007',
-        element: <DeepCleaningRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001008',
-        element: <RentOnMachineryRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001009',
-        element: <ManpowerServicesRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R1001010',
-        element: <PestControlRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/R2001001',
-        element: <RoundOffRevenueLedgerPage />,
-      },
-      {
-        path: 'revenue-ledger/:accountCode',
-        element: <HouseKeepingRevenueLedgerPage />,
-      },
-      // Add Employee Ledger Route
-      {
-        path: 'ledger/:accountCode',
-        element: <EmployeeLedgerPage />,
-      },
-      // Vendor Ledger Account
-      {
-        path: 'vendor-ledger/:accountCode',
-        element: <UnifiedVendorLedgerPage />,
-      },
-      {
-        path: 'tds-ledger/:sectionCode',
-        element: <TdsLedgerPage />,
-      },
-      {
-        path: 'bank-ledger/:accountCode',
-        element: <BankLedgerPage />,
-      },
-      {
-        path: 'travel-expense-ledger/:accountCode?',
-        element: <TravelExpenseLedgerPage />,
-      },
-      {
-        path: 'food-refreshment-ledger/:accountCode?',
-        element: <FoodRefreshmentLedgerPage />,
-      },
-      {
-        path: 'office-supplies-ledger/:accountCode?',
-        element: <OfficeSuppliesLedgerPage />,
-      },
-      {
-        path: 'conveyance-payable-ledger',
-        element: <ConveyancePayblePage />,
-      },
-      {
-        path: 'conveyance-expense-ledger',
-        element: <ConveyanceExpenseLedgerPage />,
-      },
-      {
-        path: 'reliever-payment-page',
-        element: <RelieverPaymentPage />,
-      },
-      {
-        path: 'reliever-liability-ledger',
-        element: <RelieverLiabilityLedgerPage />,
-      },
-      {
-        path: 'rent-expense-account',
-        element: <RentExpenseBookingLedgerPage />,
-      },
-      {
-        path: 'cgst-input-ledger',
-        element: <CGSTInputLedgerPage />,
-      },
-      {
-        path: 'sgst-input-ledger',
-        element: <SGSTInputLedgerPage />,
-      },
-      {
-        path: 'igst-input-ledger',
-        element: <IGSTInputLedgerPage />,
-      },
-      {
-        path: 'rent-vendor-ledger/:accountCode',
-        element: <RentVendorLedgerPage />,
-      },
-      {
-        path: 'hk-vendor-ledger/:accountCode',
-        element: <HKVendorLedgerPage />,
-      },
-      {
-        path: 'fixed-asset-ledger/:accountCode',
-        element: <FixedAssetLedgerPage />,
-      },
-      {
-        path: 'fa-vendor-ledger/:accountCode',
-        element: <FAVendorLedgerPage />,
-      },
-      {
-        path: 'prepaid-uniform-vendor-ledger/:accountCode',
-        element: <PrepaidUniformVendorLedgerPage />,
-      },
-      {
-        path: 'fa-uniform-expense',
-        element: <UniformPrepaidExpenseLedger />,
-      },
-      {
-        path: 'uniform-expense-ledger',
-        element: <UniformExpenseLedgerPage />,
-      },
-      {
-        path: 'hk-materials-expense-ledger',
-        element: <HKMaterialsExpenseLedgerPage />,
-      },
-      {
-        path: 'expense-ledger/:accountCode',
-        element: <GenericExpenseLedger />,
-      },
-      {
-        path: 'salary-expense-ledger',
-        element: <SalaryWagesLedgerPage />,
-      },
-      {
-        path: 'salary-payable-ledger',
-        element: <SalaryPayableLedger />,
-      },
-      {
-        path: 'pf-contribution-ledger',
-        element: <PFContributionLedgerPage />,
-      },
-      {
-        path: 'pf-payable-ledger',
-        element: <PFPayableLedgerPage />,
-      },
-      {
-        path: 'esic-contribution-ledger',
-        element: <ESICContributionLedgerPage />,
-      },
-      {
-        path: 'esic-payable-ledger',
-        element: <ESICPayableLedgerPage />,
-      },
-      {
-        path: 'lwf-contribution-ledger',
-        element: <LWFContributionLedgerPage />,
-      },
-      {
-        path: 'lwf-payable-ledger',
-        element: <LWFPayableLedgerPage />,
-      },
-      {
-        path: 'leave-provision-ledger',
-        element: <LeaveProvisionExpenseLedgerPage />,
-      },
-      {
-        path: 'leave-encashment-provision-ledger',
-        element: <LeaveEncashmentProvisionLedgerPage />,
-      },
-      {
-        path: 'other-deductions-ledger',
-        element: <OtherDeductionsLedgerPage />,
-      },
-      {
-        path: 'employee-pf-payable-ledger',
-        element: <EmployeePFPayableLedgerPage />,
-      },
-      {
-        path: 'employee-esic-payable-ledger',
-        element: <EmployeeESICPayableLedgerPage />,
-      },
-      {
-        path: 'employee-lwf-payable-ledger',
-        element: <EmployeeLWFPayableLedgerPage />,
-      },
-      {
-        path: 'professional-tax-payable-ledger',
-        element: <ProfessionalTaxPayableLedgerPage />,
-      },
-      {
-        path: 'bonus-expense-ledger',
-        element: <BonusExpenseLedgerPage />,
-      },
-      // ============== TDS RECEIVABLE LEDGER (A3006001) ==============
-      {
-        path: 'tds-receivable-ledger',
-        element: <TDSReceivableAssetLedgerPage />,
-      },
-      // ============== BILLING LEDGERS ROUTES (11 Ledgers) ==============
-      // Primary Posting Ledgers (4)
-      {
-        path: 'billing-ledger/hk-charges',
-        element: <HKChargesLedgerPage />,
-      },
-      {
-        path: 'billing-ledger/manpower-services',
-        element: <ManpowerLedgerPage />,
-      },
-      {
-        path: 'billing-ledger/hk-material',
-        element: <HKMaterialLedgerPage />,
-      },
-      {
-        path: 'billing-ledger/machinery-rent',
-        element: <MachineryRentLedgerPage />,
-      },
-      // GST Statutory Ledgers (3)
-      {
-        path: 'billing-ledger/cgst-payable',
-        element: <CGSTLedgerPage />,
-      },
-      {
-        path: 'billing-ledger/sgst-payable',
-        element: <SGSTLedgerPage />,
-      },
-      {
-        path: 'billing-ledger/igst-payable',
-        element: <IGSTLedgerPage />,
-      },
-      // TDS Statutory Ledgers (2)
-      {
-        path: 'billing-ledger/tds-payable-194c',
-        element: <TDSPayableLedgerPage />,
-      },
-      {
-        path: 'billing-ledger/tds-receivable-194j',
-        element: <TDSReceivableLedgerPage />,
-      },
-      // Other Statutory Ledgers (2)
-      {
-        path: 'billing-ledger/service-tax-payable',
-        element: <ServiceTaxLedgerPage />,
-      },
-      {
-        path: 'billing-ledger/round-off',
-        element: <RoundOffLedgerPage />,
-      },
-      // =================================================================
     ],
   },
-  // Reports View Route
   {
-    path: '/reports/pnl-view',
+    path: '/dashboard/account-manager',
     element: (
-      <ProtectedRoute allowedRoles={['account-manager', 'admin', 'vp-operations', 'line-manager', 'biiling-manager']}>
-        <PLReportPage />
+      <ProtectedRoute allowedRoles={['am', 'account-manager']}>
+        <AccountManagerDashboard />
       </ProtectedRoute>
     ),
+    children: [
+      {
+        index: true,
+        element: <AccountManagerHome />,
+      },
+      {
+        path: 'invoice-review',
+        element: <AMInvoiceReviewPage />,
+      },
+      {
+        path: 'invoice-approval',
+        element: <AMInvoiceApproval />,
+      },
+      {
+        path: 'fixed-assets-entry',
+        element: <AMFixedAssetEntryPage />,
+      },
+      {
+        path: 'advance-settlement-approval',
+        element: <AMAdvanceSettlementApproval />,
+      },
+    ],
+  },
+
+  // ****************************Compliance Team*********************************
+  {
+    path: '/dashboard/compliance-team',
+    element: (
+      <ProtectedRoute allowedRoles={['compliance-team', 'compliance-executive']}>
+        <ComplianceTeamDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <ComplianceTeamHome />,
+      },
+      {
+        path: 'compliance-entry',
+        element: <ComplianceEntryPage />,
+      },
+      {
+        path: 'compliance-entry-form',
+        element: <ComplianceEntryPage />,
+      },
+      {
+        path: 'my-entries',
+        element: <ComplianceTeamSubmittedEntries />,
+      },
+      {
+        path: 'advance-request',
+        element: <ComplianceTeamAdvanceRequestForm />,
+      },
+      {
+        path: 'my-advance-requests',
+        element: <ComplianceTeamMyRequests />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <ComplianceTeamAdvanceSettlementForm />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <ComplianceTeamAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <ExpenseRequestsPage />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <SubmitConveyancePage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+    ],
+  },
+
+  // ****************************Compliance Manager*********************************
+  {
+    path: '/dashboard/compliance-manager',
+    element: (
+      <ProtectedRoute allowedRoles={['compliance-manager', 'compliance-head']}>
+        <ComplianceManagerDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <ComplianceManagerHome />,
+      },
+      {
+        path: 'compliance-approval',
+        element: <ComplianceManagerApprovalPage />,
+      },
+      {
+        path: 'statutory-compliances-requests',
+        element: <ComplianceManagerApprovalPage />,
+      },
+      {
+        path: 'advance-request',
+        element: <ComplianceManagerAdvanceRequestForm />,
+      },
+      {
+        path: 'my-advance-requests',
+        element: <ComplianceManagerMyRequests />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <ComplianceManagerAdvanceSettlementForm />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <ComplianceManagerAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <ExpenseRequestsPage />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <LinemanagerConveyanceFormPage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+      {
+        path: 'conveyance-approval',
+        element: <ManagerConveyanceApprovalsPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'reliver-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+      {
+        path: 'reliever-approval',
+        element: <LineManagerRelieverApprovalPage />,
+      },
+    ],
+  },
+
+  // ****************************Payroll Team*********************************
+  {
+    path: '/dashboard/payroll-team',
+    element: (
+      <ProtectedRoute allowedRoles={['payroll-team', 'payroll-executive']}>
+        <PayrollTeamDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <PayrollTeamHome />,
+      },
+      {
+        path: 'payment-entry',
+        element: <PayrollPaymentEntryPage />,
+      },
+      {
+        path: 'payroll-payment-entry',
+        element: <PayrollPaymentEntryPage />,
+      },
+      {
+        path: 'attendence-dashboard',
+        element: <AttendencePayrollDashboard />,
+      },
+      {
+        path: 'my-entries',
+        element: <PayrollTeamSubmittedEntriesPage />,
+      },
+      {
+        path: 'advance-request',
+        element: <PayrollTeamAdvanceRequestForm />,
+      },
+      {
+        path: 'my-advance-requests',
+        element: <PayrollTeamMyRequests />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <EmployeeAdvanceSettlementPage />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <EmployeeAdvanceSettlementPage />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <SubmitConveyancePage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+    ],
+  },
+
+  // ****************************Operation Executive*********************************
+  {
+    path: '/dashboard/operation-executive',
+    element: (
+      <ProtectedRoute allowedRoles={['operation-executive']}>
+        <OperationExecutiveDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <OperationExecutiveHome />,
+      },
+      {
+        path: 'reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'reliever-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'oe-reliver-form',
+        element: <OperationExecutiveReliverPage />,
+      },
+      {
+        path: 'my-reliver-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'my-reliever-requests',
+        element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'advance-request',
+        element: <OperationExecutiveAdvanceRequestForm />,
+      },
+      {
+        path: 'my-advance-requests',
+        element: <OperationExecutiveMyRequests />,
+      },
+      {
+        path: 'advance-settlement',
+        element: <OperationExecutiveAdvanceSettlementForm />,
+      },
+      {
+        path: 'submit-advance-settlement',
+        element: <OperationExecutiveAdvanceSettlementForm />,
+      },
+      {
+        path: 'my-settelment-requests',
+        element: <MySettlements />,
+      },
+      {
+        path: 'conveyance-form',
+        element: <SubmitConveyancePage />,
+      },
+      {
+        path: 'my-conveyance-requests',
+        element: <MyConveyanceRequestsPage />,
+      },
+    ],
+  },
+
+  // ****************************Financial Head*********************************
+  {
+    path: '/dashboard/financial-head',
+    element: (
+      <ProtectedRoute allowedRoles={['financial-head', 'finance-head', 'cfo']}>
+        <FinancialHeadDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <FinancialHeadHome />,
+      },
+      {
+        path: 'other-invoice-approval',
+        element: <FinancialHeadInvoiceApprovalPage />,
+      },
+    ],
+  },
+
+  // ****************************Billing Manager Dashboard & Routes*********************************
+  {
+    path: '/dashboard/billing-manager',
+    element: (
+      <ProtectedRoute allowedRoles={['billing-manager', 'billing-head', 'billing-executive']}>
+        <BillngManagerDashboard />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <BillingManagerHome />,
+      },
+      {
+        path: 'prepaid-approval',
+        element: <BillingManagerApprovalPage />,
+      },
+      {
+        path: 'rent-expense-booking',
+        element: <RentExpenseBookingPage />,
+      },
+    ],
+  },
+
+  // ****************************Billing Module Routes*********************************
+  {
+    path: '/billing',
+    element: (
+      <ProtectedRoute allowedRoles={['billing-manager', 'billing-head', 'billing-executive', 'ae', 'account-executive']}>
+        <BillingLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <BillingDashboard />,
+      },
+      {
+        path: 'auto-billing',
+        element: <AutoBillingWizard />,
+      },
+      {
+        path: 'proforma-invoices',
+        element: <ProformaInvoices />,
+      },
+      {
+        path: 'manual-billing',
+        element: <ManualBilling />,
+      },
+      {
+        path: 'rate-cards',
+        element: <RateCardPage />,
+      },
+      {
+        path: 'arrear-billing',
+        element: <ArrearBillingPage />,
+      },
+      {
+        path: 'arrear-billing/new',
+        element: <ArrearBillingForm />,
+      },
+      {
+        path: 'arrear-billing/preview',
+        element: <ArrearBillingInvoicePreview />,
+      },
+      {
+        path: 'bonus-leave-encashment',
+        element: <BonusLeaveEncashmentList />,
+      },
+      {
+        path: 'bonus-leave-encashment/new',
+        element: <BonusLeaveEncashmentForm />,
+      },
+      {
+        path: 'bonus-leave-encashment/calc',
+        element: <BonusLeaveEncashmentCalculation />,
+      },
+      {
+        path: 'bonus-leave-encashment/preview',
+        element: <BonusLeaveEncashmentInvoicePreview />,
+      },
+      {
+        path: 'invoices',
+        element: <InvoiceListPage />,
+      },
+      {
+        path: 'irn-invoices',
+        element: <IRNInvoices />,
+      },
+      {
+        path: 'attendance-upload',
+        element: <AttendanceUploadPage />,
+      },
+      {
+        path: 'my-uploaded-attendance',
+        element: <MyUploadedAttendance />,
+      },
+      {
+        path: 'attendance-payroll-dashboard',
+        element: <AttendencePayrollDashboard />,
+      },
+      {
+        path: 'attendance-punching-list',
+        element: <AttendancePunchingList />,
+      },
+      {
+        path: 'attendance-details',
+        element: <AttendanceDetails />,
+      },
+    ],
+  },
+
+  {
+    path: '*',
+    element: <h1>Page Not Found!</h1>,
   },
 ])

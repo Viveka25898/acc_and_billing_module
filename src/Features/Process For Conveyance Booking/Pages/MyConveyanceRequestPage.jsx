@@ -21,9 +21,15 @@ const getConveyanceFormPath = (role) => {
   const normRole = (role || "").toLowerCase().replace(/_/g, "-");
   if (normRole === "regional-head") return "/dashboard/regional-head/conveyance-form";
   if (normRole === "line-manager") return "/dashboard/line-manager/conveyance-form";
+  if (normRole === "manager" || normRole === "operation-manager" || normRole === "facility-manager") return "/dashboard/manager/conveyance-form";
   if (normRole === "avp-operations" || normRole === "avp") return "/dashboard/avp-operations/conveyance-form";
   if (normRole === "vp-operations" || normRole === "vp") return "/dashboard/vp-operations/conveyance-form";
+  if (normRole === "operation-executive") return "/dashboard/operation-executive/conveyance-form";
   if (normRole === "account-executive" || normRole === "ae") return "/dashboard/ae/conveyance-form";
+  if (normRole === "supervisor" || normRole === "site-supervisor") return "/dashboard/supervisor/conveyance-form";
+  if (normRole === "compliance-team") return "/dashboard/compliance-team/conveyance-form";
+  if (normRole === "compliance-manager") return "/dashboard/compliance-manager/conveyance-form";
+  if (normRole === "payroll-team" || normRole === "payroll-executive") return "/dashboard/payroll-team/conveyance-form";
   return "/dashboard/employee/conveyance-form";
 };
 

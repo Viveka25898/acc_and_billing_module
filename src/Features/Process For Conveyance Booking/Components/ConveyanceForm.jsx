@@ -452,7 +452,7 @@ export default function ConveyanceForm({ onSubmit, submitLoading }) {
               <span>Submitting Claim...</span>
             </>
           ) : (
-            <span>Submit to Manager</span>
+            <span>Submit Conveyance Claim</span>
           )}
         </button>
       </div>
