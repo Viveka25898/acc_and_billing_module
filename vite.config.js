@@ -24,21 +24,11 @@ export default defineConfig({
         manualChunks(id) {
           const normalizedId = id.replace(/\\/g, '/');
           if (normalizedId.includes('/node_modules/')) {
-            if (normalizedId.includes('pdfjs-dist')) return 'vendor-pdfjs';
+            if (normalizedId.includes('pdfjs-dist') || normalizedId.includes('@react-pdf-viewer')) return 'vendor-pdf';
             if (normalizedId.includes('xlsx') || normalizedId.includes('exceljs') || normalizedId.includes('file-saver')) return 'vendor-excel';
-            if (normalizedId.includes('recharts') || normalizedId.includes('d3')) return 'vendor-charts';
-            if (normalizedId.includes('react-icons') || normalizedId.includes('lucide-react')) return 'vendor-icons';
-            if (normalizedId.includes('@reduxjs') || normalizedId.includes('react-redux')) return 'vendor-redux';
-            if (
-              normalizedId.includes('/node_modules/react/') ||
-              normalizedId.includes('/node_modules/react-dom/') ||
-              normalizedId.includes('/node_modules/scheduler/') ||
-              normalizedId.includes('/node_modules/use-sync-external-store/') ||
-              normalizedId.includes('react-router')
-            ) {
-              return 'vendor-core';
-            }
-            return 'vendor-libs';
+            if (normalizedId.includes('tesseract.js')) return 'vendor-tesseract';
+            if (normalizedId.includes('jspdf') || normalizedId.includes('html2pdf') || normalizedId.includes('html2canvas') || normalizedId.includes('html-to-image')) return 'vendor-pdf-gen';
+            return 'vendor';
           }
         },
       },
