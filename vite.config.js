@@ -22,13 +22,22 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('pdfjs-dist')) return 'vendor-pdfjs';
-            if (id.includes('xlsx') || id.includes('exceljs') || id.includes('file-saver')) return 'vendor-excel';
-            if (id.includes('recharts') || id.includes('d3')) return 'vendor-charts';
-            if (id.includes('react-icons') || id.includes('lucide-react')) return 'vendor-icons';
-            if (id.includes('@reduxjs') || id.includes('react-redux')) return 'vendor-redux';
-            if (id.includes('react-dom') || id.includes('react-router')) return 'vendor-core';
+          const normalizedId = id.replace(/\\/g, '/');
+          if (normalizedId.includes('/node_modules/')) {
+            if (normalizedId.includes('pdfjs-dist')) return 'vendor-pdfjs';
+            if (normalizedId.includes('xlsx') || normalizedId.includes('exceljs') || normalizedId.includes('file-saver')) return 'vendor-excel';
+            if (normalizedId.includes('recharts') || normalizedId.includes('d3')) return 'vendor-charts';
+            if (normalizedId.includes('react-icons') || normalizedId.includes('lucide-react')) return 'vendor-icons';
+            if (normalizedId.includes('@reduxjs') || normalizedId.includes('react-redux')) return 'vendor-redux';
+            if (
+              normalizedId.includes('/node_modules/react/') ||
+              normalizedId.includes('/node_modules/react-dom/') ||
+              normalizedId.includes('/node_modules/scheduler/') ||
+              normalizedId.includes('/node_modules/use-sync-external-store/') ||
+              normalizedId.includes('react-router')
+            ) {
+              return 'vendor-core';
+            }
             return 'vendor-libs';
           }
         },
