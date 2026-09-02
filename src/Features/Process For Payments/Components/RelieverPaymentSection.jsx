@@ -44,6 +44,8 @@ const RelieverPaymentSection = () => {
   const [parsedData, setParsedData] = useState([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isBankModalOpen, setIsBankModalOpen] = useState(false)
+  const [bankModalMode, setBankModalMode] = useState('excel')
+  const [pendingApproveSelections, setPendingApproveSelections] = useState(null)
   const [pendingAcceptedData, setPendingAcceptedData] = useState(null)
   const [showPaymentEntry, setShowPaymentEntry] = useState(false)
   const [paymentEntryData, setPaymentEntryData] = useState(null)
@@ -131,7 +133,7 @@ const RelieverPaymentSection = () => {
     }
   }
 
-  // Generate Reliever Payment Files API Trigger
+  // Generate Reliever Payment Files API Trigger - Prompts for Bank selection first
   const handleRelieverApproval = async (selectedRequests = []) => {
     if (!Array.isArray(selectedRequests) || selectedRequests.length === 0) {
       toast.warning('Please select at least one reliever request to approve')
@@ -139,26 +141,51 @@ const RelieverPaymentSection = () => {
     }
 
     const selections = selectedRequests.map((r) => r.requestId || r.id)
+    const summaryRows = selectedRequests.map((r) => ({
+      'Employee Name': r['Reliever Name'] || r.relieverName || '-',
+      'Employee ID': r['Employee ID'] || r.employeeId || '-',
+      'Payment Amount': parseFloat(r.Amount || r.amount || 0),
+    }))
 
-    try {
-      // 1. Call Generate Reliever Payment Files API (POST /accounts/payments/reliever/generate-payment-files)
-      const res = await dispatch(generateRelieverPaymentFiles({ selections })).unwrap()
-      setFilesDownloaded(false) // Enable download button for the new generated batch
-
-      toast.success(
-        res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
-      )
-
-      // 2. Refresh pending reliever request list from backend
-      loadPendingRelieverRequests(currentPage)
-    } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to generate reliever payment files')
-    }
+    setPendingApproveSelections(selections)
+    setPendingAcceptedData(summaryRows)
+    setBankModalMode('approval')
+    setIsBankModalOpen(true)
   }
 
-  const handleBankConfirm = (bank) => {
+  const handleBankConfirm = async (bank) => {
     setIsBankModalOpen(false)
 
+    if (bankModalMode === 'approval') {
+      if (!pendingApproveSelections || pendingApproveSelections.length === 0) {
+        toast.error('No selections found for payment file generation')
+        return
+      }
+      try {
+        const res = await dispatch(
+          generateRelieverPaymentFiles({
+            selections: pendingApproveSelections,
+            selectedBankCode: bank.bankCode,
+          })
+        ).unwrap()
+        setFilesDownloaded(false) // Enable download button for the new generated batch
+
+        toast.success(
+          res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
+        )
+
+        // Refresh pending reliever request list from backend
+        loadPendingRelieverRequests(currentPage)
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to generate reliever payment files')
+      } finally {
+        setPendingApproveSelections(null)
+        setPendingAcceptedData(null)
+      }
+      return
+    }
+
+    // Handle Excel upload bank confirmation (local GL posting)
     try {
       const accepted = pendingAcceptedData || []
       const paymentsToProcess = accepted.map((row) => ({

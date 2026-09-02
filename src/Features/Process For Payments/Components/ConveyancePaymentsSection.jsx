@@ -45,6 +45,8 @@ const ConveyancePaymentsSection = () => {
   const [parsedData, setParsedData] = useState([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isBankModalOpen, setIsBankModalOpen] = useState(false)
+  const [bankModalMode, setBankModalMode] = useState('excel')
+  const [pendingApproveSelections, setPendingApproveSelections] = useState(null)
   const [pendingAcceptedData, setPendingAcceptedData] = useState(null)
   const [showPaymentEntry, setShowPaymentEntry] = useState(false)
   const [paymentEntryData, setPaymentEntryData] = useState(null)
@@ -138,35 +140,60 @@ const ConveyancePaymentsSection = () => {
     }
   }
 
-  // Generate Conveyance Payment Files API Trigger
+  // Generate Conveyance Payment Files API Trigger - Prompts for Bank selection first
   const handleConveyanceApproval = async (selectedRequests = []) => {
     if (!Array.isArray(selectedRequests) || selectedRequests.length === 0) {
       toast.warning('Please select at least one conveyance request to approve')
       return
     }
 
-    // Match backend spec payload: { selections: ["EXP/CONV/GEN/2026/..."] }
+    // Match backend spec payload: { selectedBankCode, selections: ["EXP/CONV/GEN/2026/..."] }
     const selections = selectedRequests.map((r) => r.voucherNo || r.id)
+    const summaryRows = selectedRequests.map((r) => ({
+      'Employee Name': r['Employee Name'] || r.employeeName || '-',
+      'Employee ID': r['Employee ID'] || r.employeeId || '-',
+      'Approved Amount': parseFloat(r.Amount || r.amount || 0),
+    }))
 
-    try {
-      // 1. Call Generate Conveyance Payment Files API (POST /accounts/payments/conveyance/generate-payment-files)
-      const res = await dispatch(generateConveyancePaymentFiles({ selections })).unwrap()
-      setFilesDownloaded(false) // Enable download button for the new generated batch
-
-      toast.success(
-        res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
-      )
-
-      // 2. Refresh pending conveyance claim list from backend
-      loadPendingConveyancePayments(currentPage)
-    } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to generate conveyance payment files')
-    }
+    setPendingApproveSelections(selections)
+    setPendingAcceptedData(summaryRows)
+    setBankModalMode('approval')
+    setIsBankModalOpen(true)
   }
 
-  const handleBankConfirm = (bank) => {
+  const handleBankConfirm = async (bank) => {
     setIsBankModalOpen(false)
 
+    if (bankModalMode === 'approval') {
+      if (!pendingApproveSelections || pendingApproveSelections.length === 0) {
+        toast.error('No selections found for payment file generation')
+        return
+      }
+      try {
+        const res = await dispatch(
+          generateConveyancePaymentFiles({
+            selections: pendingApproveSelections,
+            selectedBankCode: bank.bankCode,
+          })
+        ).unwrap()
+        setFilesDownloaded(false) // Enable download button for the new generated batch
+
+        toast.success(
+          res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
+        )
+
+        // Refresh pending conveyance claim list from backend
+        loadPendingConveyancePayments(currentPage)
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to generate conveyance payment files')
+      } finally {
+        setPendingApproveSelections(null)
+        setPendingAcceptedData(null)
+      }
+      return
+    }
+
+    // Handle Excel upload bank confirmation (local GL posting)
     try {
       const accepted = pendingAcceptedData || []
       const paymentsToProcess = accepted.map((row) => ({

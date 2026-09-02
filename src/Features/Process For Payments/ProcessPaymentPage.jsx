@@ -112,6 +112,8 @@ const VendorPaymentsSection = ({
     downloads,
   } = useSelector((state) => state.vendorPayment || {})
   const [bankProcessing, setBankProcessing] = useState(false)
+  const [bankModalMode, setBankModalMode] = useState('excel')
+  const [pendingApproveSelections, setPendingApproveSelections] = useState(null)
 
   // Tracking Download Actions
   const [filesDownloaded, setFilesDownloaded] = useState(false)
@@ -211,7 +213,7 @@ const VendorPaymentsSection = ({
     }
   }
 
-  // Generate Vendor Payment Files API Trigger
+  // Generate Vendor Payment Files API Trigger - Prompts for Bank Selection first
   const handleInvoiceApproval = async (selectedVendors, currentPayments = {}) => {
     const selectedIds = Object.keys(selectedVendors).filter((id) => selectedVendors[id])
     if (selectedIds.length === 0) {
@@ -220,8 +222,9 @@ const VendorPaymentsSection = ({
     }
 
     // Build payload matching backend contract:
-    // { selections: [ { vendorId, invoiceSelections: [ { invoiceId, paymentType, paidAmount } ] } ] }
+    // { selectedBankCode, selections: [ { vendorId, invoiceSelections: [ { invoiceId, paymentType, paidAmount } ] } ] }
     const selections = []
+    const summaryRows = []
 
     vendorData.forEach((vendor) => {
       if (selectedVendors[vendor.id]) {
@@ -248,6 +251,13 @@ const VendorPaymentsSection = ({
             vendorId: vendor.vendorId || vendor.id,
             invoiceSelections,
           })
+
+          const vendorTotal = invoiceSelections.reduce((s, i) => s + i.paidAmount, 0)
+          summaryRows.push({
+            'Vendor Name': vendor.vendorName || vendor.id,
+            'Invoice Numbers': (vendor.invoices || []).map((i) => i.invoiceNumber).join(', '),
+            'Payment Done': vendorTotal,
+          })
         }
       }
     })
@@ -257,25 +267,46 @@ const VendorPaymentsSection = ({
       return
     }
 
-    try {
-      // 1. Call Generate Vendor Payment Files API (POST /accounts/payments/vendor/generate-payment-files)
-      const res = await dispatch(generateVendorPaymentFiles({ selections })).unwrap()
-      setFilesDownloaded(false) // Enable download button for the new generated batch
-
-      toast.success(
-        res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
-      )
-
-      // 2. Refresh pending vendor list from backend
-      loadPendingVendorPayments(currentPage)
-    } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to generate vendor payment files')
-    }
+    setPendingApproveSelections(selections)
+    setPendingAcceptedData(summaryRows)
+    setBankModalMode('approval')
+    setIsBankModalOpen(true)
   }
 
   // ── Bank selection confirm handler ─────────────────────────────────────────
   const handleBankConfirm = async (bank) => {
     setIsBankModalOpen(false)
+
+    if (bankModalMode === 'approval') {
+      if (!pendingApproveSelections || pendingApproveSelections.length === 0) {
+        toast.error('No selections found for payment file generation')
+        return
+      }
+      try {
+        const res = await dispatch(
+          generateVendorPaymentFiles({
+            selectedBankCode: bank.bankCode,
+            selections: pendingApproveSelections,
+          })
+        ).unwrap()
+        setFilesDownloaded(false) // Enable download button for the new generated batch
+
+        toast.success(
+          res.message || 'Payment files generated successfully. Click "Download Files" to save them.'
+        )
+
+        // Refresh pending vendor list from backend
+        loadPendingVendorPayments(currentPage)
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to generate vendor payment files')
+      } finally {
+        setPendingApproveSelections(null)
+        setPendingAcceptedData(null)
+      }
+      return
+    }
+
+    // Handle Excel upload bank confirmation (local GL posting)
     setBankProcessing(true)
     try {
       const payments = []
