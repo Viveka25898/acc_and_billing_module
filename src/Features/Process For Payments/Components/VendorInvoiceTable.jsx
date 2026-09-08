@@ -13,21 +13,6 @@ const VendorInvoiceTable = ({
   const [expandedVendor, setExpandedVendor] = useState(null)
   const [localPayments, setLocalPayments] = useState({})
 
-  // Load persisted selections on mount
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('vendor_payment_selections') || '{}')
-      const savedSelections = JSON.parse(localStorage.getItem('vendor_selection_state') || '{}')
-      if (Object.keys(saved).length > 0) {
-        setLocalPayments(saved)
-        Object.entries(saved).forEach(([id, p]) => onPaymentUpdate?.(id, p.amount, p.paymentType))
-      }
-      if (Object.keys(savedSelections).length > 0) setSelectedVendors(savedSelections)
-    } catch {
-      // ignore non-critical
-    }
-  }, [])
-
   // Sync local payments with parent state
   useEffect(() => {
     setLocalPayments(invoicePayments || {})
@@ -53,23 +38,12 @@ const VendorInvoiceTable = ({
     if (hasNew) {
       const merged = { ...localPayments, ...defaults }
       setLocalPayments(merged)
-      persist(merged, selectedVendors)
     }
   }, [vendorData])
-
-  const persist = (payments, selections) => {
-    try {
-      localStorage.setItem('vendor_payment_selections', JSON.stringify(payments))
-      localStorage.setItem('vendor_selection_state', JSON.stringify(selections))
-    } catch {
-      // non-critical
-    }
-  }
 
   const handleVendorCheckbox = (vendorId) => {
     const next = { ...selectedVendors, [vendorId]: !selectedVendors[vendorId] }
     setSelectedVendors(next)
-    persist(localPayments, next)
   }
 
   const handleAmountChange = (invoiceId, value) => {
@@ -82,7 +56,6 @@ const VendorInvoiceTable = ({
     const updated = { ...current, amount: num, paymentType: current.paymentType || 'partial' }
     const next = { ...localPayments, [invoiceId]: updated }
     setLocalPayments(next)
-    persist(next, selectedVendors)
     onPaymentUpdate?.(invoiceId, num, updated.paymentType)
   }
 
@@ -92,7 +65,6 @@ const VendorInvoiceTable = ({
     const updated = { amount: Number(amount), paymentType }
     const next = { ...localPayments, [invoiceId]: updated }
     setLocalPayments(next)
-    persist(next, selectedVendors)
     onPaymentUpdate?.(invoiceId, Number(amount), paymentType)
   }
 
@@ -110,7 +82,6 @@ const VendorInvoiceTable = ({
 
     setLocalPayments(newPayments)
     setSelectedVendors(newSelections)
-    persist(newPayments, newSelections)
   }
 
   const typeBadgeColor = (label = '') => {
@@ -334,7 +305,7 @@ const VendorInvoiceTable = ({
         </button>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           height: 6px;
           width: 6px;

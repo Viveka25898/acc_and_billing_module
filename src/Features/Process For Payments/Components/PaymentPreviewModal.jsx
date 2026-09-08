@@ -1,16 +1,33 @@
 import React from 'react'
-import { FaTimes, FaCheck, FaEdit, FaExclamationTriangle } from 'react-icons/fa'
+import { FaTimes, FaCheck, FaExclamationTriangle } from 'react-icons/fa'
 
 const PaymentPreviewModal = ({ data, onClose, onAccept, onRequestChanges }) => {
   if (!data || data.length === 0) return null
 
+  // Helpers to support both API camelCase responses and Excel parsed object keys
+  const getVendorName = (row) => row.vendorName || row['Vendor Name'] || row.vendor_name || ''
+  const getInvoiceNumbers = (row) =>
+    row.invoiceNumbers || row['Invoice Numbers'] || row.invoice_numbers || ''
+  const getPaymentAmount = (row) => {
+    const val =
+      row.paymentDone ?? row['Payment Done'] ?? row.totalAmount ?? row['Total Amount'] ?? row.amount
+    return Number(val)
+  }
+  const getUtr = (row) => row.utr || row['UTR'] || row['utr'] || ''
+
   // Helper to validate and calculate totals
-  const totalAmount = data.reduce((sum, row) => sum + (Number(row['Payment Done']) || 0), 0)
+  const totalAmount = data.reduce((sum, row) => {
+    const amt = getPaymentAmount(row)
+    return sum + (isNaN(amt) ? 0 : amt)
+  }, 0)
 
   // Identify any rows missing critical data
-  const hasErrors = data.some(
-    (row) => !row['Vendor Name'] || !row['Invoice Numbers'] || isNaN(row['Payment Done'])
-  )
+  const hasErrors = data.some((row) => {
+    const name = getVendorName(row)
+    const inv = getInvoiceNumbers(row)
+    const amt = getPaymentAmount(row)
+    return !name || !inv || isNaN(amt)
+  })
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -57,13 +74,18 @@ const PaymentPreviewModal = ({ data, onClose, onAccept, onRequestChanges }) => {
                     <th className="px-4 py-3 w-12 text-center">#</th>
                     <th className="px-4 py-3">Vendor Name</th>
                     <th className="px-4 py-3">Invoice Numbers</th>
+                    <th className="px-4 py-3">UTR No.</th>
                     <th className="px-4 py-3 text-right">Payment Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.map((row, index) => {
-                    const isError =
-                      !row['Vendor Name'] || !row['Invoice Numbers'] || isNaN(row['Payment Done'])
+                    const vendorName = getVendorName(row)
+                    const invoiceNumbers = getInvoiceNumbers(row)
+                    const amt = getPaymentAmount(row)
+                    const utr = getUtr(row)
+
+                    const isError = !vendorName || !invoiceNumbers || isNaN(amt)
                     return (
                       <tr
                         key={index}
@@ -75,22 +97,25 @@ const PaymentPreviewModal = ({ data, onClose, onAccept, onRequestChanges }) => {
                           {index + 1}
                         </td>
                         <td className="px-4 py-3">
-                          {row['Vendor Name'] ? (
-                            <span className="font-medium text-gray-800">{row['Vendor Name']}</span>
+                          {vendorName ? (
+                            <span className="font-medium text-gray-800">{vendorName}</span>
                           ) : (
                             <span className="text-orange-500 italic text-xs">Missing</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-gray-600 font-mono text-xs">
-                          {row['Invoice Numbers'] || (
+                          {invoiceNumbers || (
                             <span className="text-orange-500 italic font-sans">Missing</span>
                           )}
                         </td>
+                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                          {utr || '-'}
+                        </td>
                         <td className="px-4 py-3 text-right font-medium text-gray-800">
-                          {isNaN(row['Payment Done']) ? (
+                          {isNaN(amt) ? (
                             <span className="text-orange-500 italic text-xs">Invalid</span>
                           ) : (
-                            Number(row['Payment Done']).toLocaleString('en-IN', {
+                            amt.toLocaleString('en-IN', {
                               minimumFractionDigits: 2,
                             })
                           )}
@@ -101,7 +126,7 @@ const PaymentPreviewModal = ({ data, onClose, onAccept, onRequestChanges }) => {
                 </tbody>
                 <tfoot className="bg-green-50/50 border-t border-gray-200 font-semibold">
                   <tr>
-                    <td colSpan="3" className="px-4 py-3 text-right text-green-800">
+                    <td colSpan="4" className="px-4 py-3 text-right text-green-800">
                       Total Uploaded Amount:
                     </td>
                     <td className="px-4 py-3 text-right text-green-700 font-bold text-base">
@@ -117,11 +142,10 @@ const PaymentPreviewModal = ({ data, onClose, onAccept, onRequestChanges }) => {
         {/* Footer Actions */}
         <div className="border-t border-gray-100 bg-white p-4 flex justify-end gap-3 rounded-b-2xl">
           <button
-            onClick={() => onRequestChanges(data)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-200 transition-colors"
+            onClick={onClose}
+            className="px-5 py-2.5 bg-gray-100 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-200 transition-colors"
           >
-            <FaEdit />
-            Edit Data
+            Cancel
           </button>
           <button
             onClick={() => onAccept(data)}

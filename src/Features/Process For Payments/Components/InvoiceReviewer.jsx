@@ -127,7 +127,7 @@ const InvoiceViewer = ({ selectedInvoice }) => {
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
           height: 6px;

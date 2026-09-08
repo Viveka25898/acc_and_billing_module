@@ -13,9 +13,10 @@ import { transformPendingRelieverApiResponse } from '../utils/paymentHelpers'
 import {
   fetchPendingRelieverRequests,
   generateRelieverPaymentFiles,
+  uploadRelieverSystemFile,
+  processRelieverPaymentGLPosting,
 } from '../../../store/slices/relieverSlice'
 import { downloadRelieverFileBlob } from '../services/relieverPaymentService'
-import { processRelieverBankPayments } from '../../Master/utils/accountingHelpers'
 
 const Spinner = ({ size = 'md' }) => {
   const size_cls = size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-10 w-10' : 'h-6 w-6'
@@ -33,11 +34,12 @@ const RelieverPaymentSection = () => {
   const {
     pendingPaymentRelievers,
     pendingPaymentPagination,
-    loading: { pendingPayments: apiLoading },
+    loading: { pendingPayments: apiLoading, upload: fileUploading },
     errors: { pendingPayments: apiError },
     relieverFileGenerating,
     relieverBatchId,
     relieverDownloads,
+    relieverApiBankAccounts,
   } = useSelector((state) => state.reliever || {})
 
   const [relieverData, setRelieverData] = useState([])
@@ -62,13 +64,13 @@ const RelieverPaymentSection = () => {
     async (targetPage = currentPage) => {
       try {
         const resultAction = await dispatch(
-          fetchPendingRelieverRequests({ page: targetPage })
+          fetchPendingRelieverRequests({ page: targetPage, pageSize: 20 })
         ).unwrap()
         const rawRequests = resultAction?.relieverRequests || []
         const transformed = transformPendingRelieverApiResponse(rawRequests)
         setRelieverData(transformed)
       } catch (err) {
-        toast.error(typeof err === 'string' ? err : 'Failed to load pending reliever payment requests')
+        toast.error(typeof err === 'string' ? err : 'Failed to load pending reliever requests')
       }
     },
     [dispatch, currentPage]
@@ -92,13 +94,22 @@ const RelieverPaymentSection = () => {
     loadPendingRelieverRequests(newPage)
   }
 
+  // File upload handler - Uploads file to backend API & opens preview modal automatically
   const handleFileUpload = async (file) => {
     try {
-      const data = await parseRelieverExcelFile(file)
-      setParsedData(data)
-      setIsModalOpen(true)
+      const result = await dispatch(
+        uploadRelieverSystemFile({ file, batchId: relieverBatchId || '' })
+      ).unwrap()
+
+      const parsedRows = result?.parsedData || []
+      setParsedData(parsedRows)
+      setIsModalOpen(true) // Automatically opens modal with all information from the file
+
+      toast.success(
+        result?.message || `Uploaded ${parsedRows.length} payment records successfully.`
+      )
     } catch (err) {
-      toast.error(err.message || 'Error processing file')
+      toast.error(typeof err === 'string' ? err : 'Failed to upload reliever system payment file')
     }
   }
 
@@ -153,6 +164,8 @@ const RelieverPaymentSection = () => {
     setIsBankModalOpen(true)
   }
 
+  const [bankProcessing, setBankProcessing] = useState(false)
+
   const handleBankConfirm = async (bank) => {
     setIsBankModalOpen(false)
 
@@ -181,63 +194,46 @@ const RelieverPaymentSection = () => {
       } finally {
         setPendingApproveSelections(null)
         setPendingAcceptedData(null)
+        setBankModalMode('excel')
       }
       return
     }
 
-    // Handle Excel upload bank confirmation (local GL posting)
+    // Handle Excel upload bank confirmation (Backend API GL posting)
+    setBankProcessing(true)
     try {
-      const accepted = pendingAcceptedData || []
-      const paymentsToProcess = accepted.map((row) => ({
-        relieverName: row['Reliever Name'] || row.relieverName || '-',
-        amount: parseFloat(row.Amount || row.amount || row['Total Amount'] || 0),
-        requestId: row.id || row.requestId || `REQ-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        employeeId: row['Employee ID'] || row.employeeId || '-',
+      const paymentDataPayload = (pendingAcceptedData || []).map((row) => ({
+        employeeId: row.employeeId || row['Employee ID'] || row.empId || '',
+        relieverName: row.relieverName || row['Reliever Name'] || row.employeeName || '',
+        amount: parseFloat(row.amount ?? row.Amount ?? row.paymentDone ?? row['Payment Done'] ?? row.totalAmount ?? 0) || 0,
+        utr: row.utr || row.UTR || row['UTR'] || '',
       }))
 
-      const result = processRelieverBankPayments(paymentsToProcess, bank)
-      if (!result.success) {
-        toast.error(result.message || 'Error posting reliever entries')
-        return
+      const payload = {
+        batchId: relieverBatchId || '',
+        selectedBankCode: bank?.bankCode || bank?.code || bank?.accountNumber || '',
+        paymentData: paymentDataPayload,
       }
 
-      toast.success(result.message)
+      const res = await dispatch(processRelieverPaymentGLPosting(payload)).unwrap()
 
-      // Remove paid entries from screen table
-      try {
-        const processedIds = new Set((result.payments || []).map((r) => r.requestId || r.id))
-        setRelieverData((prev) => prev.filter((r) => !processedIds.has(r.id || r.requestId)))
-      } catch {
-        // non-critical
-      }
+      toast.success(res?.message || 'Reliever payment processed and GL entries posted successfully!')
 
-      // Build specific Reliever Entry Data
+      // Store API response for RelieverPaymentEntryModal display
       setPaymentEntryData({
-        entryNo:
-          result.voucherNo ||
-          `RPE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`,
-        date: new Date().toISOString().split('T')[0],
-        totalAmount: result.totalAmount,
-        bankAccount: `${bank.bankName} (${bank.bankCode})`,
-        paymentMethod: 'Bank Transfer',
-        particulars: `Reliever payments for ${(result.payments || []).length} employee(s)`,
-        relieversProcessed: (result.payments || []).length,
-        status: 'Posted',
-        preparedBy: 'Account Executive',
-        approvedBy: 'System',
-        relieverDetails: (result.payments || []).map((r) => ({
-          relieverName: r.relieverName || r.name,
-          employeeId: r.employeeId,
-          amount: r.amount,
-        })),
-        glEntries: result.glEntries || [],
+        ...res,
+        selectedBank: bank,
+        pendingAcceptedData,
       })
-
       setShowPaymentEntry(true)
       setPendingAcceptedData(null)
+
+      // Refresh pending reliever requests
+      loadPendingRelieverRequests(currentPage)
     } catch (err) {
-      console.error(err)
-      toast.error('Error processing reliever payments')
+      toast.error(typeof err === 'string' ? err : err?.message || 'Failed to process reliever payment GL posting')
+    } finally {
+      setBankProcessing(false)
     }
   }
 
@@ -278,11 +274,10 @@ const RelieverPaymentSection = () => {
             <button
               onClick={handleDownloadGeneratedFiles}
               disabled={isDownloadBtnDisabled}
-              className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${
-                !isDownloadBtnDisabled
+              className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${!isDownloadBtnDisabled
                   ? 'bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 cursor-pointer active:scale-95'
                   : 'bg-blue-400/70 text-blue-100 cursor-not-allowed border border-blue-300/40 opacity-80'
-              }`}
+                }`}
             >
               {relieverFileGenerating ? (
                 <>
@@ -312,7 +307,7 @@ const RelieverPaymentSection = () => {
           </div>
         </div>
         <div className="p-4">
-          <UploadPaymentFile onFileUpload={handleFileUpload} />
+          <UploadPaymentFile onFileUpload={handleFileUpload} uploading={fileUploading} />
         </div>
       </div>
 
@@ -395,11 +390,10 @@ const RelieverPaymentSection = () => {
             <button
               onClick={() => handlePageChange(activePage - 1)}
               disabled={activePage <= 1 || apiLoading}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                activePage > 1 && !apiLoading
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${activePage > 1 && !apiLoading
                   ? 'bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 shadow-sm'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
-              }`}
+                }`}
             >
               ◄ Prev
             </button>
@@ -409,11 +403,10 @@ const RelieverPaymentSection = () => {
                 key={p}
                 onClick={() => handlePageChange(p)}
                 disabled={apiLoading}
-                className={`w-7 h-7 text-xs rounded-lg font-semibold transition-all ${
-                  p === activePage
+                className={`w-7 h-7 text-xs rounded-lg font-semibold transition-all ${p === activePage
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 {p}
               </button>
@@ -422,11 +415,10 @@ const RelieverPaymentSection = () => {
             <button
               onClick={() => handlePageChange(activePage + 1)}
               disabled={activePage >= totalPages || apiLoading}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                activePage < totalPages && !apiLoading
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${activePage < totalPages && !apiLoading
                   ? 'bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 shadow-sm'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
-              }`}
+                }`}
             >
               Next ►
             </button>
@@ -441,6 +433,7 @@ const RelieverPaymentSection = () => {
           onClose={() => setIsModalOpen(false)}
           onAccept={(accepted) => {
             setPendingAcceptedData(accepted)
+            setBankModalMode('excel')
             setIsModalOpen(false)
             setIsBankModalOpen(true)
           }}
@@ -450,10 +443,15 @@ const RelieverPaymentSection = () => {
       {isBankModalOpen && (
         <PaymentBankSelectionModal
           isOpen={isBankModalOpen}
-          onClose={() => setIsBankModalOpen(false)}
+          onClose={() => {
+            setIsBankModalOpen(false)
+            setBankModalMode('excel')
+            setPendingAcceptedData(null)
+          }}
           onBankSelect={handleBankConfirm}
           requestData={pendingAcceptedData}
           paymentType="reliever"
+          apiBankAccounts={relieverApiBankAccounts}
         />
       )}
 

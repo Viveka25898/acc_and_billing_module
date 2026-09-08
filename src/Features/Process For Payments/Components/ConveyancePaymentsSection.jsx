@@ -13,9 +13,11 @@ import { transformPendingConveyanceApiResponse } from '../utils/paymentHelpers'
 import {
   fetchPendingConveyancePayments,
   generateConveyancePaymentFiles,
+  uploadConveyanceSystemFile,
+  processConveyancePaymentGLPosting,
 } from '../../../store/slices/conveyanceSlice'
 import { downloadConveyanceFileBlob } from '../services/conveyancePaymentService'
-import { processConveyanceBankPayments } from '../../Master/utils/accountingHelpers'
+
 
 const Spinner = ({ size = 'md' }) => {
   const size_cls = size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-10 w-10' : 'h-6 w-6'
@@ -39,6 +41,8 @@ const ConveyancePaymentsSection = () => {
     conveyanceFileGenerating,
     conveyanceBatchId,
     conveyanceDownloads,
+    conveyanceFileUploading,
+    conveyanceApiBankAccounts,
   } = useSelector((state) => state.conveyance || {})
 
   const [conveyanceData, setConveyanceData] = useState([])
@@ -50,6 +54,8 @@ const ConveyancePaymentsSection = () => {
   const [pendingAcceptedData, setPendingAcceptedData] = useState(null)
   const [showPaymentEntry, setShowPaymentEntry] = useState(false)
   const [paymentEntryData, setPaymentEntryData] = useState(null)
+  const [bankProcessing, setBankProcessing] = useState(false)
+
 
   // Tracking Download Actions
   const [filesDownloaded, setFilesDownloaded] = useState(false)
@@ -63,13 +69,13 @@ const ConveyancePaymentsSection = () => {
     async (targetPage = currentPage) => {
       try {
         const resultAction = await dispatch(
-          fetchPendingConveyancePayments({ page: targetPage })
+          fetchPendingConveyancePayments({ page: targetPage, pageSize: 20 })
         ).unwrap()
-        const rawRequests = resultAction?.data?.requests || resultAction?.requests || []
+        const rawRequests = resultAction?.data?.requests || resultAction?.requests || resultAction?.claims || []
         const transformed = transformPendingConveyanceApiResponse(rawRequests)
         setConveyanceData(transformed)
       } catch (err) {
-        toast.error(typeof err === 'string' ? err : 'Failed to load pending conveyance payment requests')
+        toast.error(typeof err === 'string' ? err : 'Failed to load pending conveyance claims')
       }
     },
     [dispatch, currentPage]
@@ -93,13 +99,22 @@ const ConveyancePaymentsSection = () => {
     loadPendingConveyancePayments(newPage)
   }
 
+  // File upload handler - Uploads file to backend API & opens preview modal automatically
   const handleFileUpload = async (file) => {
     try {
-      const data = await parseConveyanceExcelFile(file)
-      setParsedData(data)
-      setIsModalOpen(true)
+      const result = await dispatch(
+        uploadConveyanceSystemFile({ file, batchId: conveyanceBatchId || '' })
+      ).unwrap()
+
+      const parsedRows = result?.parsedData || []
+      setParsedData(parsedRows)
+      setIsModalOpen(true) // Automatically opens modal with all information from the file
+
+      toast.success(
+        result?.message || `Uploaded ${parsedRows.length} payment records successfully.`
+      )
     } catch (err) {
-      toast.error(err.message || 'Error processing file')
+      toast.error(typeof err === 'string' ? err : 'Failed to upload conveyance system payment file')
     }
   }
 
@@ -189,67 +204,48 @@ const ConveyancePaymentsSection = () => {
       } finally {
         setPendingApproveSelections(null)
         setPendingAcceptedData(null)
+        setBankModalMode('excel')
       }
       return
     }
 
-    // Handle Excel upload bank confirmation (local GL posting)
+    // Handle Excel upload bank confirmation (Backend API GL posting)
+    setBankProcessing(true)
     try {
-      const accepted = pendingAcceptedData || []
-      const paymentsToProcess = accepted.map((row) => ({
-        employeeName: row['Employee Name'] || row.employeeName || '-',
-        amount: parseFloat(row.Amount || row.amount || row['Payment Amount'] || 0),
-        requestId: row.id || `CONV-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        employeeId: row['Employee ID'] || row.employeeId || '-',
-        utr: row.UTR || row['UTR Number'] || '',
+      const paymentDataPayload = (pendingAcceptedData || []).map((row) => ({
+        employeeId: row.employeeId || row['Employee ID'] || row.empId || '',
+        amount: parseFloat(row.amount ?? row.Amount ?? row.paymentDone ?? row['Payment Done'] ?? row.totalAmount ?? 0) || 0,
+        utr: row.utr || row.UTR || row['UTR Number'] || '',
       }))
 
-      const result = processConveyanceBankPayments(paymentsToProcess, bank)
-      if (!result.success) {
-        toast.error(result.message || 'Error posting conveyance entries')
-        return
+      const payload = {
+        batchId: conveyanceBatchId || '',
+        selectedBankCode: bank?.bankCode || bank?.code || bank?.accountNumber || '',
+        paymentData: paymentDataPayload,
       }
 
-      toast.success(result.message)
+      const res = await dispatch(processConveyancePaymentGLPosting(payload)).unwrap()
 
-      // Remove paid entries from screen table
-      try {
-        const processedIds = new Set((result.payments || []).map((r) => r.requestId || r.id))
-        setConveyanceData((prev) => prev.filter((r) => !processedIds.has(r.id)))
-      } catch {
-        // non-critical
-      }
+      toast.success(res?.message || 'Conveyance payment processed and GL entries posted successfully!')
 
-      // Build specific Conveyance Entry Data
+      // Store API response for ConveyancePaymentEntryModal display
       setPaymentEntryData({
-        entryNo:
-          result.voucherNo ||
-          `CPE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`,
-        date: new Date().toISOString().split('T')[0],
-        totalAmount: result.totalAmount,
-        bankAccount: `${bank.bankName} (${bank.bankCode})`,
-        paymentMethod: 'Bank Transfer',
-        particulars: `Conveyance reimbursements for ${(result.payments || []).length} employee(s)`,
-        employeesProcessed: (result.payments || []).length,
-        status: 'Posted',
-        preparedBy: 'Account Executive',
-        approvedBy: 'System',
-        employeeDetails: (result.payments || []).map((r) => ({
-          employeeName: r.employeeName || r.name,
-          employeeId: r.employeeId,
-          amount: r.amount,
-          utr: r.utr,
-        })),
-        glEntries: result.glEntries || [],
+        ...res,
+        selectedBank: bank,
+        pendingAcceptedData,
       })
-
       setShowPaymentEntry(true)
       setPendingAcceptedData(null)
+
+      // Refresh pending conveyance requests
+      loadPendingConveyancePayments(currentPage)
     } catch (err) {
-      console.error(err)
-      toast.error('Error processing conveyance payments')
+      toast.error(typeof err === 'string' ? err : err?.message || 'Failed to process conveyance payment GL posting')
+    } finally {
+      setBankProcessing(false)
     }
   }
+
 
   // Calculated Summary Metrics
   const activePage = pendingPaymentPagination?.currentPage || currentPage
@@ -292,11 +288,10 @@ const ConveyancePaymentsSection = () => {
             <button
               onClick={handleDownloadGeneratedFiles}
               disabled={isDownloadBtnDisabled}
-              className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${
-                !isDownloadBtnDisabled
+              className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${!isDownloadBtnDisabled
                   ? 'bg-white text-purple-700 hover:bg-purple-50 border border-purple-200 cursor-pointer active:scale-95'
                   : 'bg-purple-400/70 text-purple-100 cursor-not-allowed border border-purple-300/40 opacity-80'
-              }`}
+                }`}
             >
               {conveyanceFileGenerating ? (
                 <>
@@ -326,7 +321,7 @@ const ConveyancePaymentsSection = () => {
           </div>
         </div>
         <div className="p-4">
-          <UploadPaymentFile onFileUpload={handleFileUpload} />
+          <UploadPaymentFile onFileUpload={handleFileUpload} uploading={conveyanceFileUploading} />
         </div>
       </div>
 
@@ -423,11 +418,10 @@ const ConveyancePaymentsSection = () => {
             <button
               onClick={() => handlePageChange(activePage - 1)}
               disabled={activePage <= 1 || apiLoading}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                activePage > 1 && !apiLoading
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${activePage > 1 && !apiLoading
                   ? 'bg-white border border-gray-200 text-gray-700 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 shadow-sm'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
-              }`}
+                }`}
             >
               ◄ Prev
             </button>
@@ -437,11 +431,10 @@ const ConveyancePaymentsSection = () => {
                 key={p}
                 onClick={() => handlePageChange(p)}
                 disabled={apiLoading}
-                className={`w-7 h-7 text-xs rounded-lg font-semibold transition-all ${
-                  p === activePage
+                className={`w-7 h-7 text-xs rounded-lg font-semibold transition-all ${p === activePage
                     ? 'bg-purple-600 text-white shadow-sm'
                     : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 {p}
               </button>
@@ -450,11 +443,10 @@ const ConveyancePaymentsSection = () => {
             <button
               onClick={() => handlePageChange(activePage + 1)}
               disabled={activePage >= totalPages || apiLoading}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                activePage < totalPages && !apiLoading
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${activePage < totalPages && !apiLoading
                   ? 'bg-white border border-gray-200 text-gray-700 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 shadow-sm'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-purple-100'
-              }`}
+                }`}
             >
               Next ►
             </button>
@@ -469,6 +461,7 @@ const ConveyancePaymentsSection = () => {
           onClose={() => setIsModalOpen(false)}
           onAccept={(accepted) => {
             setPendingAcceptedData(accepted)
+            setBankModalMode('excel')
             setIsModalOpen(false)
             setIsBankModalOpen(true)
           }}
@@ -478,11 +471,18 @@ const ConveyancePaymentsSection = () => {
       {isBankModalOpen && (
         <PaymentBankSelectionModal
           isOpen={isBankModalOpen}
-          onClose={() => setIsBankModalOpen(false)}
+          onClose={() => {
+            setIsBankModalOpen(false)
+            setBankModalMode('excel')
+            setPendingAcceptedData(null)
+          }}
           onBankSelect={handleBankConfirm}
           requestData={pendingAcceptedData}
           paymentType="conveyance"
+          apiBankAccounts={conveyanceApiBankAccounts}
+          loading={bankProcessing}
         />
+
       )}
 
       {showPaymentEntry && paymentEntryData && (

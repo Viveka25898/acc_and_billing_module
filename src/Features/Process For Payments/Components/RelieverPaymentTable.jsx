@@ -135,7 +135,7 @@ const RelieverPaymentTable = ({ data, onApprove }) => {
         </button>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           height: 6px;
           width: 6px;

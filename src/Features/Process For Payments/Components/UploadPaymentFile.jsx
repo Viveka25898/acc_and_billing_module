@@ -3,7 +3,7 @@ import { toast } from 'react-toastify'
 
 const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls']
 
-const UploadPaymentFile = ({ onFileUpload }) => {
+const UploadPaymentFile = ({ onFileUpload, uploading = false }) => {
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState('')
   const fileInputRef = useRef(null)
@@ -23,13 +23,14 @@ const UploadPaymentFile = ({ onFileUpload }) => {
   }
 
   const handleFile = (file) => {
-    if (!validateFile(file)) return
+    if (!validateFile(file) || uploading) return
     setSelectedFileName(file.name)
     onFileUpload(file)
   }
 
   const handleDrop = (e) => {
     e.preventDefault()
+    if (uploading) return
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
     if (file) handleFile(file)
@@ -37,7 +38,7 @@ const UploadPaymentFile = ({ onFileUpload }) => {
 
   const handleDragOver = (e) => {
     e.preventDefault()
-    setIsDragging(true)
+    if (!uploading) setIsDragging(true)
   }
 
   const handleDragLeave = () => setIsDragging(false)
@@ -54,11 +55,15 @@ const UploadPaymentFile = ({ onFileUpload }) => {
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
-      onClick={() => fileInputRef.current?.click()}
+      onClick={() => {
+        if (!uploading) fileInputRef.current?.click()
+      }}
       className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all duration-200 px-4 py-6 flex flex-col items-center justify-center gap-2 text-center select-none ${
-        isDragging
-          ? 'border-green-500 bg-green-50 scale-[1.01]'
-          : 'border-gray-300 bg-gray-50 hover:border-green-400 hover:bg-green-50/50'
+        uploading
+          ? 'border-blue-400 bg-blue-50/60 cursor-wait'
+          : isDragging
+            ? 'border-green-500 bg-green-50 scale-[1.01]'
+            : 'border-gray-300 bg-gray-50 hover:border-green-400 hover:bg-green-50/50'
       }`}
     >
       <input
@@ -67,19 +72,30 @@ const UploadPaymentFile = ({ onFileUpload }) => {
         accept=".xlsx,.xls"
         className="hidden"
         onChange={handleInputChange}
+        disabled={uploading}
       />
-      <div className="text-3xl">📂</div>
-      {selectedFileName ? (
+      {uploading ? (
         <>
-          <p className="text-sm font-semibold text-green-700">{selectedFileName}</p>
-          <p className="text-xs text-gray-400">Click or drag to replace</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent mb-1" />
+          <p className="text-sm font-semibold text-blue-700">Uploading &amp; Parsing System File…</p>
+          <p className="text-xs text-blue-500">Please wait while the server parses the Excel file</p>
         </>
       ) : (
         <>
-          <p className="text-sm font-semibold text-gray-600">
-            Drag &amp; drop or <span className="text-green-600 underline">browse</span>
-          </p>
-          <p className="text-xs text-gray-400">Excel files only (.xlsx, .xls) · max 10 MB</p>
+          <div className="text-3xl">📂</div>
+          {selectedFileName ? (
+            <>
+              <p className="text-sm font-semibold text-green-700">{selectedFileName}</p>
+              <p className="text-xs text-gray-400">Click or drag to replace</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-gray-600">
+                Drag &amp; drop or <span className="text-green-600 underline">browse</span>
+              </p>
+              <p className="text-xs text-gray-400">Excel files only (.xlsx, .xls) · max 10 MB</p>
+            </>
+          )}
         </>
       )}
     </div>

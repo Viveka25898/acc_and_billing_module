@@ -33,6 +33,30 @@ export const generateVendorPaymentFiles = createAsyncThunk(
   }
 )
 
+export const uploadVendorSystemFile = createAsyncThunk(
+  'vendorPayment/uploadVendorSystemFile',
+  async ({ file, batchId }, { rejectWithValue }) => {
+    try {
+      const data = await vendorService.uploadVendorSystemPaymentFile(file, batchId)
+      return data
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err))
+    }
+  }
+)
+
+export const processVendorPaymentGLPosting = createAsyncThunk(
+  'vendorPayment/processVendorPaymentGLPosting',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await vendorService.processVendorPaymentGLPosting(payload)
+      return data
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err))
+    }
+  }
+)
+
 const initialState = {
   pendingVendors: [],
   summary: {
@@ -51,6 +75,13 @@ const initialState = {
   currentBatchId: null,
   downloads: null,
   fileGenError: null,
+  fileUploading: false,
+  uploadError: null,
+  uploadedParsedData: [],
+  apiBankAccounts: [],
+  processingPayment: false,
+  processPaymentError: null,
+  processedPaymentResult: null,
 }
 
 const vendorPaymentSlice = createSlice({
@@ -60,6 +91,8 @@ const vendorPaymentSlice = createSlice({
     clearVendorPaymentError: (state) => {
       state.error = null
       state.fileGenError = null
+      state.uploadError = null
+      state.processPaymentError = null
     },
     setPendingVendors: (state, action) => {
       state.pendingVendors = action.payload
@@ -105,6 +138,37 @@ const vendorPaymentSlice = createSlice({
       .addCase(generateVendorPaymentFiles.rejected, (state, action) => {
         state.fileGenerating = false
         state.fileGenError = action.payload || 'Failed to generate vendor payment files'
+      })
+
+      // uploadVendorSystemFile
+      .addCase(uploadVendorSystemFile.pending, (state) => {
+        state.fileUploading = true
+        state.uploadError = null
+      })
+      .addCase(uploadVendorSystemFile.fulfilled, (state, action) => {
+        state.fileUploading = false
+        const payload = action.payload || {}
+        state.currentBatchId = payload.batchId || state.currentBatchId
+        state.uploadedParsedData = payload.parsedData || []
+        state.apiBankAccounts = payload.bankAccounts || []
+      })
+      .addCase(uploadVendorSystemFile.rejected, (state, action) => {
+        state.fileUploading = false
+        state.uploadError = action.payload || 'Failed to upload vendor system payment file'
+      })
+
+      // processVendorPaymentGLPosting
+      .addCase(processVendorPaymentGLPosting.pending, (state) => {
+        state.processingPayment = true
+        state.processPaymentError = null
+      })
+      .addCase(processVendorPaymentGLPosting.fulfilled, (state, action) => {
+        state.processingPayment = false
+        state.processedPaymentResult = action.payload
+      })
+      .addCase(processVendorPaymentGLPosting.rejected, (state, action) => {
+        state.processingPayment = false
+        state.processPaymentError = action.payload || 'Failed to process vendor payment GL posting'
       })
   },
 })

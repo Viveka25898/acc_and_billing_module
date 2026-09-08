@@ -109,15 +109,40 @@ export const fetchPendingConveyancePayments = createAsyncThunk(
 
 export const generateConveyancePaymentFiles = createAsyncThunk(
   'conveyance/generateConveyancePaymentFiles',
-  async ({ selections }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const data = await conveyancePaymentService.generateConveyancePaymentFiles(selections);
+      const data = await conveyancePaymentService.generateConveyancePaymentFiles(payload);
       return data;
     } catch (err) {
       return rejectWithValue(extractErrorMessage(err));
     }
   }
 );
+
+export const uploadConveyanceSystemFile = createAsyncThunk(
+  'conveyance/uploadConveyanceSystemFile',
+  async ({ file, batchId }, { rejectWithValue }) => {
+    try {
+      const data = await conveyancePaymentService.uploadConveyanceSystemPaymentFile(file, batchId);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const processConveyancePaymentGLPosting = createAsyncThunk(
+  'conveyance/processConveyancePaymentGLPosting',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await conveyancePaymentService.processConveyancePaymentGLPosting(payload);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
 
 const initialState = {
   myClaims: [],
@@ -154,6 +179,8 @@ const initialState = {
   actionLoadingId: null,
   rejectionReasonLoading: false,
   pendingPaymentsLoading: false,
+  conveyanceFileUploading: false,
+  conveyanceUploadError: null,
   error: null,
   pendingPaymentsError: null,
   activeRejectionDetails: null,
@@ -162,7 +189,13 @@ const initialState = {
   conveyanceBatchId: null,
   conveyanceDownloads: null,
   conveyanceFileGenError: null,
+  conveyanceUploadedParsedData: [],
+  conveyanceApiBankAccounts: [],
+  conveyancePaymentProcessing: false,
+  conveyancePaymentProcessError: null,
+  processedConveyancePaymentResult: null,
 };
+
 
 const conveyanceSlice = createSlice({
   name: 'conveyance',
@@ -308,9 +341,40 @@ const conveyanceSlice = createSlice({
       .addCase(generateConveyancePaymentFiles.rejected, (state, action) => {
         state.conveyanceFileGenerating = false;
         state.conveyanceFileGenError = action.payload;
+      })
+
+      // Upload Conveyance System File
+      .addCase(uploadConveyanceSystemFile.pending, (state) => {
+        state.conveyanceFileUploading = true;
+        state.conveyanceUploadError = null;
+      })
+      .addCase(uploadConveyanceSystemFile.fulfilled, (state, action) => {
+        state.conveyanceFileUploading = false;
+        const payload = action.payload || {};
+        state.conveyanceBatchId = payload.batchId || state.conveyanceBatchId;
+        state.conveyanceUploadedParsedData = payload.parsedData || [];
+        state.conveyanceApiBankAccounts = payload.bankAccounts || [];
+      })
+      .addCase(uploadConveyanceSystemFile.rejected, (state, action) => {
+        state.conveyanceFileUploading = false;
+        state.conveyanceUploadError = action.payload || 'Failed to upload conveyance system payment file';
+      })
+      // Process Conveyance Payment GL Posting
+      .addCase(processConveyancePaymentGLPosting.pending, (state) => {
+        state.conveyancePaymentProcessing = true;
+        state.conveyancePaymentProcessError = null;
+      })
+      .addCase(processConveyancePaymentGLPosting.fulfilled, (state, action) => {
+        state.conveyancePaymentProcessing = false;
+        state.processedConveyancePaymentResult = action.payload;
+      })
+      .addCase(processConveyancePaymentGLPosting.rejected, (state, action) => {
+        state.conveyancePaymentProcessing = false;
+        state.conveyancePaymentProcessError = action.payload || 'Failed to process conveyance payment GL posting';
       });
   },
 });
+
 
 export const { clearConveyanceError, clearRejectionDetails, clearVoucherData } = conveyanceSlice.actions;
 
@@ -341,5 +405,7 @@ export const selectConveyanceFileGenerating = (state) => state.conveyance.convey
 export const selectConveyanceBatchId = (state) => state.conveyance.conveyanceBatchId;
 export const selectConveyanceDownloads = (state) => state.conveyance.conveyanceDownloads;
 export const selectConveyanceFileGenError = (state) => state.conveyance.conveyanceFileGenError;
+export const selectConveyancePaymentProcessing = (state) => state.conveyance.conveyancePaymentProcessing;
 
 export default conveyanceSlice.reducer;
+

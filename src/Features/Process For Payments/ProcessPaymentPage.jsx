@@ -17,9 +17,10 @@ import { transformPendingVendorApiResponse } from './utils/paymentHelpers'
 import {
   fetchPendingVendorPayments,
   generateVendorPaymentFiles,
+  uploadVendorSystemFile,
+  processVendorPaymentGLPosting,
 } from '../../store/slices/vendorPaymentSlice'
 import { downloadPaymentFileBlob } from './services/vendorPaymentService'
-import { processVendorPayments } from '../Master/utils/accountingHelpers'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -61,11 +62,10 @@ const PaymentTypeTabs = ({ activeTab, onTabChange }) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 sm:px-5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 ${
-            isActive
+          className={`flex-1 min-w-max whitespace-nowrap py-2 px-3 sm:px-5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 ${isActive
               ? `${TAB_ACTIVE_CLASSES[tab.color]} shadow-sm border`
               : 'text-gray-500 hover:text-gray-700 hover:bg-white'
-          }`}
+            }`}
         >
           {tab.label}
         </button>
@@ -110,6 +110,8 @@ const VendorPaymentsSection = ({
     fileGenerating,
     currentBatchId,
     downloads,
+    fileUploading,
+    apiBankAccounts,
   } = useSelector((state) => state.vendorPayment || {})
   const [bankProcessing, setBankProcessing] = useState(false)
   const [bankModalMode, setBankModalMode] = useState('excel')
@@ -150,14 +152,22 @@ const VendorPaymentsSection = ({
     loadPendingVendorPayments(newPage)
   }
 
-  // File upload handler
+  // File upload handler - Uploads file to backend API & opens preview modal automatically
   const handleFileUpload = async (file) => {
     try {
-      const data = await parseVendorExcelFile(file)
-      setParsedData(data)
-      setIsModalOpen(true)
+      const result = await dispatch(
+        uploadVendorSystemFile({ file, batchId: currentBatchId || '' })
+      ).unwrap()
+
+      const parsedRows = result?.parsedData || []
+      setParsedData(parsedRows)
+      setIsModalOpen(true) // Automatically opens modal with all information from the file
+
+      toast.success(
+        result?.message || `Uploaded ${parsedRows.length} payment records successfully.`
+      )
     } catch (err) {
-      toast.error(err.message || 'Failed to parse Excel file')
+      toast.error(typeof err === 'string' ? err : 'Failed to upload vendor system payment file')
     }
   }
 
@@ -302,126 +312,46 @@ const VendorPaymentsSection = ({
       } finally {
         setPendingApproveSelections(null)
         setPendingAcceptedData(null)
+        setBankModalMode('excel')
       }
       return
     }
 
-    // Handle Excel upload bank confirmation (local GL posting)
+    // Handle Excel upload bank confirmation (Backend API GL posting)
     setBankProcessing(true)
     try {
-      const payments = []
-      const approved = approvedInvoices || []
-
-      ;(pendingAcceptedData || []).forEach((row) => {
-        const vendorName = row['Vendor Name'] || '-'
-        const invoiceNumbers = String(row['Invoice Numbers'] || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-
-        invoiceNumbers.forEach((invNo) => {
-          const match = approved.find(
-            (a) => a.vendorName === vendorName && a.invoiceNumber === invNo
-          )
-          const amount = match
-            ? parseFloat(match.paidAmount || 0)
-            : parseFloat(row['Payment Done'] || row['Total Amount'] || 0) /
-              Math.max(invoiceNumbers.length, 1)
-
-          payments.push({
-            vendorName,
-            invoiceNumber: invNo,
-            amount,
-            type: match?.type || match?.invoiceTypeLabel || 'Material',
-            vendorGLCode: match?.vendorGLCode || '-',
-          })
-        })
-      })
-
-      const result = processVendorPayments(payments, bank)
-      if (!result.success) {
-        toast.error(result.message || 'Failed to post vendor payments')
-        return
-      }
-      toast.success(result.message)
-
-      // Build payment entry display data
-      const totalAmount = result.totalPaid
-      const vendorDetails = result.groups.map((g) => ({
-        vendorName: g.vendorName || '-',
-        vendorGLCode: g.vendorGLCode || '-',
-        totalAmount: g.totalAmount,
-        invoices: g.invoices.map((inv) => ({
-          invoiceNumber: inv.invoiceNumber || '-',
-          originalAmount: inv.amount,
-          paidAmount: inv.amount,
-          paymentType: 'full',
-        })),
+      const paymentDataPayload = (pendingAcceptedData || []).map((row) => ({
+        vendorName: row.vendorName || row['Vendor Name'] || '',
+        invoiceNumbers: row.invoiceNumbers || row['Invoice Numbers'] || '',
+        totalAmount: row.totalAmount != null ? String(row.totalAmount) : String(row['Total Amount'] || '0'),
+        paymentDone: row.paymentDone != null ? String(row.paymentDone) : String(row['Payment Done'] || '0'),
+        remainingPayment: row.remainingPayment != null ? String(row.remainingPayment) : String(row['Remaining Payment'] || '0'),
+        utr: row.utr || row['UTR Reference'] || row['UTR'] || '',
       }))
 
-      setCurrentPaymentEntryData({
-        entryNo: `PE-${new Date().getFullYear()}-${String(
-          Math.floor(Math.random() * 999999)
-        ).padStart(6, '0')}`,
-        date: new Date().toISOString().split('T')[0],
-        vendor:
-          vendorDetails.length > 1
-            ? `Multiple Vendors (${vendorDetails.length})`
-            : vendorDetails[0]?.vendorName || '-',
-        vendorCode: vendorDetails.length > 1 ? 'MULTIPLE' : '-',
-        amount: totalAmount,
-        paymentMethod: 'Bank Transfer',
-        bankAccount: `${bank.bankName || '-'} (${bank.bankCode || '-'})`,
-        invoiceNo: result.results.map((r) => r.invoiceNumber || '-').join(', '),
-        particulars: `Payment for invoices: ${result.results
-          .map((r) => r.invoiceNumber || '-')
-          .join(', ')}`,
-        gstAmount: 0,
-        netAmount: totalAmount,
-        status: 'Posted',
-        preparedBy: 'Account Executive',
-        approvedBy: 'System',
-        remarks: 'Auto-posted via Process of Payments',
-        vendorDetails,
-        glEntries: [
-          ...result.groups.map((g) => ({
-            glCode: g.vendorGLCode || '-',
-            glDescription: `VENDOR - ${g.vendorName || '-'}`,
-            costCenter: 'HEAD OFFICE',
-            department: 'Finance',
-            debitAmount: g.totalAmount,
-            creditAmount: 0,
-          })),
-          {
-            glCode: bank.bankCode || '-',
-            glDescription: bank.bankName || '-',
-            costCenter: 'HEAD OFFICE',
-            department: 'Finance',
-            debitAmount: 0,
-            creditAmount: totalAmount,
-          },
-        ],
-      })
-      setShowPaymentEntry(true)
-
-      // Remove paid entries from on-screen vendor list
-      try {
-        const toRemove = new Set(result.results.map((r) => r.invoiceNumber))
-        setVendorData((prev) =>
-          prev
-            .map((v) => ({
-              ...v,
-              invoices: (v.invoices || []).filter((inv) => !toRemove.has(inv.invoiceNumber)),
-            }))
-            .filter((v) => v.invoices.length > 0)
-        )
-      } catch {
-        // non-critical
+      const payload = {
+        batchId: currentBatchId || '',
+        selectedBankCode: bank?.bankCode || bank?.accountNumber || bank?.code || '',
+        paymentData: paymentDataPayload,
       }
 
+      const res = await dispatch(processVendorPaymentGLPosting(payload)).unwrap()
+
+      toast.success(res?.message || 'Vendor payment processed and GL entries posted successfully!')
+
+      // Store API response for PaymentEntryModal display
+      setCurrentPaymentEntryData({
+        ...res,
+        selectedBank: bank,
+        pendingAcceptedData,
+      })
+      setShowPaymentEntry(true)
       setPendingAcceptedData(null)
+
+      // Refresh pending vendor payments list
+      loadPendingVendorPayments(currentPage)
     } catch (err) {
-      toast.error(err.message || 'Error processing payments')
+      toast.error(typeof err === 'string' ? err : err?.message || 'Failed to process vendor payment GL posting')
     } finally {
       setBankProcessing(false)
     }
@@ -467,11 +397,10 @@ const VendorPaymentsSection = ({
             <button
               onClick={handleDownloadGeneratedFiles}
               disabled={isDownloadBtnDisabled}
-              className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${
-                !isDownloadBtnDisabled
+              className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 sm:py-2 rounded-full transition shadow-sm ${!isDownloadBtnDisabled
                   ? 'bg-white text-green-700 hover:bg-green-50 border border-green-200 cursor-pointer active:scale-95'
                   : 'bg-green-400/70 text-green-100 cursor-not-allowed border border-green-300/40 opacity-80'
-              }`}
+                }`}
             >
               {fileGenerating ? (
                 <>
@@ -501,7 +430,7 @@ const VendorPaymentsSection = ({
           </div>
         </div>
         <div className="p-4">
-          <UploadPaymentFile onFileUpload={handleFileUpload} />
+          <UploadPaymentFile onFileUpload={handleFileUpload} uploading={fileUploading} />
         </div>
       </div>
 
@@ -616,11 +545,10 @@ const VendorPaymentsSection = ({
             <button
               onClick={() => handlePageChange(activePage - 1)}
               disabled={activePage <= 1 || apiLoading}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                activePage > 1 && !apiLoading
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${activePage > 1 && !apiLoading
                   ? 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:text-green-700 hover:border-green-300 shadow-sm'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
-              }`}
+                }`}
             >
               ◄ Prev
             </button>
@@ -630,11 +558,10 @@ const VendorPaymentsSection = ({
                 key={p}
                 onClick={() => handlePageChange(p)}
                 disabled={apiLoading}
-                className={`w-7 h-7 text-xs rounded-lg font-semibold transition-all ${
-                  p === activePage
+                className={`w-7 h-7 text-xs rounded-lg font-semibold transition-all ${p === activePage
                     ? 'bg-green-600 text-white shadow-sm'
                     : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 {p}
               </button>
@@ -643,11 +570,10 @@ const VendorPaymentsSection = ({
             <button
               onClick={() => handlePageChange(activePage + 1)}
               disabled={activePage >= totalPages || apiLoading}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                activePage < totalPages && !apiLoading
+              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${activePage < totalPages && !apiLoading
                   ? 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:text-green-700 hover:border-green-300 shadow-sm'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
-              }`}
+                }`}
             >
               Next ►
             </button>
@@ -663,6 +589,7 @@ const VendorPaymentsSection = ({
           onRequestChanges={handleRequestChanges}
           onAccept={(acceptedData) => {
             setPendingAcceptedData(acceptedData)
+            setBankModalMode('excel')
             setIsModalOpen(false)
             setIsBankModalOpen(true)
           }}
@@ -681,12 +608,14 @@ const VendorPaymentsSection = ({
         isOpen={isBankModalOpen}
         onClose={() => {
           setIsBankModalOpen(false)
+          setBankModalMode('excel')
           setPendingAcceptedData(null)
         }}
         onBankSelect={handleBankConfirm}
         requestData={pendingAcceptedData}
         paymentType="vendor"
         loading={bankProcessing}
+        apiBankAccounts={apiBankAccounts}
       />
 
       {showPaymentEntry && currentPaymentEntryData && (

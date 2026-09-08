@@ -4,11 +4,21 @@ import { FaTimes, FaCheck, FaExclamationTriangle } from 'react-icons/fa'
 const RelieverPaymentPreviewModal = ({ data, onClose, onAccept }) => {
   if (!data || data.length === 0) return null
 
-  const totalAmount = data.reduce((sum, row) => sum + (Number(row.Amount) || 0), 0)
-  
-  const hasErrors = data.some(
-    (row) => !row['Reliever Name'] || isNaN(row.Amount) || row.Amount <= 0
-  )
+  const getName = (row) => row.relieverName || row['Reliever Name'] || row.employeeName || row['Employee Name'] || row.name || ''
+  const getEmpId = (row) => row.employeeId || row['Employee ID'] || row.empId || ''
+  const getAmount = (row) => {
+    const val = row.amount ?? row.Amount ?? row.paymentDone ?? row['Payment Done'] ?? row.totalAmount ?? row['Total Amount'] ?? 0
+    const num = parseFloat(val)
+    return isNaN(num) ? 0 : num
+  }
+  const getUtr = (row) => row.utr || row.UTR || row['UTR'] || '-'
+
+  const totalAmount = data.reduce((sum, row) => sum + (getAmount(row) || 0), 0)
+
+  const hasErrors = data.some((row) => {
+    const amt = getAmount(row)
+    return isNaN(amt)
+  })
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -20,7 +30,7 @@ const RelieverPaymentPreviewModal = ({ data, onClose, onAccept }) => {
               <span className="bg-white/20 p-1.5 rounded-lg text-sm">👔</span>
               Reliever Payment Preview
             </h2>
-            <p className="text-blue-100 text-sm mt-1">Review {data.length} records before confirming.</p>
+            <p className="text-blue-100 text-sm mt-1">Review {data.length} record(s) before confirming.</p>
           </div>
           <button
             onClick={onClose}
@@ -36,7 +46,7 @@ const RelieverPaymentPreviewModal = ({ data, onClose, onAccept }) => {
             <div>
               <p className="text-sm font-bold text-orange-800">Invalid Data Detected</p>
               <p className="text-xs text-orange-700 mt-0.5">
-                Some rows are missing required fields (Name or Valid Amount). Fix the Excel file and re-upload.
+                Some rows contain invalid payment amounts. Please check your file.
               </p>
             </div>
           </div>
@@ -52,50 +62,25 @@ const RelieverPaymentPreviewModal = ({ data, onClose, onAccept }) => {
                     <th className="px-4 py-3 text-center w-12 text-xs uppercase tracking-wide">#</th>
                     <th className="px-4 py-3 text-xs uppercase tracking-wide">Reliever Name</th>
                     <th className="px-4 py-3 text-xs uppercase tracking-wide">Emp ID</th>
-                    <th className="px-4 py-3 text-xs uppercase tracking-wide">Site</th>
-                    <th className="px-4 py-3 text-xs uppercase tracking-wide">Days</th>
-                    <th className="px-4 py-3 text-xs uppercase tracking-wide">Account No</th>
-                    <th className="px-4 py-3 text-xs uppercase tracking-wide">IFSC</th>
+                    <th className="px-4 py-3 text-xs uppercase tracking-wide">UTR No.</th>
                     <th className="px-4 py-3 text-right text-xs uppercase tracking-wide">Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.map((row, index) => {
-                    const errorFields = []
-                    if (!row['Reliever Name']) errorFields.push('Name')
-                    if (isNaN(row.Amount) || row.Amount <= 0) errorFields.push('Amount')
-
-                    const rowError = errorFields.length > 0
+                    const name = getName(row) || '-'
+                    const empId = getEmpId(row) || '-'
+                    const amt = getAmount(row)
+                    const utr = getUtr(row) || '-'
 
                     return (
-                      <tr key={index} className={`hover:bg-gray-50 transition-colors ${rowError ? 'bg-orange-50/30' : ''}`}>
+                      <tr key={index} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 text-center text-gray-400 text-xs">{index + 1}</td>
-                        <td className="px-4 py-3">
-                          {row['Reliever Name'] ? (
-                            <span className="font-medium text-gray-800">{row['Reliever Name']}</span>
-                          ) : (
-                            <span className="text-orange-500 italic text-xs">Missing</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">{row['Employee ID']}</td>
-                        <td className="px-4 py-3 text-xs text-gray-600 truncate max-w-[120px]" title={row.Site}>
-                          {row.Site}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{row['Days Worked']}</span>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                          {row['Account No'] || <span className="text-orange-500 italic">Missing</span>}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-500 uppercase">
-                          {row['IFSC Code'] || <span className="text-orange-500 italic">Missing</span>}
-                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-800">{name}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500 font-mono">{empId}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-600">{utr}</td>
                         <td className="px-4 py-3 text-right font-medium text-gray-800">
-                          {isNaN(row.Amount) || row.Amount <= 0 ? (
-                            <span className="text-orange-500 italic text-xs">Invalid</span>
-                          ) : (
-                            Number(row.Amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })
-                          )}
+                          {amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                       </tr>
                     )
@@ -103,7 +88,7 @@ const RelieverPaymentPreviewModal = ({ data, onClose, onAccept }) => {
                 </tbody>
                 <tfoot className="bg-blue-50/50 border-t border-gray-200 font-semibold sticky bottom-0 z-10">
                   <tr>
-                    <td colSpan="7" className="px-4 py-3 text-right text-blue-800">
+                    <td colSpan="4" className="px-4 py-3 text-right text-blue-800">
                       Total Uploaded Amount:
                     </td>
                     <td className="px-4 py-3 text-right text-blue-700 font-bold text-base bg-blue-100/30">
@@ -138,7 +123,7 @@ const RelieverPaymentPreviewModal = ({ data, onClose, onAccept }) => {
           </button>
         </div>
       </div>
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
