@@ -159,7 +159,7 @@ export default function RentExpenseBookingPage() {
           company: 'iSmart',
           financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
           reference: `Monthly rent voucher for ${serverVoucherData.siteName || 'Site'} (${serverVoucherData.month})`,
-          preparedBy: serverVoucherData.workflow?.generatedBy || 'Billing Executive',
+          preparedBy: serverVoucherData.workflow?.generatedBy || 'Billing Manager',
           siteDetails: {
             siteName: serverVoucherData.siteName,
             owner: serverVoucherData.ownerName || '-',
@@ -698,7 +698,7 @@ export default function RentExpenseBookingPage() {
                 company: 'iSmart',
                 financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
                 reference: `Rent voucher for ${v.month}`,
-                preparedBy: 'Billing Executive',
+                preparedBy: 'Billing Manager',
                 siteDetails: {
                   siteName: voucherViewSite?.siteName,
                   owner: voucherViewSite?.owners?.[0]?.ownerName || '-',

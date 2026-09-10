@@ -1,27 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectActiveAgreementDetails, selectAgreementDetailsLoading } from '../../../store/slices/rentExpenseSlice';
+import axiosInstance from '../../../api/axiosInstance';
 
 export default function ViewAgreementModal({ onClose, site }) {
   const agreement = useSelector(selectActiveAgreementDetails);
   const loading = useSelector(selectAgreementDetailsLoading);
 
-  const getFullFileUrl = (url) => {
-    if (!url) return '#';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    
-    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
 
-    // Base URL is https://dev-int.ismart.org/api/v1/accounts
-    const baseApi = 'https://dev-int.ismart.org/api/v1/accounts';
-    return `${baseApi}${cleanPath}`;
-  };
+  // Fetch PDF file securely with Bearer token using Axios
+  useEffect(() => {
+    let activeUrl = null;
+    const fetchPdfBlob = async () => {
+      if (!agreement?.fileUrl) return;
 
-  const handleOpenPdf = (e) => {
+      setPdfLoading(true);
+      setPdfError(false);
+
+      try {
+        let relativePath = agreement.fileUrl;
+        if (relativePath.includes('/api/v1/')) {
+          relativePath = relativePath.substring(relativePath.indexOf('/api/v1/') + 7);
+        }
+
+        const response = await axiosInstance.get(relativePath, { responseType: 'blob' });
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        activeUrl = window.URL.createObjectURL(blob);
+        setPdfBlobUrl(activeUrl);
+      } catch (err) {
+        console.error('⚠️ Failed to load PDF file via authenticated request:', err);
+        setPdfError(true);
+      } finally {
+        setPdfLoading(false);
+      }
+    };
+
+    fetchPdfBlob();
+
+    return () => {
+      if (activeUrl) {
+        window.URL.revokeObjectURL(activeUrl);
+      }
+    };
+  }, [agreement?.fileUrl]);
+
+  const handleOpenPdfInNewTab = (e) => {
     e.preventDefault();
-    if (!agreement?.fileUrl) return;
-    const fullUrl = getFullFileUrl(agreement.fileUrl);
-    window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    if (pdfBlobUrl) {
+      window.open(pdfBlobUrl, '_blank', 'noopener,noreferrer');
+    } else if (agreement?.fileUrl) {
+      window.open(agreement.fileUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -111,15 +143,15 @@ export default function ViewAgreementModal({ onClose, site }) {
                     <div>
                       <span className="text-emerald-200/70 block text-[11px] uppercase font-semibold">Monthly Base Rent</span>
                       <strong className="text-white font-bold text-sm sm:text-base">
-                        ₹{Number(agreement.calculations.monthlyBaseRent || 0).toLocaleString()}
+                        ₹{Number(agreement.calculations.monthlyBaseRent || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </strong>
                     </div>
 
                     {agreement.withGST && (
                       <div>
-                        <span className="text-amber-300/80 block text-[11px] uppercase font-semibold">Monthly GST (18%)</span>
+                        <span className="text-amber-300/80 block text-[11px] uppercase font-semibold">Monthly GST</span>
                         <strong className="text-amber-200 font-bold text-sm sm:text-base">
-                          ₹{Number(agreement.calculations.monthlyGST || 0).toLocaleString()}
+                          ₹{Number(agreement.calculations.monthlyGST || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </strong>
                       </div>
                     )}
@@ -127,14 +159,14 @@ export default function ViewAgreementModal({ onClose, site }) {
                     <div>
                       <span className="text-emerald-200/70 block text-[11px] uppercase font-semibold">Monthly Payable</span>
                       <strong className="text-emerald-400 font-extrabold text-base sm:text-lg">
-                        ₹{Number(agreement.calculations.monthlyTotal || 0).toLocaleString()}
+                        ₹{Number(agreement.calculations.monthlyTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </strong>
                     </div>
 
                     <div>
                       <span className="text-emerald-200/70 block text-[11px] uppercase font-semibold">Grand Total Lease</span>
                       <strong className="text-white font-extrabold text-base sm:text-lg">
-                        ₹{Number(agreement.calculations.grandTotal || 0).toLocaleString()}
+                        ₹{Number(agreement.calculations.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </strong>
                     </div>
                   </div>
@@ -143,7 +175,15 @@ export default function ViewAgreementModal({ onClose, site }) {
                   {agreement.calculations.gstBreakdown && (
                     <div className="pt-3 border-t border-emerald-800/60 flex items-center justify-between text-xs text-emerald-200/80 font-medium">
                       <span>GST Type: <strong>{agreement.calculations.gstBreakdown.type || 'CGST+SGST'}</strong></span>
-                      <span>CGST (9%): ₹{agreement.calculations.gstBreakdown.monthlyCGST} | SGST (9%): ₹{agreement.calculations.gstBreakdown.monthlySGST}</span>
+                      <span>
+                        {agreement.calculations.gstBreakdown.type === 'IGST' ? (
+                          <>IGST ({agreement.calculations.gstBreakdown.igstRate || 18}%): ₹{Number(agreement.calculations.gstBreakdown.monthlyIGST || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</>
+                        ) : (
+                          <>
+                            CGST (9%): ₹{Number(agreement.calculations.gstBreakdown.monthlyCGST || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | SGST (9%): ₹{Number(agreement.calculations.gstBreakdown.monthlySGST || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </>
+                        )}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -178,26 +218,48 @@ export default function ViewAgreementModal({ onClose, site }) {
               {agreement.fileUrl && (
                 <div className="border border-emerald-200 rounded-xl overflow-hidden shadow-sm bg-slate-900 space-y-0">
                   <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white px-4 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-bold">
+                    <div className="flex items-center gap-2 text-xs font-bold truncate pr-2">
                       <span>📄</span> Document Preview: {agreement.fileName || 'Signed Agreement.pdf'}
                     </div>
-                    <a
-                      href={getFullFileUrl(agreement.fileUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={handleOpenPdf}
-                      className="text-[11px] bg-white/15 hover:bg-white/30 text-white font-bold px-3 py-1 rounded-lg backdrop-blur-xs transition cursor-pointer flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={handleOpenPdfInNewTab}
+                      className="text-[11px] bg-white/15 hover:bg-white/30 text-white font-bold px-3 py-1 rounded-lg backdrop-blur-xs transition cursor-pointer flex items-center gap-1 shrink-0"
                     >
-                      <span>↗️</span> Fullscreen
-                    </a>
+                      <span>↗️</span> Fullscreen / Download
+                    </button>
                   </div>
 
                   <div className="w-full h-80 bg-slate-100 relative">
-                    <iframe
-                      src={getFullFileUrl(agreement.fileUrl)}
-                      title="Rent Agreement Document"
-                      className="w-full h-full border-0"
-                    />
+                    {pdfLoading ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 text-slate-600 space-y-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                        <p className="text-xs font-bold">Loading PDF Document...</p>
+                      </div>
+                    ) : pdfError || !pdfBlobUrl ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 p-6 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xl font-bold">
+                          📄
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">Preview not supported directly in iframe</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Click below to open or download the PDF document</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleOpenPdfInNewTab}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition cursor-pointer"
+                        >
+                          Open PDF Document
+                        </button>
+                      </div>
+                    ) : (
+                      <iframe
+                        src={pdfBlobUrl}
+                        title="Rent Agreement Document"
+                        className="w-full h-full border-0"
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -219,3 +281,4 @@ export default function ViewAgreementModal({ onClose, site }) {
     </div>
   );
 }
+

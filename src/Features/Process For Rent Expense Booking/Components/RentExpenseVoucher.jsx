@@ -13,10 +13,10 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
       data.financialYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
     date: data.date || new Date().toISOString().split('T')[0],
     reference: data.reference || 'Monthly Rent Payment',
-    preparedBy: data.preparedBy || 'Billing Executive',
+    preparedBy: data.preparedBy || 'Billing Manager',
     expenseType: 'Rent Expense',
     department: data.department || 'Operations',
-    approvalChain: data.approvalChain || 'Billing Executive',
+    approvalChain: data.approvalChain || 'Billing Manager',
   }
 
   // Site and owner details
@@ -84,7 +84,7 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
   ]
 
   const approvals = data.approvals || {
-    preparer: data.preparedBy || 'Billing Executive',
+    preparer: data.preparedBy || 'Billing Manager',
     reviewer: data.reviewer || 'Finance Manager',
     approver: data.approver || 'VP Operations',
     date: new Date().toISOString().split('T')[0],
@@ -413,7 +413,7 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="text-center">
                 <div className="border-b border-gray-300 pb-1 sm:pb-2 mb-1 sm:mb-2 h-8 sm:h-10"></div>
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Billing Executive</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-700">Billing Manager</p>
                 <p className="text-2xs sm:text-xs text-gray-500">{approvals.preparer}</p>
                 <p className="text-2xs sm:text-xs text-gray-400">{approvals.date}</p>
               </div>
