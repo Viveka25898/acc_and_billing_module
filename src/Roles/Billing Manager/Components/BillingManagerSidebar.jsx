@@ -32,19 +32,19 @@ const BillingManagerSidebar = () => {
           </li>
           <hr className="border-white mx-4" />
 
-          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+          {/* <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/billing-manager/procurement-invoice-approval">
               Procurement Invoices
             </NavLink>
           </li>
-          <hr className="border-white mx-4" />
+          <hr className="border-white mx-4" /> */}
 
-          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+          {/* <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/billing-manager/upload-statement-page">
               Bank Reconciliation
             </NavLink>
           </li>
-          <hr className="border-white mx-4" />
+          <hr className="border-white mx-4" /> */}
 
           <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/billing-manager/rent-expense-booking">
@@ -53,16 +53,17 @@ const BillingManagerSidebar = () => {
           </li>
           <hr className="border-white mx-4" />
 
-          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+          {/* <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/billing-manager/gstr-reco-process">GST Reconciliation</NavLink>
           </li>
-          <hr className="border-white mx-4" />
+          <hr className="border-white mx-4" /> */}
 
-          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+          {/* <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/billing-manager/billing-dashboard">Billing Module</NavLink>
           </li>
-          <hr className="border-white mx-4" />
+          <hr className="border-white mx-4" /> */}
         </ul>
+
       </div>
     </>
   )
