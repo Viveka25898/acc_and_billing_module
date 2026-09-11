@@ -27,7 +27,7 @@ const ManagerNavbar = () => {
 
 
   return (
-    <nav className="bg-green-600 text-white h-14 flex items-center justify-between px-4 md:px-8 shadow-md ">
+    <nav className="bg-green-600 text-white h-14 flex items-center justify-between px-4 md:px-8 shadow-md relative z-40">
     
       {/* Left: Role Name */}
       <div className="w-1/3"></div>
@@ -56,11 +56,11 @@ const ManagerNavbar = () => {
 
         {/* Dropdown Menu */}
         {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-40 bg-white text-black shadow-lg rounded-md">
+            <div className="absolute right-0 mt-2 w-40 bg-white text-black shadow-xl rounded-md z-50 border border-slate-100">
                     <ul className="py-1">
                             <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer">Profile</li>
                             <li className="px-4 py-2 hover:bg-gray-200 cursor-pointer">Settings</li>
-                            <li className="px-4 py-2 hover:bg-red-500  cursor-pointer" onClick={handleLogout}>Logout</li>
+                            <li className="px-4 py-2 hover:bg-red-500 hover:text-white cursor-pointer" onClick={handleLogout}>Logout</li>
                     </ul>
             </div>
         )}

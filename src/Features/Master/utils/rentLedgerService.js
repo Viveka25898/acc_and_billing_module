@@ -1,261 +1,233 @@
 /* eslint-disable no-unused-vars */
-// utils/rentLedgerService.js
-export class RentLedgerService {
+import axiosInstance from '../../../api/axiosInstance';
 
-  /**
-   * Get all vendor ledger entries for a specific GL account
-   */
-  static getVendorLedgerEntries(accountCode) {
+/**
+ * Helper to GET request with endpoint fallback routes
+ */
+const getWithFallback = async (endpoints, config = {}) => {
+  let lastError = null;
+  for (const endpoint of endpoints) {
     try {
-      const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-
-      console.log(`📊 Generating rent vendor ledger for: ${accountCode}`);
-
-      // Filter transactions that involve this vendor account (include all voucher types)
-      const rentTransactions = transactions.filter(txn => {
-        if (!txn.entries || !Array.isArray(txn.entries)) {
-          console.warn(`⚠️ Transaction ${txn.id || 'unknown'} missing entries array`);
-          return false;
-        }
-        return txn.entries.some(entry => entry.glCode === accountCode);
-      });
-
-      console.log(`📋 Found ${rentTransactions.length} rent transactions`);
-
-      // Convert to ledger entries
-      const ledgerEntries = [];
-      let runningBalance = 0;
-      let balanceType = 'CR'; // Vendors typically have credit balance
-
-      rentTransactions.forEach(txn => {
-        const vendorEntry = txn.entries.find(entry => entry.glCode === accountCode);
-        const rentEntry = txn.entries.find(entry => entry.glCode === "X2001002002");
-        const gstEntry = txn.entries.find(entry =>
-          ["A3007001001", "A3007001002", "A3007001003"].includes(entry.glCode)
-        );
-
-        if (vendorEntry) {
-          const debit = vendorEntry.debit || 0;
-          const credit = vendorEntry.credit || 0;
-
-          // Calculate running balance (vendor perspective)
-          runningBalance += credit - debit;
-          balanceType = runningBalance >= 0 ? 'CR' : 'DR';
-
-          const siteName = txn.siteDetails?.siteName || '';
-          const siteLoc = txn.siteDetails?.location || txn.siteDetails?.siteLocation || '';
-          const derivedCounterparty = siteName || 'Your Company';
-
-          ledgerEntries.push({
-            date: txn.date,
-            displayDate: txn.date,
-            voucherNo: txn.voucherNo,
-            entryType: this.getVendorEntryType(debit, credit),
-            debit: debit,
-            credit: credit,
-            balance: Math.abs(runningBalance),
-            balanceType: balanceType,
-            narration: vendorEntry.narration || txn.narration || '',
-            refNo: txn.id,
-            counterparty: siteLoc ? `${derivedCounterparty} - ${siteLoc}` : derivedCounterparty,
-            counterpartyType: "Company",
-            type: txn.vendorType || (credit > 0 ? 'Rent Invoice' : 'Rent Payment'),
-            approvedBy: txn.approvedBy,
-            attachments: vendorEntry.attachments || 0,
-            costCenter: vendorEntry.costCenter || txn.costCenter || 'General',
-            customer: txn.customer || txn.clientName || '-',
-            site: vendorEntry.site || txn.siteDetails?.siteName || txn.site || '-',
-            state: txn.state || '-',
-            city: txn.city || '-',
-            branch: txn.branch || '-',
-            siteName: txn.siteDetails?.siteName,
-            month: txn.rentVoucherId ? this.extractMonthFromVoucher(txn.rentVoucherId) : ''
-          });
-        }
-      });
-
-      console.log(`✅ Generated ${ledgerEntries.length} vendor ledger entries`);
-      return ledgerEntries;
-
-    } catch (error) {
-      console.error('❌ Error generating rent vendor ledger:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Get branch office rent ledger entries
-   */
-  static getBranchRentLedgerEntries() {
-    try {
-      const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-
-      console.log(`📊 Generating branch office rent ledger`);
-
-      // Filter transactions with branch office rent GL code
-      const rentTransactions = transactions.filter(txn => {
-        if (!txn.entries || !Array.isArray(txn.entries)) {
-          console.warn(`⚠️ Transaction ${txn.id || 'unknown'} missing entries array`);
-          return false;
-        }
-        return txn.entries.some(entry => entry.glCode === "X2001002002");
-      });
-
-      const ledgerEntries = [];
-      let runningBalance = 0;
-      let balanceType = 'DR'; // Expense accounts typically have debit balance
-
-      rentTransactions.forEach(txn => {
-        const rentEntry = txn.entries.find(entry => entry.glCode === "X2001002002");
-        const vendorEntry = txn.entries.find(entry => entry.glCode.startsWith('L2005'));
-
-        if (rentEntry) {
-          const debit = rentEntry.debit || 0;
-          const credit = rentEntry.credit || 0;
-
-          runningBalance += debit - credit;
-          balanceType = runningBalance >= 0 ? 'DR' : 'CR';
-
-          ledgerEntries.push({
-            date: txn.date,
-            voucherNo: txn.voucherNo,
-            entryType: this.getRentExpenseEntryType(debit, credit),
-            debit: debit,
-            credit: credit,
-            balance: Math.abs(runningBalance),
-            balanceType: balanceType,
-            narration: rentEntry.narration,
-            refNo: txn.id,
-            counterparty: vendorEntry?.glName || 'Vendor',
-            counterpartyType: "Vendor",
-            type: 'Rent Expense',
-            approvedBy: txn.approvedBy,
-            attachments: 0,
-            costCenter: rentEntry.costCenter || txn.costCenter || 'General',
-            customer: txn.customer || txn.clientName || '-',
-            site: rentEntry.site || txn.siteDetails?.siteName || txn.site || '-',
-            siteName: txn.siteDetails?.siteName || txn.site || '-',
-            state: txn.state || '-',
-            city: txn.city || '-',
-            branch: txn.branch || '-',
-            month: txn.rentVoucherId ? this.extractMonthFromVoucher(txn.rentVoucherId) : '',
-            vendorGL: vendorEntry?.glCode
-          });
-        }
-      });
-
-      console.log(`✅ Generated ${ledgerEntries.length} branch rent ledger entries`);
-      return ledgerEntries;
-
-    } catch (error) {
-      console.error('❌ Error generating branch rent ledger:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Get vendor account details
-   */
-  static getVendorAccountDetails(accountCode) {
-    try {
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
-      const sites = JSON.parse(localStorage.getItem('sites')) || [];
-
-      const account = chartOfAccounts.find(acc => acc.code === accountCode);
-
-      if (!account) {
-        console.log(`❌ Vendor account not found: ${accountCode}`);
-        return null;
+      const response = await axiosInstance.get(endpoint, config);
+      if (response && (response.status === 200 || response.status === 201)) {
+        return response;
       }
+    } catch (err) {
+      lastError = err;
+      if (err.response && err.response.status === 404) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+};
 
-      // Find site and owner info from the account name
-      const vendorName = account.name.replace('VENDOR-', '').split(' - ')[1] || account.name;
+export class RentLedgerService {
+  /**
+   * Formats ISO or YYYY-MM-DD date string to UI display (DD-MMM-YYYY)
+   */
+  static formatDate(dateString) {
+    try {
+      if (!dateString || dateString === '-') return '-';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
 
-      // Find site that has this vendor
-      const vendorSite = sites.find(site =>
-        site.owners?.some(owner => owner.glCode === accountCode)
-      );
-
-      const opening = { amount: 0, date: '2025-04-01', type: 'CR' };
-      const openingBalanceLabel = `${(opening.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${opening.type}`;
-
-      return {
-        // Fields expected by header/table components
-        ledgerCode: accountCode,
-        displayName: vendorName,
-        type: 'Vendor (Rent)',
-        parent: 'Rent Vendors',
-        period: 'Apr 2025 - Mar 2026',
-        openingBalanceLabel,
-
-        // Additional info if needed elsewhere
-        vendorId: accountCode,
-        vendorName: vendorName,
-        glAccountCode: accountCode,
-        accountName: account.name,
-        siteName: vendorSite?.siteName || 'Multiple Sites',
-        location: vendorSite?.location || 'Various Locations',
-        financialYear: '2025-2026',
-        openingBalance: opening,
-        contactInfo: {
-          pan: vendorSite?.owners?.[0]?.panNumber || 'N/A',
-          gstin: vendorSite?.owners?.[0]?.gstin || 'N/A'
-        }
-      };
-
-    } catch (error) {
-      console.error('Error getting vendor account details:', error);
-      return null;
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch {
+      return dateString || '-';
     }
   }
 
   /**
-   * Get branch rent account details
+   * Safely formats currency numbers to Indian Rupees string
    */
-  static getBranchRentAccountDetails() {
+  static formatCurrency(value, defaultSymbol = '₹') {
+    if (value === null || value === undefined || value === '' || value === '-') return '-';
+    const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^\d.-]/g, ''));
+    if (isNaN(num)) return String(value);
+    return `${defaultSymbol}${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  /**
+   * Fetches Rent Expense Ledger Header, Entries, and Footer from backend APIs
+   * 
+   * @param {string} glCode Default GL Code (X2001002002)
+   * @param {Object} filters Query parameters (page, limit, fromDate, toDate, entryType, status)
+   * @returns {Promise<Object>} { headerInfo, entries, footerInfo, pagination }
+   */
+  static async getRentExpenseLedger(glCode = 'X2001002002', filters = {}) {
     try {
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
+      const activeGlCode = glCode || 'X2001002002';
+      const queryParams = {
+        page: filters.page || 1,
+      };
+      if (filters.limit) queryParams.limit = filters.limit;
 
-      const account = chartOfAccounts.find(acc => acc.code === "X2001002002");
 
-      return {
-        accountCode: "X2001002002",
-        accountName: account?.name || "BRANCH OFFICE RENT",
-        description: "Rent Expenses for All Branch Offices",
-        financialYear: '2025-2026',
-        period: 'Apr 2025 - Mar 2026',
-        openingBalance: {
-          amount: 0,
-          date: '2025-04-01',
-          type: 'DR'
+      if (filters.fromDate) queryParams.fromDate = filters.fromDate;
+      if (filters.toDate) queryParams.toDate = filters.toDate;
+
+      // Endpoint fallback options
+      const headerEndpoints = [
+        `/ledger/expense/internal/${activeGlCode}/header`,
+        `/accounts/ledger/expense/internal/${activeGlCode}/header`,
+        `/account-master/ledger/expense/internal/${activeGlCode}/header`,
+      ];
+
+      const entriesEndpoints = [
+        `/ledger/expense/internal/${activeGlCode}/entries`,
+        `/accounts/ledger/expense/internal/${activeGlCode}/entries`,
+        `/account-master/ledger/expense/internal/${activeGlCode}/entries`,
+      ];
+
+      const footerEndpoints = [
+        `/ledger/expense/internal/${activeGlCode}/footer`,
+        `/accounts/ledger/expense/internal/${activeGlCode}/footer`,
+        `/account-master/ledger/expense/internal/${activeGlCode}/footer`,
+      ];
+
+      // Execute parallel API requests
+      const [headerRes, entriesRes, footerRes] = await Promise.all([
+        getWithFallback(headerEndpoints),
+        getWithFallback(entriesEndpoints, { params: queryParams }),
+        getWithFallback(footerEndpoints),
+      ]);
+
+      const headerResults = headerRes.data?.results || headerRes.data?.data || {};
+      const entriesResults = entriesRes.data?.results || entriesRes.data?.data || {};
+      const footerResults = footerRes.data?.results || footerRes.data?.data || {};
+
+      const rawEntries = entriesResults.entries || (Array.isArray(entriesResults) ? entriesResults : []);
+      const paginationData = entriesResults.pagination || {};
+
+      // Transform raw entries to structured UI row format with '-' fallbacks
+      const entries = rawEntries.map((item, idx) => {
+        const debitNum = item.debit !== null && item.debit !== undefined && item.debit !== '-' ? parseFloat(item.debit) : 0;
+        const creditNum = item.credit !== null && item.credit !== undefined && item.credit !== '-' ? parseFloat(item.credit) : 0;
+
+        let balanceStr = item.balance || '-';
+        if (typeof balanceStr === 'number') {
+          balanceStr = `${balanceStr.toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${item.balanceType || 'DR'}`;
+        } else if (balanceStr !== '-' && !balanceStr.includes('DR') && !balanceStr.includes('CR')) {
+          balanceStr = `${balanceStr} ${item.balanceType || 'DR'}`;
         }
+
+        const vendorName = item.vendor?.name || (typeof item.vendor === 'string' ? item.vendor : null) || item.counterparty || '-';
+
+        return {
+          id: item.id || `row-${idx}`,
+          rawDate: item.date,
+          date: this.formatDate(item.date),
+          voucherNo: item.voucherNo || '-',
+          voucherLink: item.voucherLink || null,
+          entryType: item.entryType || 'Expense',
+          debit: debitNum,
+          debitStr: debitNum > 0 ? debitNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-',
+          credit: creditNum,
+          creditStr: creditNum > 0 ? creditNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-',
+          balance: balanceStr,
+          balanceType: item.balanceType || 'DR',
+          narration: item.narration || '-',
+          refNo: item.claimId || item.refNo || '-',
+          counterparty: vendorName,
+          vendorName: vendorName,
+          approvedBy: item.approvedBy || '-',
+          costCenter: item.costCenter || 'All',
+          customer: item.customer || '-',
+          site: item.site || '-',
+          state: item.state || '-',
+          status: item.status || 'Posted',
+          rowType: item.rowType || 'normal',
+          period: item.period || '-',
+          attachmentBundleUrl: item.attachmentBundleUrl || null,
+        };
+      });
+
+      // Construct Header object
+      const headerInfo = {
+        glAccount: headerResults.glCode || activeGlCode,
+        accountCode: headerResults.glCode || activeGlCode,
+        ledgerName: headerResults.ledgerName || 'BRANCH OFFICE RENT',
+        description: headerResults.ledgerName || 'BRANCH OFFICE RENT',
+        parentAccount: headerResults.parentAccount || 'OTHER BRANCH EXPENSES',
+        parentCode: headerResults.parentCode || 'X2001002',
+        accountCategory: headerResults.accountCategory || 'EXPENSE',
+        accountType: headerResults.accountType || 'Operating Expense',
+        debitCreditNature: headerResults.debitCreditNature || 'DEBIT',
+        financialYear: headerResults.financialYear || 'FY2024-25',
+        period: headerResults.period || '01-Apr-2024 to 31-Mar-2025',
+        costCenter: headerResults.costCenter || 'All Cost Centers',
+        department: headerResults.department || 'Operations & Property Management',
+        company: 'iSmart',
+        openingBalance: headerResults.openingBalance || '0.00',
+        openingBalanceType: headerResults.openingBalanceType || 'Debit Balance',
+        periodExpenses: headerResults.periodExpenses || '0.00',
+        closingBalance: headerResults.closingBalance || '0.00',
+        stats: headerResults.stats || {
+          totalTransactions: entries.length,
+          settlements: 0,
+          avgPerTransaction: '₹0.00',
+          sitesUtilized: 0,
+        },
       };
 
+      // Construct Footer object
+      const footerInfo = {
+        totalDebit: parseFloat(footerResults.totalDebit || 0),
+        totalCredit: parseFloat(footerResults.totalCredit || 0),
+        netExpenseAmount: parseFloat(footerResults.netExpenseAmount || 0),
+        closingBalance: footerResults.closingBalance || '0.00 DR',
+        totalVouchersProcessed: footerResults.totalVouchersProcessed || entries.length,
+        totalReversals: footerResults.totalReversals || 0,
+      };
+
+      const pagination = {
+        page: paginationData.page || 1,
+        limit: paginationData.limit || 50,
+        totalItems: paginationData.totalItems || entries.length,
+        totalPages: paginationData.totalPages || 1,
+        hasNextPage: Boolean(paginationData.hasNextPage),
+        hasPreviousPage: Boolean(paginationData.hasPreviousPage),
+      };
+
+      return {
+        headerInfo,
+        entries,
+        footerInfo,
+        pagination,
+      };
     } catch (error) {
-      console.error('Error getting branch rent account details:', error);
-      return null;
+      console.error('❌ Error fetching Rent Expense Ledger from APIs:', error);
+      throw error;
     }
   }
 
-  // Helper methods
-  static getVendorEntryType(debit, credit) {
-    if (debit > 0) return 'Payment';
-    if (credit > 0) return 'Invoice';
-    return 'Journal';
+  // Deprecated legacy helpers kept safely without localStorage
+  static getBranchRentAccountDetails() {
+    return {
+      accountCode: 'X2001002002',
+      accountName: 'BRANCH OFFICE RENT',
+      description: 'Rent Expenses for All Branch Offices',
+      financialYear: 'FY2024-25',
+      period: '01-Apr-2024 to 31-Mar-2025',
+      openingBalance: { amount: 0, date: '2024-04-01', type: 'DR' },
+    };
   }
 
-  static getRentExpenseEntryType(debit, credit) {
-    if (debit > 0) return 'Expense';
-    if (credit > 0) return 'Reversal';
-    return 'Journal';
+  static getBranchRentLedgerEntries() {
+    return [];
   }
 
-  static extractMonthFromVoucher(voucherId) {
-    // Extract month from voucher data if available
-    const vouchers = JSON.parse(localStorage.getItem('vouchers')) || [];
-    const voucher = vouchers.find(v => v.voucherId === voucherId);
-    return voucher?.month || '';
+  static getVendorAccountDetails() {
+    return null;
   }
-}
+
+  static getVendorLedgerEntries() {
+    return [];
+  }
+}

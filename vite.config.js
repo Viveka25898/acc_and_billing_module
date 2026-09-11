@@ -56,6 +56,9 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         headers: {
+          // Make the request look same-origin to the backend's CORS middleware.
+          // Postman doesn't send Origin at all — backend trusts it.
+          // We spoof Origin to the backend's own domain to get the same behavior.
           'origin':  'https://dev-int.ismart.org',
           'referer': 'https://dev-int.ismart.org/',
         },

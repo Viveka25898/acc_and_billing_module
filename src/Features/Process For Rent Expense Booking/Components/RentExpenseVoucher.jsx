@@ -13,10 +13,10 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
       data.financialYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
     date: data.date || new Date().toISOString().split('T')[0],
     reference: data.reference || 'Monthly Rent Payment',
-    preparedBy: data.preparedBy || 'Billing Executive',
+    preparedBy: data.preparedBy || 'Billing Manager',
     expenseType: 'Rent Expense',
     department: data.department || 'Operations',
-    approvalChain: data.approvalChain || 'Billing Executive',
+    approvalChain: data.approvalChain || 'Billing Manager',
   }
 
   // Site and owner details
@@ -45,7 +45,11 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
   const totalRentAmount = rentDetails.totalAmount
 
   // Create accounting entries
-  const lines = data.entries || [
+  const lines = (data.entries && data.entries.length > 0)
+    ? data.entries
+    : (data.accounting?.glEntries && data.accounting.glEntries.length > 0)
+      ? data.accounting.glEntries
+      : [
     {
       id: 1,
       particulars: 'Rent Expense',
@@ -80,7 +84,7 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
   ]
 
   const approvals = data.approvals || {
-    preparer: data.preparedBy || 'Billing Executive',
+    preparer: data.preparedBy || 'Billing Manager',
     reviewer: data.reviewer || 'Finance Manager',
     approver: data.approver || 'VP Operations',
     date: new Date().toISOString().split('T')[0],
@@ -286,7 +290,7 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
                     <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border">
                       Particulars
                     </th>
-                    <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">
+                    <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border">
                       GL Code
                     </th>
                     <th className="px-2 sm:px-4 py-2 text-left font-medium text-gray-700 border hidden sm:table-cell">
@@ -301,26 +305,32 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((line, idx) => (
-                    <tr key={line.id || idx} className="hover:bg-gray-50">
-                      <td className="px-2 sm:px-4 py-2 border">
-                        <div className="font-medium">{line.particulars || 'N/A'}</div>
-                        {line.note && <div className="text-xs text-gray-500 mt-1">{line.note}</div>}
-                      </td>
-                      <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">
-                        {line.gl || 'N/A'}
-                      </td>
-                      <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">
-                        {line.costCenter || '-'}
-                      </td>
-                      <td className="px-2 sm:px-4 py-2 border text-right">
-                        {line.debit ? formatAmount(line.debit) : '-'}
-                      </td>
-                      <td className="px-2 sm:px-4 py-2 border text-right">
-                        {line.credit ? formatAmount(line.credit) : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {lines.map((line, idx) => {
+                    const particularsText = line.glName || line.particulars || line.narration || '-';
+                    const glCodeText = line.glCode || line.gl || '-';
+                    const noteText = line.narration || line.note || '';
+
+                    return (
+                      <tr key={line.id || line.lineNo || idx} className="hover:bg-gray-50">
+                        <td className="px-2 sm:px-4 py-2 border font-medium">
+                          <div className="text-slate-800 font-semibold">{particularsText}</div>
+                          {noteText && <div className="text-xs text-gray-500 mt-0.5">{noteText}</div>}
+                        </td>
+                        <td className="px-2 sm:px-4 py-2 border font-mono font-bold text-emerald-800">
+                          {glCodeText}
+                        </td>
+                        <td className="px-2 sm:px-4 py-2 border hidden sm:table-cell">
+                          {line.costCenter || '-'}
+                        </td>
+                        <td className="px-2 sm:px-4 py-2 border text-right font-semibold">
+                          {line.debit ? formatAmount(line.debit) : '-'}
+                        </td>
+                        <td className="px-2 sm:px-4 py-2 border text-right font-semibold">
+                          {line.credit ? formatAmount(line.credit) : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   <tr className="bg-indigo-50 font-bold">
                     <td
                       colSpan={3}
@@ -403,7 +413,7 @@ const RentExpenseVoucher = ({ data = {}, onClose }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="text-center">
                 <div className="border-b border-gray-300 pb-1 sm:pb-2 mb-1 sm:mb-2 h-8 sm:h-10"></div>
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Billing Executive</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-700">Billing Manager</p>
                 <p className="text-2xs sm:text-xs text-gray-500">{approvals.preparer}</p>
                 <p className="text-2xs sm:text-xs text-gray-400">{approvals.date}</p>
               </div>

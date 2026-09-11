@@ -8,27 +8,43 @@ import ViewVouchersModal from '../Components/ViewVouchersModal'
 import RentExpenseVoucher from '../Components/RentExpenseVoucher'
 import { processRentApproval } from '../../Master/utils/accountingHelpers'
 import TerminateAgreementModal from '../Components/TerminateAgreementModal'
+import ViewAgreementModal from '../Components/ViewAgreementModal'
+import TerminatedSitesPage from './TerminatedSitesPage'
+
+
+import { useDispatch, useSelector } from 'react-redux'
+import {
+  fetchRentalSites,
+  fetchRentAgreementById,
+  terminateRentAgreement,
+  clearActiveAgreementDetails,
+  selectRentalSites,
+  selectRentPagination,
+  selectRentSummary,
+  selectRentLoading,
+  selectRentError,
+  selectTerminateLoading,
+} from '../../../store/slices/rentExpenseSlice'
+
+const val = (v) => (v === undefined || v === null || String(v).trim() === '' ? '-' : String(v))
 
 export default function RentExpenseBookingPage() {
-  // Load sites from localStorage
-  const [sites, setSites] = useState(() => {
-    const stored = localStorage.getItem('sites')
-    return stored ? JSON.parse(stored) : []
-  })
+  const dispatch = useDispatch()
+  const reduxSites = useSelector(selectRentalSites)
+  const pagination = useSelector(selectRentPagination)
+  const summary = useSelector(selectRentSummary)
+  const loading = useSelector(selectRentLoading)
+  const error = useSelector(selectRentError)
+  const terminateLoading = useSelector(selectTerminateLoading)
 
   const [selectedSite, setSelectedSite] = useState(null)
-  const [agreements, setAgreements] = useState(() => {
-    const stored = localStorage.getItem('agreements')
-    return stored ? JSON.parse(stored) : []
-  })
-  const [vouchers, setVouchers] = useState(() => {
-    const stored = localStorage.getItem('vouchers')
-    return stored ? JSON.parse(stored) : []
-  })
-
+  const [viewMode, setViewMode] = useState('active') // 'active' | 'terminated'
   const [filters, setFilters] = useState({ owner: '', city: '', state: '' })
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
+
   const [showAgreementModal, setShowAgreementModal] = useState(false)
+  const [showViewAgreementModal, setShowViewAgreementModal] = useState(false)
+  const [viewAgreementSite, setViewAgreementSite] = useState(null)
   const [showVoucherModal, setShowVoucherModal] = useState(false)
   const [showTerminateModal, setShowTerminateModal] = useState(false)
   const [terminateSite, setTerminateSite] = useState(null)
@@ -38,259 +54,141 @@ export default function RentExpenseBookingPage() {
   const [expenseVoucherData, setExpenseVoucherData] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [pendingRentVoucher, setPendingRentVoucher] = useState(null)
-  const [vendorVouchers, setVendorVouchers] = useState(() => {
-    const stored = localStorage.getItem('vendorVouchers')
-    return stored ? JSON.parse(stored) : []
-  })
-
-  // Save vendor vouchers to localStorage
-  useEffect(() => {
-    localStorage.setItem('vendorVouchers', JSON.stringify(vendorVouchers))
-  }, [vendorVouchers])
 
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  const itemsPerPage = 10
 
-  // Save to localStorage whenever data changes
+  // Fetch sites from API on mount and filter/page change
   useEffect(() => {
-    localStorage.setItem('sites', JSON.stringify(sites))
-  }, [sites])
+    const params = {
+      page: currentPage,
+      limit: itemsPerPage,
+      city: filters.city,
+      state: filters.state,
+      search: filters.owner,
+    }
+    dispatch(fetchRentalSites(params))
+  }, [dispatch, currentPage, filters.city, filters.state, filters.owner])
 
-  useEffect(() => {
-    localStorage.setItem('agreements', JSON.stringify(agreements))
-  }, [agreements])
+  const handleAddSiteSuccess = (createdResult) => {
+    setShowAddSiteModal(false)
+    dispatch(fetchRentalSites({ page: 1, limit: itemsPerPage }))
+  }
 
-  useEffect(() => {
-    localStorage.setItem('vouchers', JSON.stringify(vouchers))
-  }, [vouchers])
-
-  const handleAddSite = (newSite) => {
-    setSites((prev) => [...prev, newSite])
+  const handleAddSite = () => {
+    dispatch(fetchRentalSites({ page: 1, limit: itemsPerPage }))
     setShowAddSiteModal(false)
     toast.success('Site added successfully!')
   }
 
-  const handleAgreementSubmit = (agreementData) => {
-    const newAgreement = { ...agreementData, siteId: selectedSite.siteId }
-    setAgreements((prev) => [...prev, newAgreement])
+  const handleAgreementSubmit = () => {
     setSelectedSite(null)
     setShowAgreementModal(false)
-    toast.success('Rent agreement uploaded successfully')
+    dispatch(
+      fetchRentalSites({
+        page: currentPage,
+        limit: itemsPerPage,
+        city: filters.city,
+        state: filters.state,
+        search: filters.owner,
+      })
+    )
   }
 
-  const handleTerminateSubmit = (siteId, data) => {
+  const handleOpenViewAgreement = (siteObj) => {
+    setViewAgreementSite(siteObj)
+    setShowViewAgreementModal(true)
+    const agrId =
+      siteObj.currentAgreementId ||
+      siteObj.agreementId ||
+      siteObj.agreement?.agreementId
+    if (agrId) {
+      dispatch(fetchRentAgreementById(agrId))
+    }
+  }
+
+  const handleTerminateSubmit = async (siteId, data) => {
     try {
-      const activeAgreement = agreements.find((a) => a.siteId === siteId && a.status !== 'terminated')
-      if (!activeAgreement) {
-        toast.error('No active agreement found for this site.')
+      const site = reduxSites.find((s) => s.siteId === siteId || s.id === siteId) || terminateSite
+      const agreementId =
+        site?.currentAgreementId ||
+        site?.agreementId ||
+        site?.agreement?.agreementId
+
+      if (!agreementId) {
+        toast.error('No active agreement ID found for this site.')
         return
       }
 
-      // Update agreement status and metadata
-      const updatedAgreements = agreements.map((a) =>
-        a.agreementId === activeAgreement.agreementId
-          ? {
-              ...a,
-              status: 'terminated',
-              terminationDate: data.effectiveMonth,
-              terminationReason: data.reason,
-            }
-          : a
-      )
-      setAgreements(updatedAgreements)
-      localStorage.setItem('agreements', JSON.stringify(updatedAgreements))
-
-      // If user chose to cancel unpaid future vouchers
-      if (data.cancelUnpaid) {
-        // Update general vouchers
-        const updatedVouchers = vouchers.map((v) => {
-          if (v.siteId === siteId && v.paymentStatus !== 'Paid' && v.month > data.effectiveMonth) {
-            return {
-              ...v,
-              status: 'Cancelled',
-              paymentStatus: 'Cancelled',
-            }
-          }
-          return v
-        })
-        setVouchers(updatedVouchers)
-        localStorage.setItem('vouchers', JSON.stringify(updatedVouchers))
-
-        // Update vendor vouchers (pending payments queue)
-        const updatedVendorVouchers = vendorVouchers.map((v) => {
-          if (v.siteId === siteId && v.paymentStatus !== 'Paid' && v.month > data.effectiveMonth) {
-            return {
-              ...v,
-              status: 'Cancelled',
-              paymentStatus: 'Cancelled',
-            }
-          }
-          return v
-        })
-        setVendorVouchers(updatedVendorVouchers)
+      const payload = {
+        terminationDate: data.effectiveDate || data.terminationDate,
+        effectiveMonth: data.effectiveMonth,
+        reason: data.reason || 'Office Premises Closed',
+        cancelUnpaid: data.cancelUnpaid ?? true,
       }
 
-      toast.success('Rent agreement terminated prematurely and future vouchers blocked!')
+      const result = await dispatch(terminateRentAgreement({ agreementId, payload })).unwrap()
+      toast.success(result?.message || 'Rent agreement terminated successfully and future payments have been stopped.')
+
       setShowTerminateModal(false)
       setTerminateSite(null)
-    } catch (error) {
-      console.error('Error terminating agreement:', error)
-      toast.error('Failed to terminate rent agreement')
-    }
-  }
 
-  const handleVoucherSubmit = async (voucherData) => {
-    try {
-      // Prepare rent voucher data
-      const agreement = getAgreementForSite(selectedSite.siteId)
-      const rentVoucher = {
-        ...voucherData,
-        siteId: selectedSite.siteId,
-        siteName: selectedSite.siteName,
-        siteLocation: selectedSite.location,
-        ownerName: agreement?.owner || selectedSite.owners?.[0]?.ownerName,
-        ownerId: selectedSite.owners?.[0]?.ownerId,
-        ownerGLCode: selectedSite.owners?.[0]?.glCode,
-        agreementId: agreement?.agreementId,
-      }
-
-      // Auto-select a default bank behind the scenes
-      const defaultBank = {
-        bankCode: 'A3004003002',
-        bankName: 'HDFC Bank - Current Account',
-        bankId: 'HDFC001',
-      }
-
-      // Process accounting immediately
-      const result = await processRentApproval(rentVoucher, defaultBank)
-
-      if (!result.success) throw new Error(result.message || 'Processing failed')
-
-      // Create enhanced voucher with approval workflow tracking
-      const updatedVoucher = {
-        ...rentVoucher,
-        voucherId: `VOUCH-${Date.now()}`,
-        accounting: {
-          voucherNo: result.voucherNo,
-          transactionId: result.transactionId,
-          vendorGL: result.vendorGL,
-          processedAt: new Date().toISOString(),
-        },
-        status: 'Approved', // Changed to 'Approved' for payment processing
-        paymentStatus: 'Pending Payment',
-        workflow: {
-          generatedBy: 'Billing Executive',
-          generatedAt: new Date().toISOString(),
-          approvedBy: 'Auto-Approval System',
-          approvedAt: new Date().toISOString(),
-          paidBy: null,
-          paidAt: null,
-        },
-        // Enhanced vendor details for payment processing
-        vendorDetails: {
-          vendorId: selectedSite.owners?.[0]?.ownerId,
-          vendorName: agreement?.owner || selectedSite.owners?.[0]?.ownerName,
-          vendorGL: result.vendorGL,
-          panNumber: selectedSite.owners?.[0]?.panNumber,
-          gstin: selectedSite.owners?.[0]?.gstin,
-          contactNumber: selectedSite.owners?.[0]?.contactNumber,
-          email: selectedSite.owners?.[0]?.email,
-          address: selectedSite.owners?.[0]?.address,
-          state: selectedSite.state, // Important for GST compliance
-        },
-        // Payment details (to be filled during payment processing)
-        paymentDetails: {
-          bankAccount: null,
-          ifscCode: null,
-          paymentMode: null,
-          utrNumber: null,
-          paidAmount: null,
-          paymentDate: null,
-        },
-        // Additional metadata for payment processing
-        paymentReady: true,
-        priority: 'Normal',
-        dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // 7 days from now
-      }
-
-      // Save to main vouchers list
-      setVouchers((prev) => [...prev, updatedVoucher])
-
-      // ✅ CRITICAL: Save to vendor vouchers for payment processing
-      const existingVendorVouchers = JSON.parse(localStorage.getItem('vendorVouchers') || '[]')
-      const vendorVoucherForPayment = {
-        ...updatedVoucher,
-        // Ensure all required fields for payment processing
-        id: `VENDOR-VOUCH-${Date.now()}`,
-        type: 'rent_payment',
-        category: 'Rent Expense',
-        department: 'Operations',
-      }
-
-      const updatedVendorVouchers = [...existingVendorVouchers, vendorVoucherForPayment]
-      localStorage.setItem('vendorVouchers', JSON.stringify(updatedVendorVouchers))
-
-      // Update site owner with GL code if needed
-      if (result.vendorGL && !selectedSite.owners[0]?.glCode) {
-        const updatedSites = sites.map((site) => {
-          if (site.siteId === selectedSite.siteId && site.owners?.[0]) {
-            return {
-              ...site,
-              owners: [{ ...site.owners[0], glCode: result.vendorGL }],
-            }
-          }
-          return site
+      dispatch(
+        fetchRentalSites({
+          page: currentPage,
+          limit: itemsPerPage,
+          city: filters.city,
+          state: filters.state,
+          search: filters.owner,
         })
-        setSites(updatedSites)
-      }
-
-      // Build expense voucher data for viewing
-      const expenseData = {
-        voucherNo: result.voucherNo,
-        date: new Date().toISOString().split('T')[0],
-        company: 'iSmart',
-        financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
-        reference: `Monthly rent payment for ${selectedSite.siteName}`,
-        preparedBy: 'Billing Executive',
-        siteDetails: {
-          siteName: selectedSite.siteName,
-          location: selectedSite.location,
-          city: selectedSite.city,
-          state: selectedSite.state,
-          owner: rentVoucher.ownerName || 'N/A',
-          agreementPeriod: agreement ? `${agreement.startDate} to ${agreement.endDate}` : 'N/A',
-        },
-        rentDetails: {
-          month: rentVoucher.month,
-          baseRent: rentVoucher.breakdown?.baseRent || rentVoucher.amount,
-          gstAmount: rentVoucher.breakdown?.gst || 0,
-          totalAmount: rentVoucher.amount,
-          gstType: rentVoucher.gstType,
-          withGST: rentVoucher.gstDetails?.applicable || false,
-        },
-        entries: createRentAccountingEntries(rentVoucher, result.vendorGL),
-        // Add payment workflow info to the view
-        paymentWorkflow: {
-          status: 'Approved for Payment',
-          nextStep: 'Process Payment',
-          paymentDeadline: new Date(
-            new Date().setDate(new Date().getDate() + 7)
-          ).toLocaleDateString(),
-        },
-      }
-
-      setExpenseVoucherData(expenseData)
-      setShowExpenseVoucherModal(true)
-      toast.success(`✅ ${result.message} - Voucher approved for payment processing!`)
-
-      // Log for debugging
-      console.log('Vendor voucher saved for payment:', vendorVoucherForPayment)
-      console.log('Total vendor vouchers pending payment:', updatedVendorVouchers.length)
-    } catch (error) {
-      console.error('Error in handleVoucherSubmit:', error)
-      toast.error('Failed to process voucher')
+      )
+    } catch (err) {
+      console.error('Error terminating agreement:', err)
+      const errMsg = err?.message || err?.responseData?.message || 'Failed to terminate rent agreement.'
+      toast.error(errMsg)
     }
   }
+
+  const handleVoucherSubmit = async (serverVoucherData) => {
+    try {
+      setShowVoucherModal(false);
+      setSelectedSite(null);
+      dispatch(fetchRentalSites({ page: currentPage, limit: itemsPerPage }));
+
+      // If server returned voucher accounting details, show rent expense voucher modal
+      if (serverVoucherData?.accounting) {
+        const expenseData = {
+          voucherNo: serverVoucherData.accounting.voucherNo || serverVoucherData.voucherId,
+          date: serverVoucherData.accounting.date || new Date().toISOString().split('T')[0],
+          company: 'iSmart',
+          financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+          reference: `Monthly rent voucher for ${serverVoucherData.siteName || 'Site'} (${serverVoucherData.month})`,
+          preparedBy: serverVoucherData.workflow?.generatedBy || 'Billing Manager',
+          siteDetails: {
+            siteName: serverVoucherData.siteName,
+            owner: serverVoucherData.ownerName || '-',
+            month: serverVoucherData.month,
+          },
+          rentDetails: {
+            month: serverVoucherData.month,
+            baseRent: serverVoucherData.breakdown?.baseRent || serverVoucherData.amount,
+            gstAmount: serverVoucherData.breakdown?.gst || 0,
+            totalAmount: serverVoucherData.amount,
+            withGST: serverVoucherData.gstDetails?.applicable || false,
+          },
+          entries: serverVoucherData.accounting.glEntries || [],
+          paymentWorkflow: {
+            status: serverVoucherData.status || 'Approved for Payment',
+            paymentDeadline: serverVoucherData.dueDate || '-',
+          },
+        };
+        setExpenseVoucherData(expenseData);
+        setShowExpenseVoucherModal(true);
+      }
+    } catch (error) {
+      console.error('Error handling generated voucher:', error);
+    }
+  };
 
   const approveVoucher = (voucherId) => {
     const voucherToApprove = vouchers.find((v) => v.voucherId === voucherId)
@@ -404,33 +302,39 @@ export default function RentExpenseBookingPage() {
   }
   // (Bank selection flow removed)
 
-  const getAgreementForSite = (siteId) => agreements.find((a) => a.siteId === siteId)
+  const getAgreementForSite = (siteId) => {
+    const site = reduxSites.find((s) => s.siteId === siteId)
+    return (
+      site?.agreement ||
+      (site?.hasActiveAgreement
+        ? {
+            siteId,
+            agreementId: site.agreementId,
+            status: 'active',
+            owner: site.owners?.[0]?.ownerName || site.ownerDetails?.ownerName || 'Owner',
+            startDate: site.agreementStartDate || '',
+            endDate: site.agreementEndDate || '',
+          }
+        : null)
+    )
+  }
   const getVouchersForSite = (siteId) => vouchers.filter((v) => v.siteId === siteId)
 
-  const uniqueStates = [...new Set(sites.map((site) => site.state))]
-  const uniqueCities = [...new Set(sites.map((site) => site.city))]
+  const uniqueStates = [...new Set(reduxSites.map((site) => site.state).filter(Boolean))]
+  const uniqueCities = [...new Set(reduxSites.map((site) => site.city).filter(Boolean))]
 
-  const filteredSites = sites.filter((site) => {
-    const { owner, city, state } = filters
-    const siteOwner = site.owners?.[0]?.ownerName || ''
-    return (
-      (!owner || siteOwner.toLowerCase().includes(owner.toLowerCase())) &&
-      (!city || site.city === city) &&
-      (!state || site.state === state)
-    )
-  })
+  const totalPages = pagination?.totalPages || 1
 
-  const totalPages = Math.ceil(filteredSites.length / itemsPerPage)
-  const paginatedSites = filteredSites.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  if (viewMode === 'terminated') {
+    return <TerminatedSitesPage onBack={() => setViewMode('active')} />
+  }
 
   return (
     <>
+
       <div className="min-h-screen bg-white shadow-sm rounded-2xl border border-green-100 px-6 py-6 md:px-8">
         {/* Title Header Banner with Green Background */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-6 mb-8 shadow-sm text-left relative overflow-hidden">
+        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-6 mb-6 shadow-sm text-left relative overflow-hidden">
           <div className="absolute right-0 top-0 bottom-0 w-32 bg-white/5 transform skew-x-12 translate-x-8 pointer-events-none"></div>
           <h1 className="text-2xl md:text-3xl font-black mb-2 flex items-center gap-2">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
@@ -441,6 +345,28 @@ export default function RentExpenseBookingPage() {
           </p>
         </div>
 
+        {/* Summary Metrics Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+            <div className="text-xs text-gray-500 font-medium">Total Sites</div>
+            <div className="text-2xl font-bold text-emerald-800 mt-1">{val(summary?.totalSites)}</div>
+          </div>
+          <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+            <div className="text-xs text-gray-500 font-medium">Active Sites</div>
+            <div className="text-2xl font-bold text-blue-800 mt-1">{val(summary?.activeSites)}</div>
+          </div>
+          <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100">
+            <div className="text-xs text-gray-500 font-medium">Active Agreements</div>
+            <div className="text-2xl font-bold text-purple-800 mt-1">{val(summary?.sitesWithAgreements)}</div>
+          </div>
+          <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+            <div className="text-xs text-gray-500 font-medium">Total Monthly Rent</div>
+            <div className="text-2xl font-bold text-amber-800 mt-1">
+              {summary?.totalMonthlyRent ? `₹${Number(summary.totalMonthlyRent).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+            </div>
+          </div>
+        </div>
+
         {/* Filter UI with Add Site Button */}
         <div className="bg-green-50/20 rounded-xl p-5 border border-green-100/50 mb-6 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
@@ -448,26 +374,43 @@ export default function RentExpenseBookingPage() {
               <span className="inline-block w-1.5 h-3.5 bg-green-600 rounded-full mr-2"></span>
               Filter Sites
             </h2>
-            <button
-              onClick={() => setShowAddSiteModal(true)}
-              className="bg-green-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-green-700 shadow-sm hover:shadow hover:scale-[1.01] active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Add New Site
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowAddSiteModal(true)}
+                className="bg-green-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-green-700 shadow-sm hover:shadow hover:scale-[1.01] active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Add New Site
+              </button>
+              <button
+                onClick={() => setViewMode('terminated')}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm hover:shadow hover:scale-[1.01] active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5 border border-emerald-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                Terminated Sites
+              </button>
+            </div>
           </div>
+
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <input
               type="text"
-              placeholder="Owner Ledger Name"
+              placeholder="Search Owner or Site Name..."
               className="p-2.5 border border-gray-250 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm transition"
               value={filters.owner}
               onChange={(e) => setFilters({ ...filters, owner: e.target.value })}
@@ -477,7 +420,7 @@ export default function RentExpenseBookingPage() {
               value={filters.state}
               onChange={(e) => setFilters({ ...filters, state: e.target.value })}
             >
-              <option value="">Select State</option>
+              <option value="">All States</option>
               {uniqueStates.map((state) => (
                 <option key={state} value={state}>
                   {state}
@@ -489,7 +432,7 @@ export default function RentExpenseBookingPage() {
               value={filters.city}
               onChange={(e) => setFilters({ ...filters, city: e.target.value })}
             >
-              <option value="">Select City</option>
+              <option value="">All Cities</option>
               {uniqueCities.map((city) => (
                 <option key={city} value={city}>
                   {city}
@@ -499,9 +442,27 @@ export default function RentExpenseBookingPage() {
           </div>
         </div>
 
+        {/* Error notification banner */}
+        {error && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 flex items-center justify-between rounded-md">
+            <p className="text-sm text-red-700 font-medium">{error}</p>
+            <button
+              onClick={() => dispatch(fetchRentalSites({ page: currentPage, limit: itemsPerPage }))}
+              className="px-3 py-1 bg-red-600 text-white text-xs font-semibold rounded hover:bg-red-700 transition cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* Sites Table */}
         <div className="mb-10 overflow-x-auto rounded-xl border border-green-100 shadow-sm bg-white">
-          {sites.length === 0 ? (
+          {loading ? (
+            <div className="py-16 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3"></div>
+              <p className="text-sm text-gray-600 font-medium">Loading rental sites...</p>
+            </div>
+          ) : reduxSites.length === 0 ? (
             <div className="text-center py-16 px-4">
               <svg
                 className="mx-auto h-14 w-14 text-gray-350"
@@ -517,7 +478,7 @@ export default function RentExpenseBookingPage() {
                 />
               </svg>
               <p className="mt-4 text-gray-500 text-sm font-medium">
-                No sites found. Add your first site to get started.
+                No rental sites found. Click below to add a new site.
               </p>
               <button
                 onClick={() => setShowAddSiteModal(true)}
@@ -532,11 +493,10 @@ export default function RentExpenseBookingPage() {
                 <thead className="bg-green-600 text-white font-semibold">
                   <tr>
                     <th className="px-4 py-3 text-center w-12">#</th>
-                    <th className="px-4 py-3 text-left">Site</th>
+                    <th className="px-4 py-3 text-left">Site Code & Name</th>
                     <th className="px-4 py-3 text-left">Location</th>
-                    <th className="px-4 py-3 text-left w-24">State</th>
-                    <th className="px-4 py-3 text-left w-24">City</th>
-                    <th className="px-4 py-3 text-left">Owner</th>
+                    <th className="px-4 py-3 text-left w-24">City / State</th>
+                    <th className="px-4 py-3 text-left">Owner / Vendor GL</th>
                     <th className="px-4 py-3 text-center w-16">GST</th>
                     <th className="px-4 py-3 text-center w-24">Agreement</th>
                     <th className="px-4 py-3 text-center w-32">Vouchers</th>
@@ -544,19 +504,34 @@ export default function RentExpenseBookingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {paginatedSites.map((site, index) => {
+                  {reduxSites.map((site, index) => {
                     const agreement = getAgreementForSite(site.siteId)
-                    const ownerName = site.owners?.[0]?.ownerName || 'No Owner'
+                    const ownerObj = site.owners?.[0]
+                    const ownerName = ownerObj?.ownerName || '-'
+                    const glCode = ownerObj?.glCode || '-'
+
                     return (
-                      <tr key={site.siteId} className="hover:bg-green-50/20 transition duration-75">
+                      <tr key={site.siteId || index} className="hover:bg-green-50/20 transition duration-75">
                         <td className="px-4 py-3 text-center text-gray-500 font-medium">
                           {(currentPage - 1) * itemsPerPage + index + 1}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">{site.siteName}</td>
-                        <td className="px-4 py-3 text-gray-600">{site.location}</td>
-                        <td className="px-4 py-3 text-gray-600">{site.state}</td>
-                        <td className="px-4 py-3 text-gray-600">{site.city}</td>
-                        <td className="px-4 py-3 text-gray-700">{ownerName}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-gray-900">{val(site.siteName)}</div>
+                          <div className="text-xs text-green-700 font-mono font-semibold">{val(site.siteCode)}</div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{val(site.location)}</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          <div>{val(site.city)}</div>
+                          <div className="text-xs text-gray-400">{val(site.state)}</div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          <div className="font-semibold">{val(ownerName)}</div>
+                          {glCode !== '-' && (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 text-blue-700 mt-0.5">
+                              {glCode}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <span
                             className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${
@@ -569,15 +544,17 @@ export default function RentExpenseBookingPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {agreement ? (
-                            <a
-                              href={agreement.fileUrl || '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-green-700 hover:text-green-900 font-bold hover:underline transition duration-150"
-                            >
-                              View PDF
-                            </a>
+                          {site.hasActiveAgreement || site.agreementStatus === 'Active' || agreement ? (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <span>Active</span>
+                              <button
+                                onClick={() => handleOpenViewAgreement(site)}
+                                title="View Agreement Details & PDF"
+                                className="w-5 h-5 rounded-full bg-emerald-100 hover:bg-emerald-600 text-emerald-800 hover:text-white flex items-center justify-center transition-all cursor-pointer text-xs"
+                              >
+                                👁️
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
@@ -598,7 +575,7 @@ export default function RentExpenseBookingPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-center">
-                          {site.isStandalone ? (
+                          {!site.owners || site.owners.length === 0 ? (
                             <button
                               onClick={() => {
                                 setSelectedSite(site)
@@ -655,11 +632,11 @@ export default function RentExpenseBookingPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center mt-4 space-x-2">
+                <div className="flex justify-center items-center py-4 border-t border-gray-100 space-x-2">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 rounded border bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="px-3 py-1 text-xs rounded border bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 cursor-pointer font-medium"
                   >
                     Previous
                   </button>
@@ -667,10 +644,10 @@ export default function RentExpenseBookingPage() {
                     <button
                       key={i}
                       onClick={() => setCurrentPage(i + 1)}
-                      className={`px-3 py-1 rounded border ${
+                      className={`px-3 py-1 text-xs rounded border cursor-pointer font-semibold ${
                         currentPage === i + 1
-                          ? 'bg-green-600 text-white'
-                          : 'bg-white text-gray-800 hover:bg-gray-100'
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-white text-gray-800 hover:bg-gray-100 border-gray-200'
                       }`}
                     >
                       {i + 1}
@@ -679,7 +656,7 @@ export default function RentExpenseBookingPage() {
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 rounded border bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    className="px-3 py-1 text-xs rounded border bg-white text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 cursor-pointer font-medium"
                   >
                     Next
                   </button>
@@ -691,48 +668,41 @@ export default function RentExpenseBookingPage() {
 
         {/* Add Site Modal */}
         {showAddSiteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-2 overflow-y-auto">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[95vh] overflow-y-auto my-4 relative">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-2 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-y-auto my-4 relative border border-gray-100">
               <button
-                className="sticky top-2 right-2 float-right text-gray-600 hover:text-red-600 text-2xl font-bold z-10 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow"
+                className="sticky top-2 right-2 float-right text-gray-600 hover:text-red-600 text-xl font-bold z-10 bg-gray-100 hover:bg-red-50 rounded-full w-8 h-8 flex items-center justify-center shadow-xs transition cursor-pointer"
                 onClick={() => setShowAddSiteModal(false)}
               >
                 ✕
               </button>
-              <AddSiteForm onSuccess={handleAddSite} onCancel={() => setShowAddSiteModal(false)} />
+              <AddSiteForm onSuccess={handleAddSiteSuccess} onCancel={() => setShowAddSiteModal(false)} />
             </div>
           </div>
         )}
 
         {/* Agreement Upload Modal */}
         {showAgreementModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-2">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md h-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6 relative">
-              <button
-                className="absolute top-2 right-2 text-gray-600 hover:text-red-600"
-                onClick={() => setShowAgreementModal(false)}
-              >
-                ✕
-              </button>
-              <RentAgreementForm site={selectedSite} onSuccess={handleAgreementSubmit} />
+          <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto my-auto relative border border-slate-100 divide-y divide-slate-100 transform transition-all">
+              <RentAgreementForm 
+                site={selectedSite} 
+                onSuccess={handleAgreementSubmit} 
+                onCancel={() => setShowAgreementModal(false)} 
+              />
             </div>
           </div>
         )}
 
         {/* Voucher Generation Modal */}
         {showVoucherModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-2">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md h-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6 relative">
-              <button
-                className="absolute top-2 right-2 text-gray-600 hover:text-red-600"
-                onClick={() => setShowVoucherModal(false)}
-              >
-                ✕
-              </button>
+          <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto my-auto relative border border-slate-100 divide-y divide-slate-100 transform transition-all">
               <MonthlyVoucherGenerator
                 site={selectedSite}
                 agreement={getAgreementForSite(selectedSite?.siteId)}
                 onSuccess={handleVoucherSubmit}
+                onCancel={() => setShowVoucherModal(false)}
               />
             </div>
           </div>
@@ -743,12 +713,38 @@ export default function RentExpenseBookingPage() {
           <ViewVouchersModal
             site={voucherViewSite}
             agreement={getAgreementForSite(voucherViewSite?.siteId)}
-            vouchers={getVouchersForSite(voucherViewSite?.siteId)}
             onClose={() => {
-              setShowViewVoucherModal(false)
-              setVoucherViewSite(null)
+              setShowViewVoucherModal(false);
+              setVoucherViewSite(null);
             }}
-            onApproveVoucher={approveVoucher} // Add this prop
+            onViewVoucherDetails={(v) => {
+              setExpenseVoucherData({
+                voucherNo: v.voucherNo || v.voucherId,
+                date: v.createdAt ? v.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+                company: 'iSmart',
+                financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+                reference: `Rent voucher for ${v.month}`,
+                preparedBy: 'Billing Manager',
+                siteDetails: {
+                  siteName: voucherViewSite?.siteName,
+                  owner: voucherViewSite?.owners?.[0]?.ownerName || '-',
+                  month: v.month,
+                },
+                rentDetails: {
+                  month: v.month,
+                  baseRent: v.breakdown?.baseRent || v.amount,
+                  gstAmount: v.breakdown?.gst || 0,
+                  totalAmount: v.amount,
+                  withGST: !!(v.breakdown?.gst > 0),
+                },
+                entries: v.accounting?.glEntries || [],
+                paymentWorkflow: {
+                  status: v.status || 'Approved for Payment',
+                  paymentDeadline: v.dueDate || '-',
+                },
+              });
+              setShowExpenseVoucherModal(true);
+            }}
           />
         )}
 
@@ -773,6 +769,18 @@ export default function RentExpenseBookingPage() {
               setTerminateSite(null)
             }}
             onSubmit={(data) => handleTerminateSubmit(terminateSite.siteId, data)}
+          />
+        )}
+
+        {/* View Agreement Details Modal */}
+        {showViewAgreementModal && (
+          <ViewAgreementModal
+            site={viewAgreementSite}
+            onClose={() => {
+              setShowViewAgreementModal(false)
+              setViewAgreementSite(null)
+              dispatch(clearActiveAgreementDetails())
+            }}
           />
         )}
       </div>
