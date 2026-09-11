@@ -110,6 +110,19 @@ export const terminateRentAgreement = createAsyncThunk(
   }
 );
 
+export const fetchTerminatedSites = createAsyncThunk(
+  'rentExpense/fetchTerminatedSites',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const data = await service.fetchTerminatedSites(params);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+
 const initialState = {
   sites: [],
   pagination: {
@@ -139,6 +152,21 @@ const initialState = {
   terminateError: null,
   terminateSuccess: false,
   lastTerminatedData: null,
+  terminatedSites: [],
+  terminatedPagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 10,
+  },
+  terminatedAuditSummary: {
+    totalTerminatedSites: 0,
+    totalCancelledVouchers: 0,
+    totalSavingsAchieved: 0,
+    totalRentBookedAcrossTerminated: 0,
+  },
+  terminatedLoading: false,
+  terminatedError: null,
   loading: false,
   createLoading: false,
   agreementLoading: false,
@@ -148,6 +176,7 @@ const initialState = {
   agreementError: null,
   agreementSuccess: false,
 };
+
 
 const rentExpenseSlice = createSlice({
   name: 'rentExpense',
@@ -319,9 +348,26 @@ const rentExpenseSlice = createSlice({
         state.terminateLoading = false;
         state.terminateError = action.payload;
         state.terminateSuccess = false;
+      })
+
+      // fetchTerminatedSites
+      .addCase(fetchTerminatedSites.pending, (state) => {
+        state.terminatedLoading = true;
+        state.terminatedError = null;
+      })
+      .addCase(fetchTerminatedSites.fulfilled, (state, action) => {
+        state.terminatedLoading = false;
+        state.terminatedSites = action.payload.terminatedSites || [];
+        state.terminatedPagination = action.payload.pagination || initialState.terminatedPagination;
+        state.terminatedAuditSummary = action.payload.auditSummary || initialState.terminatedAuditSummary;
+      })
+      .addCase(fetchTerminatedSites.rejected, (state, action) => {
+        state.terminatedLoading = false;
+        state.terminatedError = action.payload;
       });
   },
 });
+
 
 export const {
   resetCreateStatus,
@@ -359,5 +405,11 @@ export const selectTerminateLoading = (state) => state.rentExpense?.terminateLoa
 export const selectTerminateError = (state) => state.rentExpense?.terminateError || null;
 export const selectTerminateSuccess = (state) => state.rentExpense?.terminateSuccess || false;
 export const selectLastTerminatedData = (state) => state.rentExpense?.lastTerminatedData || null;
+export const selectTerminatedSites = (state) => state.rentExpense?.terminatedSites || [];
+export const selectTerminatedPagination = (state) => state.rentExpense?.terminatedPagination || initialState.terminatedPagination;
+export const selectTerminatedAuditSummary = (state) => state.rentExpense?.terminatedAuditSummary || initialState.terminatedAuditSummary;
+export const selectTerminatedLoading = (state) => state.rentExpense?.terminatedLoading || false;
+export const selectTerminatedError = (state) => state.rentExpense?.terminatedError || null;
 
 export default rentExpenseSlice.reducer;
+

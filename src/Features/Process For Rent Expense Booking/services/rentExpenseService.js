@@ -287,3 +287,51 @@ export const terminateRentAgreement = async (agreementId, payload) => {
     throw error;
   }
 };
+
+/**
+ * fetchTerminatedSites
+ * Retrieves paginated list of terminated sites along with audit summaries.
+ * @param {Object} params Filter & pagination query parameters (page, limit, search)
+ * @returns {Promise<Object>} { terminatedSites, pagination, auditSummary }
+ */
+export const fetchTerminatedSites = async (params = {}) => {
+  try {
+    const queryParams = {};
+    if (params.page) queryParams.page = params.page;
+    if (params.limit) queryParams.limit = params.limit;
+    if (params.search && params.search.trim()) queryParams.search = params.search.trim();
+
+    const endpoints = [
+      '/rent-expense/sites/terminated',
+      '/accounts/rent-expense/sites/terminated',
+      '/rent/sites/terminated',
+    ];
+
+    const response = await getWithFallback(endpoints, { params: queryParams });
+    const body = response.data;
+
+    if (!body || body.success === false) {
+      throw new Error(body?.message || 'Failed to fetch terminated sites.');
+    }
+
+    const data = body.data || body.results || {};
+    const terminatedSites = data.terminatedSites || (Array.isArray(data) ? data : []);
+    const pagination = data.pagination || { currentPage: 1, totalPages: 1, totalRecords: terminatedSites.length, limit: 10 };
+    const auditSummary = data.auditSummary || {
+      totalTerminatedSites: terminatedSites.length,
+      totalCancelledVouchers: 0,
+      totalSavingsAchieved: 0,
+      totalRentBookedAcrossTerminated: 0,
+    };
+
+    return {
+      terminatedSites,
+      pagination,
+      auditSummary,
+    };
+  } catch (error) {
+    console.error('❌ Error in fetchTerminatedSites:', error);
+    throw error;
+  }
+};
+

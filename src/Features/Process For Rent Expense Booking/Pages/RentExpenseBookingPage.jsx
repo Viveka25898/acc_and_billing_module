@@ -9,6 +9,8 @@ import RentExpenseVoucher from '../Components/RentExpenseVoucher'
 import { processRentApproval } from '../../Master/utils/accountingHelpers'
 import TerminateAgreementModal from '../Components/TerminateAgreementModal'
 import ViewAgreementModal from '../Components/ViewAgreementModal'
+import TerminatedSitesPage from './TerminatedSitesPage'
+
 
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -36,8 +38,10 @@ export default function RentExpenseBookingPage() {
   const terminateLoading = useSelector(selectTerminateLoading)
 
   const [selectedSite, setSelectedSite] = useState(null)
+  const [viewMode, setViewMode] = useState('active') // 'active' | 'terminated'
   const [filters, setFilters] = useState({ owner: '', city: '', state: '' })
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
+
   const [showAgreementModal, setShowAgreementModal] = useState(false)
   const [showViewAgreementModal, setShowViewAgreementModal] = useState(false)
   const [viewAgreementSite, setViewAgreementSite] = useState(null)
@@ -321,8 +325,13 @@ export default function RentExpenseBookingPage() {
 
   const totalPages = pagination?.totalPages || 1
 
+  if (viewMode === 'terminated') {
+    return <TerminatedSitesPage onBack={() => setViewMode('active')} />
+  }
+
   return (
     <>
+
       <div className="min-h-screen bg-white shadow-sm rounded-2xl border border-green-100 px-6 py-6 md:px-8">
         {/* Title Header Banner with Green Background */}
         <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-6 mb-6 shadow-sm text-left relative overflow-hidden">
@@ -365,21 +374,38 @@ export default function RentExpenseBookingPage() {
               <span className="inline-block w-1.5 h-3.5 bg-green-600 rounded-full mr-2"></span>
               Filter Sites
             </h2>
-            <button
-              onClick={() => setShowAddSiteModal(true)}
-              className="bg-green-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-green-700 shadow-sm hover:shadow hover:scale-[1.01] active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Add New Site
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowAddSiteModal(true)}
+                className="bg-green-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-green-700 shadow-sm hover:shadow hover:scale-[1.01] active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Add New Site
+              </button>
+              <button
+                onClick={() => setViewMode('terminated')}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm hover:shadow hover:scale-[1.01] active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5 border border-emerald-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                Terminated Sites
+              </button>
+            </div>
           </div>
+
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <input

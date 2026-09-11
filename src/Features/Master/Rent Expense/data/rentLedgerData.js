@@ -1,57 +1,13 @@
+/**
+ * @deprecated Static dummy data replaced by RentLedgerService API calls.
+ */
 export const rentLedgerData = {
-  headerInfo: {
-    glAccount: "X2003-RENT EXPENSE",
-    accountType: "Indirect Expense",
-    financialYear: "2024-25",
-    period: "October 2024",
-    company: "XYZ Facilities Pvt Ltd",
-    openingBalance: "₹ 0.00 (Dr)",
-  },
+  headerInfo: {},
   ledgerDetails: {
-    id: "X2003-RENT EXPENSE",
-    type: "Indirect Expense",
-    parent: "X2 EXPENSES INDIRECT",
-    headerColor: "bg-red-600",
-    openingBalance: { amount: 0, type: "Dr" },
-    period: "Oct 2024",
-    entries: [
-      {
-        date: "05-Oct-2024",
-        voucherNo: "JV/2024/1234",
-        entryType: "Journal",
-        debit: 50000,
-        credit: 0,
-        balance: "50,000.00 Dr",
-        narration:
-          "Rent for Oct-2024 | Agreement dated 01-Jan-2024 | Mumbai Office - Andheri",
-        refNo: "AGR-2024-MUM-001",
-        counterparty: "L2005-OWNER-RAMESH",
-        ledgerType: "Liability",
-        approvedBy: "Amit Sharma (BM)",
-        attachments: 1,
-        costCenter: "CC-MUM-001",
-        status: "Posted",
-      },
-      {
-        date: "15-Oct-2024",
-        voucherNo: "JV/2024/1456",
-        entryType: "Journal",
-        debit: 35000,
-        credit: 0,
-        balance: "85,000.00 Dr",
-        narration:
-          "Rent for Oct-2024 | Agreement dated 15-Mar-2024 | Pune Warehouse",
-        refNo: "AGR-2024-PUN-002",
-        counterparty: "L2005-OWNER-SUNITA",
-        ledgerType: "Liability",
-        approvedBy: "Rajesh Patel (BM)",
-        attachments: 1,
-        costCenter: "CC-PUN-002",
-        status: "Posted",
-      },
-    ],
-    totalDebit: 85000,
+    entries: [],
+    totalDebit: 0,
     totalCredit: 0,
-    closingBalance: "85,000.00 Dr",
+    closingBalance: '0.00 DR',
   },
 };
+
