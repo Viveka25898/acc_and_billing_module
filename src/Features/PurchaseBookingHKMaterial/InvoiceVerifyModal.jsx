@@ -160,7 +160,7 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice, isS
           )}
 
           {/* Fixed Asset Info */}
-          {invoice.type === 'Fixed Asset' && invoice.assetDetails && (
+          {(invoice.type === 'Fixed Asset' || invoice.type === 'FIXED_ASSET') && invoice.assetDetails && (
             <div className="border-t pt-4">
               <h3 className="font-semibold text-base mb-2 text-blue-800">Fixed Asset Details</h3>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
