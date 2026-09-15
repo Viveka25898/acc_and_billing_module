@@ -40,22 +40,12 @@ const ROLE_ROUTES = {
   'account-manager': '/dashboard/account-manager',
 }
 
-/**
- * LoginForm Component
- * ──────────────────
- * DUAL-MODE LOGIN:
- *   1. With role selection (testing mode) — User selects role from dropdown
- *   2. Without role selection (production mode) — Role extracted from JWT token
- *
- * This allows testing with partial credentials while supporting full prod flow.
- * Once all credentials are available, remove the role dropdown entirely.
- */
-
 const LoginForm = (props) => {
   // ─── Form States ────────────────────────────────────────────────────────────
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRoleValue] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [localError, setLocalError] = useState("")  // For frontend validation
 
   // ─── Redux & Router ─────────────────────────────────────────────────────────
@@ -66,8 +56,6 @@ const LoginForm = (props) => {
   const { loading, error: authError } = useSelector((state) => state.auth)
 
   // ─── Session Expired Notification ──────────────────────────────────────────
-  // axiosInstance sets this flag when a 401 occurs on a protected endpoint.
-  // We show a toast here so the user understands why they were redirected.
   useEffect(() => {
     if (localStorage.getItem('sessionExpired') === 'true') {
       localStorage.removeItem('sessionExpired')
@@ -110,9 +98,6 @@ const LoginForm = (props) => {
       return
     }
 
-    // Note: Role is now optional — extracted from JWT token if not selected
-
-
     // ─── Dispatch Async Login Thunk ─────────────────────────────────────────
     const result = await dispatch(
       loginUserThunk({ email, password, role })
@@ -121,83 +106,154 @@ const LoginForm = (props) => {
     // ─── Handle Success ─────────────────────────────────────────────────────
     if (loginUserThunk.fulfilled.match(result)) {
       toast.success("Login successful! Welcome back.")
-      // Use role from thunk result (which is either user-selected OR extracted from token)
       navigateByRole(result.payload.role)
     }
-    // ─── Handle Failure (error is shown in inline banner below) ────────────
   }
 
   // ─── Display Error (Priority: local validation > Redux error) ──────────────
   const displayError = localError || authError
 
   return (
-    <>
-      <div className="flex flex-col lg:flex-row min-h-screen">
+    <div className="w-screen h-screen min-h-screen flex flex-col lg:flex-row overflow-hidden bg-slate-900 font-sans">
+      
+      {/* Left Part: FULL IMAGE Edge-to-Edge (NO TEXT, NO SMALL CARDS) */}
+      <div className="w-full lg:w-1/2 h-64 sm:h-80 lg:h-full relative overflow-hidden bg-slate-900">
+        <img
+          src={iSmartImg}
+          alt="iSmart ERP System"
+          loading="eager"
+          decoding="async"
+          className="w-full h-full object-cover object-center"
+        />
+      </div>
 
-        {/* Left Part: Image Section */}
-        <div className="w-full lg:w-1/2 h-64 lg:h-screen">
-          <img
-            src={iSmartImg}
-            alt="Login"
-            className="w-full h-full object-cover"
-          />
-        </div>
+      {/* Right Part: Deep Emerald Green Background with Managed Colors */}
+      <div className="w-full lg:w-1/2 h-full flex items-center justify-center p-6 sm:p-10 lg:p-16 bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-950 text-white overflow-y-auto relative">
+        
+        {/* Ambient Decorative Glow Effects */}
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-teal-400/15 rounded-full blur-3xl pointer-events-none"></div>
 
-        {/* Right Part: Login Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
-          <div className="w-full max-w-md text-center">
-            <h2 className="text-4xl lg:text-5xl font-bold text-green-700 mb-8 font-mulish">
-              {props.heading}
+        <div className="w-full max-w-md text-center relative z-10">
+          
+          {/* Header Title Centered in Middle */}
+          <div className="mb-8">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight text-center">
+              {props.heading || "Login"}
             </h2>
-
-            {/* Error Banner */}
-            {displayError && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 rounded-lg">
-                <p className="text-red-600 text-sm font-mulish">{displayError}</p>
-              </div>
-            )}
-
-            <form className="space-y-4" onSubmit={handleLoginFormSubmit}>
-              {/* Email Field */}
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                required
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-
-              {/* Password Field */}
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                required
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mulish disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-
-              {/* Role Dropdown (Testing Mode) */}
-              {/* Role comes from API — this dropdown is for testing only */}
-              {/* TODO: Remove this dropdown entirely when all users have proper login credentials */}
-
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-800 transition font-mulish disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {loading ? "Logging in..." : "Login"}
-              </button>
-            </form>
           </div>
+
+          {/* Styled Error Alert Banner */}
+          {displayError && (
+            <div className="mb-6 p-3.5 bg-rose-950/80 border border-rose-400/40 text-rose-100 rounded-xl flex items-start gap-3 text-left animate-in fade-in duration-200 shadow-sm">
+              <svg className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-rose-100 text-xs sm:text-sm font-medium leading-tight">{displayError}</p>
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form className="space-y-5 text-left" onSubmit={handleLoginFormSubmit}>
+            
+            {/* Email Input Field */}
+            <div>
+              <label className="block text-xs font-bold text-emerald-100 uppercase tracking-wider mb-1.5">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
+                </div>
+                <input
+                  type="email"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                  className="w-full pl-11 pr-4 py-3 border border-emerald-300/40 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-white bg-white hover:bg-slate-50 transition-all disabled:bg-slate-200 disabled:cursor-not-allowed shadow-sm"
+                />
+              </div>
+            </div>
+
+            {/* Password Input Field with Interactive Eye Toggle */}
+            <div>
+              <label className="block text-xs font-bold text-emerald-100 uppercase tracking-wider mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                  className="w-full pl-11 pr-11 py-3 border border-emerald-300/40 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-white bg-white hover:bg-slate-50 transition-all disabled:bg-slate-200 disabled:cursor-not-allowed shadow-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex="-1"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-emerald-700 transition-colors cursor-pointer"
+                >
+                  {showPassword ? (
+                    <svg className="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.03 10.03 0 013.122-.443c4.477 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m-4.685-2.029a3 3 0 11-4.243-4.243m4.243 4.243L3 3l18 18" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Action Submit Button (High Contrast White Button with Emerald Text) */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 bg-white hover:bg-emerald-50 text-emerald-900 font-extrabold py-3.5 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm md:text-base cursor-pointer border border-white"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin w-5 h-5 text-emerald-900" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <svg className="w-4 h-4 text-emerald-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </>
+              )}
+            </button>
+
+          </form>
+
+          {/* Footer Copyright Notice */}
+          <div className="mt-8 text-center text-xs text-emerald-200/80">
+            © {new Date().getFullYear()} iSmart Accounts & Billing Module. All rights reserved.
+          </div>
+
         </div>
       </div>
-    </>
+
+    </div>
   )
 }
 
