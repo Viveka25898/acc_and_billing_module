@@ -1503,6 +1503,18 @@ export const router = createBrowserRouter([
         path: 'advance-settlement-approval',
         element: <AMAdvanceSettlementApproval />,
       },
+      {
+        path: 'advance-settlement-requests',
+        element: <AMAdvanceSettlementApproval />,
+      },
+      {
+        path: 'gl-master',
+        element: <ChartOfAccountsDashboard />,
+      },
+      {
+        path: 'master/chart-of-accounts',
+        element: <ChartOfAccountsDashboard />,
+      },
     ],
   },
   {
@@ -1532,6 +1544,18 @@ export const router = createBrowserRouter([
       {
         path: 'advance-settlement-approval',
         element: <AMAdvanceSettlementApproval />,
+      },
+      {
+        path: 'advance-settlement-requests',
+        element: <AMAdvanceSettlementApproval />,
+      },
+      {
+        path: 'gl-master',
+        element: <ChartOfAccountsDashboard />,
+      },
+      {
+        path: 'master/chart-of-accounts',
+        element: <ChartOfAccountsDashboard />,
       },
     ],
   },

@@ -213,13 +213,13 @@ const AMInvoiceReviewPage = () => {
                 invoices.map((inv, index) => (
                   <tr key={inv.id} className="hover:bg-gray-50 transition-colors duration-150">
                     <td className="p-4 font-medium text-gray-500">
-                      {(pagination.currentPage - 1) * pagination.pageSize + index + 1}
+                      {((pagination?.currentPage || currentPage || 1) - 1) * (pagination?.pageSize || itemsPerPage || 5) + index + 1}
                     </td>
                     <td className="p-4 font-semibold text-gray-800">{inv.id || '-'}</td>
                     <td className="p-4 text-gray-600">{inv.invoiceNumber || '-'}</td>
                     <td className="p-4 text-gray-600 font-medium">{inv.vendorName || '-'}</td>
                     <td className="p-4 text-right font-semibold text-gray-900">
-                      {inv.totalAmount ? `₹${parseFloat(inv.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                      {inv.totalAmount && !isNaN(parseFloat(inv.totalAmount)) ? `₹${parseFloat(inv.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                     </td>
                     <td className="p-4">
                       {inv.poDocuments && inv.poDocuments.length > 0 ? (

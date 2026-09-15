@@ -153,11 +153,12 @@ const amInvoiceSlice = createSlice({
         state.loading.fetch = false;
         const responseData = action.payload?.data || action.payload;
         state.invoices = responseData?.invoices || [];
-        state.pagination = responseData?.pagination || {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          pageSize: 5
+        const rawPag = responseData?.pagination || {};
+        state.pagination = {
+          currentPage: rawPag.currentPage || rawPag.page || 1,
+          totalPages: rawPag.totalPages || rawPag.pages || 1,
+          totalItems: rawPag.totalItems || rawPag.total || 0,
+          pageSize: rawPag.pageSize || rawPag.limit || 5
         };
       })
       .addCase(fetchAMPendingInvoices.rejected, (state, action) => {
