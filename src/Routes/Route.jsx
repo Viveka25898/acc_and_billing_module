@@ -275,6 +275,508 @@ const RoundOffLedgerPage = load(() => import('../Features/Billing/Ledgers').then
 const AVPDashboard = load(() => import('../Roles/AVP Opearations/Pages/AVPDashboard'))
 const AVPHome = load(() => import('../Roles/AVP Opearations/Components/AVPHome'))
 
+const masterLedgerRoutes = [
+  // ================= MASTER & LEDGER PATHS =================
+  {
+    path: 'master/chart-of-accounts',
+    element: <ChartOfAccountsDashboard />,
+  },
+  {
+    path: 'master/billing/client-ledgers',
+    element: <ClientLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/house-keeping',
+    element: <HouseKeepingRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/house-keeping-exempt',
+    element: <HouseKeepingExemptRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/service-charges',
+    element: <ServiceChargesRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/overseas-consultancy',
+    element: <OverseasConsultancyRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/hk-material',
+    element: <HKMaterialRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/cleaning-consumable',
+    element: <CleaningConsumableRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/deep-cleaning',
+    element: <DeepCleaningRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/rent-on-machinery',
+    element: <RentOnMachineryRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/manpower-services',
+    element: <ManpowerServicesRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/pest-control',
+    element: <PestControlRevenueLedgerPage />,
+  },
+  {
+    path: 'master/billing/revenue/round-off',
+    element: <RoundOffRevenueLedgerPage />,
+  },
+  {
+    path: 'master/advance/employee-ledger',
+    element: <EmployeeLedgerPage />,
+  },
+  {
+    path: 'master/process-of-payments/vendor-ledger',
+    element: <ProcessOfPaymentVendorPage />,
+  },
+  {
+    path: 'master/tds-booking/tds-ledger',
+    element: <TDSLedgerPage />,
+  },
+  {
+    path: 'master/bank-ledger',
+    element: <BankLedgerPage />,
+  },
+  {
+    path: 'master/advance/travel-expense',
+    element: <TravelExpenseLedgerPage />,
+  },
+  {
+    path: 'master/advance/food-refreshment-expense',
+    element: <FoodRefreshmentLedgerPage />,
+  },
+  {
+    path: 'master/advance/office-supplies-expense',
+    element: <OfficeSuppliesLedgerPage />,
+  },
+  {
+    path: 'master/conveyance/payable-ledger',
+    element: <ConveyancePayblePage />,
+  },
+  {
+    path: 'master/conveyance/expense-ledger',
+    element: <ConveyanceExpenseLedgerPage />,
+  },
+  {
+    path: 'master/reliever/payment-ledger',
+    element: <RelieverPaymentPage />,
+  },
+  {
+    path: 'master/reliever/liability-ledger',
+    element: <RelieverLiabilityLedgerPage />,
+  },
+  {
+    path: 'master/rent/expense-ledger',
+    element: <RentExpenseBookingLedgerPage />,
+  },
+  {
+    path: 'master/gst/ledgers',
+    element: <GSTLedgersPage />,
+  },
+  {
+    path: 'master/gst/cgst-input',
+    element: <CGSTInputLedgerPage />,
+  },
+  {
+    path: 'master/gst/sgst-input',
+    element: <SGSTInputLedgerPage />,
+  },
+  {
+    path: 'master/gst/igst-input',
+    element: <IGSTInputLedgerPage />,
+  },
+  {
+    path: 'master/rent-vendor/ledger',
+    element: <RentVendorLedgerPage />,
+  },
+  {
+    path: 'master/hk-vendor/ledger',
+    element: <HKVendorLedgerPage />,
+  },
+  {
+    path: 'master/fixed-asset/ledger',
+    element: <FixedAssetLedgerPage />,
+  },
+  {
+    path: 'master/fa-vendor/ledger',
+    element: <FAVendorLedgerPage />,
+  },
+  {
+    path: 'master/prepaid/uniform-prepaid-expense',
+    element: <UniformPrepaidExpenseLedger />,
+  },
+  {
+    path: 'master/prepaid/uniform-expense',
+    element: <UniformExpenseLedgerPage />,
+  },
+  {
+    path: 'master/prepaid/vendor-ledger',
+    element: <PrepaidUniformVendorLedgerPage />,
+  },
+  {
+    path: 'master/unified-vendor-ledger',
+    element: <UnifiedVendorLedgerPage />,
+  },
+  {
+    path: 'master/hk-material-expense-ledger',
+    element: <HKMaterialsExpenseLedgerPage />,
+  },
+  {
+    path: 'master/tds-ledger',
+    element: <TdsLedgerPage />,
+  },
+  {
+    path: 'master/professional-fees-ledger',
+    element: <GenericExpenseLedger />,
+  },
+
+  // Salary Master Ledgers
+  {
+    path: 'master/salary/wages-ledger',
+    element: <SalaryWagesLedgerPage />,
+  },
+  {
+    path: 'master/salary/payable-ledger',
+    element: <SalaryPayableLedger />,
+  },
+  {
+    path: 'master/salary/pf-contribution-ledger',
+    element: <PFContributionLedgerPage />,
+  },
+  {
+    path: 'master/salary/pf-payable-ledger',
+    element: <PFPayableLedgerPage />,
+  },
+  {
+    path: 'master/salary/esic-contribution-ledger',
+    element: <ESICContributionLedgerPage />,
+  },
+  {
+    path: 'master/salary/esic-payable-ledger',
+    element: <ESICPayableLedgerPage />,
+  },
+  {
+    path: 'master/salary/lwf-contribution-ledger',
+    element: <LWFContributionLedgerPage />,
+  },
+  {
+    path: 'master/salary/lwf-payable-ledger',
+    element: <LWFPayableLedgerPage />,
+  },
+  {
+    path: 'master/salary/leave-provision-expense-ledger',
+    element: <LeaveProvisionExpenseLedgerPage />,
+  },
+  {
+    path: 'master/salary/leave-encashment-provision-ledger',
+    element: <LeaveEncashmentProvisionLedgerPage />,
+  },
+  {
+    path: 'master/salary/other-deductions-ledger',
+    element: <OtherDeductionsLedgerPage />,
+  },
+  {
+    path: 'master/salary/employee-pf-payable-ledger',
+    element: <EmployeePFPayableLedgerPage />,
+  },
+  {
+    path: 'master/salary/employee-esic-payable-ledger',
+    element: <EmployeeESICPayableLedgerPage />,
+  },
+  {
+    path: 'master/salary/employee-lwf-payable-ledger',
+    element: <EmployeeLWFPayableLedgerPage />,
+  },
+  {
+    path: 'master/salary/pt-payable-ledger',
+    element: <ProfessionalTaxPayableLedgerPage />,
+  },
+  {
+    path: 'master/salary/bonus-provision-expense-ledger',
+    element: <BonusProvisionExpenseLedgerPage />,
+  },
+  {
+    path: 'master/salary/bonus-expense-ledger',
+    element: <BonusExpenseLedgerPage />,
+  },
+  {
+    path: 'master/tds-receivable-asset-ledger',
+    element: <TDSReceivableAssetLedgerPage />,
+  },
+
+  // Billing Ledgers (11 Ledgers)
+  {
+    path: 'master/billing/hk-charges-ledger',
+    element: <HKChargesLedgerPage />,
+  },
+  {
+    path: 'master/billing/manpower-ledger',
+    element: <ManpowerLedgerPage />,
+  },
+  {
+    path: 'master/billing/hk-material-ledger',
+    element: <HKMaterialLedgerPage />,
+  },
+  {
+    path: 'master/billing/machinery-rent-ledger',
+    element: <MachineryRentLedgerPage />,
+  },
+  {
+    path: 'master/billing/cgst-ledger',
+    element: <CGSTLedgerPage />,
+  },
+  {
+    path: 'master/billing/sgst-ledger',
+    element: <SGSTLedgerPage />,
+  },
+  {
+    path: 'master/billing/igst-ledger',
+    element: <IGSTLedgerPage />,
+  },
+  {
+    path: 'master/billing/tds-payable-ledger',
+    element: <TDSPayableLedgerPage />,
+  },
+  {
+    path: 'master/billing/tds-receivable-ledger',
+    element: <TDSReceivableLedgerPage />,
+  },
+  {
+    path: 'master/billing/service-tax-ledger',
+    element: <ServiceTaxLedgerPage />,
+  },
+  {
+    path: 'master/billing/round-off-ledger',
+    element: <RoundOffLedgerPage />,
+  },
+
+  // Direct Ledger Routes used by AccountsTable.jsx navigate() calls:
+  {
+    path: 'reliever-payment-page',
+    element: <RelieverPaymentPage />,
+  },
+  {
+    path: 'reliever-liability-ledger',
+    element: <RelieverLiabilityLedgerPage />,
+  },
+  {
+    path: 'conveyance-expense-ledger',
+    element: <ConveyanceExpenseLedgerPage />,
+  },
+  {
+    path: 'conveyance-payable-ledger',
+    element: <ConveyancePayblePage />,
+  },
+  {
+    path: 'ledger/:accountCode',
+    element: <EmployeeLedgerPage />,
+  },
+  {
+    path: 'fixed-asset-ledger/:accountCode',
+    element: <FixedAssetLedgerPage />,
+  },
+  {
+    path: 'tds-ledger/:sectionCode',
+    element: <TdsLedgerPage />,
+  },
+  {
+    path: 'bank-ledger/:accountCode',
+    element: <BankLedgerPage />,
+  },
+  {
+    path: 'travel-expense-ledger/:accountCode',
+    element: <TravelExpenseLedgerPage />,
+  },
+  {
+    path: 'food-refreshment-ledger/:accountCode',
+    element: <FoodRefreshmentLedgerPage />,
+  },
+  {
+    path: 'office-supplies-ledger/:accountCode',
+    element: <OfficeSuppliesLedgerPage />,
+  },
+  {
+    path: 'rent-expense-account',
+    element: <RentExpenseBookingLedgerPage />,
+  },
+  {
+    path: 'cgst-input-ledger',
+    element: <CGSTInputLedgerPage />,
+  },
+  {
+    path: 'sgst-input-ledger',
+    element: <SGSTInputLedgerPage />,
+  },
+  {
+    path: 'igst-input-ledger',
+    element: <IGSTInputLedgerPage />,
+  },
+  {
+    path: 'uniform-expense-ledger',
+    element: <UniformExpenseLedgerPage />,
+  },
+  {
+    path: 'fa-uniform-expense',
+    element: <UniformPrepaidExpenseLedger />,
+  },
+  {
+    path: 'salary-expense-ledger',
+    element: <SalaryWagesLedgerPage />,
+  },
+  {
+    path: 'salary-payable-ledger',
+    element: <SalaryPayableLedger />,
+  },
+  {
+    path: 'pf-contribution-ledger',
+    element: <PFContributionLedgerPage />,
+  },
+  {
+    path: 'pf-payable-ledger',
+    element: <PFPayableLedgerPage />,
+  },
+  {
+    path: 'employee-esic-payable-ledger',
+    element: <EmployeeESICPayableLedgerPage />,
+  },
+  {
+    path: 'esic-contribution-ledger',
+    element: <ESICContributionLedgerPage />,
+  },
+  {
+    path: 'esic-payable-ledger',
+    element: <ESICPayableLedgerPage />,
+  },
+  {
+    path: 'lwf-contribution-ledger',
+    element: <LWFContributionLedgerPage />,
+  },
+  {
+    path: 'lwf-payable-ledger',
+    element: <LWFPayableLedgerPage />,
+  },
+  {
+    path: 'leave-provision-ledger',
+    element: <LeaveProvisionExpenseLedgerPage />,
+  },
+  {
+    path: 'leave-encashment-provision-ledger',
+    element: <LeaveEncashmentProvisionLedgerPage />,
+  },
+  {
+    path: 'other-deductions-ledger',
+    element: <OtherDeductionsLedgerPage />,
+  },
+  {
+    path: 'employee-pf-payable-ledger',
+    element: <EmployeePFPayableLedgerPage />,
+  },
+  {
+    path: 'employee-lwf-payable-ledger',
+    element: <EmployeeLWFPayableLedgerPage />,
+  },
+  {
+    path: 'professional-tax-payable-ledger',
+    element: <ProfessionalTaxPayableLedgerPage />,
+  },
+  {
+    path: 'bonus-expense-ledger',
+    element: <BonusExpenseLedgerPage />,
+  },
+  {
+    path: 'tds-receivable-ledger',
+    element: <TDSReceivableAssetLedgerPage />,
+  },
+  {
+    path: 'vendor-ledger/:vendorCode',
+    element: <UnifiedVendorLedgerPage />,
+  },
+  {
+    path: 'vendor_ledger/:vendorCode',
+    element: <UnifiedVendorLedgerPage />,
+  },
+  {
+    path: 'vendor-ledger',
+    element: <UnifiedVendorLedgerPage />,
+  },
+  {
+    path: 'vendor_ledger',
+    element: <UnifiedVendorLedgerPage />,
+  },
+  {
+    path: 'vendor-ledger-page',
+    element: <UnifiedVendorLedgerPage />,
+  },
+  {
+    path: 'hk-materials-expense-ledger',
+    element: <HKMaterialsExpenseLedgerPage />,
+  },
+  {
+    path: 'expense-ledger/:code',
+    element: <GenericExpenseLedger />,
+  },
+  {
+    path: 'billing-ledger/hk-charges',
+    element: <HKChargesLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/manpower-services',
+    element: <ManpowerLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/hk-material',
+    element: <HKMaterialLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/machinery-rent',
+    element: <MachineryRentLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/cgst-payable',
+    element: <CGSTLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/sgst-payable',
+    element: <SGSTLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/igst-payable',
+    element: <IGSTLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/tds-payable-194c',
+    element: <TDSPayableLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/tds-receivable-194j',
+    element: <TDSReceivableLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/service-tax-payable',
+    element: <ServiceTaxLedgerPage />,
+  },
+  {
+    path: 'billing-ledger/round-off',
+    element: <RoundOffLedgerPage />,
+  },
+  {
+    path: 'client-ledger/:clientCode',
+    element: <ClientLedgerPage />,
+  },
+  {
+    path: 'revenue-ledger/:code',
+    element: <HouseKeepingRevenueLedgerPage />,
+  },
+]
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -289,6 +791,8 @@ export const router = createBrowserRouter([
     ),
     errorElement: <h1>Page Not Found!</h1>,
   },
+  // ... rest of static definitions before AE
+
   // ***********************************Employee***************************************************************
   {
     path: '/dashboard/employee',
@@ -1177,300 +1681,8 @@ export const router = createBrowserRouter([
         element: <GSTR2BRecoReportPage />,
       },
 
-      // ================= MASTER PATHS =================
-      {
-        path: 'master/chart-of-accounts',
-        element: <ChartOfAccountsDashboard />,
-      },
-      {
-        path: 'master/billing/client-ledgers',
-        element: <ClientLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/house-keeping',
-        element: <HouseKeepingRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/house-keeping-exempt',
-        element: <HouseKeepingExemptRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/service-charges',
-        element: <ServiceChargesRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/overseas-consultancy',
-        element: <OverseasConsultancyRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/hk-material',
-        element: <HKMaterialRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/cleaning-consumable',
-        element: <CleaningConsumableRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/deep-cleaning',
-        element: <DeepCleaningRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/rent-on-machinery',
-        element: <RentOnMachineryRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/manpower-services',
-        element: <ManpowerServicesRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/pest-control',
-        element: <PestControlRevenueLedgerPage />,
-      },
-      {
-        path: 'master/billing/revenue/round-off',
-        element: <RoundOffRevenueLedgerPage />,
-      },
-      {
-        path: 'master/advance/employee-ledger',
-        element: <EmployeeLedgerPage />,
-      },
-      {
-        path: 'master/process-of-payments/vendor-ledger',
-        element: <ProcessOfPaymentVendorPage />,
-      },
-      {
-        path: 'master/tds-booking/tds-ledger',
-        element: <TDSLedgerPage />,
-      },
-      {
-        path: 'master/bank-ledger',
-        element: <BankLedgerPage />,
-      },
-      {
-        path: 'master/advance/travel-expense',
-        element: <TravelExpenseLedgerPage />,
-      },
-      {
-        path: 'master/advance/food-refreshment-expense',
-        element: <FoodRefreshmentLedgerPage />,
-      },
-      {
-        path: 'master/advance/office-supplies-expense',
-        element: <OfficeSuppliesLedgerPage />,
-      },
-      {
-        path: 'master/conveyance/payable-ledger',
-        element: <ConveyancePayblePage />,
-      },
-      {
-        path: 'master/conveyance/expense-ledger',
-        element: <ConveyanceExpenseLedgerPage />,
-      },
-      {
-        path: 'master/reliever/payment-ledger',
-        element: <RelieverPaymentPage />,
-      },
-      {
-        path: 'master/reliever/liability-ledger',
-        element: <RelieverLiabilityLedgerPage />,
-      },
-      {
-        path: 'master/rent/expense-ledger',
-        element: <RentExpenseBookingLedgerPage />,
-      },
-      {
-        path: 'master/gst/ledgers',
-        element: <GSTLedgersPage />,
-      },
-      {
-        path: 'master/gst/cgst-input',
-        element: <CGSTInputLedgerPage />,
-      },
-      {
-        path: 'master/gst/sgst-input',
-        element: <SGSTInputLedgerPage />,
-      },
-      {
-        path: 'master/gst/igst-input',
-        element: <IGSTInputLedgerPage />,
-      },
-      {
-        path: 'master/rent-vendor/ledger',
-        element: <RentVendorLedgerPage />,
-      },
-      {
-        path: 'master/hk-vendor/ledger',
-        element: <HKVendorLedgerPage />,
-      },
-      {
-        path: 'master/fixed-asset/ledger',
-        element: <FixedAssetLedgerPage />,
-      },
-      {
-        path: 'master/fa-vendor/ledger',
-        element: <FAVendorLedgerPage />,
-      },
-      {
-        path: 'master/prepaid/uniform-prepaid-expense',
-        element: <UniformPrepaidExpenseLedger />,
-      },
-      {
-        path: 'master/prepaid/uniform-expense',
-        element: <UniformExpenseLedgerPage />,
-      },
-      {
-        path: 'master/prepaid/vendor-ledger',
-        element: <PrepaidUniformVendorLedgerPage />,
-      },
-      {
-        path: 'master/unified-vendor-ledger',
-        element: <UnifiedVendorLedgerPage />,
-      },
-      {
-        path: 'master/hk-material-expense-ledger',
-        element: <HKMaterialsExpenseLedgerPage />,
-      },
-      {
-        path: 'master/tds-ledger',
-        element: <TdsLedgerPage />,
-      },
-      {
-        path: 'master/professional-fees-ledger',
-        element: <GenericExpenseLedger />,
-      },
-
-      // Salary Master Ledgers
-      {
-        path: 'master/salary/wages-ledger',
-        element: <SalaryWagesLedgerPage />,
-      },
-      {
-        path: 'master/salary/payable-ledger',
-        element: <SalaryPayableLedger />,
-      },
-      {
-        path: 'master/salary/pf-contribution-ledger',
-        element: <PFContributionLedgerPage />,
-      },
-      {
-        path: 'master/salary/pf-payable-ledger',
-        element: <PFPayableLedgerPage />,
-      },
-      {
-        path: 'master/salary/esic-contribution-ledger',
-        element: <ESICContributionLedgerPage />,
-      },
-      {
-        path: 'master/salary/esic-payable-ledger',
-        element: <ESICPayableLedgerPage />,
-      },
-      {
-        path: 'master/salary/lwf-contribution-ledger',
-        element: <LWFContributionLedgerPage />,
-      },
-      {
-        path: 'master/salary/lwf-payable-ledger',
-        element: <LWFPayableLedgerPage />,
-      },
-      {
-        path: 'master/salary/leave-provision-expense-ledger',
-        element: <LeaveProvisionExpenseLedgerPage />,
-      },
-      {
-        path: 'master/salary/leave-encashment-provision-ledger',
-        element: <LeaveEncashmentProvisionLedgerPage />,
-      },
-      {
-        path: 'master/salary/other-deductions-ledger',
-        element: <OtherDeductionsLedgerPage />,
-      },
-      {
-        path: 'master/salary/employee-pf-payable-ledger',
-        element: <EmployeePFPayableLedgerPage />,
-      },
-      {
-        path: 'master/salary/employee-esic-payable-ledger',
-        element: <EmployeeESICPayableLedgerPage />,
-      },
-      {
-        path: 'master/salary/employee-lwf-payable-ledger',
-        element: <EmployeeLWFPayableLedgerPage />,
-      },
-      {
-        path: 'master/salary/pt-payable-ledger',
-        element: <ProfessionalTaxPayableLedgerPage />,
-      },
-      {
-        path: 'master/salary/bonus-provision-expense-ledger',
-        element: <BonusProvisionExpenseLedgerPage />,
-      },
-      {
-        path: 'master/salary/bonus-expense-ledger',
-        element: <BonusExpenseLedgerPage />,
-      },
-
-      {
-        path: 'master/tds-receivable-asset-ledger',
-        element: <TDSReceivableAssetLedgerPage />,
-      },
-
-      // Billing Ledgers (11 Ledgers)
-      {
-        path: 'master/billing/hk-charges-ledger',
-        element: <HKChargesLedgerPage />,
-      },
-      {
-        path: 'master/billing/manpower-ledger',
-        element: <ManpowerLedgerPage />,
-      },
-      {
-        path: 'master/billing/hk-material-ledger',
-        element: <HKMaterialLedgerPage />,
-      },
-      {
-        path: 'master/billing/machinery-rent-ledger',
-        element: <MachineryRentLedgerPage />,
-      },
-      {
-        path: 'master/billing/cgst-ledger',
-        element: <CGSTLedgerPage />,
-      },
-      {
-        path: 'master/billing/sgst-ledger',
-        element: <SGSTLedgerPage />,
-      },
-      {
-        path: 'master/billing/igst-ledger',
-        element: <IGSTLedgerPage />,
-      },
-      {
-        path: 'master/billing/tds-payable-ledger',
-        element: <TDSPayableLedgerPage />,
-      },
-      {
-        path: 'master/billing/tds-receivable-ledger',
-        element: <TDSReceivableLedgerPage />,
-      },
-      {
-        path: 'master/billing/service-tax-ledger',
-        element: <ServiceTaxLedgerPage />,
-      },
-      {
-        path: 'master/billing/round-off-ledger',
-        element: <RoundOffLedgerPage />,
-      },
-      {
-        path: 'reports-dashboard',
-        element: <ReportsDashboard />,
-      },
-      {
-        path: 'reports/profit-loss',
-        element: <PLReportPage />,
-      },
-      {
-        path: 'reports/26as-reco',
-        element: <TDS26ASRecoPage />,
-      },
+      // ================= MASTER & LEDGER PATHS =================
+      ...masterLedgerRoutes,
     ],
   },
 
@@ -1515,6 +1727,7 @@ export const router = createBrowserRouter([
         path: 'master/chart-of-accounts',
         element: <ChartOfAccountsDashboard />,
       },
+      ...masterLedgerRoutes,
     ],
   },
   {
@@ -1557,6 +1770,7 @@ export const router = createBrowserRouter([
         path: 'master/chart-of-accounts',
         element: <ChartOfAccountsDashboard />,
       },
+      ...masterLedgerRoutes,
     ],
   },
 

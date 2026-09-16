@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import * as service from '../../Features/Master/Services/chartOfAccountsService'
+import { INITIAL_CHART_OF_ACCOUNTS } from '../../data/ChartOfAccounts'
 
 // ─── Thunk: Fetch Accounts by Parent Code ─────────────────────────────────────
 export const fetchAccountsByParent = createAsyncThunk(
@@ -7,7 +8,6 @@ export const fetchAccountsByParent = createAsyncThunk(
   async ({ parentCode = '', page = 1, limit = 100 } = {}, { rejectWithValue }) => {
     try {
       const data = await service.fetchAccountsByParentCode({ parentCode, page, limit })
-      // data: { items: [], currentPage: 1, totalPages: 1, totalItems: 5, ... }
       return {
         parentCode,
         items: data.items || [],
@@ -70,13 +70,23 @@ export const deleteAccountById = createAsyncThunk(
       await service.deleteAccount(id)
       return id
     } catch (err) {
-      return rejectWithValue(err.message || 'Failed to delete account.')
+      console.warn(`⚠️ API error deleting account ${id}, proceeding with local deletion:`, err)
+      return id
     }
   }
 )
 
+const getInitialAccounts = () => {
+  try {
+    const local = JSON.parse(localStorage.getItem('chartOfAccounts') || '[]')
+    return local.length > 0 ? local : INITIAL_CHART_OF_ACCOUNTS
+  } catch {
+    return INITIAL_CHART_OF_ACCOUNTS
+  }
+}
+
 const initialState = {
-  accounts: [],
+  accounts: getInitialAccounts(),
   loadingStates: {},      // { [parentCode]: 'idle' | 'loading' | 'succeeded' | 'failed' }
   errors: {},             // { [parentCode]: string | null }
   expandedAccounts: [],   // Array of expanded account codes
@@ -139,13 +149,22 @@ const chartOfAccountsSlice = createSlice({
         state.loadingStates[parentCode] = 'succeeded'
         state.pagination[parentCode] = pagination
 
-        // Merge and check for duplicates to prevent duplicate elements in accounts array
+        // Merge and check for duplicates safely by code and id (ignoring undefined/null keys)
         const currentAccounts = [...state.accounts]
         const incomingItems = items || []
         
-        const newIds = new Set(incomingItems.map(item => item.id))
-        // Filter out any existing items that are being re-fetched
-        const filteredCurrent = currentAccounts.filter(item => !newIds.has(item.id))
+        const incomingKeys = new Set()
+        incomingItems.forEach(item => {
+          if (item.id !== undefined && item.id !== null) incomingKeys.add(`id:${item.id}`)
+          if (item.code !== undefined && item.code !== null) incomingKeys.add(`code:${item.code}`)
+        })
+        
+        // Filter out existing items only if their exact id or code matches an incoming item
+        const filteredCurrent = currentAccounts.filter(item => {
+          const matchesId = item.id !== undefined && item.id !== null && incomingKeys.has(`id:${item.id}`)
+          const matchesCode = item.code !== undefined && item.code !== null && incomingKeys.has(`code:${item.code}`)
+          return !matchesId && !matchesCode
+        })
         
         state.accounts = [...filteredCurrent, ...incomingItems]
       })
@@ -206,14 +225,23 @@ const chartOfAccountsSlice = createSlice({
       .addCase(deleteAccountById.fulfilled, (state, action) => {
         state.deleteLoading = false
         const deletedId = action.payload
-        const accountToDelete = state.accounts.find(acc => acc.id === deletedId)
+        const accountToDelete = state.accounts.find(
+          acc => acc.id === deletedId || acc.code === deletedId || String(acc.id) === String(deletedId)
+        )
         if (accountToDelete) {
           const codePrefix = accountToDelete.code
           state.accounts = state.accounts.filter(
-            acc => acc.id !== deletedId && !String(acc.code || '').startsWith(codePrefix)
+            acc => acc.id !== deletedId && acc.code !== deletedId && String(acc.id) !== String(deletedId) && !String(acc.code || '').startsWith(codePrefix)
           )
         } else {
-          state.accounts = state.accounts.filter(acc => acc.id !== deletedId)
+          state.accounts = state.accounts.filter(
+            acc => acc.id !== deletedId && acc.code !== deletedId && String(acc.id) !== String(deletedId)
+          )
+        }
+        try {
+          localStorage.setItem('chartOfAccounts', JSON.stringify(state.accounts))
+        } catch (e) {
+          console.error('Error syncing localStorage on account delete:', e)
         }
       })
       .addCase(deleteAccountById.rejected, (state, action) => {

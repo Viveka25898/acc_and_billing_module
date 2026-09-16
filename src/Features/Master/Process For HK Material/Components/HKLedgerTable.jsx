@@ -102,24 +102,24 @@ const HKLedgerTable = ({ entries = [] }) => {
                   </span>
                 </td>
                 <td className="px-3 py-3 text-sm text-gray-600 max-w-[280px]">
-                  <div className="break-words" title={e.narration}>
-                    {e.narration.split('|')[0].trim()}
-                    {e.narration.includes('|') && (
+                  <div className="break-words" title={e.narration || '-'}>
+                    {String(e.narration || '-').split('|')[0].trim()}
+                    {String(e.narration || '').includes('|') && (
                       <div className="text-xs text-gray-500 mt-1">
-                        {e.narration.split('|').slice(1).join(' | ').trim()}
+                        {String(e.narration).split('|').slice(1).join(' | ').trim()}
                       </div>
                     )}
                   </div>
                 </td>
                 <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
-                  <span className="text-indigo-600 font-medium">{e.refNo}</span>
+                  <span className="text-indigo-600 font-medium">{e.refNo || '-'}</span>
                 </td>
                 <td className="px-3 py-3 text-sm text-gray-700 max-w-[200px]">
                   <div className="break-words">
-                    {e.counterparty.split('(')[0].trim()}
-                    {e.counterparty.includes('(') && (
+                    {String(e.counterparty || '-').split('(')[0].trim()}
+                    {String(e.counterparty || '').includes('(') && (
                       <div className="text-xs text-gray-500 font-mono">
-                        ({e.counterparty.split('(')[1]}
+                        ({String(e.counterparty).split('(')[1]}
                       </div>
                     )}
                   </div>

@@ -296,11 +296,15 @@ const AccountsTable = ({
 
     // Build the hierarchy
     accountsList.forEach((account) => {
-      if (account.parentCode) {
+      const isRootNode = !account.parentCode || account.parentCode === '' || account.type === 'ROOT'
+      
+      if (!isRootNode && account.parentCode) {
         const parent = accountMap.get(account.parentCode)
         if (parent) {
           parent.children.push(accountMap.get(account.code))
         }
+        // If parent is not loaded in accountMap yet (e.g. parent folder is unexpanded),
+        // do not promote to root. It will nest under its parent when expanded.
       } else {
         roots.push(accountMap.get(account.code))
       }

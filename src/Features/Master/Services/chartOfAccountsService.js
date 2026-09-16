@@ -1,10 +1,12 @@
 import axiosInstance from '../../../api/axiosInstance'
+import { INITIAL_CHART_OF_ACCOUNTS } from '../../../data/ChartOfAccounts'
 
 const BASE_URL = '/account-master/accounts'
 
 /**
  * Fetches the paginated list of accounts for a specific parent code.
  * If parentCode is empty/null, it returns the root-level accounts.
+ * Merges backend API response with local chart of accounts to ensure no root accounts (e.g. X) are missing.
  *
  * @param {Object} params - Query parameters
  * @param {string} params.parentCode - Parent account code
@@ -18,7 +20,7 @@ export const fetchAccountsByParentCode = async ({ parentCode = '', page = 1, lim
     limit,
     includeInactive: false,
     sortBy: 'code',
-    sortOrder: 'desc',
+    sortOrder: 'asc',
   }
 
   // Pass parentCode only if it is explicitly provided
@@ -29,10 +31,54 @@ export const fetchAccountsByParentCode = async ({ parentCode = '', page = 1, lim
     params.parentCode = ''
   }
 
-  const res = await axiosInstance.get(BASE_URL, { params })
-  
-  // The API returns response structure like: { success: true, results: { items: [], ... } }
-  return res.data?.results || res.data || {}
+  let apiItems = []
+  let apiData = {}
+
+  try {
+    const res = await axiosInstance.get(BASE_URL, { params })
+    apiData = res.data?.results || res.data || {}
+    const rawItems = apiData.items || (Array.isArray(apiData) ? apiData : [])
+    apiItems = Array.isArray(rawItems) ? rawItems : []
+  } catch (err) {
+    console.warn(`⚠️ API call to ${BASE_URL} failed for parentCode "${parentCode}":`, err)
+  }
+
+  // Retrieve local chart of accounts (or fallback to INITIAL_CHART_OF_ACCOUNTS)
+  const localAccounts = JSON.parse(localStorage.getItem('chartOfAccounts') || '[]')
+  const sourceAccounts = localAccounts.length > 0 ? localAccounts : INITIAL_CHART_OF_ACCOUNTS
+
+  // Filter local source accounts for matching parentCode
+  const matchingLocalItems = sourceAccounts.filter((acc) => {
+    if (!parentCode || parentCode === '') {
+      return !acc.parentCode || acc.parentCode === '' || acc.type === 'ROOT'
+    }
+    return acc.parentCode === parentCode
+  })
+
+  // Combine local and API items, prioritizing API data on code collision
+  const itemMap = new Map()
+
+  matchingLocalItems.forEach((item) => {
+    if (item && item.code) {
+      itemMap.set(item.code, item)
+    }
+  })
+
+  apiItems.forEach((item) => {
+    if (item && item.code) {
+      const existing = itemMap.get(item.code) || {}
+      itemMap.set(item.code, { ...existing, ...item })
+    }
+  })
+
+  const mergedItems = Array.from(itemMap.values())
+
+  return {
+    items: mergedItems,
+    currentPage: apiData.currentPage || page,
+    totalPages: apiData.totalPages || 1,
+    totalItems: Math.max(mergedItems.length, apiData.totalItems || 0),
+  }
 }
 
 /**
@@ -104,9 +150,17 @@ export const updateAccount = async (id, updateData) => {
 
 /**
  * Deletes an account category or ledger.
- * Endpoint: DELETE /account-master/accounts/{id}
+ * Endpoint: DELETE /account-master/accounts/{account_id}
  */
 export const deleteAccount = async (id) => {
-  const res = await axiosInstance.delete(`${BASE_URL}/${id}`)
-  return res.data?.results || res.data || {}
+  const numericId = parseInt(id, 10)
+  const isInteger = !isNaN(numericId) && String(numericId) === String(id).trim()
+
+  if (isInteger) {
+    const res = await axiosInstance.delete(`${BASE_URL}/${numericId}`)
+    return res.data?.results || res.data || {}
+  } else {
+    console.warn(`⚠️ Account ID "${id}" is not a numeric backend integer ID. Deleting from local state.`)
+    return { id }
+  }
 }

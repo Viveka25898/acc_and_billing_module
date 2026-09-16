@@ -8,7 +8,16 @@ import HKLedgerTable from '../Process For HK Material/Components/HKLedgerTable'
 import HKFooterSummary from '../Process For HK Material/Components/HKFooterSummery'
 
 const UnifiedVendorLedgerPage = () => {
-  const { accountCode } = useParams()
+  const params = useParams()
+  
+  // Extract accountCode from params or URL pathname fallback
+  const pathParts = window.location.pathname.split('/')
+  const lastPathPart = pathParts[pathParts.length - 1]
+  const isGenericPath = ['vendor-ledger', 'vendor_ledger', 'vendor-ledger-page'].includes(lastPathPart)
+  const pathAccountCode = !isGenericPath && lastPathPart ? lastPathPart : null
+
+  const accountCode = params.vendorCode || params.accountCode || params.code || params.id || pathAccountCode
+
   const [ledgerData, setLedgerData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -23,37 +32,48 @@ const UnifiedVendorLedgerPage = () => {
 
   // ✅ Load real unified data from transactions
   useEffect(() => {
+    let isMounted = true
     const loadLedgerData = async () => {
       try {
         setLoading(true)
-        console.log('🔍 Loading unified vendor ledger for:', accountCode)
+        setError(null)
+        console.log('🔍 Loading unified vendor ledger for accountCode:', accountCode)
 
-        // Use UnifiedVendorLedgerService instead of specific services
+        // Use UnifiedVendorLedgerService with automatic fallback
         const vendorInfo = await UnifiedVendorLedgerService.getVendorAccountDetails(accountCode)
         const entries = await UnifiedVendorLedgerService.getVendorLedgerEntries(accountCode)
 
         console.log('📊 Loaded vendor info:', vendorInfo)
         console.log('📋 Loaded entries:', entries?.length || 0)
 
+        if (!isMounted) return
+
         if (!vendorInfo) {
-          setError('Vendor account not found')
+          setError('Vendor account details could not be found')
           return
         }
 
         setLedgerData({
           vendorInfo,
-          entries,
+          entries: Array.isArray(entries) ? entries : [],
         })
       } catch (err) {
         console.error('❌ Error loading unified vendor ledger:', err)
-        setError('Failed to load vendor ledger data')
+        if (isMounted) setError('Failed to load vendor ledger data')
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
 
     if (accountCode) {
       loadLedgerData()
+    } else {
+      setLoading(false)
+      setError('No vendor account code provided')
+    }
+
+    return () => {
+      isMounted = false
     }
   }, [accountCode])
 
