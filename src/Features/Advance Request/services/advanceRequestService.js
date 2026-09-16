@@ -322,21 +322,44 @@ export const viewAttachmentInNewTab = async (fileUrl, fileName = 'attachment') =
     throw new Error('File not found on server. It may have been submitted in a previous test run or deleted.')
   }
 
-  const contentType = response.headers['content-type'] || 'application/octet-stream'
-  const blob = new Blob([response.data], { type: contentType })
+  // Determine precise MIME type from file extension so browser renders PDFs/Images inline
+  const ext = (fileName || fileUrl).split('.').pop()?.toLowerCase() || ''
+  let mimeType = response.headers['content-type'] || 'application/octet-stream'
+
+  if (ext === 'pdf') mimeType = 'application/pdf'
+  else if (['png', 'webp', 'gif', 'svg'].includes(ext)) mimeType = `image/${ext}`
+  else if (['jpg', 'jpeg'].includes(ext)) mimeType = 'image/jpeg'
+  else if (ext === 'txt') mimeType = 'text/plain'
+
+  const blob = new Blob([response.data], { type: mimeType })
   const blobUrl = window.URL.createObjectURL(blob)
 
-  const newWindow = window.open(blobUrl, '_blank')
-  if (!newWindow) {
-    // Popup fallback
+  const isPreviewable = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'txt'].includes(ext)
+
+  if (isPreviewable) {
+    const newWindow = window.open(blobUrl, '_blank')
+    if (!newWindow) {
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+  } else {
+    // For non-previewable formats (.xlsx, .docx, .zip) which browsers download,
+    // trigger download with the original filename instead of raw UUID
     const a = document.createElement('a')
     a.href = blobUrl
-    a.target = '_blank'
-    a.rel = 'noopener noreferrer'
+    a.download = fileName || 'attachment'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
   }
+
+  // Clean up object URL after 60s
+  setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000)
 }
 
 
@@ -566,6 +589,7 @@ export const fetchManagerApprovalRequests = async () => {
     reason:       item.reasons || [],
     reasons:      item.reasons || [],
     customReason: item.custom_reason || '',
+    attachments:  item.attachments || [],
   }))
 
   return { requests }
@@ -656,6 +680,7 @@ export const fetchAVPApprovalRequests = async () => {
     reason:       item.reasons || [],
     reasons:      item.reasons || [],
     customReason: item.custom_reason || '',
+    attachments:  item.attachments || [],
   }))
 
   return { requests }
@@ -744,6 +769,7 @@ export const fetchVPApprovalRequests = async () => {
     customReason: item.custom_reason || '',
     requestDate:  item.request_date || '',
     osBalance:    item.os_balance || 0,
+    attachments:  item.attachments || [],
   }))
 
   return { requests }
@@ -830,6 +856,7 @@ export const fetchAEApprovalRequests = async () => {
     osBalance:                Number(item.os_balance || 0),
     reasons:                  item.reasons || [],
     customReason:             item.custom_reason || '',
+    attachments:              item.attachments || [],
     isVPRequest:              item.is_vp_request || false,
     vpApprovedBeforeDeadline: item.vp_approved_before_deadline ?? true,
     submittedAt:              item.submitted_at || item.request_date,

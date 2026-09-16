@@ -4,6 +4,7 @@ import { FaEye } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import ManagerFilter from './ManagerFilter'
+import AttachmentsCell from './Components/AttachmentsCell'
 import {
   fetchVPApprovalRequests,
   vpApprove,
@@ -171,6 +172,7 @@ const VPApproval = () => {
                     <th className="px-4 py-3 font-semibold">Date</th>
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">O/S Balance</th>
                     <th className="px-4 py-3 font-semibold">Reason</th>
+                    <th className="px-4 py-3 font-semibold">Attachments</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold">Action</th>
                   </tr>
@@ -226,6 +228,11 @@ const VPApproval = () => {
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
+                        </td>
+
+                        {/* Attachments */}
+                        <td className="px-4 py-3">
+                          <AttachmentsCell attachments={req.attachments} />
                         </td>
 
                         {/* Status */}

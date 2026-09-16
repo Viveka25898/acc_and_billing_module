@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
 import RequestFilter from '../RequestFilter'
+import AttachmentsCell from './AttachmentsCell'
 import {
   fetchMyRequests,
   submitClarificationThunk,
@@ -337,36 +338,9 @@ const SharedMyRequests = ({ title = 'My Advance Requests' }) => {
                           {reasonStr}
                         </td>
 
-                        {/* Attachments (clickable links opening in new tab with JWT auth header) */}
-                        <td className="px-4 py-3 text-xs max-w-[180px]">
-                          {attachmentsList.length > 0 ? (
-                            <div className="flex flex-col gap-1">
-                              {attachmentsList.map((att, attIdx) => {
-                                const fileKey = `${req.requestId || index}-${attIdx}`
-                                const isOpening = openingFileKey === fileKey
-                                return (
-                                  <button
-                                    type="button"
-                                    key={att.fileUrl || attIdx}
-                                    onClick={(e) => handleOpenAttachment(e, att, fileKey)}
-                                    disabled={isOpening}
-                                    className="inline-flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-2 py-1 rounded-md font-medium text-xs transition-colors hover:underline text-left cursor-pointer disabled:opacity-50 max-w-[170px]"
-                                    title={`${att.fileName || 'Attachment'} (${att.fileSize || ''}) - Click to view document`}
-                                  >
-                                    <span className="text-sm">{isOpening ? '⏳' : '📎'}</span>
-                                    <span className="truncate">{att.fileName || `File ${attIdx + 1}`}</span>
-                                    {att.fileSize && (
-                                      <span className="text-[10px] text-gray-400 font-normal">
-                                        ({att.fileSize})
-                                      </span>
-                                    )}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
+                        {/* Attachments */}
+                        <td className="px-4 py-3 text-xs">
+                          <AttachmentsCell attachments={req.attachments} />
                         </td>
 
                         {/* Status badge */}
