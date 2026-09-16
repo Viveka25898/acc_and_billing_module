@@ -151,6 +151,28 @@ const AMInvoiceReviewPage = () => {
     setCurrentPage(1)
   }
 
+  // Client-side filtering fallback for instant responsiveness & reliability
+  const filteredInvoices = invoices.filter((inv) => {
+    const invNumQuery = (filters.invoiceNumber || '').trim().toLowerCase()
+    const vendorQuery = (filters.vendorName || '').trim().toLowerCase()
+    const dateQuery = (filters.date || '').trim()
+
+    const invNumMatch = !invNumQuery ||
+      (inv.invoiceNumber || '').toLowerCase().includes(invNumQuery) ||
+      (inv.id || '').toLowerCase().includes(invNumQuery)
+
+    const vendorMatch = !vendorQuery ||
+      (inv.vendorName || '').toLowerCase().includes(vendorQuery)
+
+    const dateMatch = !dateQuery ||
+      (inv.submittedAt && inv.submittedAt.startsWith(dateQuery)) ||
+      (inv.createdAt && inv.createdAt.startsWith(dateQuery)) ||
+      (inv.submitted_at && String(inv.submitted_at).startsWith(dateQuery)) ||
+      (inv.date && String(inv.date).startsWith(dateQuery))
+
+    return invNumMatch && vendorMatch && dateMatch
+  })
+
   const activeVoucher = selectedInvoice ? vouchers[selectedInvoice.id] : null
   const isVoucherLoading = selectedInvoice ? !!loading.voucher[selectedInvoice.id] : false
   const voucherError = selectedInvoice ? errors?.voucher?.[selectedInvoice.id] : null
@@ -162,10 +184,10 @@ const AMInvoiceReviewPage = () => {
       <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-            <span>✅</span> HK Material Invoice Processing – Account Manager Review
+            <span>✅</span> Invoice Processing – Account Manager Review
           </h1>
           <p className="text-green-100 text-sm mt-0.5">
-            Review and approve / reject material invoices for final posting
+            Review and approve / reject invoices for final posting
           </p>
         </div>
         <button
@@ -203,14 +225,14 @@ const AMInvoiceReviewPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {invoices.length === 0 ? (
+              {filteredInvoices.length === 0 ? (
                 <tr>
                   <td colSpan="10" className="p-8 text-center text-gray-400 font-medium">
-                    No pending invoices found.
+                    {invoices.length > 0 ? 'No invoices match your filter criteria.' : 'No pending invoices found.'}
                   </td>
                 </tr>
               ) : (
-                invoices.map((inv, index) => (
+                filteredInvoices.map((inv, index) => (
                   <tr key={inv.id} className="hover:bg-gray-50 transition-colors duration-150">
                     <td className="p-4 font-medium text-gray-500">
                       {((pagination?.currentPage || currentPage || 1) - 1) * (pagination?.pageSize || itemsPerPage || 5) + index + 1}
