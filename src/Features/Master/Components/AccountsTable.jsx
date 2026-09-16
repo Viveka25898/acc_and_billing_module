@@ -284,33 +284,52 @@ const AccountsTable = ({
     return accounts.some((acc) => acc.parentCode === accountCode)
   }
 
-  // Function to sort accounts hierarchically
+  // Canonical ERP Root Categories to anchor top-level structure
+  const CANONICAL_ROOTS = [
+    { id: "1", code: "A", name: "Assets", type: "ROOT", parentAccount: null, parentCode: null },
+    { id: "2", code: "E", name: "Equity", type: "ROOT", parentAccount: null, parentCode: null },
+    { id: "3", code: "L", name: "Liabilities", type: "ROOT", parentAccount: null, parentCode: null },
+    { id: "4", code: "R", name: "Income", type: "ROOT", parentAccount: null, parentCode: null },
+    { id: "5", code: "X", name: "Expenses", type: "ROOT", parentAccount: null, parentCode: null },
+  ]
+
+  // Production-ready hierarchical tree builder
   const sortAccountsHierarchically = (accountsList) => {
     const accountMap = new Map()
-    const roots = []
 
-    // Create a map for quick lookup
+    // 1. Deduplicate & populate map with provided accounts
     accountsList.forEach((account) => {
-      accountMap.set(account.code, { ...account, children: [] })
+      if (account && account.code) {
+        const existing = accountMap.get(account.code) || {}
+        accountMap.set(account.code, { ...existing, ...account, children: [] })
+      }
     })
 
-    // Build the hierarchy
-    accountsList.forEach((account) => {
-      const isRootNode = !account.parentCode || account.parentCode === '' || account.type === 'ROOT'
+    // 2. Guarantee all 5 Canonical ERP Roots exist in accountMap
+    CANONICAL_ROOTS.forEach((root) => {
+      if (!accountMap.has(root.code)) {
+        accountMap.set(root.code, { ...root, children: [] })
+      }
+    })
+
+    // 3. Build parent-child tree hierarchy
+    const rootsMap = new Map()
+
+    Array.from(accountMap.values()).forEach((account) => {
+      const isRoot = !account.parentCode || account.parentCode === '' || account.type === 'ROOT'
       
-      if (!isRootNode && account.parentCode) {
+      if (!isRoot && account.parentCode) {
         const parent = accountMap.get(account.parentCode)
         if (parent) {
           parent.children.push(accountMap.get(account.code))
         }
-        // If parent is not loaded in accountMap yet (e.g. parent folder is unexpanded),
-        // do not promote to root. It will nest under its parent when expanded.
+        // Child node whose parent folder is unexpanded remains nested under parent (not promoted to root)
       } else {
-        roots.push(accountMap.get(account.code))
+        rootsMap.set(account.code, accountMap.get(account.code))
       }
     })
 
-    // Flatten the hierarchy for display with expansion logic
+    // 4. Flatten tree for display with expansion logic
     const flattened = []
     const flatten = (node, level = 0) => {
       flattened.push({ ...node, level })
@@ -353,7 +372,18 @@ const AccountsTable = ({
       }
     }
 
-    roots.sort((a, b) => a.code.localeCompare(b.code)).forEach((root) => flatten(root))
+    // Sort roots in canonical order (A -> E -> L -> R -> X), then any custom roots alphabetically
+    const canonicalOrder = ['A', 'E', 'L', 'R', 'X']
+    const sortedRoots = Array.from(rootsMap.values()).sort((a, b) => {
+      const idxA = canonicalOrder.indexOf(a.code)
+      const idxB = canonicalOrder.indexOf(b.code)
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB
+      if (idxA !== -1) return -1
+      if (idxB !== -1) return 1
+      return a.code.localeCompare(b.code)
+    })
+
+    sortedRoots.forEach((root) => flatten(root))
 
     return flattened
   }
