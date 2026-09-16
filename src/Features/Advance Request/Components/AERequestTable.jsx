@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import ReasonModal from './ReasonModal';
 import RejectModal from './RejectModal';
+import AttachmentsCell from './AttachmentsCell';
 import { FaEye } from 'react-icons/fa';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -178,6 +179,7 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
             <th className="p-2 border">Date</th>
             <th className="p-2 border">O/s Balance</th>
             <th className="p-2 border">Reason</th>
+            <th className="p-2 border">Attachments</th>
             <th className="p-2 border">Request Type</th>
             <th className="p-2 border">Status</th>
             <th className="p-2 border">Action</th>
@@ -225,6 +227,9 @@ export default function AERequestTable({ data, onApprove, onReject, onDownloadCo
                   >
                     <FaEye />
                   </button>
+                </td>
+                <td className="p-2 border">
+                  <AttachmentsCell attachments={req.attachments} />
                 </td>
                 <td className="p-2 border">
                   <div className="flex flex-col items-center">
