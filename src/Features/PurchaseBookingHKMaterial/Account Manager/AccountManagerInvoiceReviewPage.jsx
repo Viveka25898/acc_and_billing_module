@@ -73,7 +73,8 @@ const AMInvoiceReviewPage = () => {
           payload: { remarks: remark || 'Payment approved for processing' } 
         }))
         if (approveAMInvoice.fulfilled.match(resultAction)) {
-          toast.success('Invoice approved and GL entries posted successfully!')
+          const serverMsg = resultAction.payload?.data?.message || 'Invoice approved and GL entries posted successfully!'
+          toast.success(serverMsg)
           
           // Page transition helper
           if (invoices.length === 1 && currentPage > 1) {
@@ -89,9 +90,15 @@ const AMInvoiceReviewPage = () => {
           }
           closeModal()
 
-          // Automatically fetch and open purchase voucher modal
+          // Automatically fetch and open purchase voucher modal with enriched context
           if (approvedInv) {
-            setSelectedInvoice(approvedInv)
+            const enrichedInv = {
+              ...approvedInv,
+              ...(resultAction.payload?.data || {}),
+              accountManagerStatus: 'Approved',
+              finalStatus: resultAction.payload?.data?.status || 'GL Posted - Completed'
+            }
+            setSelectedInvoice(enrichedInv)
             setIsPurchaseVoucherModalOpen(true)
             dispatch(fetchPurchaseVoucherDetails(id))
           }
@@ -108,7 +115,8 @@ const AMInvoiceReviewPage = () => {
           payload: { remarks: remark } 
         }))
         if (rejectAMInvoice.fulfilled.match(resultAction)) {
-          toast.error('Invoice rejected and returned to vendor!')
+          const serverMsg = resultAction.payload?.data?.message || 'Invoice rejected successfully!'
+          toast.info(serverMsg)
           
           if (invoices.length === 1 && currentPage > 1) {
             setCurrentPage(prev => prev - 1)

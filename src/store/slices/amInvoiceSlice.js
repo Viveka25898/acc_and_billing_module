@@ -11,6 +11,98 @@ const extractErrorMessage = (error) => {
   return 'An unexpected error occurred.';
 };
 
+// ─── Voucher Normalizer Helper ───────────────────────────────────────
+
+/**
+ * Normalizes purchase voucher data from either:
+ * 1) GET /accounts/invoices/:id/purchase-voucher (contains voucherDetails)
+ * 2) POST /accounts/invoices/:id/am-decision approval response (contains accountingDetails)
+ * Supports both Fixed Asset and Material invoices with defensive parsing and type detection.
+ */
+export const normalizeVoucherData = (raw, invoiceContext = {}) => {
+  if (!raw) return null;
+
+  try {
+    const details = raw.voucherDetails || raw.accountingDetails || raw;
+    const rawBreakdown = details.breakdown || raw.breakdown || {};
+    const rawEntries = details.entries || details.glEntries || raw.entries || raw.glEntries || [];
+    const rawTotals = details.totals || raw.totals || {};
+
+    const totalAmount =
+      details.totalAmount !== undefined ? details.totalAmount :
+      rawBreakdown.total !== undefined ? rawBreakdown.total :
+      raw.totalAmount !== undefined ? raw.totalAmount :
+      invoiceContext.totalAmount || '0.00';
+
+    // Normalize journal entries
+    const entries = (Array.isArray(rawEntries) ? rawEntries : []).map((entry, index) => ({
+      lineNo: entry.lineNo ?? index + 1,
+      glCode: entry.glCode || '-',
+      glName: entry.glName || '-',
+      debit: entry.debit !== undefined ? String(entry.debit) : '0.00',
+      credit: entry.credit !== undefined ? String(entry.credit) : '0.00',
+      narration: entry.narration || ''
+    }));
+
+    // Direct assignment from backend totals or breakdown total without client-side recalculations
+    const fallbackTotal = String(rawBreakdown.total || totalAmount || '0.00');
+    const totalDebit = rawTotals.totalDebit !== undefined ? String(rawTotals.totalDebit) : fallbackTotal;
+    const totalCredit = rawTotals.totalCredit !== undefined ? String(rawTotals.totalCredit) : fallbackTotal;
+    const difference = rawTotals.difference !== undefined ? String(rawTotals.difference) : '0.00';
+
+    // Auto-detect Fixed Asset vs Material
+    const isFixedAsset =
+      invoiceContext.type === 'Fixed Asset' ||
+      invoiceContext.type === 'FIXED_ASSET' ||
+      Boolean(invoiceContext.assetDetails) ||
+      (typeof raw.message === 'string' && raw.message.toLowerCase().includes('fixed asset')) ||
+      (typeof details.narration === 'string' && details.narration.toLowerCase().includes('fixed asset')) ||
+      entries.some(
+        (e) =>
+          (typeof e.glCode === 'string' && e.glCode.includes('_FA')) ||
+          (typeof e.narration === 'string' &&
+            (e.narration.toLowerCase().includes('fixed asset') || e.narration.toLowerCase().includes('capitalised')))
+      );
+
+    return {
+      invoiceId: raw.invoiceId || invoiceContext.id || details.invoiceId || '',
+      invoiceNumber: raw.invoiceNumber || details.invoiceRef || invoiceContext.invoiceNumber || '-',
+      voucherNo: details.voucherNo || raw.voucherNo || '-',
+      transactionId: details.transactionId || raw.transactionId || '-',
+      voucherType: details.voucherType || (isFixedAsset ? 'FIXED ASSET PURCHASE' : 'PURCHASE'),
+      voucherDate: details.voucherDate || raw.voucherDate || new Date().toISOString().split('T')[0],
+      financialYear: details.financialYear || raw.financialYear || '',
+      vendorName: details.vendorName || invoiceContext.vendorName || '-',
+      vendorGLCode: details.vendorGLCode || raw.vendorGLCode || details.glEntries?.find(e => parseFloat(e.credit || 0) > 0)?.glCode || '-',
+      invoiceRef: details.invoiceRef || raw.invoiceNumber || invoiceContext.invoiceNumber || '-',
+      totalAmount: String(totalAmount),
+      breakdown: {
+        total: String(rawBreakdown.total || totalAmount),
+        taxable: String(rawBreakdown.taxable || '0.00'),
+        cgst: String(rawBreakdown.cgst || '0.00'),
+        sgst: String(rawBreakdown.sgst || '0.00'),
+        igst: String(rawBreakdown.igst || '0.00'),
+        gstRate: rawBreakdown.gstRate !== undefined ? Number(rawBreakdown.gstRate) : 0
+      },
+      entries,
+      totals: {
+        totalDebit,
+        totalCredit,
+        difference
+      },
+      tds: details.tds || raw.tds || null,
+      narration: details.narration || raw.message || 'Invoice GL entries posted',
+      status: details.status || raw.status || 'POSTED',
+      approvedBy: raw.approvedBy || details.approvedBy || null,
+      postedAt: raw.approvedAt || details.postedAt || details.voucherDate || new Date().toISOString(),
+      isFixedAsset
+    };
+  } catch (err) {
+    console.error('Error normalizing voucher data:', err);
+    return raw;
+  }
+};
+
 // ─── Thunks ───────────────────────────────────────────────────────────
 
 /**
@@ -22,7 +114,7 @@ export const fetchAMPendingInvoices = createAsyncThunk(
     try {
       const data = await amInvoiceService.fetchAMPending(params);
       if (!data || data.success === false) {
-        return rejectWithValue(data.message || 'Failed to fetch pending invoices');
+        return rejectWithValue(data?.message || 'Failed to fetch pending invoices');
       }
       return data;
     } catch (err) {
@@ -32,7 +124,7 @@ export const fetchAMPendingInvoices = createAsyncThunk(
 );
 
 /**
- * Approve Material Invoice
+ * Approve Invoice (Handles both Material and Fixed Asset invoices)
  */
 export const approveAMInvoice = createAsyncThunk(
   'amInvoice/approveAMInvoice',
@@ -44,7 +136,7 @@ export const approveAMInvoice = createAsyncThunk(
         ...payload
       });
       if (!data || data.success === false) {
-        return rejectWithValue(data.message || 'Approval request failed');
+        return rejectWithValue(data?.message || 'Approval request failed');
       }
       return { invoiceId, data };
     } catch (err) {
@@ -59,7 +151,7 @@ export const approveAMInvoice = createAsyncThunk(
 );
 
 /**
- * Reject Material Invoice
+ * Reject Invoice
  */
 export const rejectAMInvoice = createAsyncThunk(
   'amInvoice/rejectAMInvoice',
@@ -71,7 +163,7 @@ export const rejectAMInvoice = createAsyncThunk(
         ...payload
       });
       if (!data || data.success === false) {
-        return rejectWithValue(data.message || 'Rejection request failed');
+        return rejectWithValue(data?.message || 'Rejection request failed');
       }
       return { invoiceId, data };
     } catch (err) {
@@ -86,7 +178,7 @@ export const rejectAMInvoice = createAsyncThunk(
 );
 
 /**
- * Fetch Purchase Voucher Details
+ * Fetch Purchase Voucher Details (Supports both Material & Fixed Asset)
  */
 export const fetchPurchaseVoucherDetails = createAsyncThunk(
   'amInvoice/fetchPurchaseVoucherDetails',
@@ -95,9 +187,9 @@ export const fetchPurchaseVoucherDetails = createAsyncThunk(
       if (!invoiceId) return rejectWithValue('Invoice ID is required');
       const data = await amInvoiceService.fetchPurchaseVoucher(invoiceId);
       if (!data || data.success === false) {
-        return rejectWithValue(data.message || 'Failed to fetch purchase voucher details');
+        return rejectWithValue(data?.message || 'Failed to fetch purchase voucher details');
       }
-      return { invoiceId, data: data.voucherDetails || data.data };
+      return { invoiceId, data };
     } catch (err) {
       return rejectWithValue(extractErrorMessage(err));
     }
@@ -114,7 +206,7 @@ const initialState = {
     totalItems: 0,
     pageSize: 5
   },
-  vouchers: {}, // Map of invoiceId -> voucherDetails
+  vouchers: {}, // Map of invoiceId -> normalized voucherDetails
   loading: {
     fetch: false,
     approve: false,
@@ -174,19 +266,29 @@ const amInvoiceSlice = createSlice({
       })
       .addCase(approveAMInvoice.fulfilled, (state, action) => {
         state.loading.approve = false;
-        // Update list status to show approved
         const { invoiceId, data } = action.payload;
+        
+        // Find existing invoice context
+        const existingInv = state.invoices.find((inv) => inv.id === invoiceId) || {};
+
+        // Update list status to show approved
         state.invoices = state.invoices.map((inv) => {
           if (inv.id === invoiceId) {
             return {
               ...inv,
               accountManagerStatus: 'Approved',
-              finalStatus: 'GL Posted - Completed',
-              accountingDetails: data.accountingDetails
+              finalStatus: data?.status || 'GL Posted - Completed',
+              status: data?.status || 'GL Posted - Completed',
+              accountingDetails: data?.accountingDetails
             };
           }
           return inv;
         });
+
+        // Instant caching: if approval response returned accountingDetails, normalize and store in vouchers map
+        if (data?.accountingDetails) {
+          state.vouchers[invoiceId] = normalizeVoucherData(data, existingInv);
+        }
       })
       .addCase(approveAMInvoice.rejected, (state, action) => {
         state.loading.approve = false;
@@ -206,7 +308,8 @@ const amInvoiceSlice = createSlice({
             return {
               ...inv,
               accountManagerStatus: 'Rejected',
-              finalStatus: 'Rejected by Account Manager'
+              finalStatus: 'Rejected by Account Manager',
+              status: 'Rejected by Account Manager'
             };
           }
           return inv;
@@ -226,7 +329,8 @@ const amInvoiceSlice = createSlice({
       .addCase(fetchPurchaseVoucherDetails.fulfilled, (state, action) => {
         const { invoiceId, data } = action.payload;
         state.loading.voucher[invoiceId] = false;
-        state.vouchers[invoiceId] = data;
+        const existingInv = state.invoices.find((inv) => inv.id === invoiceId) || {};
+        state.vouchers[invoiceId] = normalizeVoucherData(data, existingInv);
       })
       .addCase(fetchPurchaseVoucherDetails.rejected, (state, action) => {
         const invoiceId = action.meta.arg;

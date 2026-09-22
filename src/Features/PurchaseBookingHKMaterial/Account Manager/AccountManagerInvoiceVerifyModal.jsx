@@ -23,127 +23,158 @@ const AMInvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice, i
   if (!isOpen || !invoice) return null
 
   const handleFinalApprove = () => {
-    if (invoice.type === 'Procurement Prepaid') {
-      handleUpdateInvoice(invoice.id, 'Approved', remarks)
-      toast.success('Opening prepaid period selection...')
-    } else {
-      handleUpdateInvoice(invoice.id, 'Approved', remarks)
+    try {
+      if (invoice.type === 'Procurement Prepaid') {
+        handleUpdateInvoice(invoice.id, 'Approved', remarks)
+        toast.success('Opening prepaid period selection...')
+      } else {
+        handleUpdateInvoice(invoice.id, 'Approved', remarks)
+      }
+    } catch (err) {
+      console.error('Error approving invoice:', err)
+      toast.error('Failed to submit approval.')
     }
   }
 
   const handleReject = () => {
-    if (!remarks.trim()) {
-      toast.warn('Please provide rejection remarks.')
-      return
+    try {
+      if (!remarks.trim()) {
+        toast.warn('Please provide rejection remarks.')
+        return
+      }
+      handleUpdateInvoice(invoice.id, 'Rejected', remarks)
+    } catch (err) {
+      console.error('Error rejecting invoice:', err)
+      toast.error('Failed to submit rejection.')
     }
-    handleUpdateInvoice(invoice.id, 'Rejected', remarks)
   }
 
   // Safe mapping helper for both camelCase and snake_case GL mappings
   const mappings = invoice.vendorGLMappings || invoice.vendor_gl_mappings || {}
 
+  // Safe asset details extraction
+  const asset = invoice.assetDetails || invoice.fixedAssetDetails || invoice.fixed_asset_details || {}
+  const hasAssetInfo =
+    invoice.type === 'Fixed Asset' ||
+    invoice.type === 'FIXED_ASSET' ||
+    Boolean(invoice.assetDetails || invoice.fixedAssetDetails || invoice.fixed_asset_details)
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 z-40 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative border border-gray-100 flex flex-col">
         
         {/* Header */}
-        <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold flex items-baseline gap-2">
-            <span>Final Approval - {invoice.id}</span>
-            <span className="text-xs text-gray-500 font-normal">({invoice.invoiceNumber})</span>
+        <div className="flex justify-between items-center border-b px-5 sm:px-6 py-4 sticky top-0 bg-white z-10">
+          <h2 className="text-base sm:text-lg font-bold text-gray-800 flex items-baseline gap-2 flex-wrap">
+            <span>Final Approval — {invoice.id}</span>
+            <span className="text-xs text-gray-500 font-normal font-mono">({invoice.invoiceNumber || '-'})</span>
           </h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-red-600" disabled={isSubmitting}>
-            X
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            disabled={isSubmitting}
+            aria-label="Close modal"
+          >
+            ✕
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4 text-sm">
+        <div className="p-4 sm:p-6 space-y-4 text-sm flex-1">
           {/* Account Executive Approval Status */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="font-semibold text-green-800 mb-2">Account Executive Review</h3>
-            <p className="text-sm text-green-700">
-              This invoice has been approved by the Account Executive.
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <h3 className="font-bold text-emerald-900 mb-1">Account Executive Review</h3>
+            <p className="text-xs sm:text-sm text-emerald-800">
+              This invoice has been verified and approved by the Account Executive.
             </p>
-            <p className="text-xs text-gray-600 mt-1">Status: {invoice.status || '-'}</p>
-            <p className="text-xs text-gray-600 mt-1">AE Remarks: {invoice.aeRemarks || '-'}</p>
-            {invoice.type && (
-              <p className="text-xs text-gray-600 mt-1">
-                Type: <span className="font-medium">{invoice.type}</span>
-              </p>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-xs text-emerald-950">
+              <p>Status: <span className="font-semibold">{invoice.status || '-'}</span></p>
+              {invoice.type && (
+                <p>
+                  Type: <span className="font-semibold px-2 py-0.5 bg-white/70 rounded border border-emerald-200">{invoice.type}</span>
+                </p>
+              )}
+              {invoice.aeRemarks && (
+                <p className="sm:col-span-2 text-emerald-800 italic">
+                  AE Remarks: &quot;{invoice.aeRemarks}&quot;
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Special notice for Procurement Prepaid */}
           {invoice.type === 'Procurement Prepaid' && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <h3 className="font-semibold text-purple-800 mb-2">Procurement Prepaid Invoice</h3>
-              <p className="text-sm text-purple-700">
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+              <h3 className="font-bold text-purple-900 mb-1">Procurement Prepaid Invoice</h3>
+              <p className="text-xs sm:text-sm text-purple-800">
                 This is a prepaid expense invoice. After approval, you will need to select the
                 prepaid period for amortization.
               </p>
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-medium mb-1">GST Rate (%)</label>
+              <label className="block font-semibold text-xs text-gray-600 mb-1">GST Rate (%)</label>
               <input
-                type="number"
-                value={gstRate || '-'}
+                type="text"
+                value={gstRate !== '' ? `${gstRate}%` : '-'}
                 disabled
-                className="w-full border rounded px-3 py-2 bg-gray-100 outline-none cursor-not-allowed font-medium text-gray-600"
+                className="w-full border rounded-xl px-3 py-2 bg-gray-50 outline-none cursor-not-allowed font-medium text-gray-700 text-sm"
               />
             </div>
 
             <div>
-              <label className="block font-medium mb-1">HSN Code</label>
+              <label className="block font-semibold text-xs text-gray-600 mb-1">HSN Code</label>
               <input
                 type="text"
                 value={hsnCode || '-'}
                 disabled
-                className="w-full border rounded px-3 py-2 bg-gray-100 outline-none cursor-not-allowed font-medium text-gray-600"
+                className="w-full border rounded-xl px-3 py-2 bg-gray-50 outline-none cursor-not-allowed font-medium text-gray-700 text-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-medium mb-1">HSN Summary</label>
+            <label className="block font-semibold text-xs text-gray-600 mb-1">HSN Summary</label>
             <textarea
               value={hsnSummary || '-'}
               disabled
               rows={2}
-              className="w-full border rounded px-3 py-2 bg-gray-100 outline-none cursor-not-allowed font-medium text-gray-600"
+              className="w-full border rounded-xl px-3 py-2 bg-gray-50 outline-none cursor-not-allowed font-medium text-gray-700 text-sm"
             ></textarea>
           </div>
 
-          {/* Fixed Assets Details */}
-          {(invoice.type === 'Fixed Asset' || invoice.type === 'FIXED_ASSET') && invoice.assetDetails && (
-            <div className="border-t pt-4">
-              <h3 className="font-semibold text-base mb-2 text-purple-800">Fixed Asset Details</h3>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
+          {/* Fixed Assets Details Card */}
+          {hasAssetInfo && (
+            <div className="border border-purple-200 bg-purple-50/50 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">🏢</span>
+                <h3 className="font-bold text-sm text-purple-900">Fixed Asset Capitalisation Details</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
                 <div>
-                  <label className="block font-medium">Asset Name</label>
-                  <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.assetName || '-'}
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Asset Name</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800">
+                    {asset.assetName || asset.name || invoice.assetName || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block font-medium">Asset Category</label>
-                  <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.assetCategory || '-'}
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Asset Category</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800">
+                    {asset.assetCategory || asset.category || invoice.assetCategory || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block font-medium">Location</label>
-                  <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.location || '-'}
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Location / Department</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800">
+                    {asset.location || asset.site || invoice.location || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block font-medium">Asset Tag</label>
-                  <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.assetTag || '-'}
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Asset Tag / Serial No.</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800 font-mono">
+                    {asset.assetTag || asset.tag || invoice.assetTag || '-'}
                   </div>
                 </div>
               </div>

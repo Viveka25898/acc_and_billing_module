@@ -26,35 +26,45 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice, isS
   if (!isOpen || !invoice) return null
 
   const handleApprove = () => {
-    if (!gstRate) {
-      toast.warn('Please enter a valid GST Rate.')
-      return
-    }
-    if (!hsnCode) {
-      toast.warn('Please enter a valid HSN Code.')
-      return
-    }
+    try {
+      if (!gstRate) {
+        toast.warn('Please enter a valid GST Rate.')
+        return
+      }
+      if (!hsnCode) {
+        toast.warn('Please enter a valid HSN Code.')
+        return
+      }
 
-    handleUpdateInvoice(invoice.id, 'Approved', {
-      gstRate,
-      hsnCode,
-      hsnSummary,
-      siteState,
-      companyState,
-      remarks: remarks || 'GST rate and HSN verified'
-    })
+      handleUpdateInvoice(invoice.id, 'Approved', {
+        gstRate,
+        hsnCode,
+        hsnSummary,
+        siteState,
+        companyState,
+        remarks: remarks || 'GST rate and HSN verified'
+      })
+    } catch (err) {
+      console.error('Error approving invoice in AE modal:', err)
+      toast.error('Failed to submit approval.')
+    }
   }
 
   const handleReject = () => {
-    if (!remarks.trim()) {
-      toast.warn('Please provide rejection remarks.')
-      return
-    }
+    try {
+      if (!remarks.trim()) {
+        toast.warn('Please provide rejection remarks.')
+        return
+      }
 
-    handleUpdateInvoice(invoice.id, 'Rejected', {
-      gstRate: gstRate || '0',
-      remarks
-    })
+      handleUpdateInvoice(invoice.id, 'Rejected', {
+        gstRate: gstRate || '0',
+        remarks
+      })
+    } catch (err) {
+      console.error('Error rejecting invoice in AE modal:', err)
+      toast.error('Failed to submit rejection.')
+    }
   }
 
   // Safe mapping helper for both camelCase and snake_case GL mappings
@@ -160,26 +170,34 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice, isS
           )}
 
           {/* Fixed Asset Info */}
-          {(invoice.type === 'Fixed Asset' || invoice.type === 'FIXED_ASSET') && invoice.assetDetails && (
-            <div className="border-t pt-4">
-              <h3 className="font-semibold text-base mb-2 text-blue-800">Fixed Asset Details</h3>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
+          {(invoice.type === 'Fixed Asset' || invoice.type === 'FIXED_ASSET' || Boolean(invoice.assetDetails || invoice.fixedAssetDetails)) && (
+            <div className="border border-purple-200 bg-purple-50/50 rounded-xl p-4">
+              <h3 className="font-bold text-sm text-purple-900 mb-3 flex items-center gap-2">
+                <span>🏢</span>Fixed Asset Details
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
                 <div>
-                  <label className="block font-medium">Asset Tag</label>
-                  <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.assetTag || '-'}
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Asset Name</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800">
+                    {invoice.assetDetails?.assetName || invoice.assetDetails?.name || invoice.assetName || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block font-medium">Serial Number</label>
-                  <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.serialNumber || '-'}
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Asset Category</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800">
+                    {invoice.assetDetails?.assetCategory || invoice.assetDetails?.category || invoice.assetCategory || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block font-medium">Location</label>
-                  <div className="border rounded px-3 py-2 bg-gray-50">
-                    {invoice.assetDetails.location || '-'}
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Asset Tag / Serial No.</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800 font-mono">
+                    {invoice.assetDetails?.assetTag || invoice.assetDetails?.tag || invoice.assetDetails?.serialNumber || invoice.assetTag || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-purple-700 mb-0.5">Location</label>
+                  <div className="border border-purple-100 rounded-lg px-3 py-1.5 bg-white font-semibold text-gray-800">
+                    {invoice.assetDetails?.location || invoice.assetDetails?.site || invoice.location || '-'}
                   </div>
                 </div>
               </div>
