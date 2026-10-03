@@ -13,7 +13,7 @@ import {
 
 const AMInvoiceReviewPage = () => {
   const dispatch = useDispatch()
-  
+
   // Select values from Redux store
   const { invoices, pagination, loading, vouchers, errors } = useSelector(state => state.amInvoice)
 
@@ -68,14 +68,13 @@ const AMInvoiceReviewPage = () => {
     if (status === 'Approved') {
       try {
         const approvedInv = invoices.find(inv => inv.id === id)
-        const resultAction = await dispatch(approveAMInvoice({ 
-          invoiceId: id, 
-          payload: { remarks: remark || 'Payment approved for processing' } 
+        const resultAction = await dispatch(approveAMInvoice({
+          invoiceId: id,
+          payload: { remarks: remark || 'Payment approved for processing' }
         }))
         if (approveAMInvoice.fulfilled.match(resultAction)) {
-          const serverMsg = resultAction.payload?.data?.message || 'Invoice approved and GL entries posted successfully!'
-          toast.success(serverMsg)
-          
+          toast.success('Invoice approved and GL entries posted successfully!')
+
           // Page transition helper
           if (invoices.length === 1 && currentPage > 1) {
             setCurrentPage(prev => prev - 1)
@@ -90,15 +89,9 @@ const AMInvoiceReviewPage = () => {
           }
           closeModal()
 
-          // Automatically fetch and open purchase voucher modal with enriched context
+          // Automatically fetch and open purchase voucher modal
           if (approvedInv) {
-            const enrichedInv = {
-              ...approvedInv,
-              ...(resultAction.payload?.data || {}),
-              accountManagerStatus: 'Approved',
-              finalStatus: resultAction.payload?.data?.status || 'GL Posted - Completed'
-            }
-            setSelectedInvoice(enrichedInv)
+            setSelectedInvoice(approvedInv)
             setIsPurchaseVoucherModalOpen(true)
             dispatch(fetchPurchaseVoucherDetails(id))
           }
@@ -110,14 +103,13 @@ const AMInvoiceReviewPage = () => {
       }
     } else if (status === 'Rejected') {
       try {
-        const resultAction = await dispatch(rejectAMInvoice({ 
-          invoiceId: id, 
-          payload: { remarks: remark } 
+        const resultAction = await dispatch(rejectAMInvoice({
+          invoiceId: id,
+          payload: { remarks: remark }
         }))
         if (rejectAMInvoice.fulfilled.match(resultAction)) {
-          const serverMsg = resultAction.payload?.data?.message || 'Invoice rejected successfully!'
-          toast.info(serverMsg)
-          
+          toast.error('Invoice rejected and returned to vendor!')
+
           if (invoices.length === 1 && currentPage > 1) {
             setCurrentPage(prev => prev - 1)
           } else {
@@ -187,7 +179,7 @@ const AMInvoiceReviewPage = () => {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto bg-white shadow-sm rounded-2xl border border-gray-100 font-sans">
-      
+
       {/* Header section matching Account Executive & Advance Settlement standard styling */}
       <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl px-6 py-5 mb-6 shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -298,12 +290,11 @@ const AMInvoiceReviewPage = () => {
                     <td className="p-4 text-center">
                       <button
                         onClick={() => openModal(inv)}
-                        className={`px-4 py-2 rounded-xl text-white text-xs font-semibold transition-all duration-150 ${
-                          inv.accountManagerStatus === 'Approved' ||
-                          inv.accountManagerStatus === 'Rejected'
+                        className={`px-4 py-2 rounded-xl text-white text-xs font-semibold transition-all duration-150 ${inv.accountManagerStatus === 'Approved' ||
+                            inv.accountManagerStatus === 'Rejected'
                             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             : 'bg-green-600 hover:bg-green-700 shadow-sm'
-                        }`}
+                          }`}
                         disabled={
                           inv.accountManagerStatus === 'Approved' ||
                           inv.accountManagerStatus === 'Rejected'
@@ -334,11 +325,10 @@ const AMInvoiceReviewPage = () => {
             <button
               key={page}
               onClick={() => setCurrentPage(page)}
-              className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
-                page === pagination.currentPage 
-                  ? 'bg-green-600 text-white shadow-sm' 
+              className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${page === pagination.currentPage
+                  ? 'bg-green-600 text-white shadow-sm'
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
+                }`}
             >
               {page}
             </button>

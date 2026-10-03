@@ -68,7 +68,7 @@ const InvoiceReviewPage = () => {
         toast.error(`Invoice Rejected and returned to vendor.`)
       }
       closeModal()
-      
+
       // Edge Case: If we just approved/rejected the last item on page > 1, go back one page.
       const targetPage = (invoices.length === 1 && currentPage > 1) ? currentPage - 1 : currentPage;
       setCurrentPage(targetPage);
@@ -210,15 +210,14 @@ const InvoiceReviewPage = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-semibold inline-block border ${
-                          inv.status === 'Pending GST Verification'
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold inline-block border ${inv.status === 'Pending GST Verification'
                             ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
                             : inv.status === 'Approved' || inv.status.includes('Approved')
                               ? 'bg-green-50 text-green-700 border-green-200'
                               : inv.status === 'Rejected' || inv.status.includes('Rejected')
                                 ? 'bg-red-50 text-red-700 border-red-200'
                                 : 'bg-gray-50 text-gray-700 border-gray-200'
-                        }`}
+                          }`}
                       >
                         {inv.status}
                       </span>
@@ -246,9 +245,8 @@ const InvoiceReviewPage = () => {
             <button
               key={page}
               onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1 rounded border text-xs md:text-sm font-medium transition-colors duration-200 ${
-                page === currentPage ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-1 rounded border text-xs md:text-sm font-medium transition-colors duration-200 ${page === currentPage ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
             >
               {page}
             </button>
