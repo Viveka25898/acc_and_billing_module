@@ -22,7 +22,9 @@ export default function ViewAgreementModal({ onClose, site }) {
 
       try {
         let relativePath = agreement.fileUrl;
-        if (relativePath.includes('/api/v1/')) {
+        if (relativePath.includes('/legacy/api/v1/')) {
+          relativePath = relativePath.substring(relativePath.indexOf('/legacy/api/v1/') + 14);
+        } else if (relativePath.includes('/api/v1/')) {
           relativePath = relativePath.substring(relativePath.indexOf('/api/v1/') + 7);
         }
 

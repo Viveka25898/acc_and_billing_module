@@ -51,6 +51,15 @@ export default defineConfig({
       // WHY headers override Origin/Referer:
       //      Backend CORS middleware silently returns 404 for unknown origins.
       //      Setting Origin = target domain makes the request look same-origin.
+      '/legacy/api/v1': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
       '/api/v1': {
         target: 'https://dev-int.ismart.org',
         changeOrigin: true,

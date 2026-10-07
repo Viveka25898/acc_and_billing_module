@@ -55,13 +55,15 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
         if (cleanPath) {
           if (cleanPath.startsWith('/')) {
             candidateSet.add(cleanPath);
-            if (!cleanPath.startsWith('/api/v1')) {
+            if (!cleanPath.startsWith('/legacy/api/v1') && !cleanPath.startsWith('/api/v1')) {
+              candidateSet.add(`/legacy/api/v1${cleanPath}`);
               candidateSet.add(`/api/v1${cleanPath}`);
             }
           } else {
             candidateSet.add(`/${cleanPath}`);
             candidateSet.add(`/smarterp-accounts/${cleanPath}`);
             candidateSet.add(`/smarterp-accounts/conveyance/${cleanPath}`);
+            candidateSet.add(`/legacy/api/v1/${cleanPath}`);
             candidateSet.add(`/api/v1/${cleanPath}`);
             candidateSet.add(`/uploads/${cleanPath}`);
             candidateSet.add(`/uploads/conveyance/${cleanPath}`);
