@@ -73,7 +73,8 @@ const AMInvoiceReviewPage = () => {
           payload: { remarks: remark || 'Payment approved for processing' }
         }))
         if (approveAMInvoice.fulfilled.match(resultAction)) {
-          toast.success('Invoice approved and GL entries posted successfully!')
+          const successMsg = resultAction.payload?.data?.message || 'Invoice approved and GL entries posted successfully!';
+          toast.success(successMsg);
 
           // Page transition helper
           if (invoices.length === 1 && currentPage > 1) {
@@ -89,11 +90,14 @@ const AMInvoiceReviewPage = () => {
           }
           closeModal()
 
-          // Automatically fetch and open purchase voucher modal
+          // Automatically display purchase voucher modal
           if (approvedInv) {
             setSelectedInvoice(approvedInv)
             setIsPurchaseVoucherModalOpen(true)
-            dispatch(fetchPurchaseVoucherDetails(id))
+            // If approval response didn't contain accountingDetails, fetch via GET endpoint as fallback
+            if (!resultAction.payload?.data?.accountingDetails) {
+              dispatch(fetchPurchaseVoucherDetails(id))
+            }
           }
         } else {
           toast.error(resultAction.payload || 'Approval request failed')

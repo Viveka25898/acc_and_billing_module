@@ -70,8 +70,8 @@ const ErrorOverlay = ({ error, onClose }) => (
 
 const PurchaseVoucherModal = ({ isOpen, onClose, voucher, isLoading, error }) => {
   if (!isOpen) return null
-  if (isLoading) return <LoadingOverlay />
-  if (error) return <ErrorOverlay error={error} onClose={onClose} />
+  if (!voucher && isLoading) return <LoadingOverlay />
+  if (!voucher && error) return <ErrorOverlay error={error} onClose={onClose} />
   if (!voucher) return null
 
   const breakdown = voucher.breakdown || {}
@@ -88,12 +88,14 @@ const PurchaseVoucherModal = ({ isOpen, onClose, voucher, isLoading, error }) =>
       <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
 
         {/* ── Header ── */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-5 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className={`text-white px-5 sm:px-6 py-4 flex items-center justify-between flex-shrink-0 ${voucher.isFixedAsset ? 'bg-gradient-to-r from-purple-700 to-indigo-700' : 'bg-gradient-to-r from-green-600 to-emerald-600'}`}>
           <div className="flex items-start gap-3">
             <FiCheckCircle className="w-6 h-6 mt-0.5 flex-shrink-0" />
             <div>
-              <h2 className="text-base sm:text-lg font-bold leading-tight">Purchase Voucher — GL Posted</h2>
-              <p className="text-green-100 text-xs mt-0.5 font-mono">
+              <h2 className="text-base sm:text-lg font-bold leading-tight flex items-center gap-2">
+                {voucher.isFixedAsset ? '🏢 Fixed Asset Voucher — GL Posted' : 'Purchase Voucher — GL Posted'}
+              </h2>
+              <p className="text-white/80 text-xs mt-0.5 font-mono">
                 {voucher.voucherNo || '-'} · {voucher.voucherDate || '-'}
               </p>
             </div>
@@ -111,13 +113,15 @@ const PurchaseVoucherModal = ({ isOpen, onClose, voucher, isLoading, error }) =>
         <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
 
           {/* Success Banner */}
-          <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className={`flex items-start gap-3 border rounded-xl p-4 ${voucher.isFixedAsset ? 'bg-purple-50 border-purple-200' : 'bg-green-50 border-green-200'}`}>
             <span className="text-xl flex-shrink-0">✅</span>
             <div>
-              <p className="font-semibold text-green-800 text-sm">
-                Invoice Approved &amp; GL Entries Posted Successfully
+              <p className={`font-semibold text-sm ${voucher.isFixedAsset ? 'text-purple-900' : 'text-green-800'}`}>
+                {voucher.isFixedAsset
+                  ? 'Fixed Asset Invoice Approved, Capitalised & GL Entries Posted Successfully'
+                  : 'Invoice Approved & GL Entries Posted Successfully'}
               </p>
-              <p className="text-green-600 text-xs mt-1">
+              <p className={`text-xs mt-1 ${voucher.isFixedAsset ? 'text-purple-600' : 'text-green-600'}`}>
                 Posted at {formatDateTime(voucher.postedAt)}&nbsp;·&nbsp;
                 Status: <span className="font-bold">{voucher.status || '-'}</span>
               </p>
@@ -259,7 +263,24 @@ const PurchaseVoucherModal = ({ isOpen, onClose, voucher, isLoading, error }) =>
                             {entry.glCode || '-'}
                           </td>
                           <td className="px-4 py-3 max-w-xs">
-                            <p className="font-medium text-gray-800 text-sm">{entry.glName || '-'}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-medium text-gray-800 text-sm">{entry.glName || '-'}</p>
+                              {entry.glCode && (entry.glCode.startsWith('A1') || entry.glCode.includes('_FA')) && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                  🏢 Asset
+                                </span>
+                              )}
+                              {entry.glCode && entry.glCode.startsWith('A3') && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                                  Input GST
+                                </span>
+                              )}
+                              {entry.glCode && entry.glCode.startsWith('L2') && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                  Creditor
+                                </span>
+                              )}
+                            </div>
                             {entry.narration && (
                               <p className="text-xs text-gray-400 mt-0.5 truncate" title={entry.narration}>
                                 {entry.narration}

@@ -44,11 +44,13 @@ export const normalizeVoucherData = (raw, invoiceContext = {}) => {
       narration: entry.narration || ''
     }));
 
-    // Direct assignment from backend totals or breakdown total without client-side recalculations
+    // Calculate totals from entries if raw totals are not provided
+    const calcDebit = entries.reduce((sum, e) => sum + parseFloat(e.debit || 0), 0);
+    const calcCredit = entries.reduce((sum, e) => sum + parseFloat(e.credit || 0), 0);
     const fallbackTotal = String(rawBreakdown.total || totalAmount || '0.00');
-    const totalDebit = rawTotals.totalDebit !== undefined ? String(rawTotals.totalDebit) : fallbackTotal;
-    const totalCredit = rawTotals.totalCredit !== undefined ? String(rawTotals.totalCredit) : fallbackTotal;
-    const difference = rawTotals.difference !== undefined ? String(rawTotals.difference) : '0.00';
+    const totalDebit = rawTotals.totalDebit !== undefined ? String(rawTotals.totalDebit) : (calcDebit > 0 ? calcDebit.toFixed(2) : fallbackTotal);
+    const totalCredit = rawTotals.totalCredit !== undefined ? String(rawTotals.totalCredit) : (calcCredit > 0 ? calcCredit.toFixed(2) : fallbackTotal);
+    const difference = rawTotals.difference !== undefined ? String(rawTotals.difference) : Math.abs(parseFloat(totalDebit) - parseFloat(totalCredit)).toFixed(2);
 
     // Auto-detect Fixed Asset vs Material
     const isFixedAsset =
@@ -57,12 +59,20 @@ export const normalizeVoucherData = (raw, invoiceContext = {}) => {
       Boolean(invoiceContext.assetDetails) ||
       (typeof raw.message === 'string' && raw.message.toLowerCase().includes('fixed asset')) ||
       (typeof details.narration === 'string' && details.narration.toLowerCase().includes('fixed asset')) ||
+      (typeof details.message === 'string' && details.message.toLowerCase().includes('fixed asset')) ||
       entries.some(
         (e) =>
-          (typeof e.glCode === 'string' && e.glCode.includes('_FA')) ||
+          (typeof e.glCode === 'string' && (e.glCode.includes('_FA') || e.glCode.startsWith('A1'))) ||
           (typeof e.narration === 'string' &&
             (e.narration.toLowerCase().includes('fixed asset') || e.narration.toLowerCase().includes('capitalised')))
       );
+
+    // Extract vendor name if not explicitly provided
+    const creditorEntry = entries.find(e => parseFloat(e.credit || 0) > 0 || (e.glCode && e.glCode.startsWith('L2')));
+    const inferredVendorName = creditorEntry?.glName
+      ? creditorEntry.glName.replace(/\s*-\s*Sundry Creditor/i, '').trim()
+      : null;
+    const vendorName = details.vendorName || invoiceContext.vendorName || inferredVendorName || '-';
 
     return {
       invoiceId: raw.invoiceId || invoiceContext.id || details.invoiceId || '',
@@ -72,8 +82,8 @@ export const normalizeVoucherData = (raw, invoiceContext = {}) => {
       voucherType: details.voucherType || (isFixedAsset ? 'FIXED ASSET PURCHASE' : 'PURCHASE'),
       voucherDate: details.voucherDate || raw.voucherDate || new Date().toISOString().split('T')[0],
       financialYear: details.financialYear || raw.financialYear || '',
-      vendorName: details.vendorName || invoiceContext.vendorName || '-',
-      vendorGLCode: details.vendorGLCode || raw.vendorGLCode || details.glEntries?.find(e => parseFloat(e.credit || 0) > 0)?.glCode || '-',
+      vendorName,
+      vendorGLCode: details.vendorGLCode || raw.vendorGLCode || creditorEntry?.glCode || '-',
       invoiceRef: details.invoiceRef || raw.invoiceNumber || invoiceContext.invoiceNumber || '-',
       totalAmount: String(totalAmount),
       breakdown: {
