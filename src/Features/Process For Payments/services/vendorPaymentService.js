@@ -80,7 +80,9 @@ export const uploadVendorSystemPaymentFile = async (file, batchId = '') => {
  */
 export const downloadPaymentFileBlob = async (fileUrl, filename) => {
   let relativePath = fileUrl
-  if (fileUrl.includes('/api/v1/')) {
+  if (fileUrl.includes('/legacy/api/v1/')) {
+    relativePath = fileUrl.substring(fileUrl.indexOf('/legacy/api/v1/') + 14)
+  } else if (fileUrl.includes('/api/v1/')) {
     relativePath = fileUrl.substring(fileUrl.indexOf('/api/v1/') + 7)
   }
 

@@ -10,10 +10,19 @@ export default function ViewAgreementModal({ onClose, site }) {
     if (!url) return '#';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     
-    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    let cleanPath = url;
+    if (cleanPath.includes('/legacy/api/v1/accounts/')) {
+      cleanPath = cleanPath.substring(cleanPath.indexOf('/legacy/api/v1/accounts/') + 24);
+    } else if (cleanPath.includes('/api/v1/accounts/')) {
+      cleanPath = cleanPath.substring(cleanPath.indexOf('/api/v1/accounts/') + 17);
+    }
 
-    // Base URL is https://dev-int.ismart.org/api/v1/accounts
-    const baseApi = 'https://dev-int.ismart.org/api/v1/accounts';
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = `/${cleanPath}`;
+    }
+
+    // Base URL is https://dev-int.ismart.org/legacy/api/v1/accounts
+    const baseApi = 'https://dev-int.ismart.org/legacy/api/v1/accounts';
     return `${baseApi}${cleanPath}`;
   };
 
