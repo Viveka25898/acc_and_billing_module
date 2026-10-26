@@ -62,6 +62,7 @@ import PayrollTeamHome from '../Roles/Payroll Team/Components/PayrollTeamHome'
 import PayrollPaymentEntryPage from '../Features/Payment Entry for Salaries/Pages/PayrollPaymentEntryPage'
 import PayrollTeamSubmittedEntriesPage from '../Features/Payment Entry for Salaries/Components/PayrollTeamSubmittedEntriesPage'
 import AEPendingRequestsPage from '../Features/Payment Entry for Salaries/Pages/AEPendingRequestPage'
+import SalaryJournalVouchersPage from '../Features/Salary Processing/Pages/SalaryJournalVouchersPage'
 import GeneratePOPage from '../Features/Expense Booking other than Uniform and Materials/Pages/GeneratePOPage'
 import MyPOsList from '../Features/Expense Booking other than Uniform and Materials/Pages/MyPOList'
 import VendorUploadInvoicePage from '../Features/Expense Booking other than Uniform and Materials/Pages/VendorUploadInvoicePage'
@@ -732,8 +733,12 @@ export const router = createBrowserRouter([
         element: <AEPaidCompliancePage />,
       },
       {
+        path: 'salary-journal-vouchers',
+        element: <SalaryJournalVouchersPage />,
+      },
+      {
         path: 'salaries-pending-approvals',
-        element: <AEPendingRequestsPage />,
+        element: <SalaryJournalVouchersPage />,
       },
       {
         path: 'conveyance-approval',
