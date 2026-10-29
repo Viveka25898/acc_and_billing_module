@@ -1,85 +1,101 @@
-import React, { useState } from 'react'
+import React from 'react'
+import { Search, Building2, Calendar, X, Filter } from 'lucide-react'
 
 const AMInvoiceFilter = ({ filters, setFilters }) => {
-  const [localFilters, setLocalFilters] = useState(filters)
-
-  const handleInputChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target
-    setLocalFilters((prev) => ({ ...prev, [name]: value }))
+    setFilters({ ...filters, [name]: value })
   }
 
-  const handleApplyFilter = () => {
-    setFilters(localFilters)
-  }
-
-  const handleClearFilter = () => {
-    const clearedFilters = {
+  const handleClear = () => {
+    setFilters({
       invoiceNumber: '',
       vendorName: '',
       date: '',
-    }
-    setLocalFilters(clearedFilters)
-    setFilters(clearedFilters)
+    })
   }
 
+  const hasActiveFilters = Boolean(filters.invoiceNumber || filters.vendorName || filters.date)
+
   return (
-    <div className="bg-gray-50 p-4 rounded-lg mb-4 border">
-      <h3 className="text-md font-semibold mb-3 text-blue-700">Filter Invoices</h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {/* Invoice Number Filter */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Invoice Number</label>
-          <input
-            type="text"
-            name="invoiceNumber"
-            value={localFilters.invoiceNumber}
-            onChange={handleInputChange}
-            placeholder="e.g., INV-001"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
-          />
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5 mb-6 transition-all duration-200">
+      <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-green-600" />
+          <span className="text-gray-800 font-semibold text-sm">
+            Filter Invoices
+          </span>
+          {hasActiveFilters && (
+            <span className="bg-green-100 text-green-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
+              Active Filters
+            </span>
+          )}
         </div>
-
-        {/* Vendor Name Filter */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Vendor Name</label>
-          <input
-            type="text"
-            name="vendorName"
-            value={localFilters.vendorName}
-            onChange={handleInputChange}
-            placeholder="e.g., ABC Enterprises"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        {/* Date Filter */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Date</label>
-          <input
-            type="date"
-            name="date"
-            value={localFilters.date}
-            onChange={handleInputChange}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
+        {hasActiveFilters && (
+          <button
+            onClick={handleClear}
+            type="button"
+            className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1.5 transition-colors font-medium cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+            Clear all
+          </button>
+        )}
       </div>
 
-      {/* Filter Action Buttons */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={handleApplyFilter}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium"
-        >
-          Apply Filter
-        </button>
-        <button
-          onClick={handleClearFilter}
-          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
-        >
-          Clear Filter
-        </button>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Invoice Number */}
+        <div>
+          <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            Invoice Number
+          </label>
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              name="invoiceNumber"
+              value={filters.invoiceNumber || ''}
+              onChange={handleChange}
+              placeholder="Search by invoice #..."
+              className="w-full pl-9 pr-3 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 focus:bg-white transition-all text-gray-800 placeholder-gray-400"
+            />
+          </div>
+        </div>
+
+        {/* Vendor Name */}
+        <div>
+          <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            Vendor Name
+          </label>
+          <div className="relative">
+            <Building2 className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              name="vendorName"
+              value={filters.vendorName || ''}
+              onChange={handleChange}
+              placeholder="Search by vendor..."
+              className="w-full pl-9 pr-3 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 focus:bg-white transition-all text-gray-800 placeholder-gray-400"
+            />
+          </div>
+        </div>
+
+        {/* Submission Date */}
+        <div>
+          <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            Submission Date
+          </label>
+          <div className="relative">
+            <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="date"
+              name="date"
+              value={filters.date || ''}
+              onChange={handleChange}
+              className="w-full pl-9 pr-3 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 focus:bg-white transition-all text-gray-800 cursor-pointer"
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -130,11 +130,14 @@ const aeInvoiceSlice = createSlice({
         state.loading.fetch = false;
         const payloadData = action.payload?.data || action.payload || {};
         state.invoices = payloadData.invoices || [];
-        state.pagination = payloadData.pagination || {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          pageSize: 5
+        const rawPagination = payloadData.pagination || {};
+        state.pagination = {
+          currentPage: rawPagination.currentPage || 1,
+          totalPages: rawPagination.totalPages || 1,
+          totalItems: rawPagination.totalRecords || rawPagination.totalItems || 0,
+          pageSize: rawPagination.recordsPerPage || rawPagination.pageSize || 5,
+          totalRecords: rawPagination.totalRecords || rawPagination.totalItems || 0,
+          recordsPerPage: rawPagination.recordsPerPage || rawPagination.pageSize || 5
         };
       })
       .addCase(fetchAEPendingInvoices.rejected, (state, action) => {

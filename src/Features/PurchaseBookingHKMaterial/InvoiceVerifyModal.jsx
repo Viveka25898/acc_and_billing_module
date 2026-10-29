@@ -66,8 +66,8 @@ const InvoiceVerifyModal = ({ isOpen, onClose, invoice, handleUpdateInvoice, isS
         {/* Header */}
         <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-semibold flex items-baseline gap-2">
-            <span>Verify Invoice - {invoice.id}</span>
-            <span className="text-xs text-gray-500 font-normal">({invoice.invoiceNumber})</span>
+            <span>Verify Invoice - {invoice.invoiceNumber || invoice.id}</span>
+            <span className="text-xs text-gray-500 font-normal">({invoice.id})</span>
           </h2>
           <button onClick={onClose} className="text-gray-600 hover:text-red-600" disabled={isSubmitting}>
             X
