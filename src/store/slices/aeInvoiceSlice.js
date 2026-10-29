@@ -128,8 +128,9 @@ const aeInvoiceSlice = createSlice({
       })
       .addCase(fetchAEPendingInvoices.fulfilled, (state, action) => {
         state.loading.fetch = false;
-        state.invoices = action.payload.invoices || [];
-        state.pagination = action.payload.pagination || {
+        const payloadData = action.payload?.data || action.payload || {};
+        state.invoices = payloadData.invoices || [];
+        state.pagination = payloadData.pagination || {
           currentPage: 1,
           totalPages: 1,
           totalItems: 0,

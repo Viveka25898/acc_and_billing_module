@@ -258,18 +258,30 @@ export const submitAdvanceRequest = async (payload) => {
     throw new Error('Custom reason is required when "Other" is selected')
   }
 
-  // ── Build API Payload (snake_case — matches Postman) ─────────────────────
-  const apiPayload = {
-    amount,
-    reasons,
-    custom_reason: customReason,
-    request_date:  requestDate,
+  // ── Build API FormData (matches Postman form-data) ─────────────────────
+  const formData = new FormData()
+  formData.append('amount', amount.toString())
+  reasons.forEach((r) => {
+    formData.append('reasons', toAdvanceReasonCode(r))
+  })
+  formData.append('custom_reason', customReason || 'N/A')
+  formData.append('request_date', requestDate)
+
+  if (payload?.attachment) {
+    formData.append('attachments', payload.attachment)
+  } else if (payload?.attachments && Array.isArray(payload.attachments)) {
+    payload.attachments.forEach((file) => formData.append('attachments', file))
   }
 
   // ── API Call ─────────────────────────────────────────────────────────────
   const res = await callAdvanceRequestApi({
     method: 'post',
-    data: apiPayload,
+    data: formData,
+    config: {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
   })
 
   // ── Validate Response Shape ───────────────────────────────────────────────
