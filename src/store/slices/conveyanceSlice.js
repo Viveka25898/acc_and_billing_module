@@ -235,9 +235,10 @@ const conveyanceSlice = createSlice({
       })
       .addCase(fetchMyConveyanceClaims.fulfilled, (state, action) => {
         state.claimsLoading = false;
-        state.myClaims = action.payload?.claims || [];
-        state.pagination = action.payload?.pagination || initialState.pagination;
-        state.summary = action.payload?.summary || initialState.summary;
+        const payloadData = action.payload?.data || action.payload || {};
+        state.myClaims = payloadData.requests || payloadData.claims || (Array.isArray(payloadData) ? payloadData : []);
+        state.pagination = payloadData.pagination || initialState.pagination;
+        state.summary = payloadData.summary || initialState.summary;
       })
       .addCase(fetchMyConveyanceClaims.rejected, (state, action) => {
         state.claimsLoading = false;
@@ -251,7 +252,8 @@ const conveyanceSlice = createSlice({
       })
       .addCase(fetchConveyanceQueue.fulfilled, (state, action) => {
         state.queueLoading = false;
-        state.queueRequests = action.payload?.pendingRequests || [];
+        const payloadData = action.payload?.data || action.payload || {};
+        state.queueRequests = payloadData.pendingRequests || payloadData.requests || (Array.isArray(payloadData) ? payloadData : []);
       })
       .addCase(fetchConveyanceQueue.rejected, (state, action) => {
         state.queueLoading = false;

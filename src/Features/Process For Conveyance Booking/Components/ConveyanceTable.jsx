@@ -96,6 +96,37 @@ export default function ConveyanceTable({ requests, onViewReason, onViewFile }) 
                           <FiEye size={12} /> Reason
                         </button>
                       )}
+                      {((r.reports && r.reports.length > 0) || (r.receipts && r.receipts.length > 0)) && (
+                        <div className="flex items-center gap-1.5">
+                          {r.reports?.map((doc, idx) => (
+                            <a
+                              key={`rep-${idx}`}
+                              href={doc.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition border border-blue-200 flex items-center gap-1 shadow-sm"
+                              title={`View Report: ${doc.name || "Report"}`}
+                            >
+                              <FiFileText size={12} /> Report
+                            </a>
+                          ))}
+                          {r.receipts?.map((doc, idx) => (
+                            <a
+                              key={`rec-${idx}`}
+                              href={doc.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2 py-1 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition border border-emerald-200 flex items-center gap-1 shadow-sm"
+                              title={`View Receipt: ${doc.name || "Receipt"}`}
+                            >
+                              <FiFileText size={12} /> Receipt
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                      {!isRejected && (!r.reports || r.reports.length === 0) && (!r.receipts || r.receipts.length === 0) && (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
 import {
@@ -32,32 +32,123 @@ const AMInvoiceReviewPage = () => {
     vendorName: '',
     date: '',
   })
+  const hasActiveFilters = Boolean(filters.invoiceNumber || filters.vendorName || filters.date)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPurchaseVoucherModalOpen, setIsPurchaseVoucherModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
-  // Fetch pending invoices when page or filters change
+  // Fetch pending queue on mount and whenever currentPage changes
   useEffect(() => {
-    dispatch(fetchAMPendingInvoices({
-      page: currentPage,
-      limit: itemsPerPage,
-      invoiceNumber: filters.invoiceNumber || undefined,
-      vendorName: filters.vendorName || undefined,
-      date: filters.date || undefined,
-    }))
-  }, [dispatch, currentPage, filters])
+    dispatch(fetchAMPendingInvoices({ page: currentPage, limit: itemsPerPage }))
+  }, [dispatch, currentPage])
+
+  // Helper to format ISO submission date (e.g. "2026-10-29T15:04:16.980784Z")
+  const formatSubmittedDate = (dateStr) => {
+    if (!dateStr) return { date: '-', time: '' }
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return { date: String(dateStr), time: '' }
+      return {
+        date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+      }
+    } catch {
+      return { date: String(dateStr), time: '' }
+    }
+  }
+
+  // Filtered invoices matching invoiceNumber, vendorName, or submission date (100% frontend)
+  const filteredInvoices = useMemo(() => {
+    if (!Array.isArray(invoices)) return []
+    return invoices.filter((inv) => {
+      // 1. Invoice Number or ID filter (e.g. "INV-MAT-2024-124", "124", "INV")
+      if (filters.invoiceNumber && filters.invoiceNumber.trim()) {
+        const query = filters.invoiceNumber.trim().toLowerCase()
+        const invNum = String(inv.invoiceNumber || '').toLowerCase()
+        const invId = String(inv.id || '').toLowerCase()
+        if (!invNum.includes(query) && !invId.includes(query)) {
+          return false
+        }
+      }
+
+      // 2. Vendor Name filter (supports vendorName, vendorGLMappings, payableGLCode)
+      if (filters.vendorName && filters.vendorName.trim()) {
+        const query = filters.vendorName.trim().toLowerCase()
+        const vName = String(
+          inv.vendorName ||
+          inv.vendor_name ||
+          inv.vendor ||
+          inv.vendorGLMappings?.payableGLCode ||
+          inv.vendorGLMappings?.vendorName ||
+          inv.vendor_gl_mappings?.vendor_name ||
+          ''
+        ).toLowerCase()
+        if (!vName.includes(query)) {
+          return false
+        }
+      }
+
+      // 3. Submission Date filter (matches YYYY-MM-DD)
+      if (filters.date) {
+        const targetDate = filters.date.trim()
+        const rawDate =
+          inv.submittedAt ||
+          inv.submitted_at ||
+          inv.createdAt ||
+          inv.created_at ||
+          inv.date ||
+          ''
+        let invDateStr = ''
+        if (typeof rawDate === 'string' && rawDate.length >= 10) {
+          invDateStr = rawDate.slice(0, 10)
+        } else {
+          try {
+            invDateStr = new Date(rawDate).toISOString().slice(0, 10)
+          } catch {
+            invDateStr = ''
+          }
+        }
+        if (invDateStr !== targetDate) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [invoices, filters])
+
+  // Total pages and records calculation:
+  // When filters are active, use filtered records count
+  // When no filters are active, use backend pagination (e.g. 49 total records, 10 total pages)
+  const effectiveTotalPages = hasActiveFilters
+    ? Math.max(1, Math.ceil(filteredInvoices.length / itemsPerPage))
+    : (pagination.totalPages || Math.max(1, Math.ceil((pagination.totalRecords || invoices.length) / itemsPerPage)))
+
+  const effectiveTotalRecords = hasActiveFilters
+    ? filteredInvoices.length
+    : (pagination.totalRecords || pagination.totalItems || invoices.length)
+
+  // Invoices to display:
+  // When filtering client-side and list is longer than itemsPerPage: slice
+  // Otherwise display filteredInvoices directly
+  const displayInvoices = useMemo(() => {
+    if (hasActiveFilters && filteredInvoices.length > itemsPerPage) {
+      const startIndex = (currentPage - 1) * itemsPerPage
+      return filteredInvoices.slice(startIndex, startIndex + itemsPerPage)
+    }
+    return filteredInvoices
+  }, [filteredInvoices, hasActiveFilters, currentPage, itemsPerPage])
+
+  const handlePageChange = (page) => {
+    if (page < 1 || page > effectiveTotalPages || page === currentPage) return
+    setCurrentPage(page)
+  }
 
   // Refresh queue helper
   const handleRefresh = () => {
-    dispatch(fetchAMPendingInvoices({
-      page: currentPage,
-      limit: itemsPerPage,
-      invoiceNumber: filters.invoiceNumber || undefined,
-      vendorName: filters.vendorName || undefined,
-      date: filters.date || undefined,
-    }))
+    dispatch(fetchAMPendingInvoices({ page: currentPage, limit: itemsPerPage }))
     toast.info('Refreshing pending queue...')
   }
 
@@ -89,13 +180,7 @@ const AMInvoiceReviewPage = () => {
           if (invoices.length === 1 && currentPage > 1) {
             setCurrentPage((prev) => prev - 1)
           } else {
-            dispatch(fetchAMPendingInvoices({
-              page: currentPage,
-              limit: itemsPerPage,
-              invoiceNumber: filters.invoiceNumber || undefined,
-              vendorName: filters.vendorName || undefined,
-              date: filters.date || undefined,
-            }))
+            dispatch(fetchAMPendingInvoices({ page: currentPage, limit: itemsPerPage }))
           }
           closeModal()
 
@@ -164,7 +249,6 @@ const AMInvoiceReviewPage = () => {
   const activeVoucher = selectedInvoice ? vouchers[selectedInvoice.id] : null
   const isVoucherLoading = selectedInvoice ? !!loading.voucher[selectedInvoice.id] : false
   const voucherError = selectedInvoice ? errors?.voucher?.[selectedInvoice.id] : null
-  const hasActiveFilters = Boolean(filters.invoiceNumber || filters.vendorName || filters.date)
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto bg-gray-50/50 min-h-screen">
@@ -212,7 +296,7 @@ const AMInvoiceReviewPage = () => {
       )}
 
       {/* Empty State */}
-      {!loading.fetch && invoices.length === 0 && (
+      {!loading.fetch && displayInvoices.length === 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 px-4 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 text-green-600 mb-4">
             <Inbox className="w-8 h-8 stroke-[1.5]" />
@@ -235,7 +319,7 @@ const AMInvoiceReviewPage = () => {
       )}
 
       {/* Table block */}
-      {!loading.fetch && invoices.length > 0 && (
+      {!loading.fetch && displayInvoices.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-4">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -246,6 +330,7 @@ const AMInvoiceReviewPage = () => {
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Vendor Name</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap text-right">Amount (₹)</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">PO References</th>
+                  <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Submission Date</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Type</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">AE Remarks</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Status</th>
@@ -253,14 +338,14 @@ const AMInvoiceReviewPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {invoices.map((inv, index) => {
+                {displayInvoices.map((inv, index) => {
                   const isApproved = inv.accountManagerStatus === 'Approved' || inv.finalStatus === 'GL Posted - Completed'
                   const isRejected = inv.accountManagerStatus === 'Rejected' || inv.finalStatus === 'Rejected by Account Manager'
                   
                   return (
                     <tr key={inv.id} className="hover:bg-green-50/40 transition-colors duration-150">
                       <td className="px-4 py-3.5 font-medium text-gray-500 whitespace-nowrap">
-                        {(pagination.currentPage - 1) * (pagination.pageSize || pagination.recordsPerPage || 5) + index + 1}
+                        {(currentPage - 1) * itemsPerPage + index + 1}
                       </td>
                       <td className="px-4 py-3.5 font-medium text-gray-800 whitespace-nowrap">
                         <div className="font-semibold text-gray-900">{inv.invoiceNumber || inv.id || '-'}</div>
@@ -293,6 +378,17 @@ const AMInvoiceReviewPage = () => {
                         ) : (
                           <span className="text-gray-400 italic">No PO</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        {(() => {
+                          const { date, time } = formatSubmittedDate(inv.submittedAt || inv.submitted_at || inv.createdAt)
+                          return (
+                            <div>
+                              <div className="font-semibold text-gray-800 text-xs">{date}</div>
+                              {time && <div className="text-[11px] text-gray-400 font-normal">{time}</div>}
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
                         <span className="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full font-medium">
@@ -352,38 +448,40 @@ const AMInvoiceReviewPage = () => {
             <div>
               Showing{' '}
               <span className="font-semibold text-gray-700">
-                {(pagination.currentPage - 1) * (pagination.pageSize || pagination.recordsPerPage || 5) + 1}
+                {displayInvoices.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}
               </span>{' '}
               to{' '}
               <span className="font-semibold text-gray-700">
-                {Math.min(
-                  pagination.currentPage * (pagination.pageSize || pagination.recordsPerPage || 5),
-                  pagination.totalRecords || pagination.totalItems || invoices.length
-                )}
+                {Math.min(currentPage * itemsPerPage, effectiveTotalRecords)}
               </span>{' '}
               of{' '}
               <span className="font-semibold text-gray-700">
-                {pagination.totalRecords || pagination.totalItems || invoices.length}
+                {effectiveTotalRecords}
               </span>{' '}
               invoices
+              {hasActiveFilters && (
+                <span className="ml-1 text-gray-400">
+                  (filtered from {pagination.totalRecords || invoices.length} total)
+                </span>
+              )}
             </div>
 
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center gap-1.5">
+            {effectiveTotalPages > 1 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={pagination.currentPage === 1}
-                  className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Prev</span>
                 </button>
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                {Array.from({ length: effectiveTotalPages }, (_, i) => i + 1).map((page) => (
                   <button
                     key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-semibold transition-all ${
-                      page === pagination.currentPage
+                    onClick={() => handlePageChange(page)}
+                    className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      page === currentPage
                         ? 'bg-green-600 text-white shadow-sm'
                         : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                     }`}
@@ -392,9 +490,9 @@ const AMInvoiceReviewPage = () => {
                   </button>
                 ))}
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, pagination.totalPages))}
-                  disabled={pagination.currentPage === pagination.totalPages}
-                  className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === effectiveTotalPages}
+                  className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium cursor-pointer"
                 >
                   <span>Next</span>
                   <ChevronRight className="w-3.5 h-3.5" />
