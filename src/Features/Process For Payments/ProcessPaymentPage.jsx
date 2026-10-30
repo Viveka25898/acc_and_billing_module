@@ -22,7 +22,7 @@ import {
 } from '../../store/slices/vendorPaymentSlice'
 import { downloadPaymentFileBlob } from './services/vendorPaymentService'
 
-// ΓöÇΓöÇΓöÇ Constants ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── Constants ────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'vendor', label: 'Vendor Payments', color: 'green' },
   { id: 'reliever', label: 'Reliever Payments', color: 'blue' },
@@ -35,7 +35,7 @@ const TAB_ACTIVE_CLASSES = {
   purple: 'border-purple-500 text-purple-700 bg-purple-50',
 }
 
-// ΓöÇΓöÇΓöÇ Spinner ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── Spinner ──────────────────────────────────────────────────────────────────
 const Spinner = ({ size = 'md', color = 'green' }) => {
   const size_cls = size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-10 w-10' : 'h-6 w-6'
   const borderColors = {
@@ -53,7 +53,7 @@ const Spinner = ({ size = 'md', color = 'green' }) => {
   )
 }
 
-// ΓöÇΓöÇΓöÇ Tab Bar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── Tab Bar ──────────────────────────────────────────────────────────────────
 const PaymentTypeTabs = ({ activeTab, onTabChange }) => (
   <div className="flex gap-1 sm:gap-2 bg-gray-100 p-1 rounded-xl overflow-x-auto">
     {TABS.map((tab) => {
@@ -74,7 +74,7 @@ const PaymentTypeTabs = ({ activeTab, onTabChange }) => (
   </div>
 )
 
-// ΓöÇΓöÇΓöÇ Vendor Payments Section ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── Vendor Payments Section ──────────────────────────────────────────────────
 const VendorPaymentsSection = ({
   vendorData,
   setVendorData,
@@ -121,7 +121,7 @@ const VendorPaymentsSection = ({
   const [filesDownloaded, setFilesDownloaded] = useState(false)
   const [downloadingFiles, setDownloadingFiles] = useState(false)
 
-  // Local Page State ΓÇö Backend controls pageSize via response.pagination.pageSize
+  // Local Page State — Backend controls pageSize via response.pagination.pageSize
   const [currentPage, setCurrentPage] = useState(1)
 
   // Fetch pending vendor payments from backend API using backend-controlled pagination
@@ -192,7 +192,7 @@ const VendorPaymentsSection = ({
     }))
   }, [])
 
-  // Manual download handler ΓÇö Downloads files ONLY when user clicks "Download Files" button
+  // Manual download handler — Downloads files ONLY when user clicks "Download Files" button
   const handleDownloadGeneratedFiles = async () => {
     if (filesDownloaded) {
       toast.info('Files have already been downloaded for this batch.')
@@ -207,11 +207,11 @@ const VendorPaymentsSection = ({
     try {
       const batchTag = currentBatchId || 'Batch'
       if (downloads.bankFileUrl) {
-        toast.info('Downloading Bank Payment FileΓÇª')
+        toast.info('Downloading Bank Payment File...')
         await downloadPaymentFileBlob(downloads.bankFileUrl, `Bank_Payment_${batchTag}.xlsx`)
       }
       if (downloads.systemFileUrl) {
-        toast.info('Downloading System Payment FileΓÇª')
+        toast.info('Downloading System Payment File...')
         await downloadPaymentFileBlob(downloads.systemFileUrl, `System_Payment_${batchTag}.xlsx`)
       }
       toast.success('Downloaded generated payment files successfully.')
@@ -283,7 +283,7 @@ const VendorPaymentsSection = ({
     setIsBankModalOpen(true)
   }
 
-  // ΓöÇΓöÇ Bank selection confirm handler ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Bank selection confirm handler ─────────────────────────────────────────
   const handleBankConfirm = async (bank) => {
     setIsBankModalOpen(false)
 
@@ -405,20 +405,20 @@ const VendorPaymentsSection = ({
               {fileGenerating ? (
                 <>
                   <Spinner size="sm" color="green" />
-                  Generating FilesΓÇª
+                  Generating Files...
                 </>
               ) : downloadingFiles ? (
                 <>
                   <Spinner size="sm" color="green" />
-                  DownloadingΓÇª
+                  Downloading...
                 </>
               ) : filesDownloaded ? (
                 <>
-                  <span>Γ£ô</span> Files Downloaded
+                  <span>✓</span> Files Downloaded
                 </>
               ) : (
                 <>
-                  Γ¼ç Download Files
+                  ⬇ Download Files
                   {hasFilesToDownload && (
                     <span className="bg-green-600 text-white text-[10px] sm:text-xs rounded-full px-2 py-0.5 animate-pulse">
                       Ready
@@ -466,7 +466,7 @@ const VendorPaymentsSection = ({
               Total Amount Payable
             </span>
             <p className="text-lg font-bold text-green-700 mt-0.5">
-              Γé╣{totalPayableVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₹{totalPayableVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </p>
           </div>
           <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-sm">
@@ -482,7 +482,7 @@ const VendorPaymentsSection = ({
             Vendor Invoice Management
             {!apiLoading && (
               <span className="text-xs font-normal text-gray-400">
-                (Page {activePage} of {totalPages} ΓÇö {vendorData.length} vendors)
+                (Page {activePage} of {totalPages} — {vendorData.length} vendors)
               </span>
             )}
           </h3>
@@ -493,12 +493,12 @@ const VendorPaymentsSection = ({
           <div className="flex items-center justify-center py-16">
             <div className="text-center space-y-3">
               <Spinner size="lg" color="green" />
-              <p className="text-xs sm:text-sm text-gray-500">Loading pending vendor paymentsΓÇª</p>
+              <p className="text-xs sm:text-sm text-gray-500">Loading pending vendor payments...</p>
             </div>
           </div>
         ) : apiError ? (
           <div className="p-8 text-center space-y-3">
-            <div className="text-3xl text-red-400">ΓÜá∩╕Å</div>
+            <div className="text-3xl text-red-400">⚠️</div>
             <p className="text-xs sm:text-sm font-medium text-red-600">{apiError}</p>
             <button
               onClick={() => loadPendingVendorPayments(activePage)}
@@ -550,7 +550,7 @@ const VendorPaymentsSection = ({
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
                 }`}
             >
-              Γùä Prev
+              ◀ Prev
             </button>
 
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -575,7 +575,7 @@ const VendorPaymentsSection = ({
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100'
                 }`}
             >
-              Next Γû║
+              Next ▶
             </button>
           </div>
         </div>
@@ -629,7 +629,7 @@ const VendorPaymentsSection = ({
   )
 }
 
-// ΓöÇΓöÇΓöÇ Root Page ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── Root Page ────────────────────────────────────────────────────────────────
 export default function ProcessPaymentPage() {
   const [activeTab, setActiveTab] = useState('vendor')
 

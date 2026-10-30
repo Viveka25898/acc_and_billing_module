@@ -112,7 +112,7 @@ const RelieverPaymentPage = () => {
       try {
         rawHeader = await RelieverLedgerService.getPaymentHeaderApi(accountCode)
       } catch (err) {
-        console.warn('ΓÜá∩╕Å Header API failed, using fallback metadata:', err)
+        console.warn('⚠️ Header API failed, using fallback metadata:', err)
         rawHeader = RelieverLedgerService.getRelieverAccountDetails(accountCode)
       }
 
@@ -127,7 +127,7 @@ const RelieverPaymentPage = () => {
         entriesRes = eRes
         footerRes = fRes
       } catch (err) {
-        console.warn('ΓÜá∩╕Å Entries/Footer API failed, using fallback local entries:', err)
+        console.warn('⚠️ Entries/Footer API failed, using fallback local entries:', err)
         const localEntries = RelieverLedgerService.getRelieverLedgerEntries(accountCode)
         const localSummary = RelieverLedgerService.getSummaryData(localEntries)
         entriesRes = {
@@ -226,9 +226,9 @@ const RelieverPaymentPage = () => {
           uniqueRelievers.size > 0 ? uniqueRelievers.size : rawHeader?.totalRelievers || 15,
         totalTransactions: entriesRes?.pagination?.totalItems || mappedEntries.length,
         status: rawHeader?.status || 'Active',
-        currency: rawHeader?.currency || 'INR (Γé╣)',
+        currency: rawHeader?.currency || 'INR (₹)',
         costCenter: rawHeader?.costCenter || 'Operations - Staff Management',
-        budgetAllocated: rawHeader?.budgetAllocated || 'Γé╣200,000.00',
+        budgetAllocated: rawHeader?.budgetAllocated || '₹200,000.00',
         budgetUtilized: rawHeader?.budgetUtilized || '62.5%',
       }
 
@@ -265,7 +265,7 @@ const RelieverPaymentPage = () => {
         })
       }
     } catch (err) {
-      console.error('Γ¥î Error loading reliever payment ledger data:', err)
+      console.error('❌ Error loading reliever payment ledger data:', err)
       setError(err.message || 'Failed to fetch reliever payment ledger details.')
     } finally {
       setLoading(false)
@@ -362,7 +362,7 @@ const RelieverPaymentPage = () => {
     return (
       <div className="min-h-screen p-4 md:p-6 flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-xl border border-red-100">
-          <div className="text-red-500 text-5xl mb-4">ΓÜá∩╕Å</div>
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h3 className="text-xl font-bold text-gray-800 mb-2">Failed to Load Ledger</h3>
           <p className="text-gray-600 mb-6 text-sm">{error}</p>
           <button

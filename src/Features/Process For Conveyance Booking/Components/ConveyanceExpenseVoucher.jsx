@@ -78,7 +78,7 @@ const ConveyanceExpenseVoucher = ({ data: rawData = {}, onClose }) => {
   const formatAmount = (amount) => {
     if (amount === undefined || amount === null || isNaN(amount)) return "-";
     const num = parseFloat(amount);
-    return `Γé╣${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₹${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
@@ -92,10 +92,12 @@ const ConveyanceExpenseVoucher = ({ data: rawData = {}, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:bg-white/20 p-2 rounded-xl text-xl font-bold transition cursor-pointer"
+            className="text-white hover:bg-white/20 p-2 rounded-xl transition cursor-pointer flex items-center justify-center"
             aria-label="Close"
           >
-            Γ£ò
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -156,7 +158,7 @@ const ConveyanceExpenseVoucher = ({ data: rawData = {}, onClose }) => {
                     <th className="px-3 py-2.5 border-b">Purpose</th>
                     <th className="px-3 py-2.5 border-b">Transport</th>
                     <th className="px-3 py-2.5 border-b">Distance</th>
-                    <th className="px-3 py-2.5 border-b text-right">Amount (Γé╣)</th>
+                    <th className="px-3 py-2.5 border-b text-right">Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -188,8 +190,8 @@ const ConveyanceExpenseVoucher = ({ data: rawData = {}, onClose }) => {
                     <th className="px-3 py-2.5 border-b">GL Code</th>
                     <th className="px-3 py-2.5 border-b">GL Account Name</th>
                     <th className="px-3 py-2.5 border-b">Narration</th>
-                    <th className="px-3 py-2.5 border-b text-right">Debit (Γé╣)</th>
-                    <th className="px-3 py-2.5 border-b text-right">Credit (Γé╣)</th>
+                    <th className="px-3 py-2.5 border-b text-right">Debit (₹)</th>
+                    <th className="px-3 py-2.5 border-b text-right">Credit (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -226,8 +228,8 @@ const ConveyanceExpenseVoucher = ({ data: rawData = {}, onClose }) => {
           </div>
 
           {/* Footer Note */}
-          <div className="p-3 bg-green-50 text-green-800 text-xs text-center rounded-xl font-medium border border-green-200">
-            Γ£à GL entries successfully posted. Reimbursement voucher generated for employee settlement.
+          <div className="p-3 bg-green-50 text-green-800 text-xs text-center rounded-xl font-medium border border-green-200 flex items-center justify-center gap-1.5">
+            <span className="font-bold text-green-600">✓</span> GL entries successfully posted. Reimbursement voucher generated for employee settlement.
           </div>
         </div>
       </div>

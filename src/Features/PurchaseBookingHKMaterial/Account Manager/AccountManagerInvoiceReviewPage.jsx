@@ -260,7 +260,7 @@ const AMInvoiceReviewPage = () => {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              Invoice Processing ΓÇô Account Manager Review
+              Invoice Processing – Account Manager Review
             </h1>
             <p className="text-green-100 text-sm mt-0.5">
               Review and approve / reject material invoices for final posting
@@ -328,7 +328,7 @@ const AMInvoiceReviewPage = () => {
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Sr No</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Invoice Number</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Vendor Name</th>
-                  <th className="px-4 py-3.5 font-semibold whitespace-nowrap text-right">Amount (Γé╣)</th>
+                  <th className="px-4 py-3.5 font-semibold whitespace-nowrap text-right">Amount (₹)</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">PO References</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Submission Date</th>
                   <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Type</th>
@@ -355,7 +355,7 @@ const AMInvoiceReviewPage = () => {
                         {inv.vendorName || '-'}
                       </td>
                       <td className="px-4 py-3.5 font-semibold text-gray-900 whitespace-nowrap text-right">
-                        {inv.totalAmount ? `Γé╣${parseFloat(inv.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                        {inv.totalAmount ? `₹${parseFloat(inv.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                       </td>
                       <td className="px-4 py-3.5 text-xs">
                         {inv.poDocuments && inv.poDocuments.length > 0 ? (
