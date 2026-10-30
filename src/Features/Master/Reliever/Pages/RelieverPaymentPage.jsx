@@ -7,10 +7,9 @@ import FilterSection from '../Components/FilterSection'
 import { RelieverLedgerService } from '../../utils/relieverLedgerService'
 
 const RelieverPaymentPage = () => {
-  const accountCode = 'X2002002001'
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Derive parameters from the URL
+  const accountCode = searchParams.get('accountCode') || 'X1001001003'
   const page = parseInt(searchParams.get('page') || '1', 10)
   const fromDate = searchParams.get('fromDate') || ''
   const toDate = searchParams.get('toDate') || ''
@@ -20,7 +19,7 @@ const RelieverPaymentPage = () => {
   const reliever = searchParams.get('reliever') || 'All'
   const searchText = searchParams.get('searchText') || ''
 
-  // Sync derived filters to local state so input controls match the URL
+  // Sync derived filters to local state so inputs reflect URL
   const [filters, setFilters] = useState({
     fromDate,
     toDate,
@@ -31,7 +30,7 @@ const RelieverPaymentPage = () => {
     searchText,
   })
 
-  // Sync state if URL changes externally
+  // Sync state if URL changes externally (browser back/forward)
   useEffect(() => {
     setFilters({
       fromDate,
@@ -65,149 +64,215 @@ const RelieverPaymentPage = () => {
     hasPreviousPage: false,
   })
 
-  // Fetch data whenever URL query parameters change
+  // Load ledger data whenever relevant parameters change
   useEffect(() => {
     loadLedgerData()
-  }, [page, fromDate, toDate, entryType, status])
+  }, [accountCode, page, fromDate, toDate, entryType, status])
+
+  // Extract reliever name from narration if formatted with " - "
+  const getRelieverNameFromNarration = (narration) => {
+    if (!narration) return '-'
+    const parts = narration.split(' - ')
+    if (parts.length >= 2) {
+      return parts[1].trim()
+    }
+    return '-'
+  }
 
   const loadLedgerData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      console.log(`🔄 Fetching reliever expense ledger from API for ${accountCode}, page: ${page}`)
+      console.log(`≡ƒöä Fetching reliever payment ledger from API for ${accountCode}, page: ${page}`)
 
-      // Prepare request query parameters
       const entriesParams = {
         page,
         limit: 20,
-        fromDate,
-        toDate,
-        entryType,
-        status,
-        site,
-        reliever,
-        searchText,
       }
-      const footerParams = {
-        fromDate,
-        toDate,
+      const footerParams = {}
+
+      if (fromDate) {
+        entriesParams.fromDate = fromDate
+        footerParams.fromDate = fromDate
+      }
+      if (toDate) {
+        entriesParams.toDate = toDate
+        footerParams.toDate = toDate
+      }
+      if (entryType && entryType !== 'All') {
+        entriesParams.entryType = entryType
+      }
+      if (status && status !== 'All') {
+        entriesParams.status = status
       }
 
-      // 1. Fetch Header Details (with fallback to default object on error)
+      // 1. Fetch Header Details (with fallback to default reliever metadata)
       let rawHeader = null
       try {
-        rawHeader = await RelieverLedgerService.getExpenseHeaderApi(accountCode)
+        rawHeader = await RelieverLedgerService.getPaymentHeaderApi(accountCode)
       } catch (err) {
-        console.warn('⚠️ Expense Header API error, using safe fallback values:', err)
-        rawHeader = {
-          glAccountCode: accountCode,
-          accountName: 'Reliever payments',
-          accountType: 'Expense Account (Profit & Loss)',
-          description: 'Temporary Staff Replacement Payments',
-          financialYear: 'FY2024-25',
-          period: 'Apr 2024 - Mar 2025',
-          totalSites: 0,
-          totalRelievers: 0,
-          totalTransactions: 0,
-          accountStatus: 'Active',
-          currency: 'INR (₹)',
-          costCenter: 'Operations - Staff Management',
-          openingBalance: '0.00',
-          openingBalanceDate: '01-Apr-2024',
-          openingBalanceType: 'Expense Account | Temporary Staff Coverage',
+        console.warn('ΓÜá∩╕Å Header API failed, using fallback metadata:', err)
+        rawHeader = RelieverLedgerService.getRelieverAccountDetails(accountCode)
+      }
+
+      // 2. Fetch Entries and Footer summaries in parallel (with fallback to local storage entries)
+      let entriesRes = null
+      let footerRes = null
+      try {
+        const [eRes, fRes] = await Promise.all([
+          RelieverLedgerService.getPaymentEntriesApi(accountCode, entriesParams),
+          RelieverLedgerService.getPaymentFooterApi(accountCode, footerParams),
+        ])
+        entriesRes = eRes
+        footerRes = fRes
+      } catch (err) {
+        console.warn('ΓÜá∩╕Å Entries/Footer API failed, using fallback local entries:', err)
+        const localEntries = RelieverLedgerService.getRelieverLedgerEntries(accountCode)
+        const localSummary = RelieverLedgerService.getSummaryData(localEntries)
+        entriesRes = {
+          entries: localEntries,
+          pagination: {
+            page: 1,
+            totalPages: 1,
+            totalItems: localEntries.length,
+            hasNextPage: false,
+            hasPreviousPage: false,
+          },
+        }
+        footerRes = {
+          totalDebit: localSummary.totalDebit,
+          totalCredit: localSummary.totalCredit,
+          closingBalance: localSummary.closingBalance,
         }
       }
 
-      // 2. Fetch Entries and Footer summaries in parallel
-      const [entriesRes, footerRes] = await Promise.all([
-        RelieverLedgerService.getExpenseEntriesApi(accountCode, entriesParams),
-        RelieverLedgerService.getExpenseFooterApi(accountCode, footerParams),
-      ])
-
-      // 3. Compile transaction rows from API entries response
+      // 3. Compile transaction rows from entries response
       const rawEntries = entriesRes?.entries || []
-      const mappedEntries = rawEntries.map((entry, index) => {
-        const debitAmount = entry.debit !== null && entry.debit !== undefined ? parseFloat(entry.debit) : null
-        const creditAmount = entry.credit !== null && entry.credit !== undefined ? parseFloat(entry.credit) : null
-        
-        // Parse balance string (e.g. "29640.00 DR")
-        let balanceAmount = null
-        if (entry.balance !== null && entry.balance !== undefined) {
-          if (typeof entry.balance === 'number') {
-            balanceAmount = entry.balance
-          } else {
-            const numericPart = String(entry.balance).replace(/[^0-9.]/g, '')
-            balanceAmount = numericPart ? parseFloat(numericPart) : null
-          }
-        }
+      const mappedEntries = rawEntries.map((entry, idx) => {
+        const debitAmount =
+          entry.debit !== undefined && entry.debit !== null && entry.debit !== '-'
+            ? parseFloat(entry.debit)
+            : null
+        const creditAmount =
+          entry.credit !== undefined && entry.credit !== null && entry.credit !== '-'
+            ? parseFloat(entry.credit)
+            : null
+        const balanceAmount =
+          entry.balance !== undefined && entry.balance !== null && entry.balance !== '-'
+            ? parseFloat(entry.balance)
+            : null
 
         return {
-          id: entry.id || `exp_${index}`,
+          id: entry.id || entry.transactionId || idx + 1,
           date: entry.date || '-',
           voucherNo: entry.voucherNo || '-',
-          type: entry.type || 'Payment',
+          type: entry.entryType || entry.type || (debitAmount ? 'Payment' : 'Receipt'),
           debit: debitAmount,
           credit: creditAmount,
           balance: balanceAmount,
           narration: entry.narration || '-',
-          relieverName: entry.relieverName || '-',
-          replacedEmployee: entry.replacedEmployee || '-',
+          relieverName: entry.relieverName || getRelieverNameFromNarration(entry.narration),
+          replacedEmployee: entry.replacedEmployee || entry.employeeName || '-',
           site: entry.site || '-',
-          customer: entry.customer || '-',
+          customer: entry.customer || entry.clientName || '-',
           state: entry.state || '-',
-          days: entry.days !== undefined && entry.days !== null ? entry.days : 1,
+          days: entry.days || 1,
+          ratePerDay: entry.ratePerDay
+            ? parseFloat(entry.ratePerDay)
+            : debitAmount || creditAmount || null,
           approvedBy: entry.approvedBy || '-',
-          rowType: 'normal',
+          rowType: entry.rowType || 'normal',
         }
       })
 
-      // Compile Header Meta Data
+      // Calculate dynamic counts
+      const uniqueSites = new Set(mappedEntries.map((e) => e.site).filter((s) => s && s !== '-'))
+      const uniqueRelievers = new Set(
+        mappedEntries.map((e) => e.relieverName).filter((r) => r && r !== '-')
+      )
+
       const compiledHeader = {
-        ledgerCode: rawHeader.glAccountCode || rawHeader.glCode || accountCode,
-        accountName: rawHeader.accountName || 'Reliever payments',
-        accountType: rawHeader.accountType || 'Expense Account (Profit & Loss)',
-        description: rawHeader.description || 'Temporary Staff Replacement Payments',
-        period: rawHeader.period || 'Apr 2024 - Mar 2025',
-        financialYear: rawHeader.financialYear || 'FY2024-25',
-        openingBalance: parseFloat(rawHeader.openingBalance || 0),
-        openingBalanceDate: rawHeader.openingBalanceDate || '01-Apr-2024',
-        totalSites: rawHeader.totalSites !== undefined && rawHeader.totalSites !== null ? rawHeader.totalSites : '-',
-        totalRelievers: rawHeader.totalRelievers !== undefined && rawHeader.totalRelievers !== null ? rawHeader.totalRelievers : '-',
-        totalTransactions: rawHeader.totalTransactions !== undefined && rawHeader.totalTransactions !== null
-          ? rawHeader.totalTransactions
-          : (entriesRes?.pagination?.totalItems || mappedEntries.length),
-        status: rawHeader.accountStatus || rawHeader.status || 'Active',
-        currency: rawHeader.currency || 'INR (₹)',
-        costCenter: rawHeader.costCenter || 'Operations - Staff Management',
+        ledgerCode:
+          rawHeader?.glCode ||
+          rawHeader?.ledgerCode ||
+          rawHeader?.expenseHeadCode ||
+          accountCode,
+        accountName:
+          rawHeader?.ledgerName ||
+          rawHeader?.accountName ||
+          rawHeader?.expenseHeadName ||
+          'RELIEVER PAYMENTS',
+        accountType: rawHeader?.accountType
+          ? rawHeader.accountType.includes('Account')
+            ? rawHeader.accountType
+            : `${rawHeader.accountType} Account (Profit & Loss)`
+          : 'Expense Account (Profit & Loss)',
+        description: rawHeader?.description || 'Temporary Staff Replacement Payments',
+        period:
+          rawHeader?.period ||
+          rawHeader?.financialYear ||
+          RelieverLedgerService.getCurrentFinancialPeriod(),
+        financialYear:
+          rawHeader?.financialYear || RelieverLedgerService.getCurrentFinancialYear(),
+        openingBalance:
+          typeof rawHeader?.openingBalance === 'number'
+            ? rawHeader.openingBalance
+            : parseFloat(rawHeader?.openingBalance || 0),
+        openingBalanceDate:
+          rawHeader?.openingBalanceDate || RelieverLedgerService.getOpeningBalanceDate(),
+        totalSites: uniqueSites.size > 0 ? uniqueSites.size : rawHeader?.totalSites || 8,
+        totalRelievers:
+          uniqueRelievers.size > 0 ? uniqueRelievers.size : rawHeader?.totalRelievers || 15,
+        totalTransactions: entriesRes?.pagination?.totalItems || mappedEntries.length,
+        status: rawHeader?.status || 'Active',
+        currency: rawHeader?.currency || 'INR (Γé╣)',
+        costCenter: rawHeader?.costCenter || 'Operations - Staff Management',
+        budgetAllocated: rawHeader?.budgetAllocated || 'Γé╣200,000.00',
+        budgetUtilized: rawHeader?.budgetUtilized || '62.5%',
       }
 
       setHeaderData(compiledHeader)
       setLedgerEntries(mappedEntries)
 
-      // 4. Update Summary details from footer API response
       if (footerRes) {
         setSummaryData({
-          openingBalance: parseFloat(footerRes.openingBalance || 0),
-          totalDebit: parseFloat(footerRes.totalDebit || 0),
-          totalCredit: parseFloat(footerRes.totalCredit || 0),
-          closingBalance: parseFloat(footerRes.closingBalance || 0),
+          openingBalance: parseFloat(compiledHeader.openingBalance || 0),
+          totalDebit: parseFloat(footerRes.totalDebit || footerRes.totalPayments || 0),
+          totalCredit: parseFloat(footerRes.totalCredit || footerRes.totalClaims || 0),
+          closingBalance: parseFloat(
+            footerRes.closingBalance || footerRes.closingOutstandingLiability || 0
+          ),
         })
+      } else {
+        const computed = RelieverLedgerService.getSummaryData(mappedEntries)
+        setSummaryData(computed)
       }
 
-      // 5. Update pagination state
       if (entriesRes?.pagination) {
-        setPagination(entriesRes.pagination)
+        setPagination({
+          page: entriesRes.pagination.currentPage || entriesRes.pagination.page || page,
+          limit: entriesRes.pagination.limit || entriesRes.pagination.recordsPerPage || 20,
+          totalItems:
+            entriesRes.pagination.totalItems ||
+            entriesRes.pagination.totalRecords ||
+            mappedEntries.length,
+          totalPages: entriesRes.pagination.totalPages || 1,
+          hasNextPage:
+            entriesRes.pagination.hasNextPage ??
+            page < (entriesRes.pagination.totalPages || 1),
+          hasPreviousPage: entriesRes.pagination.hasPreviousPage ?? page > 1,
+        })
       }
     } catch (err) {
-      console.error('❌ Error loading reliever expense ledger data:', err)
-      setError(err.message || 'Failed to fetch reliever expense ledger details.')
+      console.error('Γ¥î Error loading reliever payment ledger data:', err)
+      setError(err.message || 'Failed to fetch reliever payment ledger details.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Filter transactions in frontend dynamically based on search filters (as supplementary support)
+  // Frontend filter refinement for instant responsiveness
   const filteredTransactions = useMemo(() => {
     let filtered = [...ledgerEntries]
 
@@ -215,7 +280,9 @@ const RelieverPaymentPage = () => {
       filtered = filtered.filter((e) => e.site?.toLowerCase().includes(site.toLowerCase()))
     }
     if (reliever && reliever !== 'All') {
-      filtered = filtered.filter((e) => e.relieverName?.toLowerCase().includes(reliever.toLowerCase()))
+      filtered = filtered.filter((e) =>
+        e.relieverName?.toLowerCase().includes(reliever.toLowerCase())
+      )
     }
     if (searchText.trim()) {
       const search = searchText.toLowerCase()
@@ -224,16 +291,29 @@ const RelieverPaymentPage = () => {
           e.relieverName?.toLowerCase().includes(search) ||
           e.narration?.toLowerCase().includes(search) ||
           e.voucherNo?.toLowerCase().includes(search) ||
-          e.site?.toLowerCase().includes(search)
+          e.site?.toLowerCase().includes(search) ||
+          e.customer?.toLowerCase().includes(search)
       )
     }
 
     return filtered
   }, [ledgerEntries, site, reliever, searchText])
 
-  // Trigger search fetch on filter click
+  // Dynamic summary based on filtered transactions
+  const filteredSummary = useMemo(() => {
+    if (filteredTransactions.length === ledgerEntries.length) {
+      return summaryData
+    }
+    const computed = RelieverLedgerService.getSummaryData(filteredTransactions)
+    return {
+      ...computed,
+      openingBalance: summaryData.openingBalance,
+    }
+  }, [filteredTransactions, ledgerEntries, summaryData])
+
   const handleApplyFilter = () => {
     const newParams = {
+      accountCode,
       page: '1',
       fromDate: filters.fromDate,
       toDate: filters.toDate,
@@ -244,7 +324,6 @@ const RelieverPaymentPage = () => {
       searchText: filters.searchText,
     }
 
-    // Clean up empty params
     Object.keys(newParams).forEach((key) => {
       if (newParams[key] === '' || newParams[key] === 'All' || newParams[key] === null) {
         delete newParams[key]
@@ -273,7 +352,7 @@ const RelieverPaymentPage = () => {
       <div className="min-h-screen p-4 md:p-6 flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading reliever expense ledger data...</p>
+          <p className="mt-4 text-gray-600 font-medium">Loading reliever payment ledger data...</p>
         </div>
       </div>
     )
@@ -283,7 +362,7 @@ const RelieverPaymentPage = () => {
     return (
       <div className="min-h-screen p-4 md:p-6 flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-xl border border-red-100">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <div className="text-red-500 text-5xl mb-4">ΓÜá∩╕Å</div>
           <h3 className="text-xl font-bold text-gray-800 mb-2">Failed to Load Ledger</h3>
           <p className="text-gray-600 mb-6 text-sm">{error}</p>
           <button
@@ -309,14 +388,16 @@ const RelieverPaymentPage = () => {
             filters={filters}
             onFilterChange={setFilters}
             onApplyFilter={handleApplyFilter}
-            onClear={() => setSearchParams({ page: '1' })}
+            onClear={() => setSearchParams({ accountCode, page: '1' })}
             onPrint={handlePrint}
           />
 
           {/* Action Bar */}
           <div className="px-6 py-3 bg-gray-50 border-b flex justify-between items-center text-xs md:text-sm">
             <div className="text-gray-600 font-medium">
-              Showing Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> ({pagination.totalItems || filteredTransactions.length} entries)
+              Showing Page <strong>{pagination.page}</strong> of{' '}
+              <strong>{pagination.totalPages}</strong> (
+              {pagination.totalItems || filteredTransactions.length} entries)
             </div>
             {loading && (
               <div className="flex items-center gap-2 text-green-600 text-xs font-semibold">
@@ -335,7 +416,8 @@ const RelieverPaymentPage = () => {
           {pagination && pagination.totalPages > 1 && (
             <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-white">
               <span className="text-xs md:text-sm text-gray-500 font-medium">
-                Showing Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> ({pagination.totalItems} entries)
+                Showing Page <strong>{pagination.page}</strong> of{' '}
+                <strong>{pagination.totalPages}</strong> ({pagination.totalItems} entries)
               </span>
               <div className="flex gap-2">
                 <button
@@ -356,8 +438,8 @@ const RelieverPaymentPage = () => {
             </div>
           )}
 
-          {/* Summary Section with DR balance type designation */}
-          <Summary summary={summaryData} balanceType="DR" />
+          {/* Summary Section (Reliever Payments is an Expense Account, so default balance is DR) */}
+          <Summary summary={filteredSummary} balanceType="DR" />
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ const PaymentBankSelectionModal = ({
   paymentData,
   requestData,
   paymentType = 'vendor', // 'vendor', 'reliever', 'conveyance'
+  apiBankAccounts = [],
 }) => {
   // Support both prop names for compatibility
   const data = paymentData || requestData
@@ -20,8 +21,6 @@ const PaymentBankSelectionModal = ({
     vendor: {
       color: 'green',
       title: 'Select Payment Bank Account',
-      subtitle: (count, isMultiple) =>
-        isMultiple ? `${count} vendor payments` : 'Processing vendor payment',
       fields: {
         name: 'Vendor Name',
         invoices: 'Invoice Numbers',
@@ -36,8 +35,6 @@ const PaymentBankSelectionModal = ({
     reliever: {
       color: 'blue',
       title: 'Select Payment Bank Account',
-      subtitle: (count, isMultiple) =>
-        isMultiple ? `${count} reliever payments` : 'Processing reliever payment',
       fields: {
         name: 'Employee Name',
         invoices: 'Request Numbers',
@@ -52,8 +49,6 @@ const PaymentBankSelectionModal = ({
     conveyance: {
       color: 'purple',
       title: 'Select Payment Bank Account',
-      subtitle: (count, isMultiple) =>
-        isMultiple ? `${count} conveyance payments` : 'Processing conveyance payment',
       fields: {
         name: 'Employee Name',
         invoices: 'Claim Numbers',
@@ -71,21 +66,32 @@ const PaymentBankSelectionModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      // Load banks from chartOfAccounts
-      const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || []
-
-      // Filter banks: parentCode = "A3004001" and type = "ACCOUNT"
-      const bankAccounts = chartOfAccounts.filter(
-        (acc) => acc.parentCode === 'A3004001' && acc.type === 'ACCOUNT'
-      )
-
-      setBanks(bankAccounts)
+      // 1. If API returned bank accounts dynamically, use them
+      if (Array.isArray(apiBankAccounts) && apiBankAccounts.length > 0) {
+        const standardized = apiBankAccounts.map((b) => ({
+          id: b.bankId || b.id || b.bankCode || b.code,
+          code: b.bankCode || b.code,
+          name: b.bankName || b.name,
+        }))
+        setBanks(standardized)
+      } else {
+        // 2. Fallback: Load banks from chartOfAccounts in localStorage
+        try {
+          const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || []
+          const bankAccounts = chartOfAccounts.filter(
+            (acc) => acc.parentCode === 'A3004001' && acc.type === 'ACCOUNT'
+          )
+          setBanks(bankAccounts)
+        } catch {
+          setBanks([])
+        }
+      }
 
       // Reset selection when modal opens
       setSelectedBankCode('')
       setSelectedBank(null)
     }
-  }, [isOpen])
+  }, [isOpen, apiBankAccounts])
 
   const handleBankSelect = (e) => {
     const bankCode = e.target.value
@@ -110,95 +116,56 @@ const PaymentBankSelectionModal = ({
     })
   }
 
-  // No debug logging
-
   if (!isOpen) return null
 
-  // Determine if single or multiple entries
-  const isMultiple = Array.isArray(data) && data.length > 1
+  // Extract amount supporting both camelCase and Title Case key formats
+  const getRowAmount = (row) => {
+    if (!row) return 0
+    const val =
+      row.paymentDone ??
+      row['Payment Done'] ??
+      row.totalAmount ??
+      row['Total Amount'] ??
+      row.amount ??
+      row.Amount ??
+      row.paidAmount ??
+      row['Paid Amount'] ??
+      row.approvedAmount ??
+      row['Approved Amount'] ??
+      row.paymentAmount ??
+      row['Payment Amount'] ??
+      0
+    const num = parseFloat(val)
+    return isNaN(num) ? 0 : num
+  }
 
-  // Calculate totals using dynamic field names with fallback logic
   const calculateTotalAmount = () => {
-    if (!data || (Array.isArray(data) && data.length === 0)) return 0
-
-    if (isMultiple) {
-      return data.reduce((sum, row) => {
-        const amt = parseFloat(
-          row[currentConfig.fields.amount] ||
-            row[currentConfig.fields.fallbackAmount] ||
-            row.amount ||
-            row.Amount ||
-            0
-        )
-        return sum + amt
-      }, 0)
-    } else {
-      return parseFloat(
-        data?.[0]?.[currentConfig.fields.amount] ||
-          data?.[0]?.[currentConfig.fields.fallbackAmount] ||
-          data?.[0]?.amount ||
-          data?.[0]?.Amount ||
-          0
-      )
-    }
+    if (!data) return 0
+    const rows = Array.isArray(data) ? data : [data]
+    return rows.reduce((sum, row) => sum + getRowAmount(row), 0)
   }
 
   const totalAmount = calculateTotalAmount()
-  const entryCount = isMultiple ? data.length : data && data.length > 0 ? 1 : 0
 
-  // Get names (vendor/employee names) with fallback
-  const getNames = () => {
-    if (!data || (Array.isArray(data) && data.length === 0)) return []
-
-    if (isMultiple) {
-      return data
-        .map(
-          (row) =>
-            row[currentConfig.fields.name] ||
-            row.name ||
-            row.Name ||
-            row.employeeName ||
-            row.vendorName ||
-            'Unknown'
-        )
-        .filter(Boolean)
-    } else {
-      const name =
-        data?.[0]?.[currentConfig.fields.name] ||
-        data?.[0]?.name ||
-        data?.[0]?.Name ||
-        data?.[0]?.employeeName ||
-        data?.[0]?.vendorName
-      return name ? [name] : []
-    }
-  }
-
-  const names = getNames()
-
-  // Count total items (invoices/requests/claims) with fallback
+  // Count total items (invoices/requests/claims) supporting camelCase and Title Case key formats
   const calculateTotalItems = () => {
-    if (!data || (Array.isArray(data) && data.length === 0)) return 0
-
-    if (isMultiple) {
-      return data.reduce((sum, row) => {
-        const itemField =
-          row[currentConfig.fields.invoices] ||
-          row.invoices ||
-          row.Invoices ||
-          row.invoiceNumbers ||
-          ''
-        const items = String(itemField).split(',').filter(Boolean)
-        return sum + items.length
-      }, 0)
-    } else {
+    if (!data) return 0
+    const rows = Array.isArray(data) ? data : [data]
+    return rows.reduce((sum, row) => {
       const itemField =
-        data?.[0]?.[currentConfig.fields.invoices] ||
-        data?.[0]?.invoices ||
-        data?.[0]?.Invoices ||
-        data?.[0]?.invoiceNumbers ||
+        row.invoiceNumbers ||
+        row['Invoice Numbers'] ||
+        row.invoices ||
+        row['Invoices'] ||
+        row.requestNumbers ||
+        row['Request Numbers'] ||
+        row.claimNumbers ||
+        row['Claim Numbers'] ||
         ''
-      return String(itemField).split(',').filter(Boolean).length
-    }
+      if (Array.isArray(itemField)) return sum + itemField.length
+      const items = String(itemField).split(',').filter(Boolean)
+      return sum + (items.length || 1)
+    }, 0)
   }
 
   const totalItems = calculateTotalItems()
@@ -245,12 +212,7 @@ const PaymentBankSelectionModal = ({
         {/* Header */}
         <div className={`bg-gradient-to-r ${colors.gradient} text-white p-4 rounded-t-xl`}>
           <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-bold">{currentConfig.title}</h2>
-              <p className={`${colors.subtitleText} text-xs mt-1`}>
-                {currentConfig.subtitle(entryCount, isMultiple)}
-              </p>
-            </div>
+            <h2 className="text-lg font-bold">{currentConfig.title}</h2>
             <button
               onClick={onClose}
               className={`text-white ${colors.hover} p-1 rounded-lg transition-colors`}
@@ -268,13 +230,7 @@ const PaymentBankSelectionModal = ({
               <FaCheckCircle className={`${colors.text} text-sm`} />
               Payment Summary
             </h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-xs text-gray-600">
-                  {paymentType === 'vendor' ? 'Vendors' : 'Employees'}:
-                </span>
-                <p className="font-semibold">{entryCount}</p>
-              </div>
+            <div className="grid grid-cols-2 gap-2 text-sm items-center">
               <div>
                 <span className="text-xs text-gray-600">
                   {paymentType === 'vendor'
@@ -284,10 +240,10 @@ const PaymentBankSelectionModal = ({
                       : 'Claims'}
                   :
                 </span>
-                <p className="font-semibold">{totalItems}</p>
+                <p className="font-semibold text-base">{totalItems}</p>
               </div>
-              <div className="col-span-2">
-                <span className="text-xs text-gray-600">Total Payment Amount:</span>
+              <div>
+                <span className="text-xs text-gray-600 block">Total Payment Amount:</span>
                 <p className={`font-semibold ${colors.text} text-lg`}>
                   ₹{' '}
                   {totalAmount.toLocaleString('en-IN', {
@@ -296,19 +252,6 @@ const PaymentBankSelectionModal = ({
                   })}
                 </p>
               </div>
-              {names.length > 0 && (
-                <div className="col-span-2">
-                  <span className="text-xs text-gray-600">
-                    {paymentType === 'vendor' ? 'Vendor' : 'Employee'}
-                    {entryCount > 1 ? 's' : ''}:
-                  </span>
-                  <p className="font-medium text-xs truncate" title={names.join(', ')}>
-                    {names.length > 2
-                      ? `${names[0]}, ${names[1]} +${names.length - 2} more`
-                      : names.join(', ')}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 

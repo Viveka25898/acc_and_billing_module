@@ -5,7 +5,16 @@ import axiosInstance from '../../../api/axiosInstance';
  * Supports filtering parameters: invoiceNumber, vendorName, date, page, limit.
  */
 export const fetchAMPending = async (params = {}) => {
-  const response = await axiosInstance.get('/accounts/invoices/am/pending', { params });
+  // Frontend handles filtering; only pass pagination params if present
+  const safeParams = {};
+  if (params.page) safeParams.page = params.page;
+  if (params.limit) {
+    safeParams.limit = params.limit;
+    safeParams.pageSize = params.limit;
+  }
+  const response = await axiosInstance.get('/accounts/invoices/am/pending', {
+    params: Object.keys(safeParams).length > 0 ? safeParams : undefined
+  });
   return response.data;
 };
 

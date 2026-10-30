@@ -12,7 +12,64 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
   if (!isOpen || !paymentData) return null
 
   const [expanded, setExpanded] = useState(true)
-  const employees = paymentData.employeeDetails || []
+
+  // Safely extract summary, audit, and GL posting details with '-' fallback
+  const summary = paymentData.paymentSummary || {}
+  const audit = paymentData.audit || {}
+  const glDetails = paymentData.glPostingDetails || {}
+
+  const voucherNo = summary.voucherNo || paymentData.voucherNo || paymentData.entryNo || '-'
+  const voucherDate =
+    glDetails.voucherDate ||
+    paymentData.voucherDate ||
+    paymentData.date ||
+    (audit.processedAt ? new Date(audit.processedAt).toISOString().split('T')[0] : '-')
+  const status = paymentData.status || (paymentData.success ? 'Posted' : 'Posted')
+
+  const paymentMethod = paymentData.paymentMethod || 'Bank Transfer'
+  const bankAccount =
+    paymentData.bankAccount ||
+    (paymentData.selectedBank
+      ? `${paymentData.selectedBank.bankName || '-'} (${paymentData.selectedBank.bankCode || '-'})`
+      : paymentData.selectedBankCode || '-')
+  const particulars =
+    paymentData.particulars ||
+    (summary.batchId ? `Conveyance Payment Batch: ${summary.batchId}` : '-')
+  const transactionId = summary.transactionId || paymentData.transactionId || paymentData.utr || null
+
+  const preparedBy = audit.processedBy || paymentData.preparedBy || '-'
+  const approvedBy = paymentData.approvedBy || 'System'
+
+  // Extract employees list safely
+  let employees = []
+  if (paymentData.employeeDetails && Array.isArray(paymentData.employeeDetails) && paymentData.employeeDetails.length > 0) {
+    employees = paymentData.employeeDetails
+  } else if (paymentData.pendingAcceptedData && Array.isArray(paymentData.pendingAcceptedData) && paymentData.pendingAcceptedData.length > 0) {
+    employees = paymentData.pendingAcceptedData.map((row) => ({
+      employeeName: row.employeeName || row['Employee Name'] || row.relieverName || row['Reliever Name'] || '-',
+      employeeId: row.employeeId || row['Employee ID'] || row.empId || '-',
+      amount: parseFloat(row.amount ?? row.Amount ?? row.paymentDone ?? row['Payment Done'] ?? 0) || 0,
+      utr: row.utr || row.UTR || row['UTR Number'] || '',
+    }))
+  }
+
+  const totalAmount =
+    parseFloat(summary.totalAmount ?? paymentData.totalAmount ?? paymentData.amount ?? 0) ||
+    employees.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+
+  // Extract General Ledger entries safely
+  const rawGlEntries = glDetails.entries || paymentData.glEntries || paymentData.entries || []
+  const glEntries = rawGlEntries.map((e) => ({
+    glCode: e.glCode || e.accountCode || '-',
+    glDescription: e.glDescription || e.description || e.accountName || e.glCode || '-',
+    costCenter: e.costCenter || 'HEAD OFFICE',
+    department: e.department || 'Finance',
+    debitAmount: parseFloat(e.debitAmount ?? e.debit ?? 0) || 0,
+    creditAmount: parseFloat(e.creditAmount ?? e.credit ?? 0) || 0,
+  }))
+
+  const totalDebit = glEntries.reduce((s, e) => s + e.debitAmount, 0)
+  const totalCredit = glEntries.reduce((s, e) => s + e.creditAmount, 0)
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -27,11 +84,11 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
               </span>
               Conveyance Payment Entry
               <span className="ml-2 bg-purple-800 text-purple-100 text-xs px-2 py-0.5 rounded border border-purple-500/30">
-                {paymentData.status || 'Posted'}
+                {status}
               </span>
             </h2>
             <p className="text-purple-100 text-xs mt-1 font-mono">
-              Entry No: {paymentData.entryNo} | Date: {paymentData.date}
+              Entry No: {voucherNo} | Date: {voucherDate}
             </p>
           </div>
           <button
@@ -55,21 +112,29 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                 <div>
                   <span className="text-xs text-gray-500 block mb-0.5">Payment Method</span>
                   <span className="font-semibold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
-                    {paymentData.paymentMethod}
+                    {paymentMethod}
                   </span>
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block mb-0.5">Bank Account</span>
-                  <span className="font-mono text-[11px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 block truncate" title={paymentData.bankAccount}>
-                    {paymentData.bankAccount}
+                  <span className="font-mono text-[11px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 block truncate" title={bankAccount}>
+                    {bankAccount}
                   </span>
                 </div>
                 <div className="col-span-2">
                   <span className="text-xs text-gray-500 block mb-0.5">Particulars</span>
                   <span className="text-gray-700 text-sm">
-                    {paymentData.particulars}
+                    {particulars}
                   </span>
                 </div>
+                {transactionId && (
+                  <div className="col-span-2">
+                    <span className="text-xs text-gray-500 block mb-0.5">Transaction / UTR Reference</span>
+                    <span className="font-mono bg-yellow-50 text-yellow-800 px-2 py-0.5 rounded border border-yellow-200 inline-block">
+                      {transactionId}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -77,32 +142,41 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col max-h-[220px]">
               <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2 shrink-0">
                 <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                  <FaMapMarkedAlt className="text-gray-400" /> Employees Paid ({paymentData.employeesProcessed})
+                  <FaMapMarkedAlt className="text-gray-400" /> Employees Paid ({employees.length})
                 </h3>
                 <span className="text-lg font-bold text-purple-600">
-                  ₹{(paymentData.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  {totalAmount > 0
+                    ? `₹${totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                    : '-'}
                 </span>
               </div>
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 <div className="space-y-1">
-                  {employees.map((e, idx) => (
-                    <div key={idx} className="flex justify-between items-center py-1.5 px-2 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-100 transition-colors">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-gray-800">{e.employeeName}</span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] text-gray-400 font-mono">{e.employeeId}</span>
-                          {e.utr && (
-                            <span className="text-[9px] bg-green-50 text-green-700 font-mono px-1 rounded border border-green-200">
-                              UTR: {e.utr}
-                            </span>
-                          )}
+                  {employees.length > 0 ? (
+                    employees.map((e, idx) => {
+                      const amtVal = parseFloat(e.amount) || 0
+                      return (
+                        <div key={idx} className="flex justify-between items-center py-1.5 px-2 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-100 transition-colors">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-gray-800">{e.employeeName || '-'}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-gray-400 font-mono">{e.employeeId || '-'}</span>
+                              {e.utr && (
+                                <span className="text-[9px] bg-green-50 text-green-700 font-mono px-1 rounded border border-green-200">
+                                  UTR: {e.utr}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold text-gray-700">
+                            {amtVal > 0 ? `₹${amtVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                          </span>
                         </div>
-                      </div>
-                      <span className="text-xs font-bold text-gray-700">
-                        ₹{Number(e.amount || 0).toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  ))}
+                      )
+                    })
+                  ) : (
+                    <p className="text-xs text-gray-400 italic py-2 text-center">- No Employee Details -</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -127,40 +201,50 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {paymentData.glEntries?.map((entry, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                          {entry.glCode}
-                        </td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">
-                          {entry.glDescription}
-                          <div className="text-[10px] text-gray-400 font-normal mt-0.5">
-                            {entry.costCenter} • {entry.department}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right bg-purple-50/30 font-semibold text-purple-700">
-                          {entry.debitAmount > 0
-                            ? entry.debitAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
-                            : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right bg-blue-50/30 font-semibold text-blue-700">
-                          {entry.creditAmount > 0
-                            ? entry.creditAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
-                            : '-'}
+                    {glEntries.length > 0 ? (
+                      glEntries.map((entry, index) => (
+                        <tr key={index} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                            {entry.glCode || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 font-medium">
+                            {entry.glDescription || '-'}
+                            <div className="text-[10px] text-gray-400 font-normal mt-0.5">
+                              {entry.costCenter || '-'} • {entry.department || '-'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right bg-purple-50/30 font-semibold text-purple-700">
+                            {entry.debitAmount > 0
+                              ? entry.debitAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                              : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right bg-blue-50/30 font-semibold text-blue-700">
+                            {entry.creditAmount > 0
+                              ? entry.creditAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                              : '-'}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" className="px-4 py-3 text-center text-gray-400 text-xs">
+                          - No GL Entries Found -
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                   <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
                     <tr>
                       <td colSpan="2" className="px-4 py-3 text-right text-gray-700">Summary Totals:</td>
                       <td className="px-4 py-3 text-right text-purple-700">
-                        {paymentData.glEntries?.reduce((s, e) => s + (e.debitAmount || 0), 0)
-                          .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        {totalDebit > 0
+                          ? totalDebit.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                          : '-'}
                       </td>
                       <td className="px-4 py-3 text-right text-blue-700">
-                        {paymentData.glEntries?.reduce((s, e) => s + (e.creditAmount || 0), 0)
-                          .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        {totalCredit > 0
+                          ? totalCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                          : '-'}
                       </td>
                     </tr>
                   </tfoot>
@@ -179,12 +263,12 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
             <div className="flex items-center gap-4 flex-1">
               <div>
                 <span className="text-gray-400 block text-[10px]">Prepared By</span>
-                <span className="font-medium text-gray-800">{paymentData.preparedBy}</span>
+                <span className="font-medium text-gray-800">{preparedBy}</span>
               </div>
               <div className="hidden sm:block text-gray-300">→</div>
               <div>
                 <span className="text-gray-400 block text-[10px]">Auto-Approved</span>
-                <span className="font-medium text-gray-800">{paymentData.approvedBy}</span>
+                <span className="font-medium text-gray-800">{approvedBy}</span>
               </div>
             </div>
             <button
@@ -196,7 +280,7 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
           </div>
         </div>
       </div>
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -206,3 +290,4 @@ const ConveyancePaymentEntryModal = ({ isOpen, onClose, paymentData }) => {
 }
 
 export default ConveyancePaymentEntryModal
+

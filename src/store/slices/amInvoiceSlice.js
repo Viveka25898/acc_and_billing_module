@@ -151,14 +151,16 @@ const amInvoiceSlice = createSlice({
       })
       .addCase(fetchAMPendingInvoices.fulfilled, (state, action) => {
         state.loading.fetch = false;
-        const responseData = action.payload?.data || action.payload;
-        state.invoices = responseData?.invoices || [];
-        const rawPag = responseData?.pagination || {};
+        const payloadData = action.payload?.data || action.payload || {};
+        state.invoices = payloadData.invoices || [];
+        const rawPagination = payloadData.pagination || {};
         state.pagination = {
-          currentPage: rawPag.currentPage || rawPag.page || 1,
-          totalPages: rawPag.totalPages || rawPag.pages || 1,
-          totalItems: rawPag.totalItems || rawPag.total || 0,
-          pageSize: rawPag.pageSize || rawPag.limit || 5
+          currentPage: rawPagination.currentPage || rawPagination.page || 1,
+          totalPages: rawPagination.totalPages || rawPagination.pages || 1,
+          totalItems: rawPagination.totalRecords || rawPagination.totalItems || rawPagination.total || 0,
+          pageSize: rawPagination.recordsPerPage || rawPagination.pageSize || rawPagination.limit || 5,
+          totalRecords: rawPagination.totalRecords || rawPagination.totalItems || 0,
+          recordsPerPage: rawPagination.recordsPerPage || rawPagination.pageSize || 5,
         };
       })
       .addCase(fetchAMPendingInvoices.rejected, (state, action) => {

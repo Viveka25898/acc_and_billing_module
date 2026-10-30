@@ -4,11 +4,17 @@ import { FaTimes, FaCheck, FaExclamationTriangle } from 'react-icons/fa'
 const ConveyancePaymentPreviewModal = ({ data, onClose, onAccept }) => {
   if (!data || data.length === 0) return null
 
-  const totalAmount = data.reduce((sum, row) => sum + (Number(row.Amount) || 0), 0)
+  const getName = (row) => row.employeeName || row['Employee Name'] || row.name || ''
+  const getClient = (row) => row.client || row.Client || 'N/A'
+  const getAmount = (row) => Number(row.amount ?? row.Amount ?? row.paymentDone ?? row['Payment Done'] ?? 0)
+  const getUtr = (row) => row.utr || row.UTR || ''
+
+  const totalAmount = data.reduce((sum, row) => sum + (getAmount(row) || 0), 0)
   
-  const hasErrors = data.some(
-    (row) => !row['Employee Name'] || isNaN(row.Amount) || row.Amount <= 0
-  )
+  const hasErrors = data.some((row) => {
+    const amt = getAmount(row)
+    return !getName(row) || isNaN(amt) || amt <= 0
+  })
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -58,27 +64,32 @@ const ConveyancePaymentPreviewModal = ({ data, onClose, onAccept }) => {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.map((row, index) => {
-                    const rowError = !row['Employee Name'] || isNaN(row.Amount) || row.Amount <= 0
+                    const name = getName(row)
+                    const client = getClient(row)
+                    const amt = getAmount(row)
+                    const utr = getUtr(row)
+
+                    const rowError = !name || isNaN(amt) || amt <= 0
                     return (
                       <tr key={index} className={`hover:bg-gray-50 transition-colors ${rowError ? 'bg-orange-50/30' : ''}`}>
                         <td className="px-4 py-3 text-center text-gray-400 text-xs">{index + 1}</td>
                         <td className="px-4 py-3">
-                          {row['Employee Name'] ? (
-                            <span className="font-medium text-gray-800">{row['Employee Name']}</span>
+                          {name ? (
+                            <span className="font-medium text-gray-800">{name}</span>
                           ) : (
                             <span className="text-orange-500 italic text-xs">Missing</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-600">{row.Client || 'N/A'}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{client}</td>
                         <td className="px-4 py-3 text-right font-medium text-gray-800">
-                          {isNaN(row.Amount) || row.Amount <= 0 ? (
+                          {isNaN(amt) || amt <= 0 ? (
                             <span className="text-orange-500 italic text-xs">Invalid</span>
                           ) : (
-                            Number(row.Amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                            amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })
                           )}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs font-semibold text-purple-700">
-                          {row.UTR || <span className="text-orange-500 italic font-medium font-sans">Missing UTR</span>}
+                          {utr || <span className="text-orange-500 italic font-medium font-sans">Missing UTR</span>}
                         </td>
                       </tr>
                     )

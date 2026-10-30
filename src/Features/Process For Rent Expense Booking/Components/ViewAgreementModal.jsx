@@ -11,6 +11,25 @@ export default function ViewAgreementModal({ onClose, site }) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState(false);
 
+  const getFullFileUrl = (url) => {
+    if (!url) return '#';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    let cleanPath = url;
+    if (cleanPath.includes('/legacy/api/v1/accounts/')) {
+      cleanPath = cleanPath.substring(cleanPath.indexOf('/legacy/api/v1/accounts/') + 24);
+    } else if (cleanPath.includes('/api/v1/accounts/')) {
+      cleanPath = cleanPath.substring(cleanPath.indexOf('/api/v1/accounts/') + 17);
+    }
+
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = `/${cleanPath}`;
+    }
+
+    const baseApi = 'https://dev-int.ismart.org/legacy/api/v1/accounts';
+    return `${baseApi}${cleanPath}`;
+  };
+
   // Fetch PDF file securely with Bearer token using Axios
   useEffect(() => {
     let activeUrl = null;
@@ -22,7 +41,9 @@ export default function ViewAgreementModal({ onClose, site }) {
 
       try {
         let relativePath = agreement.fileUrl;
-        if (relativePath.includes('/api/v1/')) {
+        if (relativePath.includes('/legacy/api/v1/accounts/')) {
+          relativePath = relativePath.substring(relativePath.indexOf('/legacy/api/v1/accounts/') + 24);
+        } else if (relativePath.includes('/api/v1/')) {
           relativePath = relativePath.substring(relativePath.indexOf('/api/v1/') + 7);
         }
 

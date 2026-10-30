@@ -395,7 +395,7 @@ export const submitAdvanceRequest = async (payload) => {
 
   // ── Build FormData API Payload (matches Postman form-data) ────────────────
   const formData = new FormData()
-  formData.append('amount', amount)
+  formData.append('amount', amount.toString())
 
   // Append each reason (mapped to backend reason codes)
   const formattedReasons = reasons.map(toAdvanceReasonCode)
@@ -406,12 +406,22 @@ export const submitAdvanceRequest = async (payload) => {
   formData.append('custom_reason', customReason || 'N/A')
   formData.append('request_date', requestDate)
 
-  // Append attachments if present
-  attachments.forEach((file) => {
-    if (file instanceof File) {
-      formData.append('attachments', file)
-    }
-  })
+  // Append attachments if present (supports payload.attachment single file or attachments array)
+  if (payload?.attachment && payload.attachment instanceof File) {
+    formData.append('attachments', payload.attachment)
+  } else if (Array.isArray(attachments) && attachments.length > 0) {
+    attachments.forEach((file) => {
+      if (file instanceof File) {
+        formData.append('attachments', file)
+      }
+    })
+  } else if (Array.isArray(payload?.attachments) && payload.attachments.length > 0) {
+    payload.attachments.forEach((file) => {
+      if (file instanceof File) {
+        formData.append('attachments', file)
+      }
+    })
+  }
 
   // ── API Call ─────────────────────────────────────────────────────────────
   const res = await callAdvanceRequestApi({

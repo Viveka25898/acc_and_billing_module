@@ -39,13 +39,13 @@ export default function ManagerConveyanceTable({
 
   return (
     <div className="overflow-x-auto border border-gray-100 rounded-2xl shadow-sm bg-white mt-4">
-      <table className="w-full min-w-[1200px] table-auto border-collapse text-left bg-white">
+      <table className="w-full min-w-[1400px] table-auto border-collapse text-left bg-white">
         <thead className="bg-gradient-to-r from-green-700 to-green-600 text-white text-xs font-semibold uppercase tracking-wider">
           <tr>
             <th className="px-5 py-4 text-center whitespace-nowrap">Sr. No.</th>
             <th className="px-5 py-4">Claim ID</th>
             <th className="px-5 py-4">Emp ID</th>
-            <th className="px-5 py-4">Employee Name</th>
+            <th className="px-5 py-4">Emp Name</th>
             <th className="px-5 py-4">Visit Date</th>
             <th className="px-5 py-4">Client / Site</th>
             <th className="px-5 py-4">Purpose</th>
@@ -93,11 +93,11 @@ export default function ManagerConveyanceTable({
                     {claimIdDisplay}
                   </td>
 
-                  <td className="px-5 py-4 font-medium text-gray-700 whitespace-nowrap text-xs">
+                  <td className="px-5 py-4 font-mono font-medium text-gray-700 whitespace-nowrap text-xs">
                     {employeeId}
                   </td>
 
-                  <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap text-xs">
+                  <td className="px-5 py-4 font-semibold text-gray-800 whitespace-nowrap text-xs">
                     {employeeName}
                   </td>
 

@@ -10,6 +10,7 @@ import amInvoiceReducer from './store/slices/amInvoiceSlice'
 import relieverReducer from './store/slices/relieverSlice'
 import conveyanceReducer from './store/slices/conveyanceSlice'
 import rentExpenseReducer from './store/slices/rentExpenseSlice'
+import vendorPaymentReducer from './store/slices/vendorPaymentSlice'
 
 const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ const store = configureStore({
     reliever: relieverReducer,
     conveyance: conveyanceReducer,
     rentExpense: rentExpenseReducer,
+    vendorPayment: vendorPaymentReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

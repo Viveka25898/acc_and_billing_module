@@ -53,9 +53,11 @@ export default function AEConveyanceApprovalPage() {
   // Enhanced filtering
   const filteredClaims = queueRequests.filter((claim) => {
     const employeeName = claim.employeeName || claim.employee_name || claim.submittedBy || "";
+    const employeeId = claim.employeeId || claim.employee_id || "";
     const employeeMatch =
       filter.employee === "" ||
-      employeeName.toLowerCase().includes(filter.employee.toLowerCase());
+      employeeName.toLowerCase().includes(filter.employee.toLowerCase()) ||
+      employeeId.toLowerCase().includes(filter.employee.toLowerCase());
 
     const statusText = claim.status_display || claim.status || "";
     const statusMatch =
@@ -94,9 +96,9 @@ export default function AEConveyanceApprovalPage() {
 
       toast.success("Request approved, GL posted and voucher generated");
 
-      // Extract voucher payload or fetch via API if needed
+      // Display generated voucher modal with response payload
       let voucherPayload = result?.data || result;
-      if (!voucherPayload?.header && !voucherPayload?.data?.header) {
+      if (!voucherPayload?.voucherNumber && !voucherPayload?.requestId && !voucherPayload?.header) {
         try {
           const fetchedVoucher = await dispatch(fetchConveyanceVoucher(id)).unwrap();
           if (fetchedVoucher) voucherPayload = fetchedVoucher;

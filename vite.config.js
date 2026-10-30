@@ -66,14 +66,14 @@ export default defineConfig({
           'referer': 'https://dev-int.ismart.org/',
         },
       },
-      // ── Proxy all /api/v1/* calls to the real backend ──────────────────────
+      // ΓöÇΓöÇ Proxy all /api/v1/* calls to the real backend ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       // WHY: Browser blocks cross-origin requests (CORS) to dev-int.ismart.org.
-      //      Vite acts as a server-side proxy — Node.js makes the actual request,
+      //      Vite acts as a server-side proxy ΓÇö Node.js makes the actual request,
       //      so CORS does not apply.
       //
       // WHY .env uses /api/v1 (not full URL):
       //      If axiosInstance.baseURL = full https URL, browser calls it directly
-      //      → CORS blocked. With /api/v1, browser calls localhost → Vite proxies.
+      //      ΓåÆ CORS blocked. With /api/v1, browser calls localhost ΓåÆ Vite proxies.
       //
       // WHY headers override Origin/Referer:
       //      Backend CORS middleware silently returns 404 for unknown origins.
@@ -84,13 +84,13 @@ export default defineConfig({
         secure: false,
         headers: {
           // Make the request look same-origin to the backend's CORS middleware.
-          // Postman doesn't send Origin at all — backend trusts it.
+          // Postman doesn't send Origin at all ΓÇö backend trusts it.
           // We spoof Origin to the backend's own domain to get the same behavior.
           'origin':  'https://dev-int.ismart.org',
           'referer': 'https://dev-int.ismart.org/',
         },
       },
-      // ── Proxy file storage routes for document previews ─────────────────────
+      // ΓöÇΓöÇ Proxy file storage routes for document previews ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       '/smarterp-accounts': {
         target: 'https://dev-int.ismart.org',
         changeOrigin: true,

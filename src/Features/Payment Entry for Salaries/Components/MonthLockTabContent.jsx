@@ -234,7 +234,7 @@ export default function MonthLockTabContent({
                             className="text-blue-600 hover:text-blue-800 underline text-left font-medium transition-colors duration-200 flex items-center gap-1 whitespace-nowrap text-xs sm:text-sm"
                             aria-expanded={expandedBatch === batch.id}
                           >
-                            {batch.payrollPeriod}
+                            {batch.payrollPeriod || 'N/A'}
                             <span className="text-xs text-gray-500 flex-shrink-0">
                               {expandedBatch === batch.id ? '▼' : '▶'}
                             </span>

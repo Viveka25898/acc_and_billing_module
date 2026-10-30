@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as service from '../../Features/Process For Conveyance Booking/services/conveyancePaymentService';
+import * as conveyancePaymentService from '../../Features/Process For Payments/services/conveyancePaymentService';
 
 const extractErrorMessage = (error) => {
   if (!error) return 'An unexpected error occurred';
@@ -94,6 +95,55 @@ export const fetchConveyanceVoucher = createAsyncThunk(
   }
 );
 
+export const fetchPendingConveyancePayments = createAsyncThunk(
+  'conveyance/fetchPendingConveyancePayments',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const data = await conveyancePaymentService.fetchPendingConveyancePayments(params);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const generateConveyancePaymentFiles = createAsyncThunk(
+  'conveyance/generateConveyancePaymentFiles',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await conveyancePaymentService.generateConveyancePaymentFiles(payload);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const uploadConveyanceSystemFile = createAsyncThunk(
+  'conveyance/uploadConveyanceSystemFile',
+  async ({ file, batchId }, { rejectWithValue }) => {
+    try {
+      const data = await conveyancePaymentService.uploadConveyanceSystemPaymentFile(file, batchId);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const processConveyancePaymentGLPosting = createAsyncThunk(
+  'conveyance/processConveyancePaymentGLPosting',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await conveyancePaymentService.processConveyancePaymentGLPosting(payload);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+
 const initialState = {
   myClaims: [],
   queueRequests: [],
@@ -110,16 +160,42 @@ const initialState = {
     rejected: 0,
     totalAmountClaimed: '0.00',
   },
+  pendingPaymentConveyances: [],
+  pendingPaymentPagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    recordsPerPage: 20,
+  },
+  pendingPaymentSummary: {
+    totalPendingPayment: 0,
+    totalAmount: '0.00',
+    byDepartment: {},
+  },
   submitLoading: false,
   claimsLoading: false,
   queueLoading: false,
   voucherLoading: false,
   actionLoadingId: null,
   rejectionReasonLoading: false,
+  pendingPaymentsLoading: false,
+  conveyanceFileUploading: false,
+  conveyanceUploadError: null,
   error: null,
+  pendingPaymentsError: null,
   activeRejectionDetails: null,
   activeVoucherData: null,
+  conveyanceFileGenerating: false,
+  conveyanceBatchId: null,
+  conveyanceDownloads: null,
+  conveyanceFileGenError: null,
+  conveyanceUploadedParsedData: [],
+  conveyanceApiBankAccounts: [],
+  conveyancePaymentProcessing: false,
+  conveyancePaymentProcessError: null,
+  processedConveyancePaymentResult: null,
 };
+
 
 const conveyanceSlice = createSlice({
   name: 'conveyance',
@@ -127,6 +203,7 @@ const conveyanceSlice = createSlice({
   reducers: {
     clearConveyanceError: (state) => {
       state.error = null;
+      state.pendingPaymentsError = null;
     },
     clearRejectionDetails: (state) => {
       state.activeRejectionDetails = null;
@@ -158,28 +235,14 @@ const conveyanceSlice = createSlice({
       })
       .addCase(fetchMyConveyanceClaims.fulfilled, (state, action) => {
         state.claimsLoading = false;
-        state.error = null;
-        if (action.payload) {
-          state.myClaims = action.payload.requests || [];
-          state.pagination = action.payload.pagination || initialState.pagination;
-          state.summary = action.payload.summary || initialState.summary;
-        }
+        const payloadData = action.payload?.data || action.payload || {};
+        state.myClaims = payloadData.requests || payloadData.claims || (Array.isArray(payloadData) ? payloadData : []);
+        state.pagination = payloadData.pagination || initialState.pagination;
+        state.summary = payloadData.summary || initialState.summary;
       })
       .addCase(fetchMyConveyanceClaims.rejected, (state, action) => {
         state.claimsLoading = false;
         state.error = action.payload;
-      })
-
-      // Fetch Rejection Reason
-      .addCase(fetchRejectionReason.pending, (state) => {
-        state.rejectionReasonLoading = true;
-      })
-      .addCase(fetchRejectionReason.fulfilled, (state, action) => {
-        state.rejectionReasonLoading = false;
-        state.activeRejectionDetails = action.payload;
-      })
-      .addCase(fetchRejectionReason.rejected, (state) => {
-        state.rejectionReasonLoading = false;
       })
 
       // Fetch Conveyance Queue
@@ -189,8 +252,8 @@ const conveyanceSlice = createSlice({
       })
       .addCase(fetchConveyanceQueue.fulfilled, (state, action) => {
         state.queueLoading = false;
-        state.error = null;
-        state.queueRequests = action.payload || [];
+        const payloadData = action.payload?.data || action.payload || {};
+        state.queueRequests = payloadData.pendingRequests || payloadData.requests || (Array.isArray(payloadData) ? payloadData : []);
       })
       .addCase(fetchConveyanceQueue.rejected, (state, action) => {
         state.queueLoading = false;
@@ -239,9 +302,81 @@ const conveyanceSlice = createSlice({
       .addCase(fetchConveyanceVoucher.rejected, (state, action) => {
         state.voucherLoading = false;
         state.error = action.payload;
+      })
+
+      // Fetch Pending Conveyance Payments (Process for Payments)
+      .addCase(fetchPendingConveyancePayments.pending, (state) => {
+        state.pendingPaymentsLoading = true;
+        state.pendingPaymentsError = null;
+      })
+      .addCase(fetchPendingConveyancePayments.fulfilled, (state, action) => {
+        state.pendingPaymentsLoading = false;
+        const resData = action.payload?.data || action.payload || {};
+        state.pendingPaymentConveyances = resData.requests || [];
+        state.pendingPaymentPagination = resData.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: 0,
+          recordsPerPage: 20,
+        };
+        state.pendingPaymentSummary = resData.summary || {
+          totalPendingPayment: 0,
+          totalAmount: '0.00',
+          byDepartment: {},
+        };
+      })
+      .addCase(fetchPendingConveyancePayments.rejected, (state, action) => {
+        state.pendingPaymentsLoading = false;
+        state.pendingPaymentsError = action.payload;
+      })
+
+      // Generate Conveyance Payment Files
+      .addCase(generateConveyancePaymentFiles.pending, (state) => {
+        state.conveyanceFileGenerating = true;
+        state.conveyanceFileGenError = null;
+      })
+      .addCase(generateConveyancePaymentFiles.fulfilled, (state, action) => {
+        state.conveyanceFileGenerating = false;
+        state.conveyanceBatchId = action.payload?.batchId || null;
+        state.conveyanceDownloads = action.payload?.downloads || null;
+      })
+      .addCase(generateConveyancePaymentFiles.rejected, (state, action) => {
+        state.conveyanceFileGenerating = false;
+        state.conveyanceFileGenError = action.payload;
+      })
+
+      // Upload Conveyance System File
+      .addCase(uploadConveyanceSystemFile.pending, (state) => {
+        state.conveyanceFileUploading = true;
+        state.conveyanceUploadError = null;
+      })
+      .addCase(uploadConveyanceSystemFile.fulfilled, (state, action) => {
+        state.conveyanceFileUploading = false;
+        const payload = action.payload || {};
+        state.conveyanceBatchId = payload.batchId || state.conveyanceBatchId;
+        state.conveyanceUploadedParsedData = payload.parsedData || [];
+        state.conveyanceApiBankAccounts = payload.bankAccounts || [];
+      })
+      .addCase(uploadConveyanceSystemFile.rejected, (state, action) => {
+        state.conveyanceFileUploading = false;
+        state.conveyanceUploadError = action.payload || 'Failed to upload conveyance system payment file';
+      })
+      // Process Conveyance Payment GL Posting
+      .addCase(processConveyancePaymentGLPosting.pending, (state) => {
+        state.conveyancePaymentProcessing = true;
+        state.conveyancePaymentProcessError = null;
+      })
+      .addCase(processConveyancePaymentGLPosting.fulfilled, (state, action) => {
+        state.conveyancePaymentProcessing = false;
+        state.processedConveyancePaymentResult = action.payload;
+      })
+      .addCase(processConveyancePaymentGLPosting.rejected, (state, action) => {
+        state.conveyancePaymentProcessing = false;
+        state.conveyancePaymentProcessError = action.payload || 'Failed to process conveyance payment GL posting';
       });
   },
 });
+
 
 export const { clearConveyanceError, clearRejectionDetails, clearVoucherData } = conveyanceSlice.actions;
 
@@ -261,4 +396,18 @@ export const selectConveyanceActionLoadingId = (state) => state.conveyance.actio
 export const selectConveyanceVoucher = (state) => state.conveyance.activeVoucherData;
 export const selectConveyanceVoucherLoading = (state) => state.conveyance.voucherLoading;
 
+// Pending Payment Selectors (Process for Payments)
+export const selectPendingPaymentConveyances = (state) => state.conveyance.pendingPaymentConveyances;
+export const selectPendingPaymentConveyancePagination = (state) => state.conveyance.pendingPaymentPagination;
+export const selectPendingPaymentConveyanceSummary = (state) => state.conveyance.pendingPaymentSummary;
+export const selectPendingPaymentConveyanceLoading = (state) => state.conveyance.pendingPaymentsLoading;
+export const selectPendingPaymentConveyanceError = (state) => state.conveyance.pendingPaymentsError;
+
+export const selectConveyanceFileGenerating = (state) => state.conveyance.conveyanceFileGenerating;
+export const selectConveyanceBatchId = (state) => state.conveyance.conveyanceBatchId;
+export const selectConveyanceDownloads = (state) => state.conveyance.conveyanceDownloads;
+export const selectConveyanceFileGenError = (state) => state.conveyance.conveyanceFileGenError;
+export const selectConveyancePaymentProcessing = (state) => state.conveyance.conveyancePaymentProcessing;
+
 export default conveyanceSlice.reducer;
+

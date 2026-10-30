@@ -4,21 +4,11 @@ import { toast } from "react-toastify";
 
 export default function PaymentActions({ data, onClose, onRequestChanges, onAccept }) {
   const handleAccept = () => {
-    try {
-      const existing = JSON.parse(localStorage.getItem("paymentEntries")) || [];
-      const updated = [...existing, ...data];
-      localStorage.setItem("paymentEntries", JSON.stringify(updated));
-      toast.success("Payment entries accepted and passed in the System.");
-      
-      // Call the new onAccept function to open Payment Entry modal
-      if (onAccept) {
-        onAccept(data);
-      }
-      
-      onClose();
-    } catch (err) {
-      toast.error("Failed to save payment data.");
+    toast.success("Payment entries accepted and passed in the System.");
+    if (onAccept) {
+      onAccept(data);
     }
+    onClose();
   };
 
   const handleRequestChanges = () => {

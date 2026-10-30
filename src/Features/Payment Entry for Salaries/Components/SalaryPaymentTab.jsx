@@ -244,12 +244,17 @@ const SalaryPaymentTab = () => {
 
   // Filter requests
   const filteredRequests = requests.filter((req) => {
-    const matchBatchId = req.batchId.toLowerCase().includes(filters.batchId.toLowerCase())
+    const batchIdStr = (req?.batchId || req?.id || '').toString().toLowerCase()
+    const filterBatchId = (filters.batchId || '').toLowerCase()
+    const matchBatchId = batchIdStr.includes(filterBatchId)
     const matchDate = filters.date
       ? new Date(req.submittedAt).toLocaleDateString() ===
         new Date(filters.date).toLocaleDateString()
       : true
-    const matchStatus = filters.status === 'All' || req.status === filters.status
+    const matchStatus =
+      filters.status === 'All' ||
+      req?.status === filters.status ||
+      (req?.status && req.status.includes(filters.status))
 
     return matchBatchId && matchDate && matchStatus
   })

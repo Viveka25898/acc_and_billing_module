@@ -116,15 +116,22 @@ export default function AEPendingRequestsPage() {
 
   // Filter by payroll period and status
   const filteredBatches = payrollBatches.filter((batch) => {
-    const matchStatus = filters.status === 'All' || batch.status === filters.status
-    const matchName = batch.payrollPeriod.toLowerCase().includes(filters.name.toLowerCase())
-    const matchCode = batch.id.toLowerCase().includes(filters.code.toLowerCase())
+    const matchStatus =
+      filters.status === 'All' ||
+      batch?.status === filters.status ||
+      (batch?.status && batch.status.includes(filters.status))
+    const batchPeriod = (batch?.payrollPeriod || batch?.month || '').toString().toLowerCase()
+    const filterName = (filters.name || '').toLowerCase()
+    const matchName = batchPeriod.includes(filterName)
+    const batchCode = (batch?.id || '').toString().toLowerCase()
+    const filterCode = (filters.code || '').toLowerCase()
+    const matchCode = batchCode.includes(filterCode)
     return matchStatus && matchName && matchCode
   })
 
   // Sort the filtered batches by status order before paginating
   const sortedBatches = [...filteredBatches].sort((a, b) => {
-    return getStatusOrder(a.status) - getStatusOrder(b.status)
+    return getStatusOrder(a?.status) - getStatusOrder(b?.status)
   })
 
   const totalPages = Math.ceil(sortedBatches.length / entriesPerPage)
@@ -135,11 +142,12 @@ export default function AEPendingRequestsPage() {
 
   // Convert your data structure to match the table display with payroll GL data
   const getTableData = (batch) => {
+    if (!batch) return null
     const summary = calculatePayrollSummary(batch.employeeDetails)
 
     return {
       id: batch.id,
-      batchName: `${batch.payrollPeriod} - ${batch.id.slice(-4)}`,
+      batchName: `${batch.payrollPeriod || 'N/A'} - ${(batch.id ? String(batch.id) : '').slice(-4)}`,
       employeeCount: summary.employeeCount,
       grossAmount: summary.grossAmount,
       totalDeductions: summary.totalDeductions,
@@ -148,11 +156,11 @@ export default function AEPendingRequestsPage() {
       esicEmployee: summary.esicEmployee,
       pt: summary.pt,
       status: batch.status,
-      excelFileName: `salary_batch_${batch.id}.xlsx`,
+      excelFileName: `salary_batch_${batch.id || 'export'}.xlsx`,
       employees:
         batch.employeeDetails?.map((emp) => ({
-          empCode: emp['EMPCODE'] || emp['BENEFICIARY A/C NO']?.slice(-6),
-          name: emp['FULLNAME'] || emp['NARRATION/NAME (NOT MORE THAN 20)'],
+          empCode: emp['EMPCODE'] || (emp['BENEFICIARY A/C NO'] ? String(emp['BENEFICIARY A/C NO']).slice(-6) : ''),
+          name: emp['FULLNAME'] || emp['NARRATION/NAME (NOT MORE THAN 20)'] || '',
           grossAmount: emp['GROSS AMT'] || 0,
           totalDeductions: emp['TOTALDEDUCTION'] || 0,
           netPayable: emp['NETPAYABLE'] || emp['DEBIT AMT'] || 0,
@@ -162,8 +170,8 @@ export default function AEPendingRequestsPage() {
           pf: emp['PF'] || 0,
           esic: emp['ESIC'] || 0,
           pt: emp['PT'] || 0,
-          account: emp['BANK ACCOUNT NO AS PER EMPLOYEE'] || emp['BENEFICIARY A/C NO'],
-          ifsc: emp['IFS CODE AS PER EMPLOYEE'] || emp['IFSC CODE'],
+          account: emp['BANK ACCOUNT NO AS PER EMPLOYEE'] || emp['BENEFICIARY A/C NO'] || '',
+          ifsc: emp['IFS CODE AS PER EMPLOYEE'] || emp['IFSC CODE'] || '',
           designation: emp['DESIGNATIONNAME'] || '',
         })) || [],
     }

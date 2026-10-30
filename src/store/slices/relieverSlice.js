@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as service from '../../Features/Process For Reliver Payments/services/relieverPaymentService';
+import * as relieverPaymentService from '../../Features/Process For Payments/services/relieverPaymentService';
 
 const extractErrorMessage = (error) => {
   if (!error) return 'An unexpected error occurred';
@@ -94,6 +95,53 @@ export const fetchRelieverVoucher = createAsyncThunk(
   }
 );
 
+export const fetchPendingRelieverRequests = createAsyncThunk(
+  'reliever/fetchPendingRelieverRequests',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const data = await relieverPaymentService.fetchPendingRelieverRequests(params);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const generateRelieverPaymentFiles = createAsyncThunk(
+  'reliever/generateRelieverPaymentFiles',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await relieverPaymentService.generateRelieverPaymentFiles(payload);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const uploadRelieverSystemFile = createAsyncThunk(
+  'reliever/uploadRelieverSystemFile',
+  async ({ file, batchId }, { rejectWithValue }) => {
+    try {
+      const data = await relieverPaymentService.uploadRelieverSystemPaymentFile(file, batchId);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
+
+export const processRelieverPaymentGLPosting = createAsyncThunk(
+  'reliever/processRelieverPaymentGLPosting',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await relieverPaymentService.processRelieverPaymentGLPosting(payload);
+      return data;
+    } catch (err) {
+      return rejectWithValue(extractErrorMessage(err));
+    }
+  }
+);
 
 const initialState = {
   requests: [],
@@ -116,12 +164,22 @@ const initialState = {
     approved: 0,
     rejected: 0,
   },
+  pendingPaymentRelievers: [],
+  pendingPaymentPagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    pageSize: 20,
+  },
   loading: {
     fetch: false,
     submit: false,
     queue: false,
     action: false,
     voucher: false,
+    pendingPayments: false,
+    upload: false,
+    processingPayment: false,
   },
   errors: {
     fetch: null,
@@ -129,9 +187,19 @@ const initialState = {
     queue: null,
     action: null,
     voucher: null,
+    pendingPayments: null,
+    upload: null,
+    processingPayment: null,
   },
   submitResult: null,
   voucherDetails: null,
+  relieverFileGenerating: false,
+  relieverBatchId: null,
+  relieverDownloads: null,
+  relieverFileGenError: null,
+  relieverUploadedParsedData: [],
+  relieverApiBankAccounts: [],
+  processedRelieverPaymentResult: null,
 };
 
 const relieverSlice = createSlice({
@@ -141,6 +209,9 @@ const relieverSlice = createSlice({
     clearSubmitResult: (state) => {
       state.submitResult = null;
       state.errors.submit = null;
+    },
+    clearRelieverFileGenError: (state) => {
+      state.relieverFileGenError = null;
     },
   },
   extraReducers: (builder) => {
@@ -247,11 +318,73 @@ const relieverSlice = createSlice({
       .addCase(fetchRelieverVoucher.rejected, (state, action) => {
         state.loading.voucher = false;
         state.errors.voucher = action.payload;
+      })
+      // Fetch Pending Reliever Requests (Process for Payments)
+      .addCase(fetchPendingRelieverRequests.pending, (state) => {
+        state.loading.pendingPayments = true;
+        state.errors.pendingPayments = null;
+      })
+      .addCase(fetchPendingRelieverRequests.fulfilled, (state, action) => {
+        state.loading.pendingPayments = false;
+        state.pendingPaymentRelievers = action.payload?.relieverRequests || [];
+        state.pendingPaymentPagination = action.payload?.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          pageSize: 20,
+        };
+      })
+      .addCase(fetchPendingRelieverRequests.rejected, (state, action) => {
+        state.loading.pendingPayments = false;
+        state.errors.pendingPayments = action.payload;
+      })
+      // Generate Reliever Payment Files
+      .addCase(generateRelieverPaymentFiles.pending, (state) => {
+        state.relieverFileGenerating = true;
+        state.relieverFileGenError = null;
+      })
+      .addCase(generateRelieverPaymentFiles.fulfilled, (state, action) => {
+        state.relieverFileGenerating = false;
+        state.relieverBatchId = action.payload?.batchId || null;
+        state.relieverDownloads = action.payload?.downloads || null;
+      })
+      .addCase(generateRelieverPaymentFiles.rejected, (state, action) => {
+        state.relieverFileGenerating = false;
+        state.relieverFileGenError = action.payload;
+      })
+      // Upload Reliever System File
+      .addCase(uploadRelieverSystemFile.pending, (state) => {
+        state.loading.upload = true;
+        state.errors.upload = null;
+      })
+      .addCase(uploadRelieverSystemFile.fulfilled, (state, action) => {
+        state.loading.upload = false;
+        const payload = action.payload || {};
+        state.relieverBatchId = payload.batchId || state.relieverBatchId;
+        state.relieverUploadedParsedData = payload.parsedData || [];
+        state.relieverApiBankAccounts = payload.bankAccounts || [];
+      })
+      .addCase(uploadRelieverSystemFile.rejected, (state, action) => {
+        state.loading.upload = false;
+        state.errors.upload = action.payload || 'Failed to upload reliever system payment file';
+      })
+      // Process Reliever Payment GL Posting
+      .addCase(processRelieverPaymentGLPosting.pending, (state) => {
+        state.loading.processingPayment = true;
+        state.errors.processingPayment = null;
+      })
+      .addCase(processRelieverPaymentGLPosting.fulfilled, (state, action) => {
+        state.loading.processingPayment = false;
+        state.processedRelieverPaymentResult = action.payload;
+      })
+      .addCase(processRelieverPaymentGLPosting.rejected, (state, action) => {
+        state.loading.processingPayment = false;
+        state.errors.processingPayment = action.payload || 'Failed to process reliever payment GL posting';
       });
   },
 });
 
-export const { clearSubmitResult } = relieverSlice.actions;
+export const { clearSubmitResult, clearRelieverFileGenError } = relieverSlice.actions;
 
 export const selectRelieverRequests = (state) => state.reliever.requests;
 export const selectRelieverPagination = (state) => state.reliever.pagination;
@@ -272,5 +405,15 @@ export const selectRelieverQueueError = (state) => state.reliever.errors.queue;
 export const selectRelieverVoucherDetails = (state) => state.reliever.voucherDetails;
 export const selectRelieverVoucherLoading = (state) => state.reliever.loading.voucher;
 export const selectRelieverVoucherError = (state) => state.reliever.errors.voucher;
+
+export const selectPendingPaymentRelievers = (state) => state.reliever.pendingPaymentRelievers;
+export const selectPendingPaymentPagination = (state) => state.reliever.pendingPaymentPagination;
+export const selectPendingPaymentLoading = (state) => state.reliever.loading.pendingPayments;
+export const selectPendingPaymentError = (state) => state.reliever.errors.pendingPayments;
+
+export const selectRelieverFileGenerating = (state) => state.reliever.relieverFileGenerating;
+export const selectRelieverBatchId = (state) => state.reliever.relieverBatchId;
+export const selectRelieverDownloads = (state) => state.reliever.relieverDownloads;
+export const selectRelieverFileGenError = (state) => state.reliever.relieverFileGenError;
 
 export default relieverSlice.reducer;

@@ -49,13 +49,14 @@ export default function PayrollSubmittedEntriesPage() {
 
   const filteredEntries = entries.filter((entry) => {
     const matchesStatus = 
-      filters.status === "All" || entry.status.includes(filters.status);
+      filters.status === "All" || (entry?.status && entry.status.includes(filters.status));
     const matchesPeriod = 
-      !filters.period || entry.payrollPeriod.includes(filters.period);
+      !filters.period || (entry?.payrollPeriod && entry.payrollPeriod.includes(filters.period));
+    const search = (filters.search || "").toLowerCase();
     const matchesSearch =
       !filters.search || 
-      entry.payrollPeriod.toLowerCase().includes(filters.search.toLowerCase()) ||
-      entry.id.toLowerCase().includes(filters.search.toLowerCase());
+      (entry?.payrollPeriod && entry.payrollPeriod.toLowerCase().includes(search)) ||
+      (entry?.id && String(entry.id).toLowerCase().includes(search));
     
     return matchesStatus && matchesPeriod && matchesSearch;
   });
