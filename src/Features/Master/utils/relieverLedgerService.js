@@ -8,23 +8,26 @@ import axiosInstance from '../../../api/axiosInstance'
 export class RelieverLedgerService {
 
   /**
-   * Get all ledger entries for Reliever Wages account (X1001001003)
+   * Get all ledger entries for Reliever Wages account (X1001001003 / X100101003)
    */
-  static getRelieverLedgerEntries() {
+  static getRelieverLedgerEntries(accountCode = 'X1001001003') {
     try {
       const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
 
-      console.log(`📊 Generating reliever ledger for: X1001001003`);
+      console.log(`📊 Generating reliever ledger for: ${accountCode}`);
 
       // Filter transactions that involve Reliever Wages account
       // Add safety check for entries array
       const relevantTransactions = transactions.filter(txn => {
         if (!txn.entries || !Array.isArray(txn.entries)) {
-          console.warn(`⚠️ Transaction ${txn.id || 'unknown'} missing entries array`);
           return false;
         }
-        return txn.entries.some(entry => entry.glCode === 'X1001001003');
+        return txn.entries.some(entry => 
+          entry.glCode === accountCode || 
+          entry.glCode === 'X1001001003' || 
+          entry.glCode === 'X100101003'
+        );
       });
 
       console.log(`📋 Found ${relevantTransactions.length} relevant reliever transactions`);
@@ -35,8 +38,16 @@ export class RelieverLedgerService {
       let balanceType = 'DR';
 
       relevantTransactions.forEach(txn => {
-        const relieverEntry = txn.entries.find(entry => entry.glCode === 'X1001001003');
-        const bankEntry = txn.entries.find(entry => entry.glCode !== 'X1001001003');
+        const relieverEntry = txn.entries.find(entry => 
+          entry.glCode === accountCode || 
+          entry.glCode === 'X1001001003' || 
+          entry.glCode === 'X100101003'
+        );
+        const bankEntry = txn.entries.find(entry => 
+          entry.glCode !== accountCode && 
+          entry.glCode !== 'X1001001003' && 
+          entry.glCode !== 'X100101003'
+        );
 
         if (relieverEntry) {
           const debit = relieverEntry.debit || 0;
@@ -141,13 +152,16 @@ export class RelieverLedgerService {
   /**
    * Get Reliever Wages account details for header
    */
-  static getRelieverAccountDetails() {
+  static getRelieverAccountDetails(accountCode = 'X1001001003') {
     try {
       const chartOfAccounts = JSON.parse(localStorage.getItem('chartOfAccounts')) || [];
       const ledgerBalances = JSON.parse(localStorage.getItem('ledgerBalances')) || {};
 
-      // Try both codes: X100101003 and X1001001003
-      let relieverAccount = chartOfAccounts.find(acc => acc.code === 'X100101003');
+      let relieverAccount = chartOfAccounts.find(acc => acc.code === accountCode);
+
+      if (!relieverAccount) {
+        relieverAccount = chartOfAccounts.find(acc => acc.code === 'X100101003');
+      }
 
       if (!relieverAccount) {
         relieverAccount = chartOfAccounts.find(acc => acc.code === 'X1001001003');
@@ -155,11 +169,12 @@ export class RelieverLedgerService {
 
       if (!relieverAccount) {
         console.log('❌ Reliever Wages account not found in chart of accounts');
-        return this.getDefaultRelieverDetails();
+        return this.getDefaultRelieverDetails(accountCode);
       }
 
       // Try to get balance using both possible codes
-      const currentBalance = ledgerBalances['X100101003']?.balance ||
+      const currentBalance = ledgerBalances[accountCode]?.balance ||
+        ledgerBalances['X100101003']?.balance ||
         ledgerBalances['X1001001003']?.balance ||
         0;
       const financialYear = this.getCurrentFinancialYear();
@@ -187,7 +202,7 @@ export class RelieverLedgerService {
 
     } catch (error) {
       console.error('Error getting reliever account details:', error);
-      return this.getDefaultRelieverDetails();
+      return this.getDefaultRelieverDetails(accountCode);
     }
   }
 
@@ -243,14 +258,14 @@ export class RelieverLedgerService {
   /**
    * Get default details if account not found
    */
-  static getDefaultRelieverDetails() {
+  static getDefaultRelieverDetails(accountCode = 'X1001001003') {
     const financialYear = this.getCurrentFinancialYear();
     const period = this.getCurrentFinancialPeriod();
     const openingBalanceDate = this.getOpeningBalanceDate();
 
     return {
-      ledgerCode: 'X1001001003',
-      accountName: 'RELIEVER WAGES',
+      ledgerCode: accountCode,
+      accountName: 'RELIEVER PAYMENTS',
       accountType: 'Expense Account (Profit & Loss)',
       description: 'Temporary Staff Replacement Payments',
       period: period,
@@ -672,6 +687,63 @@ export class RelieverLedgerService {
     } catch (error) {
       console.error(`❌ Error in getLiabilityFooterApi for ${relieverGl}:`, error)
       throw error
+    }
+  }
+
+  /**
+   * Get Reliever Payment / Expense header from API
+   * Tries expense endpoint first, then employee-reliever fallback endpoint
+   */
+  static async getPaymentHeaderApi(accountCode = 'X1001001003') {
+    try {
+      const res = await axiosInstance.get(`/account-master/ledger/expense/internal/${accountCode}/header`)
+      return res.data?.results || res.data || null
+    } catch (err1) {
+      try {
+        const res2 = await axiosInstance.get(`/account-master/ledger/employee-reliever/${accountCode}/header`)
+        return res2.data?.results || res2.data || null
+      } catch (err2) {
+        console.warn(`⚠️ Both payment header API endpoints failed for ${accountCode}:`, err1?.message || err1)
+        throw err1
+      }
+    }
+  }
+
+  /**
+   * Get paginated transactions for Reliever Payment / Expense ledger
+   * Tries expense endpoint first, then employee-reliever fallback endpoint
+   */
+  static async getPaymentEntriesApi(accountCode = 'X1001001003', params = {}) {
+    try {
+      const res = await axiosInstance.get(`/account-master/ledger/expense/internal/${accountCode}/entries`, { params })
+      return res.data?.results || res.data || { entries: [], pagination: {} }
+    } catch (err1) {
+      try {
+        const res2 = await axiosInstance.get(`/account-master/ledger/employee-reliever/${accountCode}/entries`, { params })
+        return res2.data?.results || res2.data || { entries: [], pagination: {} }
+      } catch (err2) {
+        console.warn(`⚠️ Both payment entries API endpoints failed for ${accountCode}:`, err1?.message || err1)
+        throw err1
+      }
+    }
+  }
+
+  /**
+   * Get Reliever Payment / Expense footer summary from API
+   * Tries expense endpoint first, then employee-reliever fallback endpoint
+   */
+  static async getPaymentFooterApi(accountCode = 'X1001001003', params = {}) {
+    try {
+      const res = await axiosInstance.get(`/account-master/ledger/expense/internal/${accountCode}/footer`, { params })
+      return res.data?.results || res.data || null
+    } catch (err1) {
+      try {
+        const res2 = await axiosInstance.get(`/account-master/ledger/employee-reliever/${accountCode}/footer`, { params })
+        return res2.data?.results || res2.data || null
+      } catch (err2) {
+        console.warn(`⚠️ Both payment footer API endpoints failed for ${accountCode}:`, err1?.message || err1)
+        throw err1
+      }
     }
   }
 }
