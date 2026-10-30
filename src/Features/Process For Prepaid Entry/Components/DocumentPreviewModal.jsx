@@ -80,6 +80,11 @@ export default function DocumentPreviewModal({ url, document, onClose, title = "
           candidateSet.add(`/uploads/reports/${filenameOnly}`);
           candidateSet.add(`/uploads/receipts/${filenameOnly}`);
           candidateSet.add(`/uploads/${filenameOnly}`);
+          candidateSet.add(`/legacy/api/v1/uploads/conveyance/${filenameOnly}`);
+          candidateSet.add(`/legacy/api/v1/uploads/reliever/${filenameOnly}`);
+          candidateSet.add(`/legacy/api/v1/uploads/${filenameOnly}`);
+          candidateSet.add(`/legacy-minio/erp-accounts/conveyance/${filenameOnly}`);
+          candidateSet.add(`/legacy-minio/erp-accounts/${filenameOnly}`);
           candidateSet.add(`/api/v1/uploads/conveyance/${filenameOnly}`);
           candidateSet.add(`/api/v1/uploads/reliever/${filenameOnly}`);
           candidateSet.add(`/api/v1/uploads/${filenameOnly}`);

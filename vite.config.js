@@ -39,6 +39,33 @@ export default defineConfig({
     port: 5173,
 
     proxy: {
+      '/legacy/api/v1': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
+      '/legacy-minio': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
+      '/legacy': {
+        target: 'https://dev-int.ismart.org',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'origin':  'https://dev-int.ismart.org',
+          'referer': 'https://dev-int.ismart.org/',
+        },
+      },
       // ── Proxy all /api/v1/* calls to the real backend ──────────────────────
       // WHY: Browser blocks cross-origin requests (CORS) to dev-int.ismart.org.
       //      Vite acts as a server-side proxy — Node.js makes the actual request,
