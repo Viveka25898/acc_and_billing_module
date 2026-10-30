@@ -5,10 +5,11 @@ const LedgerHeader = ({ ledgerInfo }) => {
 
   // Format currency with proper symbols
   const formatCurrency = (amount) => {
-    if (typeof amount === 'number') {
+    if (typeof amount === 'number' && !isNaN(amount)) {
       return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    return amount || '₹0.00'; // Return as-is if it's already formatted
+    const clean = parseFloat(String(amount || 0).replace(/[^0-9.-]/g, '')) || 0;
+    return `₹${clean.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (

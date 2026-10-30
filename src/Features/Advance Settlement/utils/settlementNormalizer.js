@@ -76,8 +76,16 @@ export const normalizeSettlement = (raw) => {
     updatedAt:             raw.updated_at             || raw.updatedAt          || null,
 
     // Files
-    excelFile:             raw.excel_file             || raw.excelFile          || null,
-    attachments:           Array.isArray(raw.attachments) ? raw.attachments    : [],
+    excelFile: typeof (raw.excel_file || raw.excelFile) === 'string'
+      ? { name: (raw.excel_file || raw.excelFile).split('/').pop() || 'settlement_expenses.xlsx', url: raw.excel_file || raw.excelFile }
+      : (raw.excel_file || raw.excelFile || null),
+    attachments: Array.isArray(raw.attachments)
+      ? raw.attachments.map((att, i) =>
+          typeof att === 'string'
+            ? { name: att.split('/').pop() || `attachment_${i + 1}`, url: att }
+            : { ...att, name: att.name || (att.url ? att.url.split('/').pop() : `attachment_${i + 1}`) }
+        )
+      : (Array.isArray(raw.supporting_documents) ? raw.supporting_documents : []),
 
     // Approval Chain Info
     assignedToId:          raw.current_approval?.assigned_user_id

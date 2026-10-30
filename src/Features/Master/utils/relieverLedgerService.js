@@ -188,7 +188,7 @@ export class RelieverLedgerService {
         description: 'Temporary Staff Replacement Payments',
         period: period,
         financialYear: financialYear,
-        openingBalance: '₹0.00',
+        openingBalance: 0,
         openingBalanceDate: openingBalanceDate,
         totalSites: this.getTotalSites(),
         totalRelievers: this.getTotalRelievers(),
@@ -270,7 +270,7 @@ export class RelieverLedgerService {
       description: 'Temporary Staff Replacement Payments',
       period: period,
       financialYear: financialYear,
-      openingBalance: '₹0.00',
+      openingBalance: 0,
       openingBalanceDate: openingBalanceDate,
       totalSites: 8,
       totalRelievers: 15,
@@ -690,87 +690,139 @@ export class RelieverLedgerService {
     }
   }
 
-  /**
+    /**
    * Get Reliever Payment / Expense header from API
-   * Tries expense endpoint first, then employee-reliever fallback endpoint
+   * Routes to Liability endpoint if GL starts with L, or Expense endpoints if GL starts with X
    */
-  static async getPaymentHeaderApi(accountCode = 'X1001001003') {
-    try {
-      const res = await axiosInstance.get(`/account-master/ledger/expense/internal/${accountCode}/header`)
-      return res.data?.results || res.data || null
-    } catch (err1) {
-      try {
-        const res2 = await axiosInstance.get(`/account-master/ledger/employee-reliever/${accountCode}/header`)
-        return res2.data?.results || res2.data || null
-      } catch (err2) {
-        console.warn(`⚠️ Both payment header API endpoints failed for ${accountCode}:`, err1?.message || err1)
-        throw err1
-      }
+  static async getPaymentHeaderApi(accountCode = 'X2002002001') {
+    if (accountCode && accountCode.startsWith('L')) {
+      return this.getLiabilityHeaderApi(accountCode);
     }
+    return this.getExpenseHeaderApi(accountCode);
   }
 
   /**
    * Get paginated transactions for Reliever Payment / Expense ledger
-   * Tries expense endpoint first, then employee-reliever fallback endpoint
+   * Routes to Liability endpoint if GL starts with L, or Expense endpoints if GL starts with X
    */
-  static async getPaymentEntriesApi(accountCode = 'X1001001003', params = {}) {
-    try {
-      const res = await axiosInstance.get(`/account-master/ledger/expense/internal/${accountCode}/entries`, { params })
-      return res.data?.results || res.data || { entries: [], pagination: {} }
-    } catch (err1) {
-      try {
-        const res2 = await axiosInstance.get(`/account-master/ledger/employee-reliever/${accountCode}/entries`, { params })
-        return res2.data?.results || res2.data || { entries: [], pagination: {} }
-      } catch (err2) {
-        console.warn(`⚠️ Both payment entries API endpoints failed for ${accountCode}:`, err1?.message || err1)
-        throw err1
-      }
+  static async getPaymentEntriesApi(accountCode = 'X2002002001', params = {}) {
+    if (accountCode && accountCode.startsWith('L')) {
+      return this.getLiabilityEntriesApi(accountCode, params);
     }
+    return this.getExpenseEntriesApi(accountCode, params);
   }
 
   /**
    * Get Reliever Payment / Expense footer summary from API
-   * Tries expense endpoint first, then employee-reliever fallback endpoint
+   * Routes to Liability endpoint if GL starts with L, or Expense endpoints if GL starts with X
    */
-  static async getPaymentFooterApi(accountCode = 'X1001001003', params = {}) {
-    try {
-      const res = await axiosInstance.get(`/account-master/ledger/expense/internal/${accountCode}/footer`, { params })
-      return res.data?.results || res.data || null
-    } catch (err1) {
-      try {
-        const res2 = await axiosInstance.get(`/account-master/ledger/employee-reliever/${accountCode}/footer`, { params })
-        return res2.data?.results || res2.data || null
-      } catch (err2) {
-        console.warn(`⚠️ Both payment footer API endpoints failed for ${accountCode}:`, err1?.message || err1)
-        throw err1
-      }
+  static async getPaymentFooterApi(accountCode = 'X2002002001', params = {}) {
+    if (accountCode && accountCode.startsWith('L')) {
+      return this.getLiabilityFooterApi(accountCode, params);
     }
+    return this.getExpenseFooterApi(accountCode, params);
   }
 
   /**
    * Get reliever expense ledger header from API (GL: X2002002001)
-   * Endpoints: GET /account-master/ledger/expense/reliever/header or /ledger/expense/reliever/header
    */
   static async getExpenseHeaderApi(glCode = 'X2002002001') {
     const endpoints = [
       `/account-master/ledger/expense/reliever/header`,
       `/ledger/expense/reliever/header`,
       `/account-master/ledger/expense/reliever/${glCode}/header`,
-      `/account-master/ledger/expense/internal/${glCode}/header`,
-    ]
+      `/account-master/ledger/expense/${glCode}/header`,
+      `/ledger/expense/${glCode}/header`,
+      `/accounts/ledger/expense/${glCode}/header`,
+    ];
 
-    let lastError = null
+    let lastError = null;
     for (const endpoint of endpoints) {
       try {
-        const res = await axiosInstance.get(endpoint)
-        return res.data?.results || res.data?.data || res.data || null
+        const res = await axiosInstance.get(endpoint);
+        return res.data?.results || res.data?.data || res.data || null;
       } catch (err) {
-        lastError = err
-        if (err.response && err.response.status === 404) continue
-        throw err
+        lastError = err;
+        if (err.response && (err.response.status === 404 || err.response.status === 400)) {
+          continue;
+        }
+        throw err;
       }
     }
-    throw lastError
+    throw lastError;
+  }
+
+  /**
+   * Get paginated & filtered reliever expense entries from API (GL: X2002002001)
+   */
+  static async getExpenseEntriesApi(glCode = 'X2002002001', params = {}) {
+    const cleanParams = {};
+    if (params.page) cleanParams.page = params.page;
+    if (params.limit) cleanParams.limit = params.limit;
+    if (params.fromDate && params.fromDate.trim()) cleanParams.fromDate = params.fromDate.trim();
+    if (params.toDate && params.toDate.trim()) cleanParams.toDate = params.toDate.trim();
+    if (params.entryType && params.entryType !== 'All') cleanParams.entryType = params.entryType;
+    if (params.status && params.status !== 'All') cleanParams.status = params.status;
+    if (params.site && params.site !== 'All') cleanParams.site = params.site;
+    if (params.reliever && params.reliever !== 'All') cleanParams.reliever = params.reliever;
+    if (params.searchText && params.searchText.trim()) cleanParams.search = params.searchText.trim();
+
+    const endpoints = [
+      `/account-master/ledger/expense/reliever/entries`,
+      `/ledger/expense/reliever/entries`,
+      `/account-master/ledger/expense/reliever/${glCode}/entries`,
+      `/account-master/ledger/expense/${glCode}/entries`,
+      `/ledger/expense/${glCode}/entries`,
+      `/accounts/ledger/expense/${glCode}/entries`,
+    ];
+
+    let lastError = null;
+    for (const endpoint of endpoints) {
+      try {
+        const res = await axiosInstance.get(endpoint, { params: cleanParams });
+        return res.data?.results || res.data?.data || res.data || { entries: [], pagination: {} };
+      } catch (err) {
+        lastError = err;
+        if (err.response && (err.response.status === 404 || err.response.status === 400)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  }
+
+  /**
+   * Get reliever expense ledger footer summary from API (GL: X2002002001)
+   */
+  static async getExpenseFooterApi(glCode = 'X2002002001', params = {}) {
+    const cleanParams = {};
+    if (params.fromDate && params.fromDate.trim()) cleanParams.fromDate = params.fromDate.trim();
+    if (params.toDate && params.toDate.trim()) cleanParams.toDate = params.toDate.trim();
+
+    const endpoints = [
+      `/account-master/ledger/expense/reliever/footer`,
+      `/ledger/expense/reliever/footer`,
+      `/account-master/ledger/expense/reliever/${glCode}/footer`,
+      `/account-master/ledger/expense/${glCode}/footer`,
+      `/ledger/expense/${glCode}/footer`,
+      `/accounts/ledger/expense/${glCode}/footer`,
+    ];
+
+    let lastError = null;
+    for (const endpoint of endpoints) {
+      try {
+        const res = await axiosInstance.get(endpoint, { params: cleanParams });
+        return res.data?.results || res.data?.data || res.data || null;
+      } catch (err) {
+        lastError = err;
+        if (err.response && (err.response.status === 404 || err.response.status === 400)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
   }
 
   /**

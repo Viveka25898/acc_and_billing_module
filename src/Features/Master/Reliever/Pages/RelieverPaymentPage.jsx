@@ -9,7 +9,7 @@ import { RelieverLedgerService } from '../../utils/relieverLedgerService'
 const RelieverPaymentPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const accountCode = searchParams.get('accountCode') || 'X1001001003'
+  const accountCode = searchParams.get('accountCode') || 'X2002002001'
   const page = parseInt(searchParams.get('page') || '1', 10)
   const fromDate = searchParams.get('fromDate') || ''
   const toDate = searchParams.get('toDate') || ''
@@ -216,9 +216,9 @@ const RelieverPaymentPage = () => {
         financialYear:
           rawHeader?.financialYear || RelieverLedgerService.getCurrentFinancialYear(),
         openingBalance:
-          typeof rawHeader?.openingBalance === 'number'
+          typeof rawHeader?.openingBalance === 'number' && !isNaN(rawHeader.openingBalance)
             ? rawHeader.openingBalance
-            : parseFloat(rawHeader?.openingBalance || 0),
+            : parseFloat(String(rawHeader?.openingBalance || 0).replace(/[^0-9.-]/g, '')) || 0,
         openingBalanceDate:
           rawHeader?.openingBalanceDate || RelieverLedgerService.getOpeningBalanceDate(),
         totalSites: uniqueSites.size > 0 ? uniqueSites.size : rawHeader?.totalSites || 8,
@@ -237,12 +237,18 @@ const RelieverPaymentPage = () => {
 
       if (footerRes) {
         setSummaryData({
-          openingBalance: parseFloat(compiledHeader.openingBalance || 0),
-          totalDebit: parseFloat(footerRes.totalDebit || footerRes.totalPayments || 0),
-          totalCredit: parseFloat(footerRes.totalCredit || footerRes.totalClaims || 0),
-          closingBalance: parseFloat(
-            footerRes.closingBalance || footerRes.closingOutstandingLiability || 0
-          ),
+          openingBalance:
+            typeof compiledHeader.openingBalance === 'number' && !isNaN(compiledHeader.openingBalance)
+              ? compiledHeader.openingBalance
+              : parseFloat(String(compiledHeader.openingBalance || 0).replace(/[^0-9.-]/g, '')) || 0,
+          totalDebit:
+            parseFloat(String(footerRes.totalDebit || footerRes.totalPayments || 0).replace(/[^0-9.-]/g, '')) || 0,
+          totalCredit:
+            parseFloat(String(footerRes.totalCredit || footerRes.totalClaims || 0).replace(/[^0-9.-]/g, '')) || 0,
+          closingBalance:
+            parseFloat(
+              String(footerRes.closingBalance || footerRes.closingOutstandingLiability || 0).replace(/[^0-9.-]/g, '')
+            ) || 0,
         })
       } else {
         const computed = RelieverLedgerService.getSummaryData(mappedEntries)

@@ -11,7 +11,7 @@ const getWithFallback = async (endpoints, config = {}) => {
       }
     } catch (err) {
       lastError = err
-      if (err.response && err.response.status === 404) {
+      if (err.response && (err.response.status === 404 || err.response.status === 400)) {
         continue
       }
       throw err
@@ -41,35 +41,50 @@ export class ExpenseLedgerService {
         }
       })
 
+      let activeGl = expenseHeadCode
+      if (activeGl === 'X1001003') activeGl = 'X1001003001'
+
       const headerEndpoints = [
-        `/ledger/expense/conveyance/header`,
-        `/account-master/ledger/expense/conveyance/header`,
-        `/account-master/ledger/expense/internal/${expenseHeadCode}/header`,
-        `/account-master/ledger/expense/${expenseHeadCode}/header`,
-        `/ledger/expense/internal/${expenseHeadCode}/header`,
-        `/ledger/expense/${expenseHeadCode}/header`,
-        `/accounts/ledger/expense/${expenseHeadCode}/header`
+        `/account-master/ledger/expense/internal/${activeGl}/header`,
+        `/ledger/expense/internal/${activeGl}/header`,
+        `/account-master/ledger/expense/${activeGl}/header`,
+        `/ledger/expense/${activeGl}/header`,
+        `/accounts/ledger/expense/${activeGl}/header`
       ]
+      if (activeGl === 'X2001003') {
+        headerEndpoints.push(
+          `/account-master/ledger/expense/conveyance/header`,
+          `/ledger/expense/conveyance/header`
+        )
+      }
 
       const entriesEndpoints = [
-        `/ledger/expense/conveyance/entries`,
-        `/account-master/ledger/expense/conveyance/entries`,
-        `/account-master/ledger/expense/internal/${expenseHeadCode}/entries`,
-        `/account-master/ledger/expense/${expenseHeadCode}/entries`,
-        `/ledger/expense/internal/${expenseHeadCode}/entries`,
-        `/ledger/expense/${expenseHeadCode}/entries`,
-        `/accounts/ledger/expense/${expenseHeadCode}/entries`
+        `/account-master/ledger/expense/internal/${activeGl}/entries`,
+        `/ledger/expense/internal/${activeGl}/entries`,
+        `/account-master/ledger/expense/${activeGl}/entries`,
+        `/ledger/expense/${activeGl}/entries`,
+        `/accounts/ledger/expense/${activeGl}/entries`
       ]
+      if (activeGl === 'X2001003') {
+        entriesEndpoints.push(
+          `/account-master/ledger/expense/conveyance/entries`,
+          `/ledger/expense/conveyance/entries`
+        )
+      }
 
       const footerEndpoints = [
-        `/ledger/expense/conveyance/footer`,
-        `/account-master/ledger/expense/conveyance/footer`,
-        `/account-master/ledger/expense/internal/${expenseHeadCode}/footer`,
-        `/account-master/ledger/expense/${expenseHeadCode}/footer`,
-        `/ledger/expense/internal/${expenseHeadCode}/footer`,
-        `/ledger/expense/${expenseHeadCode}/footer`,
-        `/accounts/ledger/expense/${expenseHeadCode}/footer`
+        `/account-master/ledger/expense/internal/${activeGl}/footer`,
+        `/ledger/expense/internal/${activeGl}/footer`,
+        `/account-master/ledger/expense/${activeGl}/footer`,
+        `/ledger/expense/${activeGl}/footer`,
+        `/accounts/ledger/expense/${activeGl}/footer`
       ]
+      if (activeGl === 'X2001003') {
+        footerEndpoints.push(
+          `/account-master/ledger/expense/conveyance/footer`,
+          `/ledger/expense/conveyance/footer`
+        )
+      }
 
       // Fetch header, entries, and footer in parallel with route fallback
       const [headerRes, entriesRes, footerRes] = await Promise.all([
@@ -166,18 +181,33 @@ export class ExpenseLedgerService {
       // Append standard transactions
       finalTransactions.push(...transformedTransactions)
 
+      // Helper to parse amounts safely
+      const parseAmount = (v) => {
+        if (v === undefined || v === null || v === '' || v === '-') return 0
+        if (typeof v === 'number') return isNaN(v) ? 0 : v
+        const clean = String(v).replace(/[^0-9.-]/g, '')
+        const num = parseFloat(clean)
+        return isNaN(num) ? 0 : num
+      }
+
       // Format Balances for Balance Cards
       const balances = {
         opening: {
-          amount: headerData.openingBalance !== undefined ? `₹${Number(headerData.openingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+          amount: headerData.openingBalance !== undefined
+            ? `₹${parseAmount(headerData.openingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+            : '₹0.00',
           type: headerData.openingBalanceType || 'Debit Balance'
         },
         periodExpenses: {
-          amount: headerData.periodExpenses !== undefined ? `₹${Number(headerData.periodExpenses || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+          amount: headerData.periodExpenses !== undefined
+            ? `₹${parseAmount(headerData.periodExpenses).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+            : '₹0.00',
           type: 'Total Expenses'
         },
         closing: {
-          amount: headerData.closingBalance !== undefined ? `₹${Number(headerData.closingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+          amount: headerData.closingBalance !== undefined
+            ? `₹${parseAmount(headerData.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+            : '₹0.00',
           type: 'Debit Balance'
         }
       }
@@ -192,9 +222,19 @@ export class ExpenseLedgerService {
 
       // Format Summary
       const summary = {
-        totalDebit: footerData.totalDebit !== undefined ? `₹${Number(footerData.totalDebit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
-        totalCredit: footerData.totalCredit !== undefined ? `₹${Number(footerData.totalCredit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
-        closingBalance: footerData.closingBalance || (headerData.closingBalance ? `₹${Number(headerData.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} DR` : '₹0.00 DR')
+        totalDebit: footerData.totalDebit !== undefined
+          ? `₹${parseAmount(footerData.totalDebit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+          : '₹0.00',
+        totalCredit: footerData.totalCredit !== undefined
+          ? `₹${parseAmount(footerData.totalCredit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+          : '₹0.00',
+        closingBalance: footerData.closingBalance
+          ? (String(footerData.closingBalance).includes('₹')
+              ? String(footerData.closingBalance)
+              : `₹${parseAmount(footerData.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} DR`)
+          : (headerData.closingBalance
+              ? `₹${parseAmount(headerData.closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} DR`
+              : '₹0.00 DR')
       }
 
       // Filter options
@@ -202,8 +242,8 @@ export class ExpenseLedgerService {
 
       return {
         header: {
-          expenseHeadCode: headerData.expenseHeadCode || expenseHeadCode,
-          expenseHeadName: headerData.expenseHeadName || '-',
+          expenseHeadCode: headerData.expenseHeadCode || activeGl || expenseHeadCode,
+          expenseHeadName: headerData.expenseHeadName || headerData.ledgerName || '-',
           parentAccount: headerData.parentAccount || '-',
           accountType: headerData.accountType || '-',
           financialYear: headerData.financialYear || '-',

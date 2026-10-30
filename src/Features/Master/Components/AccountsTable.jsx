@@ -535,7 +535,12 @@ const AccountsTable = ({
           account.name.toLowerCase().includes('conveyance payable'))
 
       const isEmployeeAccount =
-        account.code.startsWith('A3002') || account.name.toLowerCase().includes('employee advance')
+        account.code.startsWith('A3001') ||
+        account.code.startsWith('A3002') ||
+        account.parentCode === 'A3001001' ||
+        account.parentCode === 'A3001' ||
+        (account.parentAccount && account.parentAccount.toUpperCase().includes('EMPLOYEE ADVANCE')) ||
+        account.name.toLowerCase().includes('employee advance')
 
       // TDS Receivable Ledger (Current Asset — A3006001)
       const isTDSReceivableAccount =
@@ -558,12 +563,19 @@ const AccountsTable = ({
         account.name.toLowerCase().includes('icici')
 
       const isTravelExpenseAccount =
+        account.code === 'X1001002001' ||
+        account.code === 'X1001002002' ||
+        account.code === 'X1001002003' ||
         account.code.startsWith('X1001002') ||
-        (account.code.includes('X1001002') && account.name.toLowerCase().includes('travel'))
+        (account.name && account.name.toLowerCase().includes('travel')) ||
+        (account.name && account.name.toLowerCase().includes('hotel')) ||
+        (account.name && account.name.toLowerCase().includes('parking'))
 
       const isFoodRefreshmentAccount =
+        account.code === 'X1001003001' ||
+        account.code === 'X1001003' ||
         account.code.startsWith('X1001003') ||
-        (account.code.includes('X1001003') && account.name.toLowerCase().includes('food'))
+        (account.name && account.name.toLowerCase().includes('food'))
 
       const isOfficeSuppliesAccount =
         account.code.startsWith('X2001002001') ||
@@ -930,10 +942,10 @@ const AccountsTable = ({
       // Non-vendor accounts first
       if (isRelieverPaymentAccount) {
         console.log('✅ Navigating to Reliever Payment Page')
-        navigate(`/dashboard/account-manager/reliever-payment-page`)
+        navigate(`/dashboard/account-manager/reliever-payment-page?accountCode=${encodeURIComponent(account.code)}`)
       } else if (isRelieverLiabilityAccount) {
         console.log('✅ Navigating to Reliever Liability Ledger')
-        navigate(`/dashboard/account-manager/reliever-liability-ledger`)
+        navigate(`/dashboard/account-manager/reliever-liability-ledger?accountCode=${encodeURIComponent(account.code)}`)
       } else if (isConveyanceExpenseAccount) {
         console.log('✅ Navigating to Conveyance Expense Ledger')
         navigate(`/dashboard/account-manager/conveyance-expense-ledger`)

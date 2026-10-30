@@ -7,8 +7,8 @@ import FilterSection from '../Components/FilterSection'
 import { RelieverLedgerService } from '../../utils/relieverLedgerService'
 
 const RelieverLiabilityLedgerPage = () => {
-  const accountCode = 'L2001002'
   const [searchParams, setSearchParams] = useSearchParams()
+  const accountCode = searchParams.get('accountCode') || 'L2001002'
 
   // Derive parameters from the URL
   const page = parseInt(searchParams.get('page') || '1', 10)
@@ -170,7 +170,7 @@ const RelieverLiabilityLedgerPage = () => {
         description: 'Liability Created for Reliever Wages',
         period: rawHeader.financialYear || '-',
         financialYear: rawHeader.financialYear || '-',
-        openingBalance: parseFloat(rawHeader.openingBalance || 0),
+        openingBalance: parseFloat(String(rawHeader.openingBalance || 0).replace(/[^0-9.-]/g, '')) || 0,
         openingBalanceDate: '-',
         totalSites: uniqueSites.size > 0 ? uniqueSites.size : '-',
         totalRelievers: uniqueRelivers.size > 0 ? uniqueRelivers.size : '-',

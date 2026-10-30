@@ -710,3 +710,104 @@ export const fetchJvDetails = async (id) => {
   const res = await axiosInstance.get(SETTLEMENT_API.JV_DETAILS(id))
   return res.data
 }
+
+
+/**
+ * Automatically downloads a file from advance settlement (Excel template, receipt, invoice, etc.)
+ * Supports:
+ * - Remote backend files with authentication (via URL)
+ * - Base64 data URIs or raw base64 data
+ * - Direct object shapes: { name, url, data, type }
+ */
+export const downloadSettlementFile = async (fileOrData, fallbackName = 'settlement_file') => {
+  if (!fileOrData) {
+    return
+  }
+
+  const fileName =
+    (typeof fileOrData === 'object' ? fileOrData.name : null) ||
+    (typeof fallbackName === 'string' ? fallbackName : null) ||
+    'settlement_file'
+
+  const fileUrl = typeof fileOrData === 'string' && (fileOrData.startsWith('http') || fileOrData.startsWith('/'))
+    ? fileOrData
+    : fileOrData?.url
+
+  const fileData = typeof fileOrData === 'object'
+    ? fileOrData?.data
+    : (typeof fileOrData === 'string' && !fileOrData.startsWith('http') && !fileOrData.startsWith('/') ? fileOrData : null)
+
+  // 1. Data URI (Base64 data:...)
+  if (fileData && typeof fileData === 'string' && fileData.startsWith('data:')) {
+    const link = document.createElement('a')
+    link.href = fileData
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    return
+  }
+
+  // 2. Remote URL from Backend Storage
+  if (fileUrl) {
+    try {
+      let endpoint = fileUrl
+      if (endpoint.includes('/legacy/api/v1/')) {
+        endpoint = endpoint.substring(endpoint.indexOf('/legacy/api/v1/') + '/legacy/api/v1'.length)
+      } else if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+        try {
+          const urlObj = new URL(endpoint)
+          endpoint = urlObj.pathname + urlObj.search
+          if (endpoint.startsWith('/legacy/api/v1/')) {
+            endpoint = endpoint.substring('/legacy/api/v1'.length)
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const res = await axiosInstance.get(endpoint, {
+        responseType: 'blob',
+      })
+
+      const contentType =
+        res.headers?.['content-type'] ||
+        (typeof fileOrData === 'object' ? fileOrData.type : null) ||
+        'application/octet-stream'
+
+      const blob = new Blob([res.data], { type: contentType })
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1500)
+      return
+    } catch (err) {
+      console.warn('Axios blob download failed, trying direct link download:', err)
+      const link = document.createElement('a')
+      link.href = fileUrl
+      link.download = fileName
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      return
+    }
+  }
+
+  // 3. Raw Base64 string without data: prefix
+  if (fileData && typeof fileData === 'string') {
+    const mime = (typeof fileOrData === 'object' && fileOrData.type) || 'application/octet-stream'
+    const link = document.createElement('a')
+    link.href = `data:${mime};base64,${fileData}`
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    return
+  }
+}

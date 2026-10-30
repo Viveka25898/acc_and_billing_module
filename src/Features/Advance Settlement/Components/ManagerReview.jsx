@@ -6,6 +6,7 @@ import ManagerClarificationModal from './ManagerClarificationModal'
 import { selectRole, selectEmpName, selectEmpId } from '../../../Auth/authSlice'
 
 // ── Redux Thunks ──────────────────────────────────────────────────────────────
+import { downloadSettlementFile } from '../services/advanceSettlementService'
 import {
   fetchRhQueue,
   approveRh,
@@ -46,15 +47,7 @@ const STATUS_ORDER = {
   [SETTLEMENT_STATUS.PENDING_REGIONAL_HEAD]: 1,
 }
 
-const downloadBase64File = (base64Data, fileName) => {
-  if (!base64Data) return
-  const link = document.createElement('a')
-  link.href = base64Data
-  link.download = fileName || 'download'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
+const downloadBase64File = (fileOrData, fileName) => downloadSettlementFile(fileOrData, fileName)
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ManagerReview = () => {
@@ -320,13 +313,14 @@ const ManagerReview = () => {
 
                         {/* Excel File */}
                         <td className="px-4 py-3 text-gray-700">
-                          {req.excelFile?.data ? (
+                          {req.excelFile && (req.excelFile.name || req.excelFile.url || req.excelFile.data) ? (
                             <button
-                              onClick={() => downloadBase64File(req.excelFile.data, req.excelFile.name)}
-                              className="text-green-600 hover:text-green-800 hover:underline font-semibold text-xs text-left line-clamp-1 cursor-pointer"
-                              title={req.excelFile.name}
+                              type="button"
+                              onClick={() => downloadSettlementFile(req.excelFile, req.excelFile.name || 'settlement_expenses.xlsx')}
+                              className="text-green-600 hover:text-green-800 hover:underline font-semibold text-xs text-left line-clamp-1 cursor-pointer flex items-center gap-1"
+                              title={req.excelFile.name || 'Download Excel File'}
                             >
-                              📎 {req.excelFile.name}
+                              📎 {req.excelFile.name || 'Excel File'}
                             </button>
                           ) : (
                             <span className="text-gray-400">—</span>
@@ -340,7 +334,7 @@ const ManagerReview = () => {
                               {req.attachments.map((file, idx) => (
                                 <button
                                   key={idx}
-                                  onClick={() => downloadBase64File(file.data, file.name)}
+                                  onClick={() => downloadSettlementFile(file, file.name)}
                                   className="text-green-600 hover:text-green-800 hover:underline font-semibold text-xs text-left line-clamp-1 cursor-pointer"
                                   title={file.name}
                                 >
