@@ -1,15 +1,16 @@
 import React from 'react';
 
-const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
-  // Extract backend API fields cleanly with fallbacks
+const ConveyanceExpenseVoucher = ({ data: rawData = {}, onClose }) => {
+  // Extract backend API fields cleanly with fallbacks (supports { data: { ... } }, { id, data: { ... } }, or flat { ... })
+  const data = rawData?.data || rawData?.voucherData || rawData || {};
   const rawVoucher = data.voucher || {};
   const rawHeader = data.header || {};
   const rawEmployee = data.employeeDetails || data.employee_details || {};
   const rawConveyance = data.conveyanceDetails || data.conveyance_details || {};
 
   const voucherNo =
-    data.voucher_no ||
     data.voucherNumber ||
+    data.voucher_no ||
     rawVoucher.voucherNo ||
     rawVoucher.voucher_no ||
     rawHeader.voucherNo ||
@@ -17,8 +18,8 @@ const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
     "-";
 
   const transactionId =
-    data.transaction_id ||
     data.transactionId ||
+    data.transaction_id ||
     rawVoucher.transaction_id ||
     rawHeader.transactionId ||
     "-";
@@ -45,9 +46,9 @@ const ConveyanceExpenseVoucher = ({ data = {}, onClose }) => {
     : [
         {
           date: rawConveyance.date || data.visit_date || data.date || "-",
-          clientName: rawConveyance.client || data.client_name || data.client || "-",
+          clientName: rawConveyance.client || rawConveyance.client_name || data.client_name || data.client || "-",
           purpose: rawConveyance.purpose || data.purpose || "-",
-          transport: rawConveyance.transport || data.transport_mode || data.transport || "-",
+          transport: rawConveyance.transport || rawConveyance.transport_mode || data.transport_mode || data.transport || "-",
           distance: rawConveyance.distance ? `${rawConveyance.distance} km` : "-",
           amount: rawConveyance.amount || data.amount || 0,
         },

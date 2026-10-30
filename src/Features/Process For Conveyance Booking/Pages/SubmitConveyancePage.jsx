@@ -44,9 +44,9 @@ export default function SubmitConveyancePage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header Container */}
-      <div className="bg-gradient-to-r from-green-700 to-green-600 rounded-2xl shadow-lg p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="h-[calc(100vh-105px)] max-h-[calc(100vh-105px)] flex flex-col max-w-5xl mx-auto space-y-4 overflow-hidden">
+      {/* Fixed Header Container */}
+      <div className="shrink-0 bg-gradient-to-r from-green-700 to-green-600 rounded-2xl shadow-lg p-5 sm:p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Conveyance Claim Request</h1>
           <p className="text-green-100 text-sm mt-1 font-medium">
@@ -64,8 +64,8 @@ export default function SubmitConveyancePage() {
         </div>
       </div>
 
-      {/* Conveyance Form Container */}
-      <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      {/* Conveyance Form Container with vertical scrollbar confined to form */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 flex-1 min-h-0 overflow-hidden flex flex-col">
         <ConveyanceForm
           onSubmit={handleSubmit}
           submitLoading={submitLoading}

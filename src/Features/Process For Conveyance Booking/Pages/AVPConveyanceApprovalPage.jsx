@@ -46,9 +46,11 @@ export default function AVPConveyanceApprovalPage() {
   // Enhanced filtering
   const filteredClaims = queueRequests.filter((claim) => {
     const employeeName = claim.employeeName || claim.employee_name || claim.submittedBy || "";
+    const employeeId = claim.employeeId || claim.employee_id || "";
     const employeeMatch =
       filter.employee === "" ||
-      employeeName.toLowerCase().includes(filter.employee.toLowerCase());
+      employeeName.toLowerCase().includes(filter.employee.toLowerCase()) ||
+      employeeId.toLowerCase().includes(filter.employee.toLowerCase());
 
     const statusText = claim.status_display || claim.status || "";
     const statusMatch =

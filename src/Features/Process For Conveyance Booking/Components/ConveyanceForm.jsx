@@ -191,14 +191,16 @@ export default function ConveyanceForm({ onSubmit, submitLoading }) {
   };
 
   return (
-    <form className="p-6 space-y-6 bg-white" onSubmit={handleSubmit}>
-      {/* Information Banner */}
-      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3 text-sm text-green-800">
-        <FiInfo className="text-green-600 mt-0.5 shrink-0" size={18} />
-        <div>
-          <span className="font-semibold text-green-900">Submission Guidelines:</span> Provide accurate visit details and distance. Visit report is mandatory. Transport receipt is required for <strong>Cab, Bus, Auto, & Train</strong>. Maximum file size is 2 MB per attachment.
+    <form className="h-full flex flex-col p-4 sm:p-6 bg-white overflow-hidden" onSubmit={handleSubmit}>
+      {/* Scrollable Form Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-1 sm:pr-2">
+        {/* Information Banner */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3 text-sm text-green-800">
+          <FiInfo className="text-green-600 mt-0.5 shrink-0" size={18} />
+          <div>
+            <span className="font-semibold text-green-900">Submission Guidelines:</span> Provide accurate visit details and distance. Visit report is mandatory. Transport receipt is required for <strong>Cab, Bus, Auto, & Train</strong>. Maximum file size is 2 MB per attachment.
+          </div>
         </div>
-      </div>
 
       {/* Grid Inputs Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
@@ -438,9 +440,10 @@ export default function ConveyanceForm({ onSubmit, submitLoading }) {
           </div>
         </div>
       </div>
+      </div>
 
-      {/* Action Footer */}
-      <div className="flex justify-end pt-4 border-t border-gray-100">
+      {/* Action Footer - Fixed at bottom */}
+      <div className="shrink-0 flex justify-end pt-4 mt-2 border-t border-gray-100 bg-white">
         <button
           type="submit"
           disabled={submitLoading}
