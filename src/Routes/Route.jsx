@@ -252,6 +252,20 @@ import {
 } from '../Features/Billing/Ledgers'
 import AVPDashboard from '../Roles/AVP Opearations/Pages/AVPDashboard'
 import AVPHome from './../Roles/AVP Opearations/Components/AVPHome';
+// ============== NON-PO EXPENSE TRACKING IMPORTS ==============
+import EmployeeNonPoExpenseForm from '../Features/Non PO Expense/Pages/EmployeeNonPoExpenseForm'
+import EmployeeNonPoMyRequests from '../Features/Non PO Expense/Pages/EmployeeNonPoMyRequests'
+import EmployeeNonPoExpenseEditWrapper from '../Features/Non PO Expense/Pages/EmployeeNonPoExpenseEditWrapper'
+import OENonPoExpenseForm from '../Features/Non PO Expense/Pages/OENonPoExpenseForm'
+import OENonPoMyRequests from '../Features/Non PO Expense/Pages/OENonPoMyRequests'
+import OENonPoExpenseEditWrapper from '../Features/Non PO Expense/Pages/OENonPoExpenseEditWrapper'
+import RHNonPoExpenseForm from '../Features/Non PO Expense/Pages/RHNonPoExpenseForm'
+import RHNonPoMyRequests from '../Features/Non PO Expense/Pages/RHNonPoMyRequests'
+import RHNonPoExpenseEditWrapper from '../Features/Non PO Expense/Pages/RHNonPoExpenseEditWrapper'
+import AVPNonPoExpenseForm from '../Features/Non PO Expense/Pages/AVPNonPoExpenseForm'
+import AVPNonPoMyRequests from '../Features/Non PO Expense/Pages/AVPNonPoMyRequests'
+import AVPNonPoExpenseEditWrapper from '../Features/Non PO Expense/Pages/AVPNonPoExpenseEditWrapper'
+// =============================================================
 // =================================================================
 
 export const router = createBrowserRouter([
@@ -312,6 +326,18 @@ export const router = createBrowserRouter([
       {
         path: 'my-reliver-requests',
         element: <OperationExecutiveMyRequestsPage />,
+      },
+      {
+        path: 'non-po-expense-request',
+        element: <EmployeeNonPoExpenseForm />,
+      },
+      {
+        path: 'non-po-expense-request/edit/:claimId',
+        element: <EmployeeNonPoExpenseEditWrapper />,
+      },
+      {
+        path: 'my-non-po-requests',
+        element: <EmployeeNonPoMyRequests />,
       },
     ],
   },
@@ -391,6 +417,9 @@ export const router = createBrowserRouter([
       { path: 'line-manager-reliever-approval', element: <LineManagerRelieverApprovalPage /> },
       { path: 'submit-advance-settlement', element: <LineManagerAdvanceSettlementForm /> },
       { path: 'my-settelment-requests', element: <MySettlements /> },
+      { path: 'non-po-expense-request', element: <RHNonPoExpenseForm /> },
+      { path: 'non-po-expense-request/edit/:claimId', element: <RHNonPoExpenseEditWrapper /> },
+      { path: 'my-non-po-requests', element: <RHNonPoMyRequests /> },
     ],
   },
 
@@ -414,6 +443,9 @@ export const router = createBrowserRouter([
       { path: 'conveyance-approval', element: <AVPConveyanceApprovalPage /> },
       { path: 'conveyance-form', element: <SubmitConveyancePage /> },
       { path: 'my-conveyance-requests', element: <MyConveyanceRequestsPage /> },
+      { path: 'non-po-expense-request', element: <AVPNonPoExpenseForm /> },
+      { path: 'non-po-expense-request/edit/:claimId', element: <AVPNonPoExpenseEditWrapper /> },
+      { path: 'my-non-po-requests', element: <AVPNonPoMyRequests /> },
     ],
   },
   // *******************************VP Operations***********************************
@@ -1037,6 +1069,18 @@ export const router = createBrowserRouter([
       {
         path: 'my-settelment-requests',
         element: <MySettlements />,
+      },
+      {
+        path: 'non-po-expense-request',
+        element: <OENonPoExpenseForm />,
+      },
+      {
+        path: 'non-po-expense-request/edit/:claimId',
+        element: <OENonPoExpenseEditWrapper />,
+      },
+      {
+        path: 'my-non-po-requests',
+        element: <OENonPoMyRequests />,
       },
     ],
   },

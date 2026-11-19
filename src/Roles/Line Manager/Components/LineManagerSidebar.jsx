@@ -29,6 +29,8 @@ const LineManagerSidebar = () => {
     { to: `${base}/conveyance-approval`,                label: 'Conveyance Approval' },
     { to: `${base}/conveyance-form`,                    label: 'Conveyance Form' },
     { to: `${base}/line-manager-reliever-approval`,     label: 'Reliever Requests Approval' },
+    { to: `${base}/non-po-expense-request`,             label: 'Non-PO Expense Request' },
+    { to: `${base}/my-non-po-requests`,                 label: 'My Non-PO Requests' },
   ]
 
   return (

@@ -36,6 +36,8 @@ const AVPSidebar = () => {
     { to: `${base}/avp-reliever-approval`,              label: 'Reliever Requests Approval' },
     { to: `${base}/conveyance-approval`,                label: 'Conveyance Approvals' },
     { to: `${base}/conveyance-form`,                    label: 'Submit Conveyance' },
+    { to: `${base}/non-po-expense-request`,             label: 'Non-PO Expense Request' },
+    { to: `${base}/my-non-po-requests`,                 label: 'My Non-PO Requests' },
   ]
 
   return (

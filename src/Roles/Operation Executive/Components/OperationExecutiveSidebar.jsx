@@ -72,8 +72,19 @@ const OperationExecutiveSidebar = () => {
         </li>
         <hr className="border-white mx-4" />
 
-        
-       
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/operation-executive/non-po-expense-request">
+                Non-PO Expense Request
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
+
+        <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+              <NavLink to="/dashboard/operation-executive/my-non-po-requests">
+                My Non-PO Requests
+              </NavLink>
+        </li>
+        <hr className="border-white mx-4" />
         </ul>
       </div>
     </>
