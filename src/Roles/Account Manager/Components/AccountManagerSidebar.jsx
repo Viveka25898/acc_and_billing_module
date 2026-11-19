@@ -43,6 +43,11 @@ const AccountManagerSidebar = () => {
           <hr className="border-white mx-4" />
 
           <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
+            <NavLink to="/dashboard/account-manager/non-po-expense-approvals">Non-PO Approvals</NavLink>
+          </li>
+          <hr className="border-white mx-4" />
+
+          <li className="px-6 py-2 hover:bg-green-600 cursor-pointer text-sm">
             <NavLink to="/dashboard/account-manager/gl-master">Masters</NavLink>
           </li>
           <hr className="border-white mx-4" />

@@ -265,6 +265,11 @@ import RHNonPoExpenseEditWrapper from '../Features/Non PO Expense/Pages/RHNonPoE
 import AVPNonPoExpenseForm from '../Features/Non PO Expense/Pages/AVPNonPoExpenseForm'
 import AVPNonPoMyRequests from '../Features/Non PO Expense/Pages/AVPNonPoMyRequests'
 import AVPNonPoExpenseEditWrapper from '../Features/Non PO Expense/Pages/AVPNonPoExpenseEditWrapper'
+import RHNonPoApprovalPage from '../Features/Non PO Expense/Pages/RHNonPoApprovalPage'
+import AVPNonPoApprovalPage from '../Features/Non PO Expense/Pages/AVPNonPoApprovalPage'
+import VPNonPoApprovalPage from '../Features/Non PO Expense/Pages/VPNonPoApprovalPage'
+import AENonPoApprovalPage from '../Features/Non PO Expense/Pages/AENonPoApprovalPage'
+import AMNonPoApprovalPage from '../Features/Non PO Expense/Pages/AMNonPoApprovalPage'
 // =============================================================
 // =================================================================
 
@@ -420,6 +425,7 @@ export const router = createBrowserRouter([
       { path: 'non-po-expense-request', element: <RHNonPoExpenseForm /> },
       { path: 'non-po-expense-request/edit/:claimId', element: <RHNonPoExpenseEditWrapper /> },
       { path: 'my-non-po-requests', element: <RHNonPoMyRequests /> },
+      { path: 'non-po-expense-approvals', element: <RHNonPoApprovalPage /> },
     ],
   },
 
@@ -446,6 +452,7 @@ export const router = createBrowserRouter([
       { path: 'non-po-expense-request', element: <AVPNonPoExpenseForm /> },
       { path: 'non-po-expense-request/edit/:claimId', element: <AVPNonPoExpenseEditWrapper /> },
       { path: 'my-non-po-requests', element: <AVPNonPoMyRequests /> },
+      { path: 'non-po-expense-approvals', element: <AVPNonPoApprovalPage /> },
     ],
   },
   // *******************************VP Operations***********************************
@@ -500,6 +507,10 @@ export const router = createBrowserRouter([
       {
         path: 'my-settelment-requests',
         element: <MySettlements />,
+      },
+      {
+        path: 'non-po-expense-approvals',
+        element: <VPNonPoApprovalPage />,
       },
     ],
   },
@@ -723,6 +734,10 @@ export const router = createBrowserRouter([
       {
         path: 'advance-settlement-requests',
         element: <AEAdvanceSettlementApproval />,
+      },
+      {
+        path: 'non-po-expense-approvals',
+        element: <AENonPoApprovalPage />,
       },
       {
         path: 'invoice-review',
@@ -1124,6 +1139,10 @@ export const router = createBrowserRouter([
       {
         path: 'advance-settlement-requests',
         element: <AMAdvanceSettlementApproval />,
+      },
+      {
+        path: 'non-po-expense-approvals',
+        element: <AMNonPoApprovalPage />,
       },
       // ************************************Master Dummy********************************************
       // Client Ledger Route

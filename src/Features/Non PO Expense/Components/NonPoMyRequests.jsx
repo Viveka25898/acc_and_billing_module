@@ -243,6 +243,7 @@ const NonPoMyRequests = ({
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50/80 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
               <tr>
+                <th className="px-3 py-3.5 font-bold text-center w-14">Sr. No.</th>
                 <th className="px-4 py-3.5 font-bold">Claim ID</th>
                 <th className="px-4 py-3.5 font-bold">Claim Date</th>
                 <th className="px-4 py-3.5 font-bold">Expense Type</th>
@@ -257,14 +258,14 @@ const NonPoMyRequests = ({
             <tbody className="divide-y divide-gray-100 text-xs sm:text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center text-gray-500">
+                  <td colSpan={10} className="py-16 text-center text-gray-500">
                     <div className="inline-block w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-3"></div>
                     <p className="font-medium text-sm">Loading your expense claims...</p>
                   </td>
                 </tr>
               ) : paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center text-gray-500">
+                  <td colSpan={10} className="py-16 text-center text-gray-500">
                     <span className="text-4xl block mb-2">📭</span>
                     <p className="font-bold text-gray-700 text-base">No Expense Claims Found</p>
                     <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
@@ -275,13 +276,18 @@ const NonPoMyRequests = ({
                   </td>
                 </tr>
               ) : (
-                paginatedRequests.map((req) => {
+                paginatedRequests.map((req, index) => {
                   const isDraft = req.workflowStatus === WORKFLOW_STATUS.DRAFT
                   return (
                     <tr
                       key={req.claimId}
                       className="hover:bg-green-50/40 transition-colors"
                     >
+                      {/* Sr. No. */}
+                      <td className="px-3 py-3 text-center font-mono text-gray-500 font-semibold text-xs whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + index + 1}
+                      </td>
+
                       {/* Claim ID */}
                       <td className="px-4 py-3 font-mono font-bold text-green-700 whitespace-nowrap">
                         {req.claimId}
@@ -334,7 +340,7 @@ const NonPoMyRequests = ({
                           <button
                             type="button"
                             onClick={() => navigate(`${editPathPrefix}/${req.claimId}`)}
-                            className="text-xs bg-amber-50 text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-semibold transition inline-flex items-center gap-1 shadow-2xs"
+                            className="text-xs bg-amber-50 text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-semibold transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
                           >
                             <span>✏️</span> Edit Draft
                           </button>
@@ -345,7 +351,7 @@ const NonPoMyRequests = ({
                               // Toast or view placeholder until RequestDetail is mounted
                               toast.info(`Claim: ${req.claimId} | Status: ${req.workflowStatus}`)
                             }}
-                            className="text-xs bg-white text-green-700 border border-green-300 px-3 py-1.5 rounded-lg hover:bg-green-50 font-semibold transition shadow-2xs"
+                            className="text-xs bg-white text-green-700 border border-green-300 px-3 py-1.5 rounded-lg hover:bg-green-50 font-semibold transition shadow-2xs cursor-pointer"
                           >
                             View Details →
                           </button>
@@ -375,7 +381,7 @@ const NonPoMyRequests = ({
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed font-medium transition cursor-pointer"
               >
                 ‹ Previous
               </button>
@@ -384,7 +390,7 @@ const NonPoMyRequests = ({
                   key={page}
                   type="button"
                   onClick={() => setCurrentPage(page)}
-                  className={`w-7 h-7 rounded-lg font-semibold transition ${
+                  className={`w-7 h-7 rounded-lg font-semibold transition cursor-pointer ${
                     page === currentPage
                       ? 'bg-green-600 text-white shadow-xs'
                       : 'border border-gray-300 text-gray-700 hover:bg-white'

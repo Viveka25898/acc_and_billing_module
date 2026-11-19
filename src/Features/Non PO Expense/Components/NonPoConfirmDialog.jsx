@@ -48,7 +48,7 @@ const NonPoConfirmDialog = ({
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition disabled:opacity-50"
+            className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition disabled:opacity-50 cursor-pointer"
           >
             {cancelLabel}
           </button>
@@ -56,7 +56,7 @@ const NonPoConfirmDialog = ({
             type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="px-5 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50"
+            className="px-5 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
               <>

@@ -318,6 +318,154 @@ export let mockExpenseRequests = [
     ageDays: 11,
     createdAt: '2026-11-05T09:00:00Z',
   },
+  {
+    id: 'req-006',
+    claimId: 'NPO-2026-W-000006',
+    claimDate: '2026-11-15',
+    financialYear: 'FY 2026-27',
+    workflowStatus: WORKFLOW_STATUS.PENDING_VP,
+    paymentStatus: PAYMENT_STATUS.NOT_APPLICABLE,
+    employeeCode: 'EMP0000012',
+    employeeName: 'Karan Malhotra',
+    requesterRole: 'Operation Executive',
+    region: 'W',
+    expenseType: 'Emergency Repair',
+    urgency: 'critical',
+    incidentDate: '2026-11-14',
+    categoryId: 'cat_er_fire',
+    categoryName: 'Fire Safety & Damaged Equipment',
+    billable: 'No',
+    clientId: null,
+    clientName: null,
+    siteId: 'site-mh01',
+    siteName: 'Godrej One - Vikhroli, Mumbai',
+    costCentre: 'CC-MH01-OPS',
+    expenseDate: '2026-11-15',
+    claimReason: 'Fire sprinkler line joint burst in Basement B1. Immediate pressure welding required to avoid major water damage to electrical substation.',
+    nonPoJustification: 'Critical life-safety issue on Sunday. Contractor called on emergency standby rates.',
+    amountRequested: 64500.00,
+    accountHolderName: 'FireShield Engineering Works',
+    bankName: 'Axis Bank, Vikhroli West',
+    bankAccountNo: '918020033445566',
+    ifscCode: 'UTIB0000543',
+    passbookImage: {
+      fileName: 'FireShield_Cancelled_Cheque.jpg',
+      size: '1.1 MB',
+      type: 'Bank Passbook / Cheque Proof',
+    },
+    attachments: [
+      { id: 'att-6a', fileName: 'Welding_Job_Sheet.pdf', type: 'Invoice', size: '1.2 MB' },
+      { id: 'att-6b', fileName: 'Burst_Joint_Photo.jpg', type: 'Photo', size: '3.4 MB' },
+    ],
+    approvalTimeline: [
+      { stage: 'RH', role: 'Regional Head', approverName: 'Vikram Singh', decision: 'Approved', date: '2026-11-15 11:30', comments: 'Critical safety repair approved urgently.' },
+      { stage: 'AVP', role: 'AVP Operations', approverName: 'Arjun Desai', decision: 'Approved', date: '2026-11-15 16:45', comments: 'Verified site photo. Escalated to VP for high-value signoff.' },
+      { stage: 'VP', role: 'VP Operations', approverName: null, decision: 'Pending', date: null, comments: null },
+      { stage: 'AE', role: 'Account Executive', approverName: null, decision: null, date: null, comments: null },
+      { stage: 'AM', role: 'Accounts Manager', approverName: null, decision: null, date: null, comments: null },
+    ],
+    currentStage: 'VP Operations',
+    ageDays: 1,
+    createdAt: '2026-11-15T08:30:00Z',
+  },
+  {
+    id: 'req-007',
+    claimId: 'NPO-2026-W-000007',
+    claimDate: '2026-11-13',
+    financialYear: 'FY 2026-27',
+    workflowStatus: WORKFLOW_STATUS.PENDING_AE,
+    paymentStatus: PAYMENT_STATUS.NOT_APPLICABLE,
+    employeeCode: 'EMP0000045',
+    employeeName: 'Rahul Deshmukh',
+    requesterRole: 'Operation Manager',
+    region: 'W',
+    expenseType: 'Site Operational Expense',
+    urgency: 'high',
+    incidentDate: null,
+    categoryId: 'cat_so_water',
+    categoryName: 'Emergency Water Tanker Supply',
+    billable: 'Yes',
+    clientId: 'client-hdfc',
+    clientName: 'HDFC Asset Management',
+    siteId: 'site-mh02',
+    siteName: 'BKC Financial Center, Mumbai',
+    costCentre: 'CC-MH02-BKC',
+    expenseDate: '2026-11-13',
+    claimReason: 'Municipal water supply line broken by metro construction. 8 emergency water tankers hired for business continuity.',
+    nonPoJustification: 'Local water tanker vendors do not accept PO terms. Immediate cash/NEFT disbursement required on delivery.',
+    amountRequested: 42000.00,
+    accountHolderName: 'Shree Krishna Water Suppliers',
+    bankName: 'Kotak Mahindra Bank, Bandra Kurla Complex',
+    bankAccountNo: '881122334455',
+    ifscCode: 'KKBK0000678',
+    passbookImage: {
+      fileName: 'KrishnaWater_Passbook.jpg',
+      size: '950 KB',
+      type: 'Bank Passbook / Cheque Proof',
+    },
+    attachments: [
+      { id: 'att-7a', fileName: 'Tanker_Log_Sheet.pdf', type: 'Invoice', size: '820 KB' },
+    ],
+    approvalTimeline: [
+      { stage: 'RH', role: 'Regional Head', approverName: 'Vikram Singh', decision: 'Approved', date: '2026-11-13 15:00', comments: 'Approved due to metro outage.' },
+      { stage: 'AVP', role: 'AVP Operations', approverName: 'Arjun Desai', decision: 'Approved', date: '2026-11-14 10:15', comments: 'Tanker slips verified.' },
+      { stage: 'VP', role: 'VP Operations', approverName: 'Suresh Menon', decision: 'Approved', date: '2026-11-14 14:20', comments: 'Concurred. Sent to AE for tax validation.' },
+      { stage: 'AE', role: 'Account Executive', approverName: null, decision: 'Pending', date: null, comments: null },
+      { stage: 'AM', role: 'Accounts Manager', approverName: null, decision: null, date: null, comments: null },
+    ],
+    currentStage: 'Account Executive',
+    ageDays: 3,
+    createdAt: '2026-11-13T12:00:00Z',
+  },
+  {
+    id: 'req-008',
+    claimId: 'NPO-2026-W-000008',
+    claimDate: '2026-11-11',
+    financialYear: 'FY 2026-27',
+    workflowStatus: WORKFLOW_STATUS.PENDING_AM,
+    paymentStatus: PAYMENT_STATUS.NOT_APPLICABLE,
+    employeeCode: 'EMP0000012',
+    employeeName: 'Karan Malhotra',
+    requesterRole: 'Operation Executive',
+    region: 'W',
+    expenseType: 'Reliever / Consultant',
+    urgency: 'normal',
+    incidentDate: null,
+    categoryId: 'cat_rc_safety',
+    categoryName: 'Third-party Safety Inspector',
+    billable: 'No',
+    clientId: null,
+    clientName: null,
+    siteId: 'site-mh01',
+    siteName: 'Godrej One - Vikhroli, Mumbai',
+    costCentre: 'CC-MH01-OPS',
+    expenseDate: '2026-11-11',
+    claimReason: 'Mandatory third-party structural stability safety inspection post monsoon ground movement audit.',
+    nonPoJustification: 'Audit compliance report was due to municipal inspectorate within 48 hours to prevent site work stoppage order.',
+    amountRequested: 35000.00,
+    accountHolderName: 'Apex Structural Audits LLP',
+    bankName: 'Canara Bank, Vikhroli West',
+    bankAccountNo: '0234101088990',
+    ifscCode: 'CNRB0000234',
+    passbookImage: {
+      fileName: 'ApexAudits_Cancelled_Cheque.jpg',
+      size: '720 KB',
+      type: 'Bank Passbook / Cheque Proof',
+    },
+    attachments: [
+      { id: 'att-8', fileName: 'Structural_Audit_Report.pdf', type: 'Invoice', size: '2.5 MB' },
+    ],
+    approvalTimeline: [
+      { stage: 'RH', role: 'Regional Head', approverName: 'Vikram Singh', decision: 'Approved', date: '2026-11-11 16:00', comments: 'Approved.' },
+      { stage: 'AVP', role: 'AVP Operations', approverName: 'Arjun Desai', decision: 'Approved', date: '2026-11-12 11:30', comments: 'Approved.' },
+      { stage: 'VP', role: 'VP Operations', approverName: 'Suresh Menon', decision: 'Approved', date: '2026-11-12 17:00', comments: 'Approved.' },
+      { stage: 'AE', role: 'Account Executive', approverName: 'Ramesh Agarwal', decision: 'Approved', date: '2026-11-13 12:45', comments: 'TDS section 194J verified. Ready for AM final signoff.' },
+      { stage: 'AM', role: 'Accounts Manager', approverName: null, decision: 'Pending', date: null, comments: null },
+    ],
+    currentStage: 'Accounts Manager',
+    ageDays: 5,
+    createdAt: '2026-11-11T14:30:00Z',
+  },
 ]
 
 // ─── DATA SERVICE FUNCTIONS ──────────────────────────────────────────────────
@@ -417,4 +565,143 @@ export const updateExpenseDraft = async (claimId, payload, submitNow = false) =>
 
   mockExpenseRequests[idx] = updated
   return updated
+}
+
+/**
+ * Approve a claim by current approver role
+ * Sequence:
+ * Pending RH -> Pending AVP
+ * Pending AVP -> Pending VP
+ * Pending VP -> Pending AE
+ * Pending AE -> Pending AM
+ * Pending AM -> Approved - Awaiting Accounts Processing
+ */
+export const approveExpenseRequest = async (claimId, approverRole = '', approverName = 'Authorized Approver', comments = 'Approved') => {
+  // simulate realistic 1-second server action
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+
+  const idx = mockExpenseRequests.findIndex((r) => r.claimId === claimId || r.id === claimId)
+  if (idx === -1) throw new Error(`Claim not found with ID: ${claimId}`)
+
+  const claim = mockExpenseRequests[idx]
+  let nextStatus = claim.workflowStatus
+  let nextStage = claim.currentStage
+  let stageCode = 'RH'
+
+  if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_RH) {
+    nextStatus = WORKFLOW_STATUS.PENDING_AVP
+    nextStage = 'AVP Operations'
+    stageCode = 'RH'
+  } else if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_AVP) {
+    nextStatus = WORKFLOW_STATUS.PENDING_VP
+    nextStage = 'VP Operations'
+    stageCode = 'AVP'
+  } else if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_VP) {
+    nextStatus = WORKFLOW_STATUS.PENDING_AE
+    nextStage = 'Account Executive'
+    stageCode = 'VP'
+  } else if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_AE) {
+    nextStatus = WORKFLOW_STATUS.PENDING_AM
+    nextStage = 'Accounts Manager'
+    stageCode = 'AE'
+  } else if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_AM) {
+    nextStatus = WORKFLOW_STATUS.APPROVED_ACCOUNTS
+    nextStage = 'Approved - Accounts Processing'
+    stageCode = 'AM'
+  }
+
+  const now = new Date()
+  const nowFormatted = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+
+  const updatedTimeline = (claim.approvalTimeline || []).map((step) => {
+    if (step.stage === stageCode) {
+      return {
+        ...step,
+        approverName: approverName || 'Authorized Approver',
+        decision: 'Approved',
+        date: nowFormatted,
+        comments: comments || 'Approved',
+      }
+    }
+    // Mark next step as pending if applicable
+    const nextStages = { RH: 'AVP', AVP: 'VP', VP: 'AE', AE: 'AM' }
+    if (nextStages[stageCode] && step.stage === nextStages[stageCode]) {
+      return {
+        ...step,
+        decision: 'Pending',
+      }
+    }
+    return step
+  })
+
+  const updated = {
+    ...claim,
+    workflowStatus: nextStatus,
+    currentStage: nextStage,
+    approvalTimeline: updatedTimeline,
+  }
+
+  mockExpenseRequests[idx] = updated
+  return updated
+}
+
+/**
+ * Reject a claim with mandatory rejection reason
+ */
+export const rejectExpenseRequest = async (claimId, approverRole = '', approverName = 'Authorized Approver', rejectionReason = '') => {
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+
+  const idx = mockExpenseRequests.findIndex((r) => r.claimId === claimId || r.id === claimId)
+  if (idx === -1) throw new Error(`Claim not found with ID: ${claimId}`)
+
+  const claim = mockExpenseRequests[idx]
+  const now = new Date()
+  const nowFormatted = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+
+  let stageCode = 'RH'
+  if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_AVP) stageCode = 'AVP'
+  else if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_VP) stageCode = 'VP'
+  else if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_AE) stageCode = 'AE'
+  else if (claim.workflowStatus === WORKFLOW_STATUS.PENDING_AM) stageCode = 'AM'
+
+  const updatedTimeline = (claim.approvalTimeline || []).map((step) => {
+    if (step.stage === stageCode) {
+      return {
+        ...step,
+        approverName: approverName || 'Authorized Approver',
+        decision: 'Rejected',
+        date: nowFormatted,
+        comments: rejectionReason,
+      }
+    }
+    return step
+  })
+
+  const updated = {
+    ...claim,
+    workflowStatus: WORKFLOW_STATUS.REJECTED,
+    currentStage: 'Rejected',
+    rejectionReason,
+    approvalTimeline: updatedTimeline,
+  }
+
+  mockExpenseRequests[idx] = updated
+  return updated
+}
+
+/**
+ * Fetch approvals relevant to the current role
+ */
+export const getPendingApprovalsForRole = async (role) => {
+  let targetStatus = null
+  if (role === 'regional-head' || role === 'line-manager') targetStatus = WORKFLOW_STATUS.PENDING_RH
+  else if (role === 'avp-operations') targetStatus = WORKFLOW_STATUS.PENDING_AVP
+  else if (role === 'vp-operations') targetStatus = WORKFLOW_STATUS.PENDING_VP
+  else if (role === 'ae') targetStatus = WORKFLOW_STATUS.PENDING_AE
+  else if (role === 'account-manager') targetStatus = WORKFLOW_STATUS.PENDING_AM
+
+  return {
+    pending: mockExpenseRequests.filter((r) => !targetStatus || r.workflowStatus === targetStatus),
+    all: [...mockExpenseRequests],
+  }
 }
