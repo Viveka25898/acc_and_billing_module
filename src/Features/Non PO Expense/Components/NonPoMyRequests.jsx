@@ -11,6 +11,9 @@ import {
 import { getMyExpenseRequests } from '../data/nonPoExpenseMockData'
 import NonPoStatusBadge from './NonPoStatusBadge'
 import NonPoUrgencyBadge from './NonPoUrgencyBadge'
+import NonPoClaimDetailDrawer from './NonPoClaimDetailDrawer'
+import NonPoBankPassbookModal from './NonPoBankPassbookModal'
+import NonPoExpenseVoucherModal from './NonPoExpenseVoucherModal'
 
 const NonPoMyRequests = ({
   role = 'employee',
@@ -24,6 +27,11 @@ const NonPoMyRequests = ({
   // ─── Data State ───────────────────────────────────────────────────────────
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Modals state
+  const [selectedDetailClaim, setSelectedDetailClaim] = useState(null)
+  const [selectedPassbookClaim, setSelectedPassbookClaim] = useState(null)
+  const [selectedVoucherData, setSelectedVoucherData] = useState(null)
 
   // ─── Filters & Search State ───────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -289,8 +297,15 @@ const NonPoMyRequests = ({
                       </td>
 
                       {/* Claim ID */}
-                      <td className="px-4 py-3 font-mono font-bold text-green-700 whitespace-nowrap">
-                        {req.claimId}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDetailClaim(req)}
+                          className="font-mono font-bold text-green-700 hover:text-green-900 hover:underline cursor-pointer block text-left"
+                          title="Click to view claim details"
+                        >
+                          {req.claimId}
+                        </button>
                       </td>
 
                       {/* Claim Date */}
@@ -336,26 +351,41 @@ const NonPoMyRequests = ({
 
                       {/* Actions */}
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        {isDraft ? (
-                          <button
-                            type="button"
-                            onClick={() => navigate(`${editPathPrefix}/${req.claimId}`)}
-                            className="text-xs bg-amber-50 text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-semibold transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
-                          >
-                            <span>✏️</span> Edit Draft
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Toast or view placeholder until RequestDetail is mounted
-                              toast.info(`Claim: ${req.claimId} | Status: ${req.workflowStatus}`)
-                            }}
-                            className="text-xs bg-white text-green-700 border border-green-300 px-3 py-1.5 rounded-lg hover:bg-green-50 font-semibold transition shadow-2xs cursor-pointer"
-                          >
-                            View Details →
-                          </button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {req.expenseVoucher && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedVoucherData({
+                                  ...req.expenseVoucher,
+                                  claim: req,
+                                  isViewOnly: true,
+                                })
+                              }}
+                              className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 font-bold transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                              title="View posted Expense Voucher"
+                            >
+                              <span>📑</span> Voucher
+                            </button>
+                          )}
+                          {isDraft ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`${editPathPrefix}/${req.claimId}`)}
+                              className="text-xs bg-amber-50 text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-semibold transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                            >
+                              <span>✏️</span> Edit Draft
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDetailClaim(req)}
+                              className="text-xs bg-white text-green-700 border border-green-300 px-3 py-1.5 rounded-lg hover:bg-green-50 font-semibold transition shadow-2xs cursor-pointer"
+                            >
+                              View Details →
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -412,6 +442,40 @@ const NonPoMyRequests = ({
         )}
       </div>
 
+      {/* ── MODALS & DRAWERS ── */}
+
+      {/* 1. Claim Full Detail Drawer */}
+      <NonPoClaimDetailDrawer
+        isOpen={Boolean(selectedDetailClaim)}
+        claim={selectedDetailClaim}
+        canAction={false}
+        onClose={() => setSelectedDetailClaim(null)}
+        onOpenPassbook={(claim) => setSelectedPassbookClaim(claim)}
+        onViewVoucher={(claim) => {
+          if (claim.expenseVoucher) {
+            setSelectedVoucherData({
+              ...claim.expenseVoucher,
+              claim,
+              isViewOnly: true,
+            })
+          }
+        }}
+      />
+
+      {/* 2. Bank Passbook Proof Modal */}
+      <NonPoBankPassbookModal
+        isOpen={Boolean(selectedPassbookClaim)}
+        claim={selectedPassbookClaim}
+        onClose={() => setSelectedPassbookClaim(null)}
+      />
+
+      {/* 3. Expense Voucher Modal (View Only for Employee) */}
+      <NonPoExpenseVoucherModal
+        isOpen={Boolean(selectedVoucherData)}
+        voucherData={selectedVoucherData}
+        isViewOnly={true}
+        onClose={() => setSelectedVoucherData(null)}
+      />
     </div>
   )
 }

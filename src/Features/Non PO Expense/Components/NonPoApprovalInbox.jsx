@@ -20,6 +20,8 @@ import NonPoUrgencyBadge from './NonPoUrgencyBadge'
 import NonPoBankPassbookModal from './NonPoBankPassbookModal'
 import NonPoRejectModal from './NonPoRejectModal'
 import NonPoClaimDetailDrawer from './NonPoClaimDetailDrawer'
+import NonPoGstEntryModal from './NonPoGstEntryModal'
+import NonPoExpenseVoucherModal from './NonPoExpenseVoucherModal'
 
 const NonPoApprovalInbox = ({
   role = 'regional-head',
@@ -40,6 +42,11 @@ const NonPoApprovalInbox = ({
   const [selectedPassbookClaim, setSelectedPassbookClaim] = useState(null)
   const [selectedRejectClaim, setSelectedRejectClaim] = useState(null)
   const [selectedDetailClaim, setSelectedDetailClaim] = useState(null)
+
+  // ─── AM 2-Step Voucher Modals State ─────────────────────────────────────────
+  const [selectedGstEntryClaim, setSelectedGstEntryClaim] = useState(null)
+  const [selectedVoucherData, setSelectedVoucherData] = useState(null)
+  const [isPostingVoucher, setIsPostingVoucher] = useState(false)
 
   // ─── Filters State ──────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -146,8 +153,16 @@ const NonPoApprovalInbox = ({
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / pageSize))
 
-  // ─── Action: Approve Claim (with 1-sec loader) ──────────────────────────────
+  // ─── Action: Approve Claim ──────────────────────────────────────────────────
   const handleApprove = async (claim) => {
+    // If current role is Account Manager or claim is pending AM approval,
+    // open Modal 1 (GST Entry Modal) which precedes Expense Voucher generation
+    if (role === 'account-manager' || claim.workflowStatus === WORKFLOW_STATUS.PENDING_AM) {
+      setSelectedGstEntryClaim(claim)
+      return
+    }
+
+    // Standard 1-second approval for prior workflow stages (RH, AVP, VP, AE)
     const cid = claim.claimId
     setApprovingIds((prev) => ({ ...prev, [cid]: true }))
 
@@ -174,6 +189,79 @@ const NonPoApprovalInbox = ({
       toast.error('Failed to approve claim. Please retry.')
     } finally {
       setApprovingIds((prev) => ({ ...prev, [cid]: false }))
+    }
+  }
+
+  // ─── Action: AM Voucher Step 1 -> Step 2 (Open Expense Voucher Modal) ────────
+  const handleGenerateVoucher = (gstData) => {
+    const rawNum = String(gstData.claim?.claimId || '').replace(/\D/g, '').slice(-4) || '0001'
+    const generatedVoucherNo = `EV-${new Date().getFullYear()}-${rawNum}`
+    const todayStr = new Date().toISOString().slice(0, 10)
+
+    setSelectedGstEntryClaim(null)
+    setSelectedVoucherData({
+      ...gstData,
+      voucherNo: generatedVoucherNo,
+      voucherDate: todayStr,
+      isViewOnly: false,
+    })
+  }
+
+  // ─── Action: AM Voucher Step 2 -> Back to Step 1 ─────────────────────────────
+  const handleBackToGstEntry = () => {
+    if (selectedVoucherData?.claim) {
+      setSelectedGstEntryClaim(selectedVoucherData.claim)
+    }
+    setSelectedVoucherData(null)
+  }
+
+  // ─── Action: AM Post Voucher & Final Approve Claim ──────────────────────────
+  const handlePostVoucher = async (voucherPayload) => {
+    if (!voucherPayload?.claim) return
+    const cid = voucherPayload.claim.claimId
+    setIsPostingVoucher(true)
+
+    try {
+      const approverName = authContext?.name || roleTitle || 'Accounts Manager'
+      const updated = await approveExpenseRequest(
+        cid,
+        'account-manager',
+        approverName,
+        'Approved by Accounts Manager - Expense Voucher Posted',
+        voucherPayload
+      )
+
+      // Update state locally
+      setAllRequests((prev) => prev.map((r) => (r.claimId === cid ? updated : r)))
+
+      toast.success(
+        <div>
+          <span className="font-bold">Expense Voucher Posted & Claim Approved!</span>
+          <p className="text-xs text-gray-600 mt-0.5">
+            Voucher {voucherPayload.voucherNo} posted • Debited: {formatAmountINR(voucherPayload.totalAmount)}
+          </p>
+        </div>
+      )
+
+      setSelectedVoucherData(null)
+      if (selectedDetailClaim?.claimId === cid) {
+        setSelectedDetailClaim(null)
+      }
+    } catch (err) {
+      toast.error('Failed to post expense voucher. Please retry.')
+    } finally {
+      setIsPostingVoucher(false)
+    }
+  }
+
+  // ─── Action: View Posted Voucher (View-only modal) ──────────────────────────
+  const handleViewVoucher = (claim) => {
+    if (claim.expenseVoucher) {
+      setSelectedVoucherData({
+        ...claim.expenseVoucher,
+        claim,
+        isViewOnly: true,
+      })
     }
   }
 
@@ -599,13 +687,25 @@ const NonPoApprovalInbox = ({
                             </button>
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDetailClaim(claim)}
-                            className="px-3 py-1 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition cursor-pointer"
-                          >
-                            View Details
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {claim.expenseVoucher && (
+                              <button
+                                type="button"
+                                onClick={() => handleViewVoucher(claim)}
+                                className="px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                                title="View formal Expense Voucher"
+                              >
+                                <span>📑</span> Voucher
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDetailClaim(claim)}
+                              className="px-3 py-1 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition cursor-pointer"
+                            >
+                              View Details
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -727,6 +827,26 @@ const NonPoApprovalInbox = ({
           setSelectedRejectClaim(claim)
         }}
         onOpenPassbook={(claim) => setSelectedPassbookClaim(claim)}
+        onViewVoucher={(claim) => handleViewVoucher(claim)}
+      />
+
+      {/* 4. AM Step 1: GST Entry Modal (Direct total GST input, Intra/Inter selector, Bill Preview) */}
+      <NonPoGstEntryModal
+        isOpen={Boolean(selectedGstEntryClaim)}
+        claim={selectedGstEntryClaim}
+        onClose={() => setSelectedGstEntryClaim(null)}
+        onGenerateVoucher={handleGenerateVoucher}
+      />
+
+      {/* 5. AM Step 2: Formal Expense Voucher Modal (ERP style, X2003001/L2001003 GLs, Debit/Credit balanced) */}
+      <NonPoExpenseVoucherModal
+        isOpen={Boolean(selectedVoucherData)}
+        voucherData={selectedVoucherData}
+        isPosting={isPostingVoucher}
+        isViewOnly={selectedVoucherData?.isViewOnly || false}
+        onClose={() => setSelectedVoucherData(null)}
+        onBack={handleBackToGstEntry}
+        onPostVoucher={handlePostVoucher}
       />
     </div>
   )

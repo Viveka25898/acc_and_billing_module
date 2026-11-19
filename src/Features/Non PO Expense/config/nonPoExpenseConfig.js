@@ -136,6 +136,32 @@ export const VALIDATION_LIMITS = {
   MAX_PAST_DAYS: 30,
 }
 
+// ─── ACCOUNTING GL MASTER CONSTANTS ─────────────────────────────────────────
+export const NON_PO_GL_ACCOUNTS = {
+  // Expense Ledger (P&L)
+  EXPENSE_LEDGER_CODE: 'X2003001',
+  EXPENSE_LEDGER_NAME: 'Non PO Expense Ledger',
+  EXPENSE_PARENT_GL: 'X2003',
+
+  // Liability Ledger (Current Liability)
+  LIABILITY_LEDGER_CODE: 'L2001003',
+  LIABILITY_LEDGER_NAME: 'Non PO Liability Ledger',
+  LIABILITY_PARENT_GL: 'L2001',
+
+  // GST Input Credit (Parent: A3007001 - GST input accounts)
+  GST_INPUT_PARENT_GL: 'A3007001',
+  GST_INPUT_PARENT_NAME: 'GST input accounts',
+
+  CGST_INPUT_CODE: 'A3007001001',
+  CGST_INPUT_NAME: 'CGST input',
+
+  SGST_INPUT_CODE: 'A3007001002',
+  SGST_INPUT_NAME: 'SGST input',
+
+  IGST_INPUT_CODE: 'A3007001003',
+  IGST_INPUT_NAME: 'IGST input',
+}
+
 // ─── UTILITY FORMATTERS ──────────────────────────────────────────────────────
 export const formatAmountINR = (amount) => {
   const num = Number(amount)

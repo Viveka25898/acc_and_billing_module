@@ -11,6 +11,7 @@ const NonPoClaimDetailDrawer = ({
   onApprove,
   onReject,
   onOpenPassbook,
+  onViewVoucher,
   isApproving,
   canAction = false,
 }) => {
@@ -71,6 +72,38 @@ const NonPoClaimDetailDrawer = ({
             </div>
           </div>
 
+          {/* Banner: Generated Expense Voucher (if posted by Accounts Manager) */}
+          {claim.expenseVoucher && (
+            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border-2 border-emerald-300 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📑</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                      Expense Voucher Posted
+                    </span>
+                    <span className="font-mono font-bold text-xs bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300">
+                      {claim.expenseVoucher.voucherNo}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 mt-0.5">
+                    Debit: <strong>Non PO Expense (X2003001)</strong> • Credit: <strong>Non PO Liability (L2001003)</strong>
+                    {claim.expenseVoucher.totalGstAmount > 0 && ' • With Input GST Credit'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onViewVoucher && onViewVoucher(claim)}
+                className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                title="Open full formal Expense Voucher preview"
+              >
+                <span>View Voucher</span>
+                <span className="text-xs">↗</span>
+              </button>
+            </div>
+          )}
+
           {/* Section: Operational Site & Classification */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 border-b border-gray-200 pb-1">
@@ -104,6 +137,30 @@ const NonPoClaimDetailDrawer = ({
                 <span className="font-semibold text-gray-800">
                   {formatDateDMY(claim.expenseDate)}
                   {claim.incidentDate && ` (Incident: ${formatDateDMY(claim.incidentDate)})`}
+                </span>
+              </div>
+              <div className="sm:col-span-2 pt-1 border-t border-gray-200/60">
+                <span className="text-gray-400 block">GST Tax Invoice Status:</span>
+                <span className="font-semibold text-gray-800 flex items-center gap-2 mt-0.5">
+                  {claim.isGstBill === 'Yes' || claim.vendorGstin ? (
+                    <>
+                      <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded border border-green-300">
+                        GST Tax Invoice
+                      </span>
+                      <span className="font-mono text-gray-700">
+                        GSTIN: <strong>{claim.vendorGstin || '—'}</strong>
+                      </span>
+                      {claim.invoiceNumber && (
+                        <span className="text-gray-600">
+                          • Bill No: <strong>{claim.invoiceNumber}</strong>
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="bg-gray-100 text-gray-700 text-[10px] font-medium px-2 py-0.5 rounded border border-gray-300">
+                      Non-GST / Cash Memo / Unregistered Vendor
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
@@ -292,13 +349,24 @@ const NonPoClaimDetailDrawer = ({
 
         {/* Footer Actions */}
         <div className="bg-gray-50 px-6 py-3.5 border-t border-gray-200 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-xl transition shadow-2xs cursor-pointer"
-          >
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-xl transition shadow-2xs cursor-pointer"
+            >
+              Close
+            </button>
+            {claim.expenseVoucher && (
+              <button
+                type="button"
+                onClick={() => onViewVoucher && onViewVoucher(claim)}
+                className="px-3.5 py-2 text-xs sm:text-sm font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <span>📑</span> View Expense Voucher
+              </button>
+            )}
+          </div>
 
           {canAction && (
             <div className="flex items-center gap-3">

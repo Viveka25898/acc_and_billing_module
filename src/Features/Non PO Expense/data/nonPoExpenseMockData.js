@@ -104,6 +104,9 @@ export let mockExpenseRequests = [
     claimReason: 'Main power busbar overheating caused critical line outage at building sector 3. Immediate contractor replacement was essential.',
     nonPoJustification: 'Unplanned fire hazard safety shutdown occurred on weekend. Waiting for standard 5-day PO turnaround would have left entire facility dark.',
     amountRequested: 38500.00,
+    isGstBill: 'Yes',
+    vendorGstin: '27AABCA1234F1Z9',
+    invoiceNumber: 'APC/2026/0991',
     // Bank Details for Disbursement
     accountHolderName: 'Apex Power Controls & Services',
     bankName: 'HDFC Bank, Kanjurmarg West Branch',
@@ -210,6 +213,20 @@ export let mockExpenseRequests = [
     bankName: 'State Bank of India, BKC Branch',
     bankAccountNo: '30998877665',
     ifscCode: 'SBIN0001234',
+    isGstBill: 'No',
+    vendorGstin: '',
+    invoiceNumber: 'DSL-2026-99',
+    expenseVoucher: {
+      voucherNo: 'EV-2026-000003',
+      voucherDate: '2026-11-14',
+      totalAmount: 52000,
+      totalGstAmount: 0,
+      baseExpense: 52000,
+      gstType: 'intra',
+      cgstAmount: 0,
+      sgstAmount: 0,
+      igstAmount: 0,
+    },
     passbookImage: {
       fileName: 'SBI_Passbook_Copy.pdf',
       size: '640 KB',
@@ -447,6 +464,9 @@ export let mockExpenseRequests = [
     bankName: 'Canara Bank, Vikhroli West',
     bankAccountNo: '0234101088990',
     ifscCode: 'CNRB0000234',
+    isGstBill: 'Yes',
+    vendorGstin: '27AAACA9988K1Z3',
+    invoiceNumber: 'ASA/2026/1102',
     passbookImage: {
       fileName: 'ApexAudits_Cancelled_Cheque.jpg',
       size: '720 KB',
@@ -576,7 +596,7 @@ export const updateExpenseDraft = async (claimId, payload, submitNow = false) =>
  * Pending AE -> Pending AM
  * Pending AM -> Approved - Awaiting Accounts Processing
  */
-export const approveExpenseRequest = async (claimId, approverRole = '', approverName = 'Authorized Approver', comments = 'Approved') => {
+export const approveExpenseRequest = async (claimId, approverRole = '', approverName = 'Authorized Approver', comments = 'Approved', expenseVoucher = null) => {
   // simulate realistic 1-second server action
   await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -639,6 +659,7 @@ export const approveExpenseRequest = async (claimId, approverRole = '', approver
     workflowStatus: nextStatus,
     currentStage: nextStage,
     approvalTimeline: updatedTimeline,
+    ...(expenseVoucher ? { expenseVoucher } : {}),
   }
 
   mockExpenseRequests[idx] = updated

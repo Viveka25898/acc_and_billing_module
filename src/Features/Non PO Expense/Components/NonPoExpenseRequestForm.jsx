@@ -71,6 +71,11 @@ const NonPoExpenseRequestForm = ({
     expenseDate: new Date().toISOString().slice(0, 10),
     amountRequested: '',
 
+    // GST Information
+    isGstBill: 'No', // 'No' | 'Yes'
+    vendorGstin: '',
+    invoiceNumber: '',
+
     // Section C: Justification
     claimReason: '',
     nonPoJustification: '',
@@ -118,6 +123,9 @@ const NonPoExpenseRequestForm = ({
               ...claim,
               amountRequested: String(claim.amountRequested || ''),
               confirmBankAccountNo: claim.bankAccountNo || '',
+              isGstBill: claim.isGstBill || (claim.vendorGstin ? 'Yes' : 'No'),
+              vendorGstin: claim.vendorGstin || '',
+              invoiceNumber: claim.invoiceNumber || '',
             })
           } catch (err) {
             toast.error('Could not load draft details')
@@ -354,6 +362,20 @@ const NonPoExpenseRequestForm = ({
         errors.expenseDate = 'Expense Date cannot be in the future.'
       } else if (expDate < pastLimit) {
         errors.expenseDate = `Expense Date cannot be older than ${VALIDATION_LIMITS.MAX_PAST_DAYS} days.`
+      }
+    }
+
+    // GST Bill Validations
+    if (formData.isGstBill === 'Yes') {
+      const gstinTrim = (formData.vendorGstin || '').trim().toUpperCase()
+      if (!gstinTrim) {
+        errors.vendorGstin = 'Vendor GSTIN is required for GST bills.'
+      } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstinTrim)) {
+        errors.vendorGstin = 'Enter a valid 15-character GSTIN (e.g. 27ABCDE1234F1Z5).'
+      }
+
+      if (!(formData.invoiceNumber || '').trim()) {
+        errors.invoiceNumber = 'Vendor Invoice / Bill Number is required.'
       }
     }
 
@@ -804,6 +826,102 @@ const NonPoExpenseRequestForm = ({
                 ) : null}
               </div>
 
+              {/* ── GST Bill Toggle & Details ── */}
+              <div className="lg:col-span-2 pt-3 border-t border-gray-100">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span>Is this a GST Bill? (Tax Invoice) <span className="text-red-500">*</span></span>
+                  <span className="text-[11px] font-normal text-gray-400">Select Yes if vendor issued a Tax Invoice with GST</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        isGstBill: 'No',
+                        vendorGstin: '',
+                        invoiceNumber: '',
+                      }))
+                      clearFieldError('vendorGstin')
+                      clearFieldError('invoiceNumber')
+                    }}
+                    className={`py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      formData.isGstBill === 'No'
+                        ? 'bg-gray-800 text-white border-gray-800 shadow-2xs'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>📄</span> No (Cash Memo / Non-GST)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, isGstBill: 'Yes' }))}
+                    className={`py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      formData.isGstBill === 'Yes'
+                        ? 'bg-green-600 text-white border-green-600 shadow-2xs'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-green-50/50 hover:border-green-300'
+                    }`}
+                  >
+                    <span>🧾</span> Yes (GST Tax Invoice)
+                  </button>
+                </div>
+              </div>
+
+              {/* Conditional GST Bill Fields (Vendor GSTIN & Vendor Invoice No.) */}
+              {formData.isGstBill === 'Yes' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Vendor GSTIN Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="vendorGstin"
+                      maxLength={15}
+                      placeholder="e.g. 27ABCDE1234F1Z5"
+                      value={formData.vendorGstin}
+                      onChange={(e) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          vendorGstin: e.target.value.toUpperCase().trim(),
+                        }))
+                        clearFieldError('vendorGstin')
+                      }}
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-mono uppercase bg-white focus:outline-none focus:ring-2 focus:ring-green-500 transition ${
+                        formErrors.vendorGstin ? 'border-red-500 bg-red-50/30' : 'border-gray-300'
+                      }`}
+                    />
+                    {formErrors.vendorGstin ? (
+                      <p className="text-xs text-red-600 mt-1 font-medium">{formErrors.vendorGstin}</p>
+                    ) : (
+                      <p className="text-[11px] text-gray-400 mt-1">15-digit GSTIN printed on vendor invoice</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Vendor Invoice / Bill No. <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="invoiceNumber"
+                      placeholder="e.g. INV-2026-9901 or Bill #450"
+                      value={formData.invoiceNumber}
+                      onChange={handleChange}
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 transition ${
+                        formErrors.invoiceNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'
+                      }`}
+                    />
+                    {formErrors.invoiceNumber ? (
+                      <p className="text-xs text-red-600 mt-1 font-medium">{formErrors.invoiceNumber}</p>
+                    ) : (
+                      <p className="text-[11px] text-gray-400 mt-1">Invoice / bill number printed on vendor bill</p>
+                    )}
+                  </div>
+                </>
+              )}
+
             </div>
           </div>
         </div>
@@ -1197,6 +1315,11 @@ const NonPoExpenseRequestForm = ({
           { label: 'Account No.', value: formData.bankAccountNo ? `•••• ${formData.bankAccountNo.slice(-4)}` : '—' },
           { label: 'IFSC Code', value: formData.ifscCode || '—' },
           { label: 'Requested Amount', value: formatAmountINR(formData.amountRequested) },
+          { label: 'GST Bill', value: formData.isGstBill === 'Yes' ? 'Yes (Tax Invoice)' : 'No (Non-GST / Cash Memo)' },
+          ...(formData.isGstBill === 'Yes' ? [
+            { label: 'Vendor GSTIN', value: formData.vendorGstin || '—' },
+            { label: 'Vendor Invoice No.', value: formData.invoiceNumber || '—' },
+          ] : []),
           { label: 'First Approver', value: firstApproverLabel },
         ]}
         confirmLabel={`Yes, Submit to ${firstApproverLabel}`}
